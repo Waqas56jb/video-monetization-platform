@@ -2,7 +2,7 @@ import Icon from '@/components/ui/Icon'
 
 /**
  * Viewer / Creator segmented control.
- * options: [{ value, label, icon }]
+ * options: [{ value, label, shortLabel?, icon }]
  */
 export default function RoleToggle({ options, value, onChange }) {
   return (
@@ -13,11 +13,13 @@ export default function RoleToggle({ options, value, onChange }) {
           type="button"
           role="tab"
           aria-selected={value === o.value}
+          aria-label={o.label}
           className={value === o.value ? 'on' : ''}
           onClick={() => onChange(o.value)}
         >
           <Icon name={o.icon} />
-          {o.label}
+          <span className="rt-full">{o.label}</span>
+          <span className="rt-short">{o.shortLabel || o.label}</span>
         </button>
       ))}
     </div>

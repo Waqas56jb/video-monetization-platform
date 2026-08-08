@@ -13,11 +13,12 @@ export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) 
       <div className="top-l">
         <button
           className="hamburger"
+          type="button"
           onClick={onToggleDrawer}
           aria-label="Toggle menu"
           aria-expanded={drawerOpen}
         >
-          <Menu />
+          <Menu size={22} />
         </button>
         <div className="top-titles">
           <h1>{title}</h1>
@@ -32,12 +33,17 @@ export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) 
           placeholder="Search anything…"
           ariaLabel="Global search"
         />
-        <button className="bell" onClick={() => showToast('4 items need your review')} aria-label="Notifications">
-          <Bell />
+        <button
+          className="bell"
+          type="button"
+          onClick={() => showToast('4 items need your review')}
+          aria-label="Notifications"
+        >
+          <Bell size={20} strokeWidth={2} />
         </button>
         <div className="admin-avatar">
           <img src={IMG.admin} alt="" />
-          <div>
+          <div className="admin-avatar-meta">
             <b>Admin</b>
             <small>SUPER ADMIN</small>
           </div>

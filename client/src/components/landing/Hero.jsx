@@ -39,11 +39,13 @@ export default function Hero() {
           <Reveal className="hero-actions" delay={2} immediate>
             <button className="btn btn-gold" onClick={() => navigate('/signup')}>
               <Rocket />
-              Start Earning Today
+              <span className="btn-label-full">Start Earning Today</span>
+              <span className="btn-label-short">Start Earning</span>
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('/watch')}>
               <PlayCircle />
-              Watch a Premiere
+              <span className="btn-label-full">Watch a Premiere</span>
+              <span className="btn-label-short">Watch Premiere</span>
             </button>
           </Reveal>
 

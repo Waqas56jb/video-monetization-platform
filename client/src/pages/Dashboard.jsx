@@ -56,7 +56,7 @@ export default function Dashboard() {
                 aria-label="Toggle menu"
                 aria-expanded={drawerOpen}
               >
-                <Menu />
+                <Menu size={22} />
               </button>
               <div className="dash-titles">
                 <h1>{title}</h1>
@@ -65,12 +65,17 @@ export default function Dashboard() {
             </div>
 
             <div className="dash-user">
-              <button className="bell" onClick={() => showToast('No new notifications')} aria-label="Notifications">
-                <Bell />
+              <button
+                className="bell"
+                type="button"
+                onClick={() => showToast('No new notifications')}
+                aria-label="Notifications"
+              >
+                <Bell size={20} strokeWidth={2} />
               </button>
               <div className="dash-avatar">
                 <img src={IMG.avatarKonde} alt="" />
-                <div>
+                <div className="dash-avatar-meta">
                   <b>Juma Hassan</b>
                   <small>Creator Account</small>
                 </div>
@@ -78,11 +83,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {tab === 'overview' && <OverviewTab />}
-          {tab === 'library' && <LibraryTab />}
-          {tab === 'upload' && <UploadTab />}
-          {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
-          {tab === 'earnings' && <EarningsTab />}
+          <div className="dash-body">
+            {tab === 'overview' && <OverviewTab />}
+            {tab === 'library' && <LibraryTab />}
+            {tab === 'upload' && <UploadTab />}
+            {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
+            {tab === 'earnings' && <EarningsTab />}
+          </div>
         </main>
       </div>
     </div>

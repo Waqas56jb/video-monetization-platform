@@ -8,8 +8,8 @@ import { IMG } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
 
 const ROLES = [
-  { value: 'viewer', label: "I'm here to Watch", icon: 'user' },
-  { value: 'creator', label: "I'm a Creator", icon: 'video' },
+  { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
+  { value: 'creator', label: "I'm a Creator", shortLabel: 'Create', icon: 'video' },
 ]
 
 export default function Signup() {

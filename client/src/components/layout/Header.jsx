@@ -32,16 +32,25 @@ export default function Header() {
             ))}
           </nav>
           <div className="nav-cta">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>
-              <LogIn />
+            <button className="btn btn-ghost btn-sm nav-cta-login" onClick={() => navigate('/login')}>
+              <LogIn size={18} />
               <span className="btn-label">Log in</span>
             </button>
-            <button className="btn btn-gold btn-sm nav-cta-primary" onClick={() => navigate('/signup')}>
-              <Sparkles />
-              <span className="btn-label">Start Creating</span>
+            <button
+              className="btn btn-gold btn-sm nav-cta-primary"
+              onClick={() => navigate('/signup')}
+            >
+              <Sparkles size={18} />
+              <span className="btn-label-full">Start Creating</span>
+              <span className="btn-label-short">Create</span>
             </button>
-            <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-              <Menu />
+            <button
+              className="hamburger"
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
             </button>
           </div>
         </div>
