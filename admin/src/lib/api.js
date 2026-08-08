@@ -1,17 +1,47 @@
-import { getItem, setItem, removeItem } from './safeStorage'
-
 /**
- * The single door to the backend.
+ * The single door to the backend, for the control centre.
  *
  * Holds the session, attaches the access token, and refreshes it once when the
- * server says it has expired — so a long session never dumps the viewer back
- * on the login screen mid-video.
+ * server says it has expired — so a moderator working through a review queue is
+ * never dumped back on the login screen halfway down it.
  */
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '')
 
-const ACCESS_KEY = 'mtonyo.access'
-const REFRESH_KEY = 'mtonyo.refresh'
+// Deliberately different keys from the public app: if both are ever served from
+// one origin, an admin session and a viewer session must not overwrite each
+// other.
+const ACCESS_KEY = 'mtonyo.admin.access'
+const REFRESH_KEY = 'mtonyo.admin.refresh'
+
+/**
+ * Safari in Private Browsing throws on the mere act of touching localStorage,
+ * so every access is wrapped. Losing the session is survivable; a white screen
+ * on the login page is not.
+ */
+const store = {
+  get(key) {
+    try {
+      return window.localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  set(key, value) {
+    try {
+      window.localStorage.setItem(key, value)
+    } catch {
+      /* ignore */
+    }
+  },
+  remove(key) {
+    try {
+      window.localStorage.removeItem(key)
+    } catch {
+      /* ignore */
+    }
+  },
+}
 
 export class ApiError extends Error {
   constructor(message, { status, code, details } = {}) {
@@ -25,21 +55,20 @@ export class ApiError extends Error {
 
 /* ------------------------------------------------------------- session */
 
-export const getAccessToken = () => getItem(ACCESS_KEY)
-export const getRefreshToken = () => getItem(REFRESH_KEY)
+export const getAccessToken = () => store.get(ACCESS_KEY)
+export const getRefreshToken = () => store.get(REFRESH_KEY)
 
 export function saveSession(session) {
   if (!session?.accessToken) return
-  setItem(ACCESS_KEY, session.accessToken)
-  if (session.refreshToken) setItem(REFRESH_KEY, session.refreshToken)
+  store.set(ACCESS_KEY, session.accessToken)
+  if (session.refreshToken) store.set(REFRESH_KEY, session.refreshToken)
 }
 
 export function clearSession() {
-  removeItem(ACCESS_KEY)
-  removeItem(REFRESH_KEY)
+  store.remove(ACCESS_KEY)
+  store.remove(REFRESH_KEY)
 }
 
-/** Anything that wants to know the session died (e.g. to bounce to /login). */
 const listeners = new Set()
 export const onSessionExpired = (fn) => {
   listeners.add(fn)
@@ -97,10 +126,9 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
     })
   } catch (err) {
     if (err.name === 'AbortError') throw err
-    throw new ApiError(
-      'Cannot reach the server. Check your connection and try again.',
-      { code: 'NETWORK' }
-    )
+    throw new ApiError('Cannot reach the server. Check your connection and try again.', {
+      code: 'NETWORK',
+    })
   }
 
   if (res.status === 401 && auth && retry && getRefreshToken()) {
@@ -138,11 +166,13 @@ const post = (path, body, opts) => request(path, { ...opts, method: 'POST', body
 const patch = (path, body, opts) => request(path, { ...opts, method: 'PATCH', body })
 const del = (path, opts) => request(path, { ...opts, method: 'DELETE' })
 
-/** Build a querystring, dropping empty values. */
+/** Build a querystring, dropping empty values and the "All" filter defaults. */
 const qs = (params = {}) => {
   const s = new URLSearchParams()
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '' && v !== 'All' && v !== 'All Access') s.set(k, v)
+    if (v === undefined || v === null || v === '') return
+    if (typeof v === 'string' && /^All\b/.test(v)) return
+    s.set(k, v)
   })
   const str = s.toString()
   return str ? `?${str}` : ''
@@ -154,101 +184,74 @@ export const api = {
   health: () => get('/health', { auth: false }),
 
   auth: {
-    register: (body) => post('/api/auth/register', body, { auth: false }),
     login: (body) => post('/api/auth/login', body, { auth: false }),
     me: () => get('/api/auth/me'),
-    updateProfile: (body) => patch('/api/auth/me', body),
-    becomeCreator: () => post('/api/auth/become-creator'),
     logout: () => post('/api/auth/logout'),
-    forgotPassword: (email) => post('/api/auth/forgot-password', { email }, { auth: false }),
+    changePassword: (body) => post('/api/auth/change-password', body),
+    // Used by a sub-admin activating their account from an invitation link.
     checkResetToken: (token) =>
       get(`/api/auth/reset-token?token=${encodeURIComponent(token)}`, { auth: false }),
     resetPassword: (body) => post('/api/auth/reset-password', body, { auth: false }),
-    changePassword: (body) => post('/api/auth/change-password', body),
-    checkEmail: (email) => post('/api/auth/check-email', { email }, { auth: false }),
-    creator: (id) => get(`/api/auth/creators/${id}`, { auth: false }),
   },
 
-  videos: {
-    list: (params) => get(`/api/videos${qs(params)}`, { auth: Boolean(getAccessToken()) }),
-    categories: () => get('/api/videos/categories', { auth: false }),
-    one: (idOrSlug) => get(`/api/videos/${idOrSlug}`, { auth: Boolean(getAccessToken()) }),
-    mine: () => get('/api/videos/mine'),
-    create: (body) => post('/api/videos', body),
-    update: (id, body) => patch(`/api/videos/${id}`, body),
-    submit: (id) => post(`/api/videos/${id}/submit`),
-    requestDeletion: (id, reason) => post(`/api/videos/${id}/request-deletion`, { reason }),
-    recordView: (id, body) => post(`/api/videos/${id}/view`, body),
-  },
+  /** Staff work: the inbox, announcements, and the moderation team. */
+  staff: {
+    notifications: (params) => get(`/api/staff/notifications${qs(params)}`),
+    unreadCount: () => get('/api/staff/notifications/unread-count'),
+    markRead: (ids) => post('/api/staff/notifications/read', ids ? { ids } : {}),
 
-  playback: (idOrSlug) => get(`/api/playback/${idOrSlug}/playback`, { auth: Boolean(getAccessToken()) }),
+    announcements: (params) => get(`/api/staff/announcements${qs(params)}`),
+    announce: (body) => post('/api/staff/announcements', body),
+    deleteAnnouncement: (id) => del(`/api/staff/announcements/${id}`),
 
-  payments: {
-    initiate: (body) => post('/api/payments/initiate', body),
-    one: (id) => get(`/api/payments/${id}`),
-    mine: () => get('/api/payments'),
-    simulate: (id, outcome) => post(`/api/payments/${id}/simulate`, { outcome }),
-  },
+    subAdmins: () => get('/api/staff/sub-admins'),
+    createSubAdmin: (body) => post('/api/staff/sub-admins', body),
+    resendInvite: (id) => post(`/api/staff/sub-admins/${id}/resend-invite`),
+    setSubAdminStatus: (id, status) => post(`/api/staff/sub-admins/${id}/status`, { status }),
+    removeSubAdmin: (id) => del(`/api/staff/sub-admins/${id}`),
 
-  library: {
-    list: () => get('/api/library'),
-    purchases: () => get('/api/library/purchases'),
-    entitlement: (videoId) => get(`/api/library/entitlement/${videoId}`),
-  },
-
-  earnings: {
-    summary: () => get('/api/earnings'),
-    transactions: () => get('/api/earnings/transactions'),
-    withdrawals: () => get('/api/earnings/withdrawals'),
-    requestWithdrawal: (body) => post('/api/earnings/withdrawals', body),
-    cancelWithdrawal: (id) => del(`/api/earnings/withdrawals/${id}`),
-  },
-
-  share: {
-    payload: (id) => get(`/api/share/${id}`, { auth: Boolean(getAccessToken()) }),
-    generate: (id) => post(`/api/share/${id}/generate`),
-  },
-
-  ads: {
-    preroll: (videoId) => get(`/api/ads/preroll/${videoId}`, { auth: Boolean(getAccessToken()) }),
-    impression: (body) => post('/api/ads/impression', body, { auth: Boolean(getAccessToken()) }),
-  },
-
-  /** Everyone has an inbox: announcements, and news about their own account. */
-  inbox: {
-    list: (params) => get(`/api/inbox${qs(params)}`),
-    unreadCount: () => get('/api/inbox/unread-count'),
-    markRead: (ids) => post('/api/inbox/read', ids ? { ids } : {}),
+    updateEmail: (body) => patch('/api/staff/account/email', body),
+    updateProfile: (body) => patch('/api/staff/account/profile', body),
   },
 
   admin: {
     overview: () => get('/api/admin/overview'),
     activity: () => get('/api/admin/activity'),
+
     review: (status) => get(`/api/admin/review${qs({ status })}`),
     approve: (id, body) => post(`/api/admin/review/${id}/approve`, body),
     reject: (id, reason) => post(`/api/admin/review/${id}/reject`, { reason }),
+
     videos: (params) => get(`/api/admin/videos${qs(params)}`),
     updateVideo: (id, body) => patch(`/api/admin/videos/${id}`, body),
     unpublish: (id) => post(`/api/admin/videos/${id}/unpublish`),
     publish: (id) => post(`/api/admin/videos/${id}/publish`),
     removeVideo: (id) => del(`/api/admin/videos/${id}`),
+
     deletionRequests: () => get('/api/admin/deletion-requests'),
     decideDeletion: (id, body) => post(`/api/admin/deletion-requests/${id}/decide`, body),
+
     users: (params) => get(`/api/admin/users${qs(params)}`),
     setUserStatus: (id, body) => post(`/api/admin/users/${id}/status`, body),
+
     creators: () => get('/api/admin/creators'),
     verifyCreator: (id, verified) => post(`/api/admin/creators/${id}/verify`, { verified }),
     setCreatorSplit: (id, splitPercent) => post(`/api/admin/creators/${id}/split`, { splitPercent }),
+
     payments: (params) => get(`/api/admin/payments${qs(params)}`),
     withdrawals: () => get('/api/admin/withdrawals'),
     decideWithdrawal: (id, body) => post(`/api/admin/withdrawals/${id}/decide`, body),
     revenue: () => get('/api/admin/revenue'),
+
     settings: () => get('/api/admin/settings'),
     updateSettings: (body) => patch('/api/admin/settings', body),
+
     audit: (params) => get(`/api/admin/audit${qs(params)}`),
+
     ads: () => get('/api/admin/ads'),
     createCampaign: (body) => post('/api/admin/ads', body),
     updateCampaign: (id, body) => patch(`/api/admin/ads/${id}`, body),
+
     runPremiereExpiry: () => post('/api/admin/jobs/premiere-expiry'),
   },
 }
