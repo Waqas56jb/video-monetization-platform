@@ -1452,3 +1452,25 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 @media(max-width:380px){
   .dash-home{width:38px;height:38px;flex-basis:38px}
 }
+
+/* --- crash screen: a way out instead of a white page --- */
+.crash{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg)}
+.crash-card{
+  width:min(460px,100%);text-align:center;
+  background:linear-gradient(165deg,#141420,#0d0d15);
+  border:1px solid var(--border);border-radius:24px;
+  padding:38px 30px;box-shadow:var(--shadow);
+}
+.crash-mark{font-family:'Sora',sans-serif;font-size:24px;font-weight:800;margin-bottom:22px}
+.crash-card h1{font-size:22px;font-weight:800;margin-bottom:12px}
+.crash-card>p{color:var(--muted);font-size:14.5px;line-height:1.7;margin-bottom:26px}
+.crash-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.crash-actions .btn{flex:1 1 160px;justify-content:center}
+.crash-detail{margin-top:24px;text-align:left}
+.crash-detail summary{color:var(--muted2);font-size:12.5px;cursor:pointer}
+.crash-detail code{
+  display:block;margin-top:10px;padding:12px;
+  background:var(--card2);border-radius:10px;
+  color:#fca5a5;font-size:11.5px;word-break:break-word;
+}
+@media(max-width:480px){.crash-card{padding:28px 20px}.crash-actions .btn{flex:1 1 100%}}

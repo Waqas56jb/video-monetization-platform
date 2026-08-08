@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { getItem, setItem } from '@/lib/safeStorage'
 
 /**
  * Who is signed in: a viewer (watches and buys) or a creator (also uploads,
@@ -21,16 +22,13 @@ export function useRole() {
 export function RoleProvider({ children }) {
   const [role, setRoleState] = useState(() => {
     if (typeof window === 'undefined') return 'viewer'
-    const saved = window.localStorage?.getItem(KEY)
+    const saved = getItem(KEY)
     return VALID.includes(saved) ? saved : 'viewer'
   })
 
+  // Private mode simply means the role won't survive a refresh — never a crash.
   useEffect(() => {
-    try {
-      window.localStorage?.setItem(KEY, role)
-    } catch {
-      /* private mode — role just won't survive a refresh */
-    }
+    setItem(KEY, role)
   }, [role])
 
   const setRole = useCallback((next) => {
