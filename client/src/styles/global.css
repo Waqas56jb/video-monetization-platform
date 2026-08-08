@@ -1378,3 +1378,77 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .become-grid{grid-template-columns:1fr}
   .mm-link{font-size:21px}
 }
+
+/* =========================================================================
+   ESCAPE ROUTES
+   Client feedback: "the frontend demo itself should not trap the user on a
+   screen". Every overlay and every screen now has a visible way out.
+   ========================================================================= */
+
+/* --- the player's back arrow must stay reachable above the paywall --- */
+.player-top{z-index:6}
+.paywall{z-index:5}
+.player.is-locked .player-top{
+  background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
+  pointer-events:none;
+}
+.player.is-locked .player-top .back-btn{pointer-events:auto}
+
+/* --- "Not now" gives the paywall an exit --- */
+.pw-later{
+  display:block;
+  margin:clamp(10px,1.8vh,16px) auto 0;
+  padding:8px 14px;
+  font-size:clamp(12px,3vw,13px);
+  font-weight:600;
+  color:var(--muted);
+  border-radius:99px;
+  transition:.25s;
+}
+.pw-later:hover{color:#fff;background:rgba(255,255,255,.06)}
+
+/* --- auth screens: a close button as well as the back link --- */
+.auth-form-wrap{position:relative}
+.auth-close{
+  position:absolute;
+  top:calc(18px + env(safe-area-inset-top));
+  right:18px;
+  width:42px;height:42px;
+  border-radius:12px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.03);
+  display:grid;place-items:center;
+  color:var(--muted);
+  transition:.3s;
+  z-index:3;
+}
+.auth-close:hover{color:#fff;border-color:var(--purple);background:rgba(124,58,237,.12)}
+.auth-close svg{width:18px;height:18px}
+.auth-card .back{
+  padding:8px 14px 8px 10px;
+  margin-left:-10px;
+  border-radius:99px;
+  border:1px solid transparent;
+}
+.auth-card .back:hover{border-color:var(--border2);background:rgba(255,255,255,.03)}
+
+/* --- dashboard: a home button, since the sidebar is a drawer on mobile --- */
+.dash-home{
+  width:42px;height:42px;
+  border-radius:12px;
+  border:1px solid var(--border2);
+  background:var(--card);
+  display:none;
+  align-items:center;justify-content:center;
+  color:var(--muted);
+  flex:0 0 42px;
+  transition:.3s;
+}
+.dash-home:hover{color:#fff;border-color:var(--purple);background:rgba(124,58,237,.12)}
+@media(max-width:900px){
+  .dash-home{display:inline-flex}
+  .auth-close{top:calc(14px + env(safe-area-inset-top));right:14px;width:40px;height:40px}
+}
+@media(max-width:380px){
+  .dash-home{width:38px;height:38px;flex-basis:38px}
+}
