@@ -11,12 +11,25 @@ export default function Preloader() {
   useEffect(() => {
     let fade
     const start = () => {
-      fade = setTimeout(() => setHide(true), 650)
+      clearTimeout(fade)
+      fade = setTimeout(() => setHide(true), 350)
     }
+
     if (document.readyState === 'complete') start()
     else window.addEventListener('load', start)
+
+    /**
+     * `load` waits for every image on the page, including remote artwork. On a
+     * slow connection that can take many seconds — or never fire at all if a
+     * request hangs — which left users staring at the splash screen and having
+     * to reopen the link. The splash is decoration, so it gets a hard ceiling:
+     * after this it goes away regardless of what is still downloading.
+     */
+    const ceiling = setTimeout(() => setHide(true), 1600)
+
     return () => {
       clearTimeout(fade)
+      clearTimeout(ceiling)
       window.removeEventListener('load', start)
     }
   }, [])

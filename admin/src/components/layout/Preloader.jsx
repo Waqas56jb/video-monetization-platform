@@ -8,12 +8,20 @@ export default function Preloader() {
   useEffect(() => {
     let fade
     const start = () => {
-      fade = setTimeout(() => setHide(true), 650)
+      clearTimeout(fade)
+      fade = setTimeout(() => setHide(true), 350)
     }
+
     if (document.readyState === 'complete') start()
     else window.addEventListener('load', start)
+
+    // `load` waits on remote artwork and can hang on a slow connection; the
+    // splash is decoration, so it always clears within this ceiling.
+    const ceiling = setTimeout(() => setHide(true), 1600)
+
     return () => {
       clearTimeout(fade)
+      clearTimeout(ceiling)
       window.removeEventListener('load', start)
     }
   }, [])
