@@ -1,0 +1,34 @@
+{
+  "name": "mtonyo-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MTONYO+ backend — Supabase (Postgres) + Cloudflare Stream + mobile-money payments",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:check": "node src/cli/db.js check",
+    "db:migrate": "node src/cli/db.js migrate",
+    "db:status": "node src/cli/db.js status",
+    "db:seed": "node src/cli/db.js seed",
+    "db:reset": "node src/cli/db.js reset",
+    "db:setup": "node src/cli/db.js setup",
+    "cron:premieres": "node src/cli/cron.js premieres",
+    "smoke": "node src/cli/smoke.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.13.1",
+    "zod": "^3.23.8"
+  }
+}
