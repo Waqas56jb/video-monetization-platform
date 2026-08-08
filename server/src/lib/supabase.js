@@ -31,7 +31,7 @@ export function anonClient() {
 }
 
 export function supabaseAdmin() {
-  if (!capabilities.supabaseAuth) {
+  if (!capabilities.serviceRole) {
     throw serviceUnavailable(
       'This action needs the Supabase service-role key. Add SUPABASE_SERVICE_ROLE_KEY ' +
         'to server/.env (Supabase → Project Settings → API).'

@@ -5,3 +5,6 @@ node_modules
 *.log
 .DS_Store
 coverage
+
+# scratch space for one-off probes and live tests
+tmp/

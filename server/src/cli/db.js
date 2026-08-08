@@ -27,7 +27,8 @@ async function check() {
   console.log('  configuration')
   const rows = [
     ['database', capabilities.database],
-    ['supabase auth (service role)', capabilities.supabaseAuth],
+    ['auth (sign-in)', capabilities.auth],
+    ['outbound email (SMTP)', capabilities.email],
     ['cloudflare stream', capabilities.cloudflareStream],
     ['signed playback keys', capabilities.signedPlayback],
   ]

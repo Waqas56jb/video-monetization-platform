@@ -3,18 +3,28 @@ import { z } from 'zod'
 import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest, conflict, notFound } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
-import { requireAuth, requireAdmin } from '../middleware/auth.js'
+import { requireAuth, requireStaff, requireAdmin } from '../middleware/auth.js'
 import { getSettings, updateSettings, applySplit, splitPercentFor } from '../services/settings.js'
-import { recordAudit, clientIp } from '../services/audit.js'
+import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
+import { notify } from '../services/notify.js'
 import { studioVideo } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
 
 const router = Router()
-router.use(requireAuth(), requireAdmin())
 
-/** Every write here runs as an admin, which is what the DB guard checks for. */
-const asAdmin = (req) => ({ actorRole: 'admin', actorId: req.user.id })
+/**
+ * Staff — admin or sub-admin — may run the platform: review content, decide
+ * withdrawals, manage ads. Anything to do with *accounts* carries its own
+ * requireAdmin() below, because a sub-admin must not see or change them.
+ */
+router.use(requireAuth(), requireStaff())
+
+/** The database guard reads this, and it must be the caller's real role. */
+const asAdmin = (req) => ({ actorRole: req.user.role, actorId: req.user.id })
+
+/** How this person should be named in a log line a human will read. */
+const who = (req) => req.user.full_name || req.user.email
 
 /* ======================================================================
    OVERVIEW
@@ -157,11 +167,11 @@ router.post(
     // Cut the preview and promo clips now that it is live.
     ensureClips(video.id).catch(() => {})
 
-    await recordAudit({
-      actorId: req.user.id,
+    await recordStaffAction(req, {
       action: 'APPROVED',
       entityType: 'video',
       entityId: video.id,
+      summary: `${who(req)} approved "${video.title}"`,
       detail: {
         title: video.title,
         accessType: updated.access_type,
@@ -169,7 +179,17 @@ router.post(
         priceTzs: updated.price_tzs,
         note: b.note || null,
       },
-      ip: clientIp(req),
+    })
+
+    await notify({
+      userId: video.creator_id,
+      kind: 'account',
+      title: `"${video.title}" is approved and live`,
+      body: b.note || 'Your video passed review and is now visible to viewers.',
+      actor: req.user,
+      action: 'approve',
+      entityType: 'video',
+      entityId: video.id,
     })
 
     res.json({ video: studioVideo(updated), message: 'Approved and published' })
@@ -191,13 +211,24 @@ router.post(
       [video.id, req.body.reason, req.user.id]
     )
 
-    await recordAudit({
-      actorId: req.user.id,
+    await recordStaffAction(req, {
       action: 'REJECTED',
       entityType: 'video',
       entityId: video.id,
+      summary: `${who(req)} rejected "${video.title}"`,
       detail: { title: video.title, reason: req.body.reason },
-      ip: clientIp(req),
+    })
+
+    // The creator needs to know, and needs to know why.
+    await notify({
+      userId: video.creator_id,
+      kind: 'account',
+      title: `"${video.title}" was not approved`,
+      body: req.body.reason,
+      actor: req.user,
+      action: 'reject',
+      entityType: 'video',
+      entityId: video.id,
     })
 
     res.json({ video: studioVideo(updated), message: 'Rejected — the creator has been told why' })
@@ -291,9 +322,9 @@ router.patch(
       asAdmin(req)
     )
 
-    await recordAudit({
-      actorId: req.user.id, action: 'CHANGED_VIDEO', entityType: 'video',
-      entityId: video.id, detail: b, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'CHANGED_VIDEO', entityType: 'video', entityId: video.id,
+      summary: `${who(req)} edited "${video.title}"`, detail: b,
     })
     res.json({ video: studioVideo(updated) })
   })
@@ -314,9 +345,16 @@ router.post(
       },
       asAdmin(req)
     )
-    await recordAudit({
-      actorId: req.user.id, action: 'UNPUBLISHED', entityType: 'video',
-      entityId: updated.id, detail: { title: updated.title }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'UNPUBLISHED', entityType: 'video', entityId: updated.id,
+      summary: `${who(req)} unpublished "${updated.title}"`,
+      detail: { title: updated.title },
+    })
+    await notify({
+      userId: updated.creator_id, kind: 'account',
+      title: `"${updated.title}" is no longer public`,
+      body: 'Anyone who already bought it keeps their access.',
+      actor: req.user, action: 'unpublish', entityType: 'video', entityId: updated.id,
     })
     res.json({ video: studioVideo(updated), message: 'Unpublished — buyers keep their access' })
   })
@@ -340,9 +378,15 @@ router.post(
       },
       asAdmin(req)
     )
-    await recordAudit({
-      actorId: req.user.id, action: 'PUBLISHED', entityType: 'video',
-      entityId: video.id, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'PUBLISHED', entityType: 'video', entityId: video.id,
+      summary: `${who(req)} published "${video.title}"`,
+    })
+    await notify({
+      userId: video.creator_id, kind: 'account',
+      title: `"${video.title}" is live`,
+      body: 'Your video is now visible to viewers.',
+      actor: req.user, action: 'publish', entityType: 'video', entityId: video.id,
     })
     res.json({ video: studioVideo(updated) })
   })
@@ -372,9 +416,17 @@ router.delete(
       asAdmin(req)
     )
 
-    await recordAudit({
-      actorId: req.user.id, action: 'REMOVED_VIDEO', entityType: 'video',
-      entityId: video.id, detail: { title: video.title, buyers: buyers.n }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'REMOVED_VIDEO', entityType: 'video', entityId: video.id,
+      summary: `${who(req)} removed "${video.title}"`,
+      body: buyers.n ? `${buyers.n} buyer(s) keep their access` : 'No purchases affected',
+      detail: { title: video.title, buyers: buyers.n },
+    })
+    await notify({
+      userId: video.creator_id, kind: 'account',
+      title: `"${video.title}" was removed`,
+      body: 'Contact support if you believe this was a mistake.',
+      actor: req.user, action: 'delete', entityType: 'video', entityId: video.id,
     })
 
     res.json({
@@ -443,9 +495,20 @@ router.post(
       asAdmin(req)
     )
 
-    await recordAudit({
-      actorId: req.user.id, action: `DELETION_${decision.toUpperCase()}`,
-      entityType: 'video', entityId: request.video_id, detail: { note }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: `DELETION_${decision.toUpperCase()}`,
+      entityType: 'video', entityId: request.video_id,
+      summary: `${who(req)} ${decision === 'approve' ? 'approved' : 'declined'} a removal request`,
+      detail: { note },
+    })
+    await notify({
+      userId: request.creator_id, kind: 'account',
+      title: decision === 'approve'
+        ? 'Your removal request was approved'
+        : 'Your removal request was declined',
+      body: note || null,
+      actor: req.user, action: 'deletion_request',
+      entityType: 'video', entityId: request.video_id,
     })
 
     res.json({ ok: true, decision: statusMap[decision] })
@@ -458,6 +521,7 @@ router.post(
 
 router.get(
   '/users',
+  requireAdmin(),
   validateQuery(
     z.object({
       q: z.string().trim().max(120).optional(),
@@ -491,6 +555,7 @@ router.get(
 
 router.post(
   '/users/:id/status',
+  requireAdmin(),
   validate(z.object({ status: z.enum(['active', 'blocked', 'suspended']), reason: z.string().max(500).optional() })),
   asyncHandler(async (req, res) => {
     if (req.params.id === req.user.id) throw badRequest('You cannot change your own status')
@@ -500,9 +565,19 @@ router.post(
     ])
     if (!updated) throw notFound('User not found')
 
-    await recordAudit({
-      actorId: req.user.id, action: req.body.status.toUpperCase(), entityType: 'profile',
-      entityId: updated.id, detail: { name: updated.full_name, reason: req.body.reason }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: req.body.status.toUpperCase(), entityType: 'profile', entityId: updated.id,
+      summary: `${who(req)} set ${updated.full_name || updated.email} to ${req.body.status}`,
+      body: req.body.reason || null,
+      detail: { name: updated.full_name, reason: req.body.reason },
+    })
+    await notify({
+      userId: updated.id, kind: 'account',
+      title: req.body.status === 'active'
+        ? 'Your account has been restored'
+        : `Your account is now ${req.body.status}`,
+      body: req.body.reason || null,
+      actor: req.user, action: 'block', entityType: 'profile', entityId: updated.id,
     })
     res.json({ user: updated })
   })
@@ -510,6 +585,7 @@ router.post(
 
 router.get(
   '/creators',
+  requireAdmin(),
   asyncHandler(async (_req, res) => {
     const rows = await many(
       `select p.id, p.full_name, p.email, p.avatar_url, p.status,
@@ -525,6 +601,7 @@ router.get(
 
 router.post(
   '/creators/:id/verify',
+  requireAdmin(),
   validate(z.object({ verified: z.boolean().default(true) })),
   asyncHandler(async (req, res) => {
     const updated = await one(
@@ -532,9 +609,15 @@ router.post(
       [req.params.id, req.body.verified]
     )
     if (!updated) throw notFound('Creator not found')
-    await recordAudit({
-      actorId: req.user.id, action: req.body.verified ? 'VERIFIED' : 'UNVERIFIED',
-      entityType: 'creator', entityId: req.params.id, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: req.body.verified ? 'VERIFIED' : 'UNVERIFIED',
+      entityType: 'creator', entityId: req.params.id,
+      summary: `${who(req)} ${req.body.verified ? 'verified' : 'un-verified'} a creator`,
+    })
+    await notify({
+      userId: req.params.id, kind: 'account',
+      title: req.body.verified ? 'You are now a verified creator' : 'Your verified badge was removed',
+      actor: req.user, action: 'verify', entityType: 'creator', entityId: req.params.id,
     })
     res.json({ creator: updated })
   })
@@ -543,6 +626,7 @@ router.post(
 /** Per-creator split override; null puts them back on the platform default. */
 router.post(
   '/creators/:id/split',
+  requireAdmin(),
   validate(z.object({ splitPercent: z.coerce.number().int().min(0).max(100).nullable() })),
   asyncHandler(async (req, res) => {
     const updated = await one(
@@ -550,9 +634,10 @@ router.post(
       [req.params.id, req.body.splitPercent]
     )
     if (!updated) throw notFound('Creator not found')
-    await recordAudit({
-      actorId: req.user.id, action: 'CHANGED_SPLIT', entityType: 'creator',
-      entityId: req.params.id, detail: { splitPercent: req.body.splitPercent }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'CHANGED_SPLIT', entityType: 'creator', entityId: req.params.id,
+      summary: `${who(req)} changed a creator revenue split`,
+      detail: { splitPercent: req.body.splitPercent },
     })
     res.json({ creator: updated })
   })
@@ -620,10 +705,16 @@ router.post(
         where id = $1 returning *`,
       [w.id, req.body.decision, req.body.note || null, req.user.id]
     )
-    await recordAudit({
-      actorId: req.user.id, action: `WITHDRAWAL_${req.body.decision.toUpperCase()}`,
+    await recordStaffAction(req, {
+      action: `WITHDRAWAL_${req.body.decision.toUpperCase()}`,
       entityType: 'withdrawal', entityId: w.id,
-      detail: { amountTzs: w.amount_tzs }, ip: clientIp(req),
+      summary: `${who(req)} ${req.body.decision}d a withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()}`,
+      detail: { amountTzs: w.amount_tzs },
+    })
+    await notify({
+      userId: w.creator_id, kind: 'account',
+      title: `Your withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()} was ${req.body.decision}d`,
+      actor: req.user, action: 'withdrawal', entityType: 'withdrawal', entityId: w.id,
     })
     res.json({ withdrawal: updated })
   })
@@ -664,6 +755,7 @@ router.get('/settings', asyncHandler(async (_req, res) => res.json({ settings: a
 
 router.patch(
   '/settings',
+  requireAdmin(),
   validate(
     z.object({
       creator_split_percent: z.coerce.number().int().min(0).max(100).optional(),
@@ -683,9 +775,10 @@ router.patch(
   ),
   asyncHandler(async (req, res) => {
     const settings = await updateSettings(req.body)
-    await recordAudit({
-      actorId: req.user.id, action: 'CHANGED_SETTINGS', entityType: 'settings',
-      entityId: '1', detail: req.body, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'CHANGED_SETTINGS', entityType: 'settings', entityId: '1',
+      summary: `${who(req)} changed the platform settings`,
+      detail: req.body,
     })
     res.json({ settings })
   })
@@ -754,9 +847,10 @@ router.post(
       `insert into ad_campaigns (name, advertiser, cpm_tzs, active) values ($1,$2,$3,$4) returning *`,
       [req.body.name, req.body.advertiser || null, req.body.cpmTzs, req.body.active]
     )
-    await recordAudit({
-      actorId: req.user.id, action: 'CREATED_CAMPAIGN', entityType: 'ad_campaign',
-      entityId: c.id, detail: { name: c.name }, ip: clientIp(req),
+    await recordStaffAction(req, {
+      action: 'CREATED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
+      summary: `${who(req)} created the ad campaign "${c.name}"`,
+      detail: { name: c.name },
     })
     res.status(201).json({ campaign: c })
   })

@@ -20,6 +20,9 @@ export const env = {
   port: int(process.env.PORT, 4000),
   corsOrigins: list(process.env.CORS_ORIGINS),
   publicWebUrl: (process.env.PUBLIC_WEB_URL || 'http://localhost:5173').replace(/\/$/, ''),
+  // The admin app lives on its own origin; staff invitations must point there,
+  // not at the public site, or the link lands somewhere with no admin login.
+  adminWebUrl: (process.env.ADMIN_WEB_URL || 'http://localhost:5174').replace(/\/$/, ''),
 
   supabase: {
     url: process.env.SUPABASE_URL || '',
@@ -28,6 +31,26 @@ export const env = {
   },
 
   databaseUrl: process.env.DATABASE_URL || '',
+
+  /**
+   * Outbound email. The platform sends its own — reset links, staff invites and
+   * announcements — because the auth provider's built-in mailer is rate limited
+   * to a couple of messages an hour.
+   */
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: int(process.env.SMTP_PORT, 465),
+    secure: bool(process.env.SMTP_SECURE, int(process.env.SMTP_PORT, 465) === 465),
+    user: process.env.SMTP_USER || '',
+    pass: (process.env.SMTP_PASS || '').replace(/\s+/g, ''), // app passwords are shown in groups of four
+    from: process.env.MAIL_FROM || `MTONYO+ <${process.env.SMTP_USER || 'no-reply@mtonyo.co.tz'}>`,
+  },
+
+  /** How long an emailed link stays usable. */
+  tokens: {
+    resetMinutes: int(process.env.RESET_TOKEN_MINUTES, 60),
+    inviteHours: int(process.env.INVITE_TOKEN_HOURS, 72),
+  },
 
   cloudflare: {
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
@@ -60,7 +83,10 @@ export const env = {
  */
 export const capabilities = {
   database: Boolean(env.databaseUrl && !/:@/.test(env.databaseUrl)),
-  supabaseAuth: Boolean(env.supabase.url && env.supabase.serviceRoleKey),
+  // Sign-in needs only the public key; account records are written by us.
+  auth: Boolean(env.supabase.url && env.supabase.anonKey && env.databaseUrl),
+  email: Boolean(env.smtp.host && env.smtp.user && env.smtp.pass),
+  serviceRole: Boolean(env.supabase.serviceRoleKey), // optional, nothing depends on it
   cloudflareStream: Boolean(env.cloudflare.accountId && env.cloudflare.apiToken),
   signedPlayback: Boolean(env.cloudflare.streamKeyId && env.cloudflare.streamKeyPem),
 }
@@ -69,7 +95,8 @@ export const capabilities = {
 export function missingConfig() {
   const missing = []
   if (!capabilities.database) missing.push('DATABASE_URL (password missing — reset it in Supabase → Settings → Database)')
-  if (!capabilities.supabaseAuth) missing.push('SUPABASE_SERVICE_ROLE_KEY (Supabase → Settings → API)')
+  if (!capabilities.auth) missing.push('SUPABASE_URL + SUPABASE_ANON_KEY')
+  if (!capabilities.email) missing.push('SMTP_HOST + SMTP_USER + SMTP_PASS (reset links and staff invites)')
   if (!capabilities.cloudflareStream) missing.push('CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (Stream: Edit)')
   if (!capabilities.signedPlayback) missing.push('CLOUDFLARE_STREAM_KEY_ID + PEM (run: npm run db:check to generate)')
   return missing

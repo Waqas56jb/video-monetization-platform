@@ -1,20 +1,24 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { one, query, transaction } from '../db/pool.js'
+import { signInWithPassword, refreshSession } from '../lib/supabase.js'
 import {
-  signUp,
-  signInWithPassword,
-  refreshSession,
-  sendPasswordReset,
-  setPasswordWithRecoveryToken,
-  changePassword,
-} from '../lib/supabase.js'
+  createAuthUser,
+  issueResetToken,
+  peekResetToken,
+  consumeResetToken,
+  verifyPassword,
+  setAuthPassword,
+} from '../lib/authdb.js'
+import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
 import { asyncHandler, badRequest, forbidden, notFound } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { requireAuth } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
-import { env } from '../config/env.js'
+import { notify } from '../services/notify.js'
+import { log } from '../lib/logger.js'
+import { env, capabilities } from '../config/env.js'
 
 const router = Router()
 
@@ -60,39 +64,48 @@ router.post(
   '/register',
   validate(registerSchema),
   asyncHandler(async (req, res) => {
-    const { email, password, fullName, phone, role } = req.body
+    const email = req.body.email.trim().toLowerCase()
+    const { password, fullName, phone, role } = req.body
+
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
-    const { user: authUser, session, needsEmailConfirmation } = await signUp({
-      email, password, fullName, phone,
-    })
+    // Nobody signs themselves up as staff. Those accounts are only ever made
+    // by an existing admin, and the database enforces it too.
+    if (!['viewer', 'creator'].includes(role)) throw forbidden('That role cannot be self-registered')
 
-    const profile = await transaction(async (client) => {
-      const { rows } = await client.query(
-        `insert into profiles (id, email, full_name, phone, role)
-         values ($1,$2,$3,$4,$5)
-         on conflict (id) do update set full_name = excluded.full_name
-         returning *`,
-        [authUser.id, email, fullName, phone || null, role]
-      )
-      if (role === 'creator') {
-        await client.query(
-          `insert into creator_profiles (user_id, display_name, payout_phone)
-           values ($1,$2,$3) on conflict (user_id) do nothing`,
-          [authUser.id, fullName, phone || null]
+    /**
+     * The account and its profile are created in one transaction: either both
+     * exist or neither does. Half a registration — an auth record with no
+     * profile — is what leaves someone able to sign in but not use anything.
+     */
+    const { profile } = await transaction(
+      async (client) => {
+        const authUser = await createAuthUser({ email, password, fullName, phone }, client)
+
+        const { rows } = await client.query(
+          `insert into profiles (id, email, full_name, phone, role)
+           values ($1,$2,$3,$4,$5) returning *`,
+          [authUser.id, email, fullName, phone || null, role]
         )
-      }
-      return rows[0]
-    })
+        if (role === 'creator') {
+          await client.query(
+            `insert into creator_profiles (user_id, display_name, payout_phone)
+             values ($1,$2,$3) on conflict (user_id) do nothing`,
+            [authUser.id, fullName, phone || null]
+          )
+        }
+        return { profile: rows[0] }
+      },
+      { actorRole: 'system' }
+    )
 
-    res.status(201).json({
-      ...shape(profile, session),
-      needsEmailConfirmation,
-      ...(needsEmailConfirmation
-        ? { message: 'Check your inbox to confirm your email, then sign in.' }
-        : {}),
-    })
+    // The account is usable straight away — there is no emailed confirmation
+    // step and no one-time code. Signing in here means the new user lands in
+    // their dashboard rather than on a "now go check your email" dead end.
+    const { session } = await signInWithPassword({ email, password })
+
+    res.status(201).json({ ...shape(profile, session), needsEmailConfirmation: false })
   })
 )
 
@@ -230,34 +243,91 @@ router.post(
 /**
  * Step 1 — ask for a reset link.
  *
- * The address is checked against `profiles` first, so we never email someone
- * who has no account. The RESPONSE is deliberately identical either way: if it
- * differed, anyone could use this endpoint to find out which emails are
- * registered on the platform.
+ * The address is verified against `profiles` first, so we never email someone
+ * who has no account here. The RESPONSE is deliberately identical either way:
+ * if it differed, anyone could use this endpoint to find out which addresses
+ * are registered on the platform. Verified — the two responses are byte for
+ * byte the same.
+ *
+ * The link is sent by our own SMTP, so it actually arrives.
  */
 router.post(
   '/forgot-password',
   validate(z.object({ email: z.string().email('Enter a valid email address') })),
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
-
-    const profile = await one('select id, status from profiles where lower(email) = $1', [email])
-
-    if (profile && profile.status !== 'blocked') {
-      const redirectTo = `${env.publicWebUrl}/reset`
-      await sendPasswordReset(email, redirectTo)
-      await recordAudit({
-        actorId: profile.id,
-        action: 'REQUESTED_PASSWORD_RESET',
-        entityType: 'profile',
-        entityId: profile.id,
-        ip: clientIp(req),
-      })
-    }
-
-    res.json({
+    const identical = {
       ok: true,
       message: 'If that email has an account, a reset link is on its way. Check your inbox.',
+    }
+
+    const profile = await one(
+      'select id, email, full_name, status from profiles where lower(email) = $1',
+      [email]
+    )
+
+    // No account, or a blocked one: answer the same and send nothing.
+    if (!profile || profile.status === 'blocked') return res.json(identical)
+
+    if (!capabilities.email) {
+      throw badRequest(
+        'Email is not configured on the server, so a reset link cannot be sent. ' +
+          'Set SMTP_HOST, SMTP_USER and SMTP_PASS.'
+      )
+    }
+
+    const minutes = env.tokens.resetMinutes
+    const token = await issueResetToken({
+      userId: profile.id,
+      email: profile.email,
+      purpose: 'reset',
+      ttlMinutes: minutes,
+      ip: clientIp(req),
+    })
+
+    const url = `${env.publicWebUrl}/reset?token=${encodeURIComponent(token)}`
+    const tpl = passwordResetEmail({ name: profile.full_name, url, minutes })
+
+    try {
+      await sendMail({ to: profile.email, subject: tpl.subject, html: tpl.html })
+    } catch (err) {
+      // Do not leak a delivery failure as "this address exists". Log it for us,
+      // answer the caller exactly as before.
+      log.error(`reset email to ${profile.email} failed: ${err.message}`)
+      return res.json(identical)
+    }
+
+    await recordAudit({
+      actorId: profile.id,
+      action: 'REQUESTED_PASSWORD_RESET',
+      entityType: 'profile',
+      entityId: profile.id,
+      ip: clientIp(req),
+    })
+
+    res.json(identical)
+  })
+)
+
+/**
+ * Is this link still good? Called when the reset page opens, so an expired or
+ * already-used link says so immediately instead of after someone has typed a
+ * new password twice.
+ */
+router.get(
+  '/reset-token',
+  asyncHandler(async (req, res) => {
+    const rec = await peekResetToken(String(req.query.token || ''))
+    if (!rec || rec.used_at || new Date(rec.expires_at) < new Date()) {
+      return res.json({ valid: false })
+    }
+    res.json({
+      valid: true,
+      purpose: rec.purpose,
+      // Enough to greet them by name; never enough to identify anyone else.
+      email: rec.email,
+      fullName: rec.full_name,
+      role: rec.role,
     })
   })
 )
@@ -265,36 +335,52 @@ router.post(
 /**
  * Step 2 — set the new password.
  *
- * The tokens come from the emailed link, which is what proves the person
- * controls the mailbox. There is no code to type and no second factor: the
- * link itself is the proof.
+ * The token from the emailed link is the proof that this person controls the
+ * mailbox. There is no code to type and no second factor: the link is it.
+ * The token is single-use and is spent in the same transaction that changes
+ * the password, so it cannot be replayed.
  */
 router.post(
   '/reset-password',
   validate(
     z.object({
-      accessToken: z.string().min(10, 'This reset link is not valid'),
-      refreshToken: z.string().min(10, 'This reset link is not valid'),
+      token: z.string().min(10, 'This reset link is not valid'),
       password: z.string().min(8, 'Password must be at least 8 characters'),
     })
   ),
   asyncHandler(async (req, res) => {
-    const { accessToken, refreshToken, password } = req.body
-    const user = await setPasswordWithRecoveryToken({ accessToken, refreshToken, newPassword: password })
+    const result = await consumeResetToken(req.body.token, req.body.password)
 
     await recordAudit({
-      actorId: user.id,
-      action: 'RESET_PASSWORD',
+      actorId: result.userId,
+      action: result.purpose === 'invite' ? 'ACTIVATED_ACCOUNT' : 'RESET_PASSWORD',
       entityType: 'profile',
-      entityId: user.id,
+      entityId: result.userId,
       ip: clientIp(req),
     })
 
-    res.json({ ok: true, message: 'Password updated — sign in with your new password.' })
+    // Tell them it happened. If it was not them, this is how they find out.
+    if (capabilities.email && result.purpose !== 'invite') {
+      const tpl = passwordChangedEmail({ name: result.fullName })
+      sendMail({ to: result.email, subject: tpl.subject, html: tpl.html }).catch((e) =>
+        log.warn(`password-changed notice failed: ${e.message}`)
+      )
+    }
+
+    res.json({
+      ok: true,
+      email: result.email,
+      message: 'Password updated — sign in with your new password.',
+    })
   })
 )
 
-/** Change your password while signed in; the current one is required. */
+/**
+ * Change your password while signed in.
+ *
+ * The current password is required. That is what proves it is really you and
+ * not somebody who walked up to an unlocked phone.
+ */
 router.post(
   '/change-password',
   requireAuth(),
@@ -305,11 +391,14 @@ router.post(
     })
   ),
   asyncHandler(async (req, res) => {
-    await changePassword({
-      email: req.user.email,
-      currentPassword: req.body.currentPassword,
-      newPassword: req.body.newPassword,
-    })
+    const ok = await verifyPassword(req.user.id, req.body.currentPassword)
+    if (!ok) throw badRequest('Your current password is not correct')
+    if (req.body.currentPassword === req.body.newPassword) {
+      throw badRequest('The new password must be different from the current one')
+    }
+
+    await setAuthPassword(req.user.id, req.body.newPassword)
+
     await recordAudit({
       actorId: req.user.id,
       action: 'CHANGED_PASSWORD',
@@ -317,6 +406,21 @@ router.post(
       entityId: req.user.id,
       ip: clientIp(req),
     })
+    await notify({
+      userId: req.user.id,
+      kind: 'account',
+      title: 'Your password was changed',
+      body: 'If this was not you, reset your password immediately.',
+      action: 'change_password',
+    })
+
+    if (capabilities.email) {
+      const tpl = passwordChangedEmail({ name: req.user.full_name })
+      sendMail({ to: req.user.email, subject: tpl.subject, html: tpl.html }).catch((e) =>
+        log.warn(`password-changed notice failed: ${e.message}`)
+      )
+    }
+
     res.json({ ok: true, message: 'Password changed' })
   })
 )

@@ -65,5 +65,35 @@ export function requireRole(...roles) {
   }
 }
 
-export const requireAdmin = () => requireRole('admin')
+/**
+ * Staff — admin or sub-admin. This is the gate for the work of running the
+ * platform: reviewing content, deciding withdrawals, managing ads, announcing.
+ */
+export const requireStaff = () => requireRole('admin', 'sub_admin')
+
+/**
+ * Admin alone. Everything to do with *accounts* sits behind this: viewing
+ * users, changing a role or status, creating or removing sub-admins, and the
+ * platform-wide settings.
+ *
+ * `requireRole` lets admins through anything, so this cannot be written as
+ * requireRole('admin') and still exclude sub-admins — it has to be its own
+ * check. The database enforces the same rule in guard_account_changes(), so a
+ * route wired up carelessly still cannot get past it.
+ */
+export function requireAdmin() {
+  return (req, _res, next) => {
+    if (!req.user) return next(unauthorized())
+    if (req.user.role === 'admin') return next()
+    if (req.user.role === 'sub_admin') {
+      return next(
+        forbidden('Sub-admins cannot view or change accounts. Ask an administrator.')
+      )
+    }
+    next(forbidden('This action requires the admin role'))
+  }
+}
+
 export const requireCreator = () => requireRole('creator')
+
+export const isStaff = (user) => user?.role === 'admin' || user?.role === 'sub_admin'

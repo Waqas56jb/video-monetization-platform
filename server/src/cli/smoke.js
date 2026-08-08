@@ -55,7 +55,7 @@ async function run() {
     console.log('  Set DATABASE_URL (with the password) in server/.env, then: npm run db:setup\n')
     return
   }
-  if (!health.json.capabilities?.supabaseAuth) {
+  if (!health.json.capabilities?.auth) {
     console.log('\n  \x1b[33mSUPABASE_SERVICE_ROLE_KEY is missing — auth-dependent steps will be skipped.\x1b[0m\n')
     return
   }

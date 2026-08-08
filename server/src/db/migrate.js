@@ -105,14 +105,17 @@ export async function reset() {
       drop table if exists
         ad_impressions, ad_campaigns, video_views, audit_log, withdrawals, earnings,
         purchases, payments, video_deletion_requests, videos, creator_profiles,
+        notifications, announcements, password_resets,
         profiles, platform_settings, _migrations cascade;
       drop type if exists
         user_role, account_status, access_type, review_status, video_state,
         payment_status, payment_method, purchase_status, earning_source,
-        withdrawal_status, deletion_status cascade;
+        withdrawal_status, deletion_status,
+        notification_kind, announcement_audience cascade;
       drop function if exists
         touch_updated_at, guard_video_publication, block_video_hard_delete,
-        sync_premiere_window, current_actor_role, current_actor_id, auth_role cascade;
+        sync_premiere_window, current_actor_role, current_actor_id, auth_role,
+        is_staff_actor, guard_account_changes cascade;
     `)
     log.ok('reset complete')
   } finally {
