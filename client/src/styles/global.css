@@ -1559,3 +1559,60 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .state-block{padding:40px 18px}
   .skeleton-thumb{height:170px}
 }
+
+/* ---------- live upload (real Cloudflare direct upload) ----------------- */
+.upload-zone.is-drag { border-color: var(--gold); background: rgba(245,197,24,.06); }
+
+.upload-live {
+  padding: 16px; border-radius: 16px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+}
+.ul-head { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 12px; align-items: center; }
+.ul-head > div { min-width: 0; }
+.ul-head b {
+  display: block; font-size: 14px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ul-head small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.ul-ic {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: rgba(245,197,24,.14); color: var(--gold);
+}
+.ul-ic svg { width: 20px; height: 20px; }
+.ul-cancel {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+}
+.ul-cancel:hover { color: #f87171; border-color: rgba(248,113,113,.4); }
+
+.ul-bar {
+  height: 8px; margin: 14px 0 8px; border-radius: 999px; overflow: hidden;
+  background: rgba(255,255,255,.07);
+}
+.ul-bar span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), #ffdf7e);
+  transition: width .25s ease;
+}
+/* Encoding has no byte count to track, so the bar breathes rather than
+   pretending to a precision it does not have. */
+.ul-bar span.is-encoding {
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  animation: ul-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ul-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+@media (prefers-reduced-motion: reduce) { .ul-bar span.is-encoding { animation: none } }
+
+.ul-note { display: block; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.ul-note.ul-ok { display: flex; align-items: center; gap: 5px; margin-top: 12px; color: #34d399; }
+
+.sub-thumb-blank {
+  display: block; width: 92px; height: 58px; flex-shrink: 0; border-radius: 10px;
+  background: rgba(255,255,255,.05); border: 1px solid var(--border2);
+}
+
+/* Explains a limit the creator did not choose — e.g. the preview ceiling
+   that only becomes knowable once Cloudflare reports the running time. */
+.field-hint { margin: -6px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--muted2); }

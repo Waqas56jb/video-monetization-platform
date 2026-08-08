@@ -9,6 +9,7 @@ import { resolveAccess, publicVideo, studioVideo } from '../services/entitlement
 import { recordAudit, clientIp } from '../services/audit.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
+import { ensureClips } from './playback.routes.js'
 
 const router = Router()
 
@@ -219,9 +220,23 @@ router.patch(
         throw badRequest(`The minimum price is TZS ${settings.min_video_price_tzs.toLocaleString()}`)
       }
     }
-    if (b.freePreviewSeconds != null && video.duration_seconds &&
-        b.freePreviewSeconds >= video.duration_seconds) {
-      throw badRequest('The free preview must be shorter than the video')
+    /**
+     * A preview cannot be longer than the video it previews.
+     *
+     * This used to reject the whole request, which meant a creator who uploaded
+     * a two-minute clip while the platform default preview was five minutes
+     * lost their price, access type and premiere window along with it — every
+     * field in the same PATCH was discarded over one they never chose. Clamp it
+     * instead and tell them what happened.
+     */
+    let previewSeconds = b.freePreviewSeconds
+    let previewClamped = null
+    if (previewSeconds != null && video.duration_seconds) {
+      const most = Math.max(0, video.duration_seconds - 1)
+      if (previewSeconds > most) {
+        previewClamped = { asked: previewSeconds, applied: most }
+        previewSeconds = most
+      }
     }
 
     const updated = await one(
@@ -243,11 +258,21 @@ router.patch(
         b.category ?? null,
         b.accessType ?? null,
         b.priceTzs ?? null,
-        b.freePreviewSeconds ?? null,
+        previewSeconds ?? null,
         b.premiereDays ?? null,
       ]
     )
-    res.json({ video: studioVideo(updated) })
+
+    res.json({
+      video: studioVideo(updated),
+      ...(previewClamped
+        ? {
+            notice:
+              `This video is only ${video.duration_seconds}s long, so the free preview was ` +
+              `shortened from ${previewClamped.asked}s to ${previewClamped.applied}s.`,
+          }
+        : {}),
+    })
   })
 )
 
@@ -301,6 +326,92 @@ router.post(
       video: studioVideo(updated),
       message: 'Submitted for review — the MTONYO+ team will approve it shortly',
     })
+  })
+)
+
+/**
+ * Where has Cloudflare got to with this file?
+ *
+ * The webhook is the proper answer to that question, but it needs a public URL
+ * — which does not exist on a laptop, and may not exist on the day someone
+ * first deploys. So the upload screen polls this instead: it asks Cloudflare
+ * directly, writes what it learns, and cuts the clips the moment the source is
+ * ready. Whichever arrives first, the webhook or a poll, the outcome is the
+ * same and neither undoes the other.
+ */
+router.get(
+  '/:id/status',
+  requireAuth(),
+  requireCreator(),
+  asyncHandler(async (req, res) => {
+    const video = await one('select * from videos where id = $1 and deleted_at is null', [req.params.id])
+    if (!video) throw notFound('Video not found')
+    if (video.creator_id !== req.user.id) throw forbidden('This is not your video')
+
+    // Already settled — no need to trouble Cloudflare again.
+    if (video.state === 'ready' || video.state === 'failed' || !video.cloudflare_uid) {
+      return res.json({
+        state: video.state,
+        progress: video.state === 'ready' ? 100 : 0,
+        video: studioVideo(video),
+      })
+    }
+
+    if (!capabilities.cloudflareStream) {
+      return res.json({ state: video.state, progress: 0, video: studioVideo(video) })
+    }
+
+    let remote = null
+    try {
+      remote = await cf.getVideo(video.cloudflare_uid)
+    } catch {
+      // The upload may not have started yet; that is not an error worth
+      // showing anyone. Report what we already know and let them poll again.
+      return res.json({ state: video.state, progress: 0, video: studioVideo(video) })
+    }
+
+    if (!remote) return res.json({ state: video.state, progress: 0, video: studioVideo(video) })
+
+    const remoteState = remote.status?.state
+    const progress = Math.round(Number(remote.status?.pctComplete ?? 0))
+
+    if (remote.readyToStream) {
+      /**
+       * The platform default preview is set when the record is created, long
+       * before anyone knows how long the video is. Now that we do, bring it
+       * inside the running time — a five-minute preview of a two-minute clip
+       * is not a setting anybody chose, and left alone it would block the
+       * creator's next save.
+       */
+      const updated = await one(
+        `update videos
+            set state = 'ready',
+                duration_seconds = coalesce($2, duration_seconds),
+                thumbnail_url    = coalesce($3, thumbnail_url),
+                free_preview_seconds = least(
+                  free_preview_seconds,
+                  greatest(coalesce($2, duration_seconds, 0) - 1, 0)
+                )
+          where id = $1 returning *`,
+        [video.id, Math.floor(remote.duration || 0) || null, remote.thumbnail || null]
+      )
+      // Cut the free preview and the social promo now the source exists.
+      ensureClips(video.id).catch(() => {})
+      return res.json({ state: 'ready', progress: 100, video: studioVideo(updated) })
+    }
+
+    if (remoteState === 'error') {
+      const message =
+        remote.status?.errorReasonText ||
+        'Cloudflare could not process this file. Try exporting it as an MP4 and uploading again.'
+      const updated = await one(
+        `update videos set state = 'failed' where id = $1 returning *`,
+        [video.id]
+      )
+      return res.json({ state: 'failed', progress, error: message, video: studioVideo(updated) })
+    }
+
+    res.json({ state: 'processing', progress, video: studioVideo(video) })
   })
 )
 

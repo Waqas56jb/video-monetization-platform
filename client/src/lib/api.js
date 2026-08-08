@@ -176,6 +176,7 @@ export const api = {
     mine: () => get('/api/videos/mine'),
     create: (body) => post('/api/videos', body),
     update: (id, body) => patch(`/api/videos/${id}`, body),
+    status: (id) => get(`/api/videos/${id}/status`),
     submit: (id) => post(`/api/videos/${id}/submit`),
     requestDeletion: (id, reason) => post(`/api/videos/${id}/request-deletion`, { reason }),
     recordView: (id, body) => post(`/api/videos/${id}/view`, body),
