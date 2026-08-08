@@ -20,7 +20,9 @@ export default function Player({
   onUnlock,
 }) {
   return (
-    <div className="player">
+    // `is-locked` lets the frame grow on small screens so the paywall card,
+    // which is much taller than a 16:9 phone frame, is never cut off.
+    <div className={`player ${paywalled ? 'is-locked' : ''}`.trim()}>
       <img src={video.poster} alt={video.title} />
 
       <div className="player-top">

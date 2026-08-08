@@ -285,6 +285,29 @@ input,select{font-family:inherit;outline:none}
 .row-exit{opacity:0 !important;transform:translateX(30px);transition:opacity .5s,transform .5s}
 .feed-item.feed-enter{animation:slideUp .5s}
 
+/* --- THE shrink fix -------------------------------------------------------
+   Grid and flex children default to `min-width:auto`, which forbids shrinking
+   below their content's min-content width. `.tbl` carries `min-width:760px`,
+   so every panel holding a table refused to shrink and pushed the whole page
+   sideways (~490px of horizontal scroll on a 320px phone, and still 18px on a
+   1280px laptop). Allowing these boxes to shrink is what lets `.tbl-wrap`
+   actually behave as the horizontal scroller it was always meant to be.       */
+.shell > *,
+.two-col > *,
+.stat-grid > *,
+.filters > *,
+.topbar > *,
+.top-r > *,
+.mod-card > *,
+.toggle-row > *,
+.split-config > *,
+.range-row > *,
+.panel,
+.main,
+.donut-wrap,
+.feed-item > *{min-width:0}
+.tbl-wrap{max-width:100%}
+
 /* --- iOS/Android notch + home-indicator safe areas --- */
 .sidebar{padding-top:calc(26px + env(safe-area-inset-top));padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .main{padding-top:calc(28px + env(safe-area-inset-top));padding-left:calc(34px + env(safe-area-inset-left));padding-right:calc(34px + env(safe-area-inset-right));padding-bottom:calc(28px + env(safe-area-inset-bottom))}
@@ -394,9 +417,20 @@ input,select{font-family:inherit;outline:none}
   .ibtn.good:active{color:#86efac;border-color:var(--green);background:rgba(34,197,94,.14)}
   /* touch targets keep a comfortable minimum */
   .ibtn{width:38px;height:38px}
-  .switch{width:54px;height:30px}
-  .switch::after{width:22px;height:22px}
+  .switch{width:56px;height:32px}
+  .switch::after{width:24px;height:24px;top:3px;left:3px}
   .switch.on::after{left:27px}
+  /* ::after is the knob, so the tap area is extended with ::before */
+  .switch::before{content:'';position:absolute;inset:-6px}
+  /* 33px small buttons round up to a comfortable 37px */
+  .btn-sm{padding:11px 16px}
+  .bell,.hamburger{min-width:44px;min-height:44px}
+  .modal-x{width:40px;height:40px}
+  /* a 6px range track is unusable with a thumb — give it real height */
+  .range-row input[type=range]{height:36px}
+  /* transparent pseudo-elements widen small hit areas without moving layout */
+  .fselect select{min-height:40px}
+  .searchbar input{min-height:40px}
 }
 
 /* --- keyboard focus stays visible --- */

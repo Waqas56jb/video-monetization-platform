@@ -94,7 +94,7 @@ header.scrolled{background:rgba(10,10,18,.82);backdrop-filter:blur(18px);border-
 .btn-sm{padding:11px 22px;font-size:14px;border-radius:12px}
 .hamburger{display:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--border2);place-items:center;flex-shrink:0}
 .hamburger svg{width:22px;height:22px}
-.mobile-menu{position:fixed;inset:0;background:rgba(10,10,18,.97);backdrop-filter:blur(20px);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;opacity:0;visibility:hidden;transition:.4s}
+.mobile-menu{position:fixed;inset:0;background:rgba(10,10,18,.97);backdrop-filter:blur(20px);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;opacity:0;visibility:hidden;transition:.4s;overflow-y:auto}
 .mobile-menu.open{opacity:1;visibility:visible}
 .mobile-menu a{font-size:24px;font-family:'Sora';font-weight:700}
 .mobile-menu .close-m{position:absolute;top:26px;right:26px;width:46px;height:46px;border:1px solid var(--border2);border-radius:12px;display:grid;place-items:center}
@@ -549,6 +549,35 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* --- anchor offsets so the fixed header never covers a section title --- */
 section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
+/* --- the shrink fix -------------------------------------------------------
+   Grid and flex children default to `min-width:auto`, which forbids shrinking
+   below their content's min-content width — long table rows and nowrap cells
+   can then push the page sideways. Letting these boxes shrink is what makes
+   `.table-scroll` behave as the horizontal scroller it is meant to be.        */
+.dash > *,
+.two-col > *,
+.stat-grid > *,
+.hero-grid > *,
+.hero-stats > *,
+.earn-grid > *,
+.form-grid > *,
+.sell-opts > *,
+.foot-grid > *,
+.vid-grid > *,
+.feat-grid > *,
+.testi-grid > *,
+.lib-grid > *,
+.steps > *,
+.auth-wrap > *,
+.role-toggle > *,
+.watch-info-top > *,
+.creator-row > *,
+.pb-row > *,
+.panel,
+.dash-main,
+.vid-meta > *{min-width:0}
+.table-scroll{max-width:100%}
+
 /* --- iOS/Android notch + home-indicator safe areas --- */
 .container{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 .nav{padding-top:calc(18px + env(safe-area-inset-top))}
@@ -566,6 +595,15 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   #preloader{height:100dvh}
   .modal-card{max-height:88dvh}
 }
+
+/* --- paywall fits the frame -----------------------------------------------
+   A 16:9 frame on a phone is ~220px tall; the paywall card needs ~400–500px.
+   While the video is locked the frame grows to make room, and the overlay can
+   still scroll as a last resort on very short screens.                        */
+@media(max-width:820px){
+  .player.is-locked > img{height:auto;min-height:min(86vh,560px);object-position:center 30%}
+}
+.paywall{overscroll-behavior:contain}
 
 /* --- mobile sidebar scrim (tap outside to close) --- */
 .sidebar-scrim{position:fixed;inset:0;background:rgba(5,5,10,.6);backdrop-filter:blur(4px);z-index:240;border:none;animation:fadeIn .3s;display:none}
@@ -678,10 +716,49 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .modal-card{max-height:94vh;padding:24px}
   .success-ic{width:70px;height:70px;margin-bottom:18px}
   .spinner{width:56px;height:56px;margin-bottom:18px}
+  /* the menu is taller than a landscape phone — let it scroll and tighten up */
+  .mobile-menu{gap:14px;justify-content:flex-start;padding-top:58px}
+  .mobile-menu a{font-size:19px}
+  .mobile-menu .close-m{top:12px;right:16px}
+  /* compress the paywall so it fits a 390px-tall viewport */
+  .player.is-locked > img{min-height:340px}
+  .paywall-card{padding:16px}
+  .pw-lock{width:52px;height:52px;border-radius:16px;margin-bottom:12px}
+  .pw-lock svg{width:22px;height:22px}
+  .paywall-card h3{font-size:18px;margin-bottom:6px}
+  .paywall-card>p{font-size:13px;margin-bottom:6px;line-height:1.5}
+  .pw-watched{font-size:12px;margin-bottom:12px}
+  .pw-price{font-size:26px;margin-bottom:14px}
+}
+
+/* --- very short paywall budget on small phones --- */
+@media(max-width:400px){
+  .paywall-card{padding:20px 14px}
+  .pw-lock{width:60px;height:60px;border-radius:18px;margin-bottom:14px}
+  .pw-lock svg{width:26px;height:26px}
+  .paywall-card h3{font-size:19px}
+  .paywall-card>p{font-size:13.5px;line-height:1.55}
+  .pw-watched{margin-bottom:16px}
+  .pw-price{font-size:28px;margin-bottom:18px}
 }
 
 /* --- touch devices: hover-only affordances must not depend on hover --- */
 @media(hover:none){
+  /* Bigger hit areas without changing layout: a transparent pseudo-element
+     extends the tappable region of controls that are visually small. */
+  .input-wrap .eye::after{content:'';position:absolute;inset:-11px}
+  .form-row input[type=checkbox]{width:20px;height:20px}
+  /* the whole "Remember me" / "I agree" row toggles the box, so give the row
+     a full-height target rather than relying on the 20px box */
+  .form-row label{min-height:36px}
+  /* the 5px scrub bar gets a 36px tall tap strip, visuals unchanged */
+  .pb-track::before{content:'';position:absolute;left:0;right:0;top:-20px;bottom:-11px}
+  .pb-row .ctrls button{position:relative}
+  .pb-row .ctrls button::after{content:'';position:absolute;inset:-8px}
+  /* 16px keeps neighbouring 36px tap areas from overlapping and stealing taps */
+  .pb-row .ctrls{gap:16px}
+  .socials a,.hamburger,.bell{min-width:44px;min-height:44px}
+
   .vid-card:hover{transform:none;box-shadow:none;border-color:var(--border2)}
   .vid-card:hover .vid-thumb img{transform:none}
   .vid-play{opacity:1}
