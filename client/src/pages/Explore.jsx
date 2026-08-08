@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
 import { ACCESS_FILTERS, CATALOG, CATEGORIES } from '@/data/content'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 
 /**
  * Browse everything on the platform.

@@ -12,7 +12,7 @@ import BecomeCreatorTab from '@/components/dashboard/tabs/BecomeCreatorTab'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { DASH_TITLES, IMG } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 
 /** Which tabs each role is allowed to open. */
 const TABS_BY_ROLE = {

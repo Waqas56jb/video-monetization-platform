@@ -4,7 +4,7 @@ import { LayoutDashboard, Library, LogIn, Menu, Sparkles } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import MobileMenu from './MobileMenu'
 import useScrolled from '@/hooks/useScrolled'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore' },

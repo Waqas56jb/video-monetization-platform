@@ -1,7 +1,7 @@
 import { Rocket } from 'lucide-react'
 import Panel from '../Panel'
 import Icon from '@/components/ui/Icon'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 
 const PERKS = [

@@ -1,12 +1,20 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { one, query, transaction } from '../db/pool.js'
-import { createAuthUser, signInWithPassword, refreshSession, deleteAuthUser } from '../lib/supabase.js'
+import {
+  signUp,
+  signInWithPassword,
+  refreshSession,
+  sendPasswordReset,
+  setPasswordWithRecoveryToken,
+  changePassword,
+} from '../lib/supabase.js'
 import { asyncHandler, badRequest, forbidden, notFound } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { requireAuth } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
+import { env } from '../config/env.js'
 
 const router = Router()
 
@@ -56,32 +64,35 @@ router.post(
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
-    const authUser = await createAuthUser({ email, password, fullName, phone })
+    const { user: authUser, session, needsEmailConfirmation } = await signUp({
+      email, password, fullName, phone,
+    })
 
-    try {
-      const profile = await transaction(async (client) => {
-        const { rows } = await client.query(
-          `insert into profiles (id, email, full_name, phone, role)
-           values ($1,$2,$3,$4,$5) returning *`,
-          [authUser.id, email, fullName, phone || null, role]
+    const profile = await transaction(async (client) => {
+      const { rows } = await client.query(
+        `insert into profiles (id, email, full_name, phone, role)
+         values ($1,$2,$3,$4,$5)
+         on conflict (id) do update set full_name = excluded.full_name
+         returning *`,
+        [authUser.id, email, fullName, phone || null, role]
+      )
+      if (role === 'creator') {
+        await client.query(
+          `insert into creator_profiles (user_id, display_name, payout_phone)
+           values ($1,$2,$3) on conflict (user_id) do nothing`,
+          [authUser.id, fullName, phone || null]
         )
-        if (role === 'creator') {
-          await client.query(
-            `insert into creator_profiles (user_id, display_name, payout_phone)
-             values ($1,$2,$3) on conflict (user_id) do nothing`,
-            [authUser.id, fullName, phone || null]
-          )
-        }
-        return rows[0]
-      })
+      }
+      return rows[0]
+    })
 
-      const { session } = await signInWithPassword({ email, password })
-      res.status(201).json(shape(profile, session))
-    } catch (err) {
-      // Don't leave an auth user behind with no profile row.
-      await deleteAuthUser(authUser.id).catch(() => {})
-      throw err
-    }
+    res.status(201).json({
+      ...shape(profile, session),
+      needsEmailConfirmation,
+      ...(needsEmailConfirmation
+        ? { message: 'Check your inbox to confirm your email, then sign in.' }
+        : {}),
+    })
   })
 )
 
@@ -211,6 +222,114 @@ router.post(
       ip: clientIp(req),
     })
     res.json(shape(profile, null))
+  })
+)
+
+/* ------------------------------------------------------- password reset */
+
+/**
+ * Step 1 — ask for a reset link.
+ *
+ * The address is checked against `profiles` first, so we never email someone
+ * who has no account. The RESPONSE is deliberately identical either way: if it
+ * differed, anyone could use this endpoint to find out which emails are
+ * registered on the platform.
+ */
+router.post(
+  '/forgot-password',
+  validate(z.object({ email: z.string().email('Enter a valid email address') })),
+  asyncHandler(async (req, res) => {
+    const email = req.body.email.trim().toLowerCase()
+
+    const profile = await one('select id, status from profiles where lower(email) = $1', [email])
+
+    if (profile && profile.status !== 'blocked') {
+      const redirectTo = `${env.publicWebUrl}/reset`
+      await sendPasswordReset(email, redirectTo)
+      await recordAudit({
+        actorId: profile.id,
+        action: 'REQUESTED_PASSWORD_RESET',
+        entityType: 'profile',
+        entityId: profile.id,
+        ip: clientIp(req),
+      })
+    }
+
+    res.json({
+      ok: true,
+      message: 'If that email has an account, a reset link is on its way. Check your inbox.',
+    })
+  })
+)
+
+/**
+ * Step 2 — set the new password.
+ *
+ * The tokens come from the emailed link, which is what proves the person
+ * controls the mailbox. There is no code to type and no second factor: the
+ * link itself is the proof.
+ */
+router.post(
+  '/reset-password',
+  validate(
+    z.object({
+      accessToken: z.string().min(10, 'This reset link is not valid'),
+      refreshToken: z.string().min(10, 'This reset link is not valid'),
+      password: z.string().min(8, 'Password must be at least 8 characters'),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const { accessToken, refreshToken, password } = req.body
+    const user = await setPasswordWithRecoveryToken({ accessToken, refreshToken, newPassword: password })
+
+    await recordAudit({
+      actorId: user.id,
+      action: 'RESET_PASSWORD',
+      entityType: 'profile',
+      entityId: user.id,
+      ip: clientIp(req),
+    })
+
+    res.json({ ok: true, message: 'Password updated — sign in with your new password.' })
+  })
+)
+
+/** Change your password while signed in; the current one is required. */
+router.post(
+  '/change-password',
+  requireAuth(),
+  validate(
+    z.object({
+      currentPassword: z.string().min(1, 'Enter your current password'),
+      newPassword: z.string().min(8, 'The new password must be at least 8 characters'),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    await changePassword({
+      email: req.user.email,
+      currentPassword: req.body.currentPassword,
+      newPassword: req.body.newPassword,
+    })
+    await recordAudit({
+      actorId: req.user.id,
+      action: 'CHANGED_PASSWORD',
+      entityType: 'profile',
+      entityId: req.user.id,
+      ip: clientIp(req),
+    })
+    res.json({ ok: true, message: 'Password changed' })
+  })
+)
+
+/** Does this email already have an account? Used by the signup form. */
+router.post(
+  '/check-email',
+  validate(z.object({ email: z.string().email() })),
+  asyncHandler(async (req, res) => {
+    const exists = await one('select 1 from profiles where lower(email) = $1', [
+      req.body.email.trim().toLowerCase(),
+    ])
+    res.json({ registered: Boolean(exists) })
   })
 )
 

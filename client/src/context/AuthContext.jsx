@@ -1,0 +1,135 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import api, { saveSession, clearSession, getAccessToken, onSessionExpired } from '@/lib/api'
+
+/**
+ * The real signed-in user, from the backend.
+ *
+ * There is no client-side role flag any more: the role comes from the
+ * `profiles` row and is re-read on every page load, so blocking someone or
+ * changing their role takes effect immediately rather than after they clear
+ * their browser.
+ */
+const AuthContext = createContext(null)
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
+  return ctx
+}
+
+/** Kept so existing components can ask "is this a creator?" unchanged. */
+export function useRole() {
+  const { user } = useAuth()
+  return {
+    role: user?.role || 'viewer',
+    authed: Boolean(user),
+    isCreator: user?.role === 'creator' || user?.role === 'admin',
+    isAdmin: user?.role === 'admin',
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [creator, setCreator] = useState(null)
+  const [loading, setLoading] = useState(Boolean(getAccessToken()))
+
+  /** Re-read the profile from the server. */
+  const reload = useCallback(async () => {
+    if (!getAccessToken()) {
+      setUser(null)
+      setCreator(null)
+      setLoading(false)
+      return null
+    }
+    try {
+      const data = await api.auth.me()
+      setUser(data.user)
+      setCreator(data.creator || null)
+      return data.user
+    } catch {
+      clearSession()
+      setUser(null)
+      setCreator(null)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    reload()
+  }, [reload])
+
+  // A refresh token that stops working must not leave a stale user on screen.
+  useEffect(
+    () =>
+      onSessionExpired(() => {
+        setUser(null)
+        setCreator(null)
+      }),
+    []
+  )
+
+  const signIn = useCallback(async ({ email, password }) => {
+    const data = await api.auth.login({ email, password })
+    saveSession(data.session)
+    setUser(data.user)
+    await reload()
+    return data.user
+  }, [reload])
+
+  const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {
+    const data = await api.auth.register({ email, password, fullName, phone, role })
+    if (data.session) {
+      saveSession(data.session)
+      setUser(data.user)
+      await reload()
+    }
+    return data
+  }, [reload])
+
+  const signOut = useCallback(async () => {
+    try {
+      await api.auth.logout()
+    } catch {
+      /* the token may already be gone; sign out locally regardless */
+    }
+    clearSession()
+    setUser(null)
+    setCreator(null)
+  }, [])
+
+  const becomeCreator = useCallback(async () => {
+    const data = await api.auth.becomeCreator()
+    setUser(data.user)
+    await reload()
+    return data.user
+  }, [reload])
+
+  const updateProfile = useCallback(async (patch) => {
+    const data = await api.auth.updateProfile(patch)
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const value = useMemo(
+    () => ({
+      user,
+      creator,
+      loading,
+      authed: Boolean(user),
+      role: user?.role || 'viewer',
+      isCreator: user?.role === 'creator' || user?.role === 'admin',
+      isAdmin: user?.role === 'admin',
+      signIn,
+      signUp,
+      signOut,
+      becomeCreator,
+      updateProfile,
+      reload,
+    }),
+    [user, creator, loading, signIn, signUp, signOut, becomeCreator, updateProfile, reload]
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}

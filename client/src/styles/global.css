@@ -1499,3 +1499,63 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 .explore-back:hover{color:#fff;border-color:var(--purple);background:rgba(124,58,237,.12)}
 .explore-back svg{width:16px;height:16px}
 @media(max-width:600px){.explore-back{margin-bottom:16px;padding:8px 14px 8px 10px;font-size:13px}}
+
+/* =========================================================================
+   REAL-DATA STATES
+   Every screen now reads from the API, so loading, empty and failure are
+   first-class states rather than something each page improvises.
+   ========================================================================= */
+
+/* --- inline form error --- */
+.form-error{
+  display:flex;align-items:flex-start;gap:10px;
+  background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.32);
+  color:#fca5a5;
+  padding:13px 15px;border-radius:13px;
+  font-size:13.5px;line-height:1.55;
+  margin-bottom:20px;
+}
+.form-error svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+
+/* --- skeletons --- */
+@keyframes shimmer{100%{background-position:-200% 0}}
+.skeleton{
+  background:linear-gradient(90deg,var(--card2) 25%,rgba(255,255,255,.06) 37%,var(--card2) 63%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s linear infinite;
+  border-radius:10px;height:16px;
+}
+.skeleton-wrap{display:flex;flex-direction:column;gap:12px}
+.skeleton-wrap .skeleton:nth-child(2){width:80%}
+.skeleton-wrap .skeleton:nth-child(3){width:60%}
+.skeleton-card{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--radius);overflow:hidden;padding-bottom:18px;
+}
+.skeleton-thumb{height:190px;border-radius:0}
+.skeleton-line{height:14px;margin:16px 18px 0}
+.skeleton-line.short{width:55%}
+
+/* --- empty / error blocks --- */
+.state-block{
+  text-align:center;
+  padding:56px 24px;
+  border:1px dashed var(--border2);
+  border-radius:20px;
+  background:rgba(255,255,255,.012);
+}
+.state-block>svg{width:32px;height:32px;color:var(--muted2);margin-bottom:16px}
+.state-block b{display:block;font-family:'Sora',sans-serif;font-size:16.5px;margin-bottom:8px}
+.state-block p{color:var(--muted);font-size:14px;line-height:1.65;max-width:420px;margin:0 auto 20px}
+.state-block .btn{margin-top:4px}
+.state-error{border-color:rgba(239,68,68,.28);background:rgba(239,68,68,.04)}
+.state-error>svg{color:#fca5a5}
+
+/* buttons that are working shouldn't look clickable */
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none !important}
+
+@media(max-width:600px){
+  .state-block{padding:40px 18px}
+  .skeleton-thumb{height:170px}
+}

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 
 const LINKS = [
   { to: '/explore', label: 'Explore' },

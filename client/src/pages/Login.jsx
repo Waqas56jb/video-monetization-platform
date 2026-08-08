@@ -1,37 +1,52 @@
-import { useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, Sparkles } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
-import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
-import { IMG } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
-import { useRole } from '@/context/RoleContext'
-
-const ROLES = [
-  { value: 'viewer', label: 'Viewer', icon: 'user' },
-  { value: 'creator', label: 'Creator', icon: 'video' },
-]
+import { useAuth } from '@/context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const showToast = useToast()
-  const { role, setRole, signIn } = useRole()
+  const { signIn, authed, loading: authLoading } = useAuth()
+
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
-  const onSubmit = (e) => {
+  // Already signed in? Don't make them log in twice.
+  useEffect(() => {
+    if (!authLoading && authed) navigate('/dashboard', { replace: true })
+  }, [authed, authLoading, navigate])
+
+  const set = (key) => (e) => {
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+    setError(null)
+  }
+
+  const onSubmit = async (e) => {
     e.preventDefault()
-    signIn(role)
-    showToast('Karibu tena! Logged in successfully')
-    timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 800)
+    setBusy(true)
+    setError(null)
+    try {
+      const user = await signIn(form)
+      showToast(`Karibu tena, ${user.fullName || user.email}!`)
+      const to = location.state?.from || '/dashboard'
+      timer.current = setTimeout(() => navigate(to, { replace: true }), 400)
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
   }
 
   return (
     <AuthLayout
       side={{
-        image: IMG.authLogin,
         badge: (
           <>
             <span className="dot" />
@@ -55,16 +70,22 @@ export default function Login() {
       }
       subtitle="Enter your details to continue watching & earning."
     >
-      <RoleToggle options={ROLES} value={role} onChange={setRole} />
+      <form onSubmit={onSubmit} noValidate>
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={onSubmit}>
         <Field
           id="login-id"
-          label="Email or Phone"
+          label="Email"
           icon="mail"
-          type="text"
-          placeholder="you@email.com or 0712 000 000"
+          type="email"
+          placeholder="you@email.com"
           autoComplete="username"
+          value={form.email}
+          onChange={set('email')}
           required
         />
         <PasswordField
@@ -72,6 +93,8 @@ export default function Login() {
           label="Password"
           placeholder="••••••••"
           autoComplete="current-password"
+          value={form.password}
+          onChange={set('password')}
           required
         />
 
@@ -80,18 +103,18 @@ export default function Login() {
             <input type="checkbox" defaultChecked />
             Remember me
           </label>
-          <Link to="/reset">Forgot password?</Link>
+          <Link to="/forgot-password">Forgot password?</Link>
         </div>
 
-        <button className="btn btn-gold btn-block" type="submit">
+        <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           <LogIn />
-          Log In
+          {busy ? 'Signing in…' : 'Log In'}
         </button>
       </form>
 
       <div className="divider">NEW TO MTONYO+?</div>
 
-      <button className="btn btn-ghost btn-block" onClick={() => navigate('/signup')}>
+      <button className="btn btn-ghost btn-block" onClick={() => navigate('/signup')} disabled={busy}>
         <Sparkles />
         Create Free Account
       </button>

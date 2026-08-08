@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '@/components/ui/Logo'
 import Icon from '@/components/ui/Icon'
 import { useToast } from '@/context/ToastContext'
-import { useRole } from '@/context/RoleContext'
+import { useRole } from '@/context/AuthContext'
 
 /**
  * Sidebar menu, filtered by role.
