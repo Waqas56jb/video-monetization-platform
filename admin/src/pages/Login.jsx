@@ -23,7 +23,7 @@ export default function Login({ onLogin }) {
           <h1>
             Super Admin <span className="grad-text">Access</span>
           </h1>
-          <p>Mtonyo+ Control Center · Authorized personnel only</p>
+          <p>MTONYO+ Control Center · Authorized personnel only</p>
 
           <form onSubmit={onSubmit}>
             <Field

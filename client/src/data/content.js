@@ -226,7 +226,7 @@ export const DASH_TITLES = {
   videos: ['My Videos', 'Manage your published content and premieres.'],
   earnings: ['Earnings', 'Your money, transparent and withdrawable anytime.'],
   purchases: ['My Purchases', 'Every video you have paid for, and how you paid.'],
-  become: ['Become a Creator', 'Start selling your own videos on Mtonyo+.'],
+  become: ['Become a Creator', 'Start selling your own videos on MTONYO+.'],
 }
 
 export const OVERVIEW_STATS = [
@@ -456,7 +456,7 @@ export const MY_SUBMISSIONS = [
 
 /* =========================================================================
    EXPLORE CATALOG
-   Discovery on Mtonyo+ happens mainly through shared social links, but a
+   Discovery on MTONYO+ happens mainly through shared social links, but a
    signed-in viewer still needs somewhere to browse. This is that catalogue —
    a simple searchable grid, not a ranked feed.
    ========================================================================= */

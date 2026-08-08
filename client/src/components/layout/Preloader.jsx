@@ -46,7 +46,7 @@ export default function Preloader() {
   return (
     <div id="preloader" className={hide ? 'hide' : ''} aria-hidden={hide}>
       <div className="loader-logo">
-        Mtonyo<span className="logo-plus">+</span>
+        MTONYO<span className="logo-plus">+</span>
       </div>
       <div className="loader-bar">
         <span />

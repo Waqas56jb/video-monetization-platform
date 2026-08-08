@@ -20,7 +20,7 @@ export default function Sidebar({ open, onClose, onLogout }) {
             <Play />
           </span>
           <span className="logo-word">
-            Mtonyo<span className="logo-plus">+</span>
+            MTONYO<span className="logo-plus">+</span>
           </span>
         </div>
         <span className="admin-tag">SUPER ADMIN</span>

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Mtonyo+ Admin — global stylesheet
+   MTONYO+ Admin — global stylesheet
    Ported 1:1 from the original single-file control center, then extended
    with responsive / touch / safe-area rules (see bottom of file).
    ========================================================================= */
@@ -699,3 +699,9 @@ input,select{font-family:inherit;outline:none}
 /* A toast is informational — it must never swallow a tap meant for the UI
    underneath it (on a 320px phone it overlaps the open nav drawer). */
 #toast{pointer-events:none}
+
+/* --- all-caps wordmark: caps need positive tracking, not the tight
+   letter-spacing that suited the mixed-case "Mtonyo" --- */
+.logo-word{letter-spacing:.6px}
+.logo-plus{color:var(--gold);margin-left:2px}
+.loader-logo{letter-spacing:.8px}

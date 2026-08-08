@@ -1,5 +1,5 @@
 /* =========================================================================
-   Mtonyo+ service worker
+   MTONYO+ service worker
    Goal for V1: make the app installable and resilient on the patchy mobile
    connections this platform is built for — not to cache video, which is
    served (and access-controlled) by the streaming provider.

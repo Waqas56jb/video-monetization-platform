@@ -10,7 +10,7 @@ import { useRole } from '@/context/RoleContext'
  *
  * A viewer only sees the watching side of the product — their library, what
  * they have paid for, and the route to becoming a creator. A creator sees all
- * of that plus the studio, because on Mtonyo+ one account both watches and
+ * of that plus the studio, because on MTONYO+ one account both watches and
  * sells. `roles` on each group/item decides who sees what.
  */
 const GROUPS = [

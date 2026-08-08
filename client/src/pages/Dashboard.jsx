@@ -88,7 +88,7 @@ export default function Dashboard() {
               </button>
               {/* On mobile the sidebar is a drawer, so without this there is no
                   visible way back to the public site from the dashboard. */}
-              <Link className="dash-home" to="/" aria-label="Back to Mtonyo+ home">
+              <Link className="dash-home" to="/" aria-label="Back to MTONYO+ home">
                 <Home size={19} />
               </Link>
               <div className="dash-titles">

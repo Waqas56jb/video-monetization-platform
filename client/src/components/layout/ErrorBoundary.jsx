@@ -19,7 +19,7 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
-    console.error('Mtonyo+ crashed:', error, info?.componentStack)
+    console.error('MTONYO+ crashed:', error, info?.componentStack)
   }
 
   render() {
@@ -29,7 +29,7 @@ export default class ErrorBoundary extends Component {
       <div className="crash">
         <div className="crash-card">
           <div className="crash-mark">
-            Mtonyo<span className="logo-plus">+</span>
+            MTONYO<span className="logo-plus">+</span>
           </div>
           <h1>Something went wrong</h1>
           <p>

@@ -47,9 +47,9 @@ export default function Watch() {
     unlockedRef.current = false
     setPaywalled(false)
     setPayOpen(false)
-    document.title = `${video.title} — Mtonyo+`
+    document.title = `${video.title} — MTONYO+`
     return () => {
-      document.title = "Mtonyo+ — Tanzania's Premium Creator Video Platform"
+      document.title = "MTONYO+ — Tanzania's Premium Creator Video Platform"
     }
   }, [video.id, video.title])
 
@@ -128,7 +128,7 @@ export default function Watch() {
    */
   const shareVideo = async () => {
     const url = videoLink(video.id)
-    const payload = { title: video.title, text: `Watch "${video.title}" on Mtonyo+`, url }
+    const payload = { title: video.title, text: `Watch "${video.title}" on MTONYO+`, url }
     try {
       if (navigator.share) {
         await navigator.share(payload)

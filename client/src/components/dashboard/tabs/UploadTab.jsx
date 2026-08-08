@@ -126,7 +126,7 @@ export default function UploadTab() {
           <div className="notice notice-review">
             <ShieldCheck />
             <span>
-              Every upload is reviewed by the Mtonyo+ team before it goes live. You&apos;ll be
+              Every upload is reviewed by the MTONYO+ team before it goes live. You&apos;ll be
               notified as soon as it&apos;s approved — usually within a few hours.
             </span>
           </div>

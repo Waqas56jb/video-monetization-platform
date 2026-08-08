@@ -10,7 +10,7 @@ import { ACCESS_FILTERS, CATALOG, CATEGORIES } from '@/data/content'
  * Browse everything on the platform.
  *
  * Deliberately a searchable catalogue, not a ranked feed — discovery on
- * Mtonyo+ happens through shared social links, and this is the "I'm already
+ * MTONYO+ happens through shared social links, and this is the "I'm already
  * signed in, show me what else is here" surface.
  */
 export default function Explore() {
@@ -46,7 +46,7 @@ export default function Explore() {
         <div className="container">
           <div className="explore-head">
             <h1>
-              Explore <span className="brand-accent">Mtonyo+</span>
+              Explore <span className="brand-accent">MTONYO+</span>
             </h1>
             <p>
               Every premiere, pay-per-view drop and free-with-ads show on the platform. Watch the

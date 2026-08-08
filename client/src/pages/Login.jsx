@@ -49,7 +49,7 @@ export default function Login() {
       back={{ to: '/', label: 'Back to home' }}
       title={
         <>
-          Log in to <span className="brand-accent">Mtonyo+</span>
+          Log in to <span className="brand-accent">MTONYO+</span>
         </>
       }
       subtitle="Enter your details to continue watching & earning."

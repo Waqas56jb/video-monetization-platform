@@ -1,5 +1,5 @@
 /* =========================================================================
-   Mtonyo+ — global stylesheet
+   MTONYO+ — global stylesheet
    Ported 1:1 from the original single-file build, then extended with
    extra responsive / touch / safe-area rules (see bottom of file).
    ========================================================================= */
@@ -1474,3 +1474,12 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   color:#fca5a5;font-size:11.5px;word-break:break-word;
 }
 @media(max-width:480px){.crash-card{padding:28px 20px}.crash-actions .btn{flex:1 1 100%}}
+
+/* --- all-caps wordmark needs the opposite tracking to a mixed-case one ---
+   "Mtonyo" reads well tight; "MTONYO" needs air between the caps or it looks
+   cramped and heavy. The "+" also sits better with a little breathing room. */
+.logo-word{letter-spacing:.6px}
+.logo-plus{margin-left:2px}
+.loader-logo{letter-spacing:.8px}
+.crash-mark{letter-spacing:.8px}
+@media(max-width:380px){.logo-word{letter-spacing:.3px}}

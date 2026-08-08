@@ -28,7 +28,7 @@ const PERKS = [
 ]
 
 /**
- * A viewer's route into the studio. One Mtonyo+ account does both, so this
+ * A viewer's route into the studio. One MTONYO+ account does both, so this
  * upgrades the current account rather than creating a second one.
  */
 export default function BecomeCreatorTab({ onUpgraded }) {
@@ -61,7 +61,7 @@ export default function BecomeCreatorTab({ onUpgraded }) {
           Enable Creator Tools
         </button>
         <small className="become-note">
-          Your first upload goes to the Mtonyo+ review team before it&apos;s published.
+          Your first upload goes to the MTONYO+ review team before it&apos;s published.
         </small>
       </Panel>
 
