@@ -10,7 +10,7 @@ export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) 
 
   return (
     <div className="topbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+      <div className="top-l">
         <button
           className="hamburger"
           onClick={onToggleDrawer}
@@ -19,7 +19,7 @@ export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) 
         >
           <Menu />
         </button>
-        <div>
+        <div className="top-titles">
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>

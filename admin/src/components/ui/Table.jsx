@@ -1,10 +1,33 @@
+import { useLayoutEffect, useRef } from 'react'
 import Icon from './Icon'
 
-/** Horizontally scrollable table shell — the wide table never scrolls the page. */
+/** Apply thead labels onto each body cell so CSS can render stacked cards on phones. */
+function applyCardLabels(table) {
+  if (!table) return
+  const labels = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim())
+  table.querySelectorAll('tbody tr').forEach((tr) => {
+    if (tr.classList.contains('empty-row')) return
+    ;[...tr.children].forEach((td, i) => {
+      if (labels[i]) td.setAttribute('data-label', labels[i])
+    })
+  })
+}
+
+/** Horizontally scrollable on tablet; stacked cards on phones. */
 export function TableWrap({ children, minWidth }) {
+  const ref = useRef(null)
+
+  useLayoutEffect(() => {
+    applyCardLabels(ref.current)
+  })
+
   return (
-    <div className="tbl-wrap">
-      <table className="tbl" style={minWidth !== undefined ? { minWidth } : undefined}>
+    <div className="tbl-wrap tbl-cards">
+      <table
+        ref={ref}
+        className="tbl"
+        style={minWidth !== undefined ? { minWidth } : undefined}
+      >
         {children}
       </table>
     </div>

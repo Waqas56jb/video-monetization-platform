@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { ArrowLeft, Maximize, Pause, Play, Settings, Share2, Volume2 } from 'lucide-react'
 import Paywall from './Paywall'
 
@@ -19,6 +20,12 @@ export default function Player({
   onShare,
   onUnlock,
 }) {
+  const scrubbing = useRef(false)
+
+  const seekFromPointer = (e) => {
+    onSeek(e)
+  }
+
   return (
     // `is-locked` lets the frame grow on small screens so the paywall card,
     // which is much taller than a 16:9 phone frame, is never cut off.
@@ -30,20 +37,34 @@ export default function Player({
           <button className="back-btn" onClick={onBack} aria-label="Back">
             <ArrowLeft />
           </button>
-          <div>
+          <div className="pt-meta">
             <b>{video.title}</b>
             <small>{video.subtitle}</small>
           </div>
         </div>
-        <span className={`pill ${unlocked ? 'ok' : 'pend'}`}>
-          {unlocked ? '✓ UNLOCKED · YOURS FOREVER' : 'FREE PREVIEW'}
+        <span className={`pill player-pill ${unlocked ? 'ok' : 'pend'}`}>
+          <span className="pill-full">{unlocked ? '✓ UNLOCKED · YOURS FOREVER' : 'FREE PREVIEW'}</span>
+          <span className="pill-short">{unlocked ? '✓ YOURS' : 'PREVIEW'}</span>
         </span>
       </div>
 
       <div className="player-bar">
         <div
           className="pb-track"
-          onClick={onSeek}
+          onPointerDown={(e) => {
+            scrubbing.current = true
+            e.currentTarget.setPointerCapture?.(e.pointerId)
+            seekFromPointer(e)
+          }}
+          onPointerMove={(e) => {
+            if (scrubbing.current) seekFromPointer(e)
+          }}
+          onPointerUp={() => {
+            scrubbing.current = false
+          }}
+          onPointerCancel={() => {
+            scrubbing.current = false
+          }}
           role="slider"
           tabIndex={0}
           aria-label="Seek"
@@ -53,7 +74,8 @@ export default function Player({
         >
           <div className="pb-fill" style={{ width: `${progress}%` }} />
           <span className="pb-free" style={{ left: `${video.freePercent}%` }}>
-            FREE ENDS
+            <span className="pb-free-full">FREE ENDS</span>
+            <span className="pb-free-short">FREE</span>
           </span>
         </div>
 
@@ -73,7 +95,7 @@ export default function Player({
             <button onClick={onShare} aria-label="Share">
               <Share2 />
             </button>
-            <button aria-label="Settings">
+            <button className="ctrl-hide-sm" aria-label="Settings">
               <Settings />
             </button>
             <button aria-label="Fullscreen">

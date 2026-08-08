@@ -29,12 +29,14 @@ export default function MobileMenu({ open, onClose }) {
           {l.label}
         </a>
       ))}
-      <button className="btn btn-ghost" onClick={() => goTo('/login')}>
-        Log in
-      </button>
-      <button className="btn btn-gold" onClick={() => goTo('/signup')}>
-        Start Creating
-      </button>
+      <div className="mobile-menu-actions">
+        <button className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
+          Log in
+        </button>
+        <button className="btn btn-gold btn-block" onClick={() => goTo('/signup')}>
+          Start Creating
+        </button>
+      </div>
     </div>
   )
 }

@@ -49,7 +49,7 @@ export default function Dashboard() {
 
         <main className="dash-main">
           <div className="dash-top">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="dash-top-l">
               <button
                 className="hamburger always"
                 onClick={() => setDrawerOpen((o) => !o)}
@@ -58,7 +58,7 @@ export default function Dashboard() {
               >
                 <Menu />
               </button>
-              <div>
+              <div className="dash-titles">
                 <h1>{title}</h1>
                 <p>{subtitle}</p>
               </div>

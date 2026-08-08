@@ -64,10 +64,13 @@ export default function Watch() {
   }, [paywalled])
 
   // Scrubbing is allowed, but a locked video can never be dragged past the preview.
+  // Pointer events cover mouse + touch (Android/iOS).
   const onSeek = (e) => {
     if (paywalled) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = ((e.clientX - rect.left) / rect.width) * 100
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX
+    if (clientX == null) return
+    const pct = ((clientX - rect.left) / rect.width) * 100
     const clamped = Math.min(Math.max(pct, 0), 100)
     if (!unlocked && clamped >= video.freePercent) {
       setProgress(video.freePercent)
@@ -91,17 +94,25 @@ export default function Watch() {
 
   return (
     <div className="page">
-      <header className="scrolled">
+      <header className="scrolled watch-header">
         <div className="container nav">
           <Logo />
-          <div className="nav-cta">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard')}>
+          <div className="nav-cta watch-cta">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/dashboard')}
+              aria-label="My Library"
+            >
               <Library />
-              My Library
+              <span className="btn-label">My Library</span>
             </button>
-            <button className="btn btn-gold btn-sm" onClick={() => navigate('/dashboard')}>
+            <button
+              className="btn btn-gold btn-sm"
+              onClick={() => navigate('/dashboard')}
+              aria-label="Dashboard"
+            >
               <LayoutDashboard />
-              Dashboard
+              <span className="btn-label">Dashboard</span>
             </button>
           </div>
         </div>
@@ -145,14 +156,14 @@ export default function Watch() {
             <div className="watch-actions">
               <button className="btn btn-ghost btn-sm" onClick={() => showToast('Added to My List')}>
                 <Plus />
-                My List
+                <span className="btn-label">My List</span>
               </button>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => showToast('Preview link copied!')}
               >
                 <Share2 />
-                Share Preview
+                <span className="btn-label">Share Preview</span>
               </button>
             </div>
           </div>

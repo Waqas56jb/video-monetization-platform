@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import Logo from '@/components/ui/Logo'
 
 /**
  * Split auth screen: image + pitch on the left (hidden ≤900px), form on the right.
+ * Phones get a compact brand strip instead of the marketing panel.
  *
  * side: { image, badge, heading, text }
  * back: { to, label }
@@ -22,6 +24,10 @@ export default function AuthLayout({ side, back, title, subtitle, children }) {
 
         <div className="auth-form-wrap">
           <div className="auth-card">
+            <div className="auth-mobile-brand">
+              <Logo />
+              <span className="badge">{side.badge}</span>
+            </div>
             <Link className="back" to={back.to}>
               <ArrowLeft />
               {back.label}

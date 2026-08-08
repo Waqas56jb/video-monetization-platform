@@ -34,11 +34,11 @@ export default function Header() {
           <div className="nav-cta">
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>
               <LogIn />
-              Log in
+              <span className="btn-label">Log in</span>
             </button>
-            <button className="btn btn-gold btn-sm" onClick={() => navigate('/signup')}>
+            <button className="btn btn-gold btn-sm nav-cta-primary" onClick={() => navigate('/signup')}>
               <Sparkles />
-              Start Creating
+              <span className="btn-label">Start Creating</span>
             </button>
             <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Open menu">
               <Menu />
