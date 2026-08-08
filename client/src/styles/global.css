@@ -751,8 +751,10 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   /* the whole "Remember me" / "I agree" row toggles the box, so give the row
      a full-height target rather than relying on the 20px box */
   .form-row label{min-height:36px}
-  /* the 5px scrub bar gets a 36px tall tap strip, visuals unchanged */
-  .pb-track::before{content:'';position:absolute;left:0;right:0;top:-20px;bottom:-11px}
+  /* the 5px scrub bar gets a 36px tall tap strip, visuals unchanged. The extra
+     margin keeps that strip clear of the play/volume buttons below it. */
+  .pb-track{margin-bottom:22px}
+  .pb-track::before{content:'';position:absolute;left:0;right:0;top:-19px;bottom:-12px}
   .pb-row .ctrls button{position:relative}
   .pb-row .ctrls button::after{content:'';position:absolute;inset:-8px}
   /* 16px keeps neighbouring 36px tap areas from overlapping and stealing taps */
