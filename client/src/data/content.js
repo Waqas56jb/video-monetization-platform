@@ -222,7 +222,7 @@ export const FOOTER_LINKS = {
 export const DASH_TITLES = {
   overview: ['Karibu, Juma 👋', "Here's how your content is performing today."],
   library: ['My Library', 'Every video you own — unlocked forever.'],
-  upload: ['Upload New Video', 'From upload to published in under 5 minutes.'],
+  upload: ['Upload New Video', 'Upload, price and submit for review — we approve within hours.'],
   videos: ['My Videos', 'Manage your published content and premieres.'],
   earnings: ['Earnings', 'Your money, transparent and withdrawable anytime.'],
 }
@@ -312,3 +312,142 @@ export const WATCH_VIDEO = {
     avatar: IMG.avatarKondeLg,
   },
 }
+
+/* =========================================================================
+   DEEP LINKS
+   Every video is reachable at /watch/:videoId so a shared link opens that
+   exact video's watch & purchase page. WATCH_VIDEO stays as the default
+   for a bare /watch visit.
+   ========================================================================= */
+
+/** Full watch-page record per video, keyed by the slug used in the URL. */
+export const VIDEO_LIBRARY = {
+  'behind-the-fame': {
+    id: 'behind-the-fame',
+    title: 'Harmonize — Behind The Fame',
+    subtitle: 'Music · Documentary · Paid Premiere',
+    poster: IMG.premiereLarge,
+    price: 'TZS 500',
+    views: '25,430 views',
+    premiered: 'Premiered 24 May',
+    window: '7 days left to buy · then free with ads',
+    totalSeconds: 1200,
+    freePercent: 25,
+    creator: { name: 'Konde Gang Official', meta: '245K followers · 32 videos', avatar: IMG.avatarKondeLg },
+    description:
+      'A deep look into the life, hustle and journey of Harmonize — exclusive backstage footage, studio sessions and the untold story behind the fame. Filmed across Dar es Salaam over six months.',
+    terms: 'TZS 500 for early access. In 7 days this video becomes free with ads — but buyers keep their ad-free copy forever.',
+    termsLabel: 'Paid Premiere:',
+  },
+  'the-journey': {
+    id: 'the-journey',
+    title: 'The Journey — Live From Dar',
+    subtitle: 'Concert · Live · PPV Forever',
+    poster: IMG.journey,
+    price: 'TZS 1,000',
+    views: '35,120 views',
+    premiered: 'Released 12 May',
+    window: 'Own it forever · no expiry',
+    totalSeconds: 2702,
+    freePercent: 20,
+    creator: { name: 'Zuchu Studio', meta: '198K followers · 24 videos', avatar: IMG.avatarZuchuLg },
+    description:
+      'A full live concert recorded in Dar es Salaam — the complete set, unedited, in adaptive HD. Buy once and it stays in your library forever.',
+    terms: 'TZS 1,000 one-time. This video stays paid indefinitely and never expires into ads.',
+    termsLabel: 'PPV Forever:',
+  },
+  'studio-session': {
+    id: 'studio-session',
+    title: 'Studio Session Live Vol. 3',
+    subtitle: 'Music · Studio · PPV Forever',
+    poster: IMG.studio,
+    price: 'TZS 800',
+    views: '21,490 views',
+    premiered: 'Released 03 May',
+    window: 'Own it forever · no expiry',
+    totalSeconds: 1967,
+    freePercent: 22,
+    creator: { name: 'Marioo Music', meta: '156K followers · 18 videos', avatar: IMG.avatarMarioo },
+    description:
+      'Behind the glass for a full studio session — writing, tracking and the takes that made the final record.',
+    terms: 'TZS 800 one-time. Yours forever, on any device you log into.',
+    termsLabel: 'PPV Forever:',
+  },
+  'konser-dar': {
+    id: 'konser-dar',
+    title: 'Konser Dar Live — Full Show',
+    subtitle: 'Concert · Free With Ads',
+    poster: IMG.konser,
+    price: 'FREE',
+    views: '18,230 views',
+    premiered: 'Premiered 18 Apr',
+    window: 'Premiere ended · now free with ads',
+    totalSeconds: 1102,
+    freePercent: 100, // already free — no paywall
+    creator: { name: 'Rayvanny TV', meta: '312K followers · 41 videos', avatar: IMG.avatarRayvannyLg },
+    description:
+      'The full Konser Dar live show. This premiere has ended, so the video is now free to watch with a short ad before playback.',
+    terms: 'This video is free with ads. Early buyers keep their ad-free copy.',
+    termsLabel: 'Free With Ads:',
+  },
+}
+
+/** Look a video up by its deep-link slug, falling back to the default. */
+export const getVideo = (id) => VIDEO_LIBRARY[id] || VIDEO_LIBRARY['behind-the-fame']
+
+/** The canonical shareable link for a video. */
+export const videoLink = (id) =>
+  typeof window === 'undefined' ? `/watch/${id}` : `${window.location.origin}/watch/${id}`
+
+/* =========================================================================
+   CONTENT APPROVAL
+   Platform rule: nothing a creator uploads goes live on its own. Every upload
+   enters an admin review queue, and only an admin can publish it.
+
+     Creator uploads → Pending Review → Admin reviews → Approved / Rejected
+
+   The creator can never set "Published" themselves — the UI offers
+   "Submit for Review" only, and a rejected item can be fixed and resubmitted.
+   ========================================================================= */
+
+export const REVIEW_STATUS = {
+  pending: { label: 'Pending Review', pill: 'pend', icon: 'hourglass' },
+  approved: { label: 'Approved · Published', pill: 'ok', icon: 'badge-check' },
+  rejected: { label: 'Rejected', pill: 'bad', icon: 'x-circle' },
+}
+
+/** The creator's own submissions with their current review state. */
+export const MY_SUBMISSIONS = [
+  {
+    id: 'sub-1',
+    title: 'The Journey — Live Performance',
+    thumb: IMG.journey,
+    category: 'Music',
+    price: 'TZS 1,000',
+    type: 'PPV Forever',
+    submitted: '2 hours ago',
+    status: 'pending',
+  },
+  {
+    id: 'sub-2',
+    title: 'Harmonize — Behind The Fame',
+    thumb: IMG.premiere,
+    category: 'Documentary',
+    price: 'TZS 500',
+    type: 'Paid Premiere · 30 days',
+    submitted: '24 May',
+    status: 'approved',
+  },
+  {
+    id: 'sub-3',
+    title: 'Street Session — Raw Cut',
+    thumb: IMG.studio,
+    category: 'Music',
+    price: 'TZS 300',
+    type: 'PPV Forever',
+    submitted: '3 days ago',
+    status: 'rejected',
+    reason:
+      'Audio contains a copyrighted track between 02:10 and 04:35. Replace or license the track and resubmit.',
+  },
+]

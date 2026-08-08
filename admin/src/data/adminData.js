@@ -39,6 +39,7 @@ export const NAV_GROUPS = [
       { tab: 'users', path: '/users', icon: 'users', label: 'Users' },
       { tab: 'creators', path: '/creators', icon: 'video', label: 'Creators' },
       { tab: 'videos', path: '/videos', icon: 'clapperboard', label: 'Videos' },
+      { tab: 'review', path: '/review', icon: 'shield-check', label: 'Content Review', count: 3 },
       { tab: 'moderation', path: '/moderation', icon: 'shield-alert', label: 'Moderation', count: 4 },
     ],
   },
@@ -66,6 +67,7 @@ export const PAGE_META = {
   users: ['User Management', 'View, block or remove any user account'],
   creators: ['Creator Management', 'Verify, suspend and manage creator accounts'],
   videos: ['Video Management', 'Full control over every video on the platform'],
+  review: ['Content Review', 'Approve or reject creator uploads — nothing goes live without you'],
   moderation: ['Content Moderation', 'Deletion requests & flagged content — admin has final say'],
   payments: ['Payments', 'Every transaction, verified and recorded'],
   withdrawals: ['Withdrawals', 'Approve and track creator payouts'],
@@ -393,4 +395,75 @@ export const TOASTS = {
   newCampaign: 'New campaign form opened',
   backupNow: '💾 Manual backup started — you will be notified when complete',
   viewBackups: 'Last backup: today 03:00 EAT · 214 MB · verified ✓',
+}
+
+/* =========================================================================
+   CONTENT REVIEW QUEUE
+   Platform rule: no creator upload goes live automatically. Everything lands
+   here first and only an admin can approve it for publication.
+
+     Creator uploads → Pending Review → Admin reviews → Approve / Reject
+   ========================================================================= */
+
+export const REVIEW_QUEUE = [
+  {
+    id: 'rev-1',
+    title: 'The Journey — Live Performance',
+    thumb: IMG.thumbJourney,
+    creator: 'Zuchu Studio',
+    creatorId: '#C-1058',
+    avatar: IMG.nandy,
+    category: 'Music',
+    type: 'PPV Forever',
+    price: 'TZS 1,000',
+    duration: '45:02',
+    preview: '5 min free preview',
+    submitted: '2 hours ago',
+    description: 'An exclusive live performance recorded in Dar es Salaam.',
+  },
+  {
+    id: 'rev-2',
+    title: 'Voices of Bongo Ep.1',
+    thumb: IMG.thumbStudio,
+    creator: 'Nandy Official',
+    creatorId: '#C-1087',
+    avatar: IMG.nandy,
+    category: 'Documentary',
+    type: 'Paid Premiere · 30 days',
+    price: 'TZS 800',
+    duration: '28:14',
+    preview: '4 min free preview',
+    submitted: '5 hours ago',
+    description: 'Episode one of a documentary series on the Bongo Flava movement.',
+  },
+  {
+    id: 'rev-3',
+    title: 'Street Session — Raw Cut',
+    thumb: IMG.thumbStreet,
+    creator: 'Street Vibes TZ',
+    creatorId: '#C-1210',
+    avatar: IMG.streetVibes,
+    category: 'Music',
+    type: 'PPV Forever',
+    price: 'TZS 300',
+    duration: '12:40',
+    preview: '2 min free preview',
+    submitted: '1 day ago',
+    description: 'Raw street session footage from Mwanza.',
+  },
+]
+
+/** Quick-pick rejection reasons — admin can also type a custom one. */
+export const REJECT_REASONS = [
+  'Copyrighted audio or video content',
+  'Explicit or prohibited material',
+  'Misleading title, thumbnail or description',
+  'Poor video/audio quality',
+  'Pricing does not match platform policy',
+]
+
+export const REVIEW_TOASTS = {
+  approved: '✅ Approved & published — creator notified',
+  rejected: '⛔ Rejected — creator notified with your reason',
+  needReason: 'Please give a rejection reason first',
 }

@@ -48,7 +48,7 @@ export default function Login() {
       back={{ to: '/', label: 'Back to home' }}
       title={
         <>
-          Log in to <span className="grad-text">CreatorTZ</span>
+          Log in to <span className="brand-accent">Mtonyo+</span>
         </>
       }
       subtitle="Enter your details to continue watching & earning."
@@ -87,7 +87,7 @@ export default function Login() {
         </button>
       </form>
 
-      <div className="divider">NEW TO CREATORTZ?</div>
+      <div className="divider">NEW TO MTONYO+?</div>
 
       <button className="btn btn-ghost btn-block" onClick={() => navigate('/signup')}>
         <Sparkles />

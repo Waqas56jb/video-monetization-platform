@@ -23,7 +23,7 @@ export default function Login({ onLogin }) {
           <h1>
             Super Admin <span className="grad-text">Access</span>
           </h1>
-          <p>CreatorTZ Control Center · Authorized personnel only</p>
+          <p>Mtonyo+ Control Center · Authorized personnel only</p>
 
           <form onSubmit={onSubmit}>
             <Field
@@ -31,7 +31,7 @@ export default function Login({ onLogin }) {
               label="Admin Email"
               icon="mail"
               type="email"
-              placeholder="admin@creator.tz"
+              placeholder="admin@mtonyo.tz"
               autoComplete="username"
               required
             />

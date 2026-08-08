@@ -77,7 +77,7 @@ export default function Footer() {
         </div>
 
         <div className="foot-bottom">
-          <span>© 2026 CreatorTZ. Made with ❤️ in Tanzania.</span>
+          <span>© 2026 Mtonyo+. Made with ❤️ in Tanzania.</span>
           <div className="pay-badges">
             <span>M-PESA</span>
             <span>AIRTEL MONEY</span>

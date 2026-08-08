@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   Calendar,
   Clock,
@@ -13,7 +13,7 @@ import {
 import Logo from '@/components/ui/Logo'
 import Player from '@/components/watch/Player'
 import PaymentModal from '@/components/watch/PaymentModal'
-import { WATCH_VIDEO } from '@/data/content'
+import { getVideo, videoLink } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
 
 const START_PROGRESS = 8 // the original player opens 8% in
@@ -25,7 +25,8 @@ const fmt = (secs) => `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).
 export default function Watch() {
   const navigate = useNavigate()
   const showToast = useToast()
-  const video = WATCH_VIDEO
+  const { videoId } = useParams()
+  const video = useMemo(() => getVideo(videoId), [videoId])
 
   const [progress, setProgress] = useState(START_PROGRESS)
   const [playing, setPlaying] = useState(false)
@@ -36,6 +37,21 @@ export default function Watch() {
   // Refs so the interval callback always sees fresh values without restarting.
   const unlockedRef = useRef(unlocked)
   unlockedRef.current = unlocked
+
+  // Following a deep link to a different video resets the player, and the tab
+  // title reflects the video so a shared link previews sensibly.
+  useEffect(() => {
+    setProgress(START_PROGRESS)
+    setPlaying(false)
+    setUnlocked(false)
+    unlockedRef.current = false
+    setPaywalled(false)
+    setPayOpen(false)
+    document.title = `${video.title} — Mtonyo+`
+    return () => {
+      document.title = "Mtonyo+ — Tanzania's Premium Creator Video Platform"
+    }
+  }, [video.id, video.title])
 
   // Playback ticker — advances the bar and trips the paywall at freePercent.
   useEffect(() => {
@@ -92,6 +108,27 @@ export default function Watch() {
 
   const seconds = (video.totalSeconds * progress) / 100
 
+  /**
+   * Share the video's deep link. On phones this opens the native share sheet
+   * (Instagram / TikTok / WhatsApp / Facebook all appear there); on desktop it
+   * falls back to copying the link.
+   */
+  const shareVideo = async () => {
+    const url = videoLink(video.id)
+    const payload = { title: video.title, text: `Watch "${video.title}" on Mtonyo+`, url }
+    try {
+      if (navigator.share) {
+        await navigator.share(payload)
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      showToast('Link copied — share it anywhere!')
+    } catch (err) {
+      if (err?.name === 'AbortError') return // user dismissed the sheet
+      showToast(url)
+    }
+  }
+
   return (
     <div className="page">
       <header className="scrolled watch-header">
@@ -130,7 +167,7 @@ export default function Watch() {
           onBack={() => navigate('/')}
           onTogglePlay={togglePlay}
           onSeek={onSeek}
-          onShare={() => showToast('Preview link copied — share it anywhere!')}
+          onShare={shareVideo}
           onUnlock={() => setPayOpen(true)}
         />
 
@@ -158,10 +195,7 @@ export default function Watch() {
                 <Plus />
                 <span className="btn-label">My List</span>
               </button>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => showToast('Preview link copied!')}
-              >
+              <button className="btn btn-ghost btn-sm" onClick={shareVideo}>
                 <Share2 />
                 <span className="btn-label">Share Preview</span>
               </button>
@@ -184,13 +218,10 @@ export default function Watch() {
           </div>
 
           <div className="watch-desc">
-            A deep look into the life, hustle and journey of Harmonize — exclusive backstage footage,
-            studio sessions and the untold story behind the fame. Filmed across Dar es Salaam over
-            six months.
+            {video.description}
             <br />
             <br />
-            <b style={{ color: '#fff' }}>Paid Premiere:</b> TZS 500 for early access. In 7 days this
-            video becomes free with ads — but buyers keep their ad-free copy forever.
+            <b style={{ color: '#fff' }}>{video.termsLabel}</b> {video.terms}
           </div>
         </div>
       </div>

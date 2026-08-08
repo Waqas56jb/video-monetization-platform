@@ -23,7 +23,9 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/reset" element={<Reset />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        {/* deep link: a shared URL opens that exact video's watch & buy page */}
         <Route path="/watch" element={<Watch />} />
+        <Route path="/watch/:videoId" element={<Watch />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ToastProvider>

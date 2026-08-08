@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Check, Info, Rocket, UploadCloud } from 'lucide-react'
+import { Check, Info, RefreshCw, Send, ShieldCheck, UploadCloud } from 'lucide-react'
 import Panel from '../Panel'
 import Field from '@/components/ui/Field'
 import Icon from '@/components/ui/Icon'
-import { IMG } from '@/data/content'
+import { IMG, MY_SUBMISSIONS, REVIEW_STATUS } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
 
 const SELL_OPTIONS = [
@@ -25,7 +25,7 @@ const SHARE_TARGETS = [
   { icon: 'instagram', label: 'Instagram', toast: 'Sharing to Instagram…' },
   { icon: 'music-2', label: 'TikTok', toast: 'Sharing to TikTok…' },
   { icon: 'message-circle', label: 'WhatsApp', toast: 'Sharing to WhatsApp…' },
-  { icon: 'link', label: 'Copy Link', toast: 'Link copied! creator.tz/v/the-journey' },
+  { icon: 'link', label: 'Copy Link', toast: 'Link copied! mtonyo.tz/v/the-journey' },
 ]
 
 export default function UploadTab() {
@@ -122,12 +122,23 @@ export default function UploadTab() {
             </span>
           </div>
 
+          {/* Creators can never publish directly — every upload goes to admin review. */}
+          <div className="notice notice-review">
+            <ShieldCheck />
+            <span>
+              Every upload is reviewed by the Mtonyo+ team before it goes live. You&apos;ll be
+              notified as soon as it&apos;s approved — usually within a few hours.
+            </span>
+          </div>
+
           <button
             className="btn btn-gold btn-block"
-            onClick={() => showToast('🎬 Video published! 60s social preview is being generated…')}
+            onClick={() =>
+              showToast('📤 Submitted for review — we\'ll notify you once it\'s approved')
+            }
           >
-            <Rocket />
-            Publish Video
+            <Send />
+            Submit for Review
           </button>
         </Panel>
 
@@ -178,6 +189,48 @@ export default function UploadTab() {
                 {t.label}
               </button>
             ))}
+          </div>
+        </Panel>
+
+        <Panel title="5 · My Submissions">
+          <div className="sub-list">
+            {MY_SUBMISSIONS.map((s) => {
+              const state = REVIEW_STATUS[s.status]
+              return (
+                <div className={`sub-item is-${s.status}`} key={s.id}>
+                  <img src={s.thumb} alt="" loading="lazy" />
+                  <div className="sub-info">
+                    <b>{s.title}</b>
+                    <small>
+                      {s.category} · {s.type} · {s.price}
+                    </small>
+                    <span className={`pill ${state.pill} sub-status`}>
+                      <Icon name={state.icon} />
+                      {state.label}
+                    </span>
+                    {s.status === 'pending' && (
+                      <small className="sub-note">
+                        Submitted {s.submitted} — waiting for admin approval.
+                      </small>
+                    )}
+                    {s.status === 'rejected' && (
+                      <>
+                        <small className="sub-note sub-reason">
+                          <b>Reason:</b> {s.reason}
+                        </small>
+                        <button
+                          className="btn btn-ghost btn-sm sub-resubmit"
+                          onClick={() => showToast('Fixed version resubmitted for review')}
+                        >
+                          <RefreshCw />
+                          Fix &amp; Resubmit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </Panel>
       </div>

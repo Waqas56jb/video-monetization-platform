@@ -77,6 +77,7 @@ import {
   Volume2,
   Wallet,
   X,
+  XCircle,
   Youtube,
   Zap,
 } from 'lucide-react'
@@ -156,6 +157,7 @@ export const ICONS = {
   'volume-2': Volume2,
   wallet: Wallet,
   x: X,
+  'x-circle': XCircle,
   youtube: Youtube,
   zap: Zap,
 }

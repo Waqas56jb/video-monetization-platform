@@ -53,7 +53,13 @@ export default function Player({
           className="pb-track"
           onPointerDown={(e) => {
             scrubbing.current = true
-            e.currentTarget.setPointerCapture?.(e.pointerId)
+            // pointer capture is a nicety for smooth dragging — if the browser
+            // refuses it, seeking must still work
+            try {
+              e.currentTarget.setPointerCapture?.(e.pointerId)
+            } catch {
+              /* ignore */
+            }
             seekFromPointer(e)
           }}
           onPointerMove={(e) => {
@@ -105,12 +111,7 @@ export default function Player({
         </div>
       </div>
 
-      <Paywall
-        show={paywalled}
-        price={video.price}
-        watched={`You've watched 5:00 of ${totalTime} free`}
-        onUnlock={onUnlock}
-      />
+      <Paywall show={paywalled} price={video.price} onUnlock={onUnlock} />
     </div>
   )
 }

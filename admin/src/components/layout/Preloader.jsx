@@ -29,7 +29,7 @@ export default function Preloader() {
   return (
     <div id="preloader" className={hide ? 'hide' : ''} aria-hidden={hide}>
       <div className="loader-logo">
-        Creator<span className="grad-text">TZ</span>{' '}
+        Mtonyo<span className="logo-plus">+</span>{' '}
         <span style={{ fontSize: 15, color: 'var(--gold)' }}>ADMIN</span>
       </div>
       <div className="loader-bar">

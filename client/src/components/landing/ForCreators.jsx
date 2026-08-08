@@ -45,7 +45,7 @@ export default function ForCreators() {
             Your Content. Your Price. <span className="grad-text">Your Money.</span>
           </h2>
           <p>
-            Stop giving your best work away for free. CreatorTZ flips the model — your fans pay
+            Stop giving your best work away for free. Mtonyo+ flips the model — your fans pay
             first, then the world watches with ads. Either way, you earn.
           </p>
 

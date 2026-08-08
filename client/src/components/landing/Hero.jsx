@@ -42,7 +42,7 @@ export default function Hero() {
               <span className="btn-label-full">Start Earning Today</span>
               <span className="btn-label-short">Start Earning</span>
             </button>
-            <button className="btn btn-ghost" onClick={() => navigate('/watch')}>
+            <button className="btn btn-ghost" onClick={() => navigate('/watch/behind-the-fame')}>
               <PlayCircle />
               <span className="btn-label-full">Watch a Premiere</span>
               <span className="btn-label-short">Watch Premiere</span>
@@ -75,7 +75,7 @@ export default function Hero() {
               </div>
             </div>
           ))}
-          <PhoneMockup onUnlock={() => navigate('/watch')} />
+          <PhoneMockup onUnlock={() => navigate('/watch/behind-the-fame')} />
         </Reveal>
       </div>
 

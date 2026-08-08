@@ -7,6 +7,7 @@ import {
   FLAGGED_CONTENT,
   INITIAL_FEED,
   OVERVIEW_WITHDRAWALS,
+  REVIEW_QUEUE,
   USERS,
   VIDEOS,
   WITHDRAWAL_QUEUE,
@@ -34,6 +35,7 @@ export function AdminDataProvider({ children }) {
   const overviewWithdrawals = useCollection(OVERVIEW_WITHDRAWALS)
   const deletionRequests = useCollection(DELETION_REQUESTS)
   const flagged = useCollection(FLAGGED_CONTENT)
+  const reviewQueue = useCollection(REVIEW_QUEUE)
 
   /* ---------- live activity feed ---------- */
   const [feed, setFeed] = useState(INITIAL_FEED)
@@ -62,6 +64,7 @@ export function AdminDataProvider({ children }) {
     overviewWithdrawals,
     deletionRequests,
     flagged,
+    reviewQueue,
     feed,
     startFeed,
     stopFeed,

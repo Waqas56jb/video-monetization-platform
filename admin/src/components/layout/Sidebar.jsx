@@ -19,7 +19,9 @@ export default function Sidebar({ open, onClose, onLogout }) {
           <span className="logo-mark">
             <Play />
           </span>
-          Creator<span className="grad-purple">TZ</span>
+          <span className="logo-word">
+            Mtonyo<span className="logo-plus">+</span>
+          </span>
         </div>
         <span className="admin-tag">SUPER ADMIN</span>
 

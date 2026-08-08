@@ -12,6 +12,7 @@ import AnalyticsTab from '@/components/tabs/AnalyticsTab'
 import UsersTab from '@/components/tabs/UsersTab'
 import CreatorsTab from '@/components/tabs/CreatorsTab'
 import VideosTab from '@/components/tabs/VideosTab'
+import ReviewTab from '@/components/tabs/ReviewTab'
 import ModerationTab from '@/components/tabs/ModerationTab'
 import PaymentsTab from '@/components/tabs/PaymentsTab'
 import WithdrawalsTab from '@/components/tabs/WithdrawalsTab'
@@ -58,6 +59,7 @@ function Router() {
         <Route path="/users" element={<UsersTab />} />
         <Route path="/creators" element={<CreatorsTab />} />
         <Route path="/videos" element={<VideosTab />} />
+        <Route path="/review" element={<ReviewTab />} />
         <Route path="/moderation" element={<ModerationTab />} />
         <Route path="/payments" element={<PaymentsTab />} />
         <Route path="/withdrawals" element={<WithdrawalsTab />} />

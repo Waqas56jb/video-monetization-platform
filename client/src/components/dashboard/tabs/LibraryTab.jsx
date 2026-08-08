@@ -25,7 +25,7 @@ export default function LibraryTab() {
 
       <div className="lib-grid">
         {LIBRARY_VIDEOS.map((v) => (
-          <VideoCard key={v.id} video={v} onClick={() => navigate('/watch')} />
+          <VideoCard key={v.id} video={v} onClick={() => navigate(`/watch/${v.id}`)} />
         ))}
       </div>
     </div>

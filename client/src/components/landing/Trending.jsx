@@ -31,7 +31,7 @@ export default function Trending() {
               video={v}
               reveal
               delay={i}
-              onClick={() => navigate('/watch')}
+              onClick={() => navigate(`/watch/${v.id}`)}
             />
           ))}
         </div>

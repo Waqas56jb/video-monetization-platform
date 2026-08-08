@@ -1,16 +1,19 @@
 /* =========================================================================
-   CreatorTZ — global stylesheet
+   Mtonyo+ — global stylesheet
    Ported 1:1 from the original single-file build, then extended with
    extra responsive / touch / safe-area rules (see bottom of file).
    ========================================================================= */
 :root{
-  --bg:#0a0a12; --bg2:#0f0f1a; --card:#14141f; --card2:#191927;
-  --border:rgba(124,58,237,.18); --border2:rgba(255,255,255,.07);
+  /* Cinematic base — near-black rather than purple-tinted, so artwork and
+     creators are the brightest thing on screen. Purple and gold are used as
+     accents only, not as background colour. */
+  --bg:#06060a; --bg2:#0b0b11; --card:#101017; --card2:#15151d;
+  --border:rgba(124,58,237,.16); --border2:rgba(255,255,255,.06);
   --purple:#7c3aed; --purple2:#a78bfa; --violet:#8b5cf6;
   --gold:#f5c518; --gold2:#ffd94a; --green:#22c55e;
-  --text:#f4f4f8; --muted:#a3a3b8; --muted2:#6b6b80;
-  --radius:18px; --shadow:0 24px 60px -12px rgba(0,0,0,.55);
-  --glow:0 0 60px rgba(124,58,237,.35);
+  --text:#f4f4f8; --muted:#a1a1b0; --muted2:#6b6b7d;
+  --radius:18px; --shadow:0 30px 70px -18px rgba(0,0,0,.7);
+  --glow:0 0 40px rgba(124,58,237,.22);
   --header-h:76px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -967,3 +970,287 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .watch-header .nav{padding-block:8px}
   .watch-wrap{padding-top:70px;padding-bottom:40px}
 }
+
+/* =========================================================================
+   MTONYO+ BRAND + CINEMATIC HERO
+   Client feedback: "too colorful/template-like — use a darker, more cinematic
+   premium base, reduce the excessive purple/yellow glow, use purple and yellow
+   more selectively as accents. The movies, music, shows and creators should be
+   the stars." Structure is deliberately unchanged; only tone and type.
+   ========================================================================= */
+
+/* --- wordmark --- */
+.logo-word{font-family:'Sora',sans-serif;font-weight:800;letter-spacing:-.6px;white-space:nowrap}
+.logo-plus{color:var(--gold);margin-left:1px}
+.brand-accent{color:var(--gold2)}
+
+/* --- calm the ambient glow right down --- */
+.aurora span{opacity:.26;filter:blur(150px)}
+.aurora .a1{background:#3b1d78}
+.aurora .a2{background:#241050}
+.aurora .a3{width:300px;height:300px;background:rgba(245,197,24,.07);opacity:.5}
+.logo-mark{box-shadow:0 8px 24px -10px rgba(124,58,237,.55)}
+.logo-mark::after{opacity:.28;filter:blur(10px)}
+.btn-gold{box-shadow:0 10px 30px -14px rgba(245,197,24,.42)}
+.btn-gold:hover{box-shadow:0 16px 38px -14px rgba(245,197,24,.5)}
+.btn-purple{box-shadow:0 10px 30px -14px rgba(124,58,237,.45)}
+
+/* --- hero: cinematic frame --- */
+.hero-bg img{opacity:.32;filter:contrast(1.08) saturate(.85)}
+.hero-bg::after{
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 0%,transparent 30%,rgba(6,6,10,.55) 75%,var(--bg) 100%),
+    linear-gradient(180deg,rgba(6,6,10,.55) 0%,rgba(6,6,10,.72) 50%,var(--bg) 97%),
+    radial-gradient(ellipse at 22% 34%,rgba(124,58,237,.16),transparent 58%);
+}
+
+/* --- hero: refined typography --- */
+.hero .badge{
+  background:rgba(255,255,255,.04);
+  border-color:rgba(255,255,255,.1);
+  color:#c9c9d6;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:1.6px;
+  padding:7px 15px;
+  backdrop-filter:blur(10px);
+}
+.hero h1{
+  font-size:clamp(38px,5.1vw,66px);
+  line-height:1.05;
+  letter-spacing:-1.6px;
+  margin:26px 0 22px;
+  text-wrap:balance;
+}
+/* one static gold accent instead of an animated shine across the headline */
+.hero h1 .grad-text{
+  background:linear-gradient(180deg,#ffe9a3 0%,var(--gold) 62%,#d8a406 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  background-size:auto;
+  animation:none;
+}
+.hero-sub{
+  font-size:17.5px;
+  line-height:1.72;
+  color:#9a9aab;
+  letter-spacing:.1px;
+  max-width:520px;
+}
+.hero-sub b{color:#e9e9f2;font-weight:600}
+
+/* --- hero: stats read as data, not decoration --- */
+.hero-stats{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  background:rgba(255,255,255,.022);
+  border-color:rgba(255,255,255,.075);
+  border-radius:16px;
+  backdrop-filter:blur(16px);
+}
+.hstat b{
+  color:#f2f2f7;
+  font-size:clamp(17px,2.1vw,24px);
+  letter-spacing:-.4px;
+}
+/* gold appears once, on the money number */
+.hstat:last-child b{color:var(--gold)}
+.hstat span{color:#7b7b8c;letter-spacing:.7px}
+
+/* the phone mock is the product shot — let it sit calmer in the frame */
+.phone{box-shadow:0 40px 90px -30px rgba(0,0,0,.85),0 0 60px -30px rgba(124,58,237,.5)}
+
+@media(max-width:900px){
+  .hero h1{font-size:clamp(34px,7.4vw,52px);letter-spacing:-1.2px}
+  .hero-sub{font-size:16.5px}
+}
+@media(max-width:600px){
+  .hero .badge{font-size:10.5px;letter-spacing:1.3px;padding:6px 13px}
+  .hero h1{margin:20px 0 18px}
+  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* 2×2 needs a horizontal rule between the rows, not just vertical ones */
+  .hstat:nth-child(2n)::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:1px;background:var(--border2)}
+  .hstat:nth-child(odd)::before{display:none}
+  .hstat:nth-child(n+3){border-top:1px solid var(--border2)}
+}
+
+/* very small phones: stats read better as labelled rows than a cramped 2×2 */
+@media(max-width:380px){
+  .hero-stats{grid-template-columns:1fr;border-radius:14px}
+  .hstat{padding:13px 14px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .hstat::before,.hstat:nth-child(2n)::before{display:none !important}
+  .hstat+.hstat{border-top:1px solid var(--border2)}
+  .hstat:nth-child(n+3){border-top:1px solid var(--border2)}
+  .hstat b{font-size:17px;margin:0}
+  .hstat span{font-size:10.5px;margin:0;text-align:right}
+}
+
+/* =========================================================================
+   PAYWALL — must fit on one phone screen, no scrolling, CTA never cut off.
+   Every size is viewport-aware (vh/vw clamps) so the card shrinks to fit
+   instead of overflowing on short screens.
+   ========================================================================= */
+.paywall{
+  display:none;
+  place-items:center;
+  padding:clamp(12px,3vw,24px);
+  background:rgba(6,6,10,.86);
+  backdrop-filter:blur(16px);
+  overflow-y:auto;
+}
+.paywall.show{display:grid;animation:fadeIn .45s}
+
+.paywall-card{
+  width:100%;
+  max-width:400px;
+  text-align:center;
+  padding:0;
+  margin:auto;
+}
+.pw-lock{
+  width:clamp(52px,8.5vh,74px);
+  height:clamp(52px,8.5vh,74px);
+  margin:0 auto clamp(10px,1.8vh,18px);
+  border-radius:22px;
+  background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(124,58,237,.06));
+  border:1px solid var(--border);
+  display:grid;place-items:center;
+  color:var(--gold);
+  box-shadow:0 10px 30px -14px rgba(124,58,237,.6);
+  animation:none;
+}
+.pw-lock svg{width:44%;height:44%}
+
+.paywall-card h3{
+  font-size:clamp(18px,4.7vw,23px);
+  font-weight:800;
+  letter-spacing:-.4px;
+  margin:0 0 6px;
+  color:#fff;
+}
+.pw-sub{
+  font-size:clamp(12.5px,3.4vw,14.5px);
+  line-height:1.5;
+  color:var(--muted);
+  margin:0 0 clamp(12px,2.2vh,20px);
+}
+.pw-price{
+  font-family:'Sora',sans-serif;
+  font-size:clamp(30px,8.5vw,42px);
+  font-weight:800;
+  line-height:1;
+  letter-spacing:-1px;
+  color:var(--gold);
+  margin:0 0 5px;
+}
+.pw-terms{
+  font-size:clamp(11.5px,3vw,13px);
+  color:var(--muted2);
+  margin:0 0 clamp(14px,2.4vh,22px);
+  letter-spacing:.2px;
+}
+.pw-cta{
+  padding:clamp(13px,2.2vh,17px) 18px;
+  font-size:clamp(13px,3.5vw,15px);
+  letter-spacing:.3px;
+  white-space:normal;
+}
+.pw-methods{
+  margin-top:clamp(9px,1.6vh,14px);
+  font-size:clamp(10.5px,2.9vw,12px);
+  color:var(--muted2);
+  letter-spacing:.6px;
+}
+
+/* the locked frame grows just enough for the compact card — no more */
+@media(max-width:820px){
+  .player.is-locked > img{height:auto;min-height:min(74vh,470px);object-position:center 30%}
+}
+/* landscape phones: the card is already vh-driven, keep the frame sensible */
+@media(max-height:540px) and (orientation:landscape){
+  .player.is-locked > img{min-height:min(92vh,330px)}
+  .pw-lock{display:none}
+}
+
+/* =========================================================================
+   CREATOR SUBMISSIONS — review status is the creator's only publishing signal
+   ========================================================================= */
+.notice-review{
+  background:rgba(124,58,237,.08);
+  border-color:var(--border);
+  color:#cfc4f5;
+}
+.notice-review svg{color:var(--purple2)}
+
+.sub-list{display:flex;flex-direction:column;gap:14px}
+.sub-item{
+  display:flex;gap:14px;
+  padding:14px;
+  border:1px solid var(--border2);
+  border-radius:16px;
+  background:rgba(255,255,255,.015);
+  transition:.3s;
+}
+.sub-item img{width:92px;height:58px;border-radius:11px;object-fit:cover;flex-shrink:0}
+.sub-item.is-rejected{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)}
+.sub-item.is-pending{border-color:rgba(245,197,24,.26)}
+.sub-info{min-width:0;display:flex;flex-direction:column;gap:5px;flex:1}
+.sub-info b{font-family:'Sora',sans-serif;font-size:14.5px;line-height:1.35}
+.sub-info>small{font-size:12px;color:var(--muted2)}
+.sub-status{align-self:flex-start;margin-top:3px;gap:6px;display:inline-flex;align-items:center}
+.sub-status svg{width:12px;height:12px}
+.sub-note{font-size:12.2px;color:var(--muted);line-height:1.5;margin-top:2px}
+.sub-reason{color:#fca5a5}
+.sub-reason b{color:#fecaca;font-family:'Inter',sans-serif}
+.sub-resubmit{align-self:flex-start;margin-top:8px}
+
+@media(max-width:600px){
+  .sub-item{flex-direction:column}
+  .sub-item img{width:100%;height:132px}
+  .sub-resubmit{width:100%;justify-content:center}
+}
+
+/* A toast is informational — it must never swallow a tap meant for the UI
+   underneath it (on a 320px phone it overlaps the open nav drawer). */
+#toast{pointer-events:none}
+
+/* --- hero polish -----------------------------------------------------------
+   1. A money figure must never break across lines ("TZS 142 M+").
+   2. The floating proof-cards are decoration; they must never sit on top of
+      the phone's headline or its unlock button, which are the actual story. */
+.hstat b{white-space:nowrap}
+.hstat b span{white-space:nowrap}
+
+.hero-visual{width:min(100%,470px);margin-inline:auto}
+.float-card{max-width:216px;padding:12px 15px}
+.float-card b{font-size:13px;line-height:1.25}
+.float-card small{font-size:11px}
+.float-card .ic{width:36px;height:36px;border-radius:11px}
+.float-card .ic svg{width:17px;height:17px}
+.fc1{top:2%;left:-9%}
+.fc2{top:44%;right:-11%;bottom:auto}
+.fc3{bottom:1%;left:-5%}
+
+@media(max-width:1200px){
+  .fc1{left:-4%}
+  .fc2{right:-5%}
+  .fc3{left:-2%}
+}
+
+/* `.hstat span` styles the LABEL, but CountUp also renders a <span> inside the
+   <b>, so it was inheriting display:block and the small label font — which is
+   what split "TZS 142 M+" across three lines. Reset it back to inline. */
+.hstat b span{
+  display:inline;
+  font-size:inherit;
+  font-weight:inherit;
+  color:inherit;
+  line-height:inherit;
+  letter-spacing:inherit;
+  text-transform:none;
+  text-align:inherit;
+  margin:0;
+  overflow-wrap:normal;
+}
+
+/* the creator submission list needs the rejected/info pill tones too */
+.pill.bad{background:rgba(239,68,68,.13);color:#fca5a5}
+.pill.info{background:rgba(56,189,248,.12);color:#38bdf8}

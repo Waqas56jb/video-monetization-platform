@@ -1,14 +1,22 @@
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 
-/** The `Creator TZ` wordmark + glowing play badge. */
+/**
+ * The Mtonyo+ wordmark.
+ *
+ * The "+" is the single brand accent — when the client sends the final logo
+ * artwork, swap the <span className="logo-mark"> block for an <img> and the
+ * rest of the layout keeps working unchanged.
+ */
 export default function Logo({ to = '/', className = '', onClick }) {
   return (
-    <Link className={`logo ${className}`.trim()} to={to} onClick={onClick} aria-label="CreatorTZ home">
+    <Link className={`logo ${className}`.trim()} to={to} onClick={onClick} aria-label="Mtonyo+ home">
       <span className="logo-mark">
         <Play />
       </span>
-      Creator<span className="grad-purple">TZ</span>
+      <span className="logo-word">
+        Mtonyo<span className="logo-plus">+</span>
+      </span>
     </Link>
   )
 }
