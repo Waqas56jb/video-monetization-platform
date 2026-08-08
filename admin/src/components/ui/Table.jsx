@@ -43,11 +43,29 @@ export function EmptyRow({ colSpan, children = 'No matching records.' }) {
   )
 }
 
-/** Avatar + name + sub-line cell used by the user/creator tables. */
+/** Initials, for the many real accounts that have no picture. */
+export const initialsOf = (name = '') =>
+  String(name)
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join('') || '?'
+
+/**
+ * Avatar + name + sub-line cell used by the user/creator tables.
+ *
+ * Real people mostly have not uploaded a picture, so an <img> with no src
+ * would render as a broken-image icon on every row. Initials instead.
+ */
 export function UserCell({ avatar, name, sub }) {
   return (
     <div className="u-cell">
-      <img src={avatar} alt="" loading="lazy" />
+      {avatar ? (
+        <img src={avatar} alt="" loading="lazy" />
+      ) : (
+        <span className="u-initials">{initialsOf(name)}</span>
+      )}
       <div>
         <b>{name}</b>
         {sub && <small>{sub}</small>}
@@ -60,7 +78,11 @@ export function UserCell({ avatar, name, sub }) {
 export function VideoCell({ thumb, title, meta }) {
   return (
     <div className="v-cell">
-      <img className="v-thumb" src={thumb} alt="" loading="lazy" />
+      {thumb ? (
+        <img className="v-thumb" src={thumb} alt="" loading="lazy" />
+      ) : (
+        <span className="v-thumb v-thumb-blank" aria-hidden="true" />
+      )}
       {meta ? (
         <div>
           <b>{title}</b>

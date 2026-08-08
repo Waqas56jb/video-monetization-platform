@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, LogIn, Shield, ShieldCheck } from 'lucide-react'
 import Field from '@/components/ui/Field'
-import { IMG } from '@/data/adminData'
+import { IMG } from '@/data/brand'
 import { useAuth } from '@/context/AuthContext'
 
 /**

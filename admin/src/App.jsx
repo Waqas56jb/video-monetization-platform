@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { ToastProvider, useToast } from '@/context/ToastContext'
 import { ConfirmProvider } from '@/context/ConfirmContext'
-import { AdminDataProvider } from '@/context/AdminDataContext'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { NotificationsProvider } from '@/context/NotificationsContext'
 import Preloader from '@/components/layout/Preloader'
@@ -101,11 +100,9 @@ export default function App() {
       <ConfirmProvider>
         <AuthProvider>
           <NotificationsProvider>
-            <AdminDataProvider>
-              <Preloader />
-              <BackgroundFX />
-              <Router />
-            </AdminDataProvider>
+            <Preloader />
+            <BackgroundFX />
+            <Router />
           </NotificationsProvider>
         </AuthProvider>
       </ConfirmProvider>

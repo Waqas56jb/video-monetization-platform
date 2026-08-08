@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react'
 import Field from '@/components/ui/Field'
-import { IMG } from '@/data/adminData'
+import { IMG } from '@/data/brand'
 import api from '@/lib/api'
 
 /**
