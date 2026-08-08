@@ -35,8 +35,24 @@ async function cf(pathname, { method = 'GET', body, headers = {} } = {}) {
   }
 
   if (!res.ok || json.success === false) {
-    const detail = json?.errors?.map((e) => e.message).join('; ') || res.statusText
-    throw new Error(`Cloudflare Stream: ${detail}`)
+    // Cloudflare puts the generic failure in `errors` but the ACTUAL reason in
+    // `messages` — e.g. errors says "Authorization Failure" while messages says
+    // "Cloudflare Stream not enabled". Surface both or the cause is invisible.
+    const errors = json?.errors?.map((e) => e.message).filter(Boolean) || []
+    const messages = json?.messages?.map((m) => m.message ?? m).filter(Boolean) || []
+    const detail = [...new Set([...messages, ...errors])].join(' — ') || res.statusText
+
+    const err = new Error(`Cloudflare Stream: ${detail}`)
+    err.status = res.status === 403 ? 503 : res.status
+    err.expected = true
+
+    if (/not enabled/i.test(detail)) {
+      err.message =
+        'Cloudflare Stream is not enabled on this account. Subscribe to Stream in the ' +
+        'Cloudflare dashboard (Stream → Get started) — the API token is valid but the ' +
+        'service itself has not been activated.'
+    }
+    throw err
   }
   return json.result
 }
