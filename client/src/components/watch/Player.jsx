@@ -19,6 +19,7 @@ export default function Player({
   onSeek,
   onShare,
   onUnlock,
+  onDismissPaywall,
 }) {
   const scrubbing = useRef(false)
 
@@ -111,7 +112,12 @@ export default function Player({
         </div>
       </div>
 
-      <Paywall show={paywalled} price={video.price} onUnlock={onUnlock} />
+      <Paywall
+        show={paywalled}
+        price={video.price}
+        onUnlock={onUnlock}
+        onDismiss={onDismissPaywall}
+      />
     </div>
   )
 }

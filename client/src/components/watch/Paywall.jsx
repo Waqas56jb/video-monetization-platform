@@ -14,7 +14,7 @@ import { LockKeyhole, Zap } from 'lucide-react'
  * Everything must be reachable without scrolling on a phone, so the layout is
  * deliberately compact and the CTA is never pushed below the fold.
  */
-export default function Paywall({ show, price, onUnlock }) {
+export default function Paywall({ show, price, onUnlock, onDismiss }) {
   return (
     <div className={`paywall ${show ? 'show' : ''}`.trim()} aria-hidden={!show}>
       <div className="paywall-card">
@@ -34,6 +34,12 @@ export default function Paywall({ show, price, onUnlock }) {
         </button>
 
         <div className="pw-methods">M-Pesa • Airtel Money</div>
+
+        {/* A paywall must never be a dead end — the viewer can always back out
+            and keep browsing. Pressing play again brings it straight back. */}
+        <button className="pw-later" onClick={onDismiss}>
+          Not now — keep browsing
+        </button>
       </div>
     </div>
   )

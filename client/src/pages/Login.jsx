@@ -24,7 +24,7 @@ export default function Login() {
   const onSubmit = (e) => {
     e.preventDefault()
     showToast('Karibu tena! Logged in successfully')
-    timer.current = setTimeout(() => navigate('/dashboard'), 800)
+    timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 800)
   }
 
   return (

@@ -76,8 +76,21 @@ export default function Watch() {
 
   const togglePlay = useCallback(() => {
     if (paywalled) return
+    // The viewer dismissed the paywall but is still sitting on the paywall
+    // point — pressing play brings the offer straight back rather than
+    // silently doing nothing.
+    if (!unlocked && progress >= video.freePercent) {
+      setPaywalled(true)
+      return
+    }
     setPlaying((p) => !p)
-  }, [paywalled])
+  }, [paywalled, unlocked, progress, video.freePercent])
+
+  /** "Not now" — close the offer so the viewer can browse, read or leave. */
+  const dismissPaywall = useCallback(() => {
+    setPaywalled(false)
+    setPlaying(false)
+  }, [])
 
   // Scrubbing is allowed, but a locked video can never be dragged past the preview.
   // Pointer events cover mouse + touch (Android/iOS).
@@ -169,6 +182,7 @@ export default function Watch() {
           onSeek={onSeek}
           onShare={shareVideo}
           onUnlock={() => setPayOpen(true)}
+          onDismissPaywall={dismissPaywall}
         />
 
         <div className="watch-info">

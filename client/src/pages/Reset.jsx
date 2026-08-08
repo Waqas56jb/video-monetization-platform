@@ -23,7 +23,7 @@ export default function Reset() {
   const onNewPassword = (e) => {
     e.preventDefault()
     showToast('Password updated — log in with your new password')
-    timer.current = setTimeout(() => navigate('/login'), 900)
+    timer.current = setTimeout(() => navigate('/login', { replace: true }), 900)
   }
 
   return (

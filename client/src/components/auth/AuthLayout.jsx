@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, X } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 
 /**
@@ -10,6 +10,18 @@ import Logo from '@/components/ui/Logo'
  * back: { to, label }
  */
 export default function AuthLayout({ side, back, title, subtitle, children }) {
+  const navigate = useNavigate()
+
+  /**
+   * Close always lands somewhere sensible: the previous page if the user
+   * arrived from inside the app, otherwise the homepage. An auth screen must
+   * never be a dead end, even when opened straight from a shared link.
+   */
+  const close = () => {
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/')
+  }
+
   return (
     <div className="page">
       <div className="auth-wrap">
@@ -23,6 +35,10 @@ export default function AuthLayout({ side, back, title, subtitle, children }) {
         </div>
 
         <div className="auth-form-wrap">
+          <button className="auth-close" onClick={close} aria-label="Close and go back">
+            <X />
+          </button>
+
           <div className="auth-card">
             <div className="auth-mobile-brand">
               <Logo />

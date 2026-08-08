@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
@@ -14,6 +15,14 @@ const LINKS = [
 export default function MobileMenu({ open, onClose }) {
   const navigate = useNavigate()
   useLockBodyScroll(open)
+
+  // Escape must always get you out of a full-screen overlay.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   const goTo = (path) => {
     onClose()

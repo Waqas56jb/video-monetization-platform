@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Bell, Menu } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Bell, Home, Menu } from 'lucide-react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
 import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
@@ -50,6 +51,14 @@ export default function Dashboard() {
   }, [])
   useLockBodyScroll(drawerOpen && isMobile)
 
+  // Escape closes the drawer, same as tapping outside it.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e) => e.key === 'Escape' && setDrawerOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   const selectTab = (next) => {
     setTab(next)
     setDrawerOpen(false)
@@ -77,6 +86,11 @@ export default function Dashboard() {
               >
                 <Menu size={22} />
               </button>
+              {/* On mobile the sidebar is a drawer, so without this there is no
+                  visible way back to the public site from the dashboard. */}
+              <Link className="dash-home" to="/" aria-label="Back to Mtonyo+ home">
+                <Home size={19} />
+              </Link>
               <div className="dash-titles">
                 <h1>{title}</h1>
                 <p>{subtitle}</p>

@@ -24,7 +24,7 @@ export default function Signup() {
   const onSubmit = (e) => {
     e.preventDefault()
     showToast('🎉 Account created! Karibu Mtonyo+')
-    timer.current = setTimeout(() => navigate('/dashboard'), 900)
+    timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 900)
   }
 
   return (
