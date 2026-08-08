@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Crown, Rocket } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
@@ -6,6 +6,7 @@ import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { IMG } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
+import { useRole } from '@/context/RoleContext'
 
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
@@ -15,7 +16,7 @@ const ROLES = [
 export default function Signup() {
   const navigate = useNavigate()
   const showToast = useToast()
-  const [role, setRole] = useState('creator')
+  const { role, setRole } = useRole()
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])

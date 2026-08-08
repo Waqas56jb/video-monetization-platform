@@ -6,17 +6,36 @@ import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
 import UploadTab from '@/components/dashboard/tabs/UploadTab'
 import MyVideosTab from '@/components/dashboard/tabs/MyVideosTab'
 import EarningsTab from '@/components/dashboard/tabs/EarningsTab'
+import PurchasesTab from '@/components/dashboard/tabs/PurchasesTab'
+import BecomeCreatorTab from '@/components/dashboard/tabs/BecomeCreatorTab'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { DASH_TITLES, IMG } from '@/data/content'
 import { useToast } from '@/context/ToastContext'
+import { useRole } from '@/context/RoleContext'
+
+/** Which tabs each role is allowed to open. */
+const TABS_BY_ROLE = {
+  viewer: ['library', 'purchases', 'become'],
+  creator: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings'],
+}
+
+/** Where each role lands when it opens the dashboard. */
+const HOME_TAB = { viewer: 'library', creator: 'overview' }
 
 export default function Dashboard() {
-  const [tab, setTab] = useState('overview')
+  const { role, isCreator } = useRole()
+  const [tab, setTab] = useState(() => HOME_TAB[role])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const showToast = useToast()
-  const [title, subtitle] = DASH_TITLES[tab]
 
-  // Only lock scrolling while the mobile drawer is actually covering the page.
+  // A role change (viewer upgrading to creator, or logging in as the other
+  // role) must never leave the user staring at a tab they can no longer open.
+  useEffect(() => {
+    if (!TABS_BY_ROLE[role].includes(tab)) setTab(HOME_TAB[role])
+  }, [role, tab])
+
+  const [title, subtitle] = DASH_TITLES[tab] || DASH_TITLES.library
+
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
   )
@@ -77,7 +96,7 @@ export default function Dashboard() {
                 <img src={IMG.avatarKonde} alt="" />
                 <div className="dash-avatar-meta">
                   <b>Juma Hassan</b>
-                  <small>Creator Account</small>
+                  <small>{isCreator ? 'Creator Account' : 'Viewer Account'}</small>
                 </div>
               </div>
             </div>
@@ -86,9 +105,11 @@ export default function Dashboard() {
           <div className="dash-body">
             {tab === 'overview' && <OverviewTab />}
             {tab === 'library' && <LibraryTab />}
+            {tab === 'purchases' && <PurchasesTab />}
             {tab === 'upload' && <UploadTab />}
             {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
             {tab === 'earnings' && <EarningsTab />}
+            {tab === 'become' && <BecomeCreatorTab onUpgraded={() => selectTab('overview')} />}
           </div>
         </main>
       </div>

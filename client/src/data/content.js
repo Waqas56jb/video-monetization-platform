@@ -225,6 +225,8 @@ export const DASH_TITLES = {
   upload: ['Upload New Video', 'Upload, price and submit for review — we approve within hours.'],
   videos: ['My Videos', 'Manage your published content and premieres.'],
   earnings: ['Earnings', 'Your money, transparent and withdrawable anytime.'],
+  purchases: ['My Purchases', 'Every video you have paid for, and how you paid.'],
+  become: ['Become a Creator', 'Start selling your own videos on Mtonyo+.'],
 }
 
 export const OVERVIEW_STATS = [
@@ -450,4 +452,148 @@ export const MY_SUBMISSIONS = [
     reason:
       'Audio contains a copyrighted track between 02:10 and 04:35. Replace or license the track and resubmit.',
   },
+]
+
+/* =========================================================================
+   EXPLORE CATALOG
+   Discovery on Mtonyo+ happens mainly through shared social links, but a
+   signed-in viewer still needs somewhere to browse. This is that catalogue —
+   a simple searchable grid, not a ranked feed.
+   ========================================================================= */
+
+export const CATEGORIES = ['All', 'Music', 'Concert', 'Documentary', 'Comedy', 'Lifestyle']
+
+export const ACCESS_FILTERS = ['All Access', 'PPV Forever', 'Paid Premiere', 'Free With Ads']
+
+export const CATALOG = [
+  {
+    id: 'behind-the-fame',
+    title: 'Harmonize — Behind The Fame',
+    thumb: IMG.premiere,
+    time: '20:14',
+    author: 'Konde Gang Official',
+    avatar: IMG.avatarKonde,
+    category: 'Documentary',
+    access: 'Paid Premiere',
+    tag: { label: 'PAID PREMIERE', cls: 'tag-prem' },
+    price: 'TZS 500',
+    priceNote: '7 days left · then free',
+    views: '25,430',
+  },
+  {
+    id: 'the-journey',
+    title: 'The Journey — Live From Dar',
+    thumb: IMG.journey,
+    time: '45:02',
+    author: 'Zuchu Studio',
+    avatar: IMG.avatarZuchu,
+    category: 'Concert',
+    access: 'PPV Forever',
+    tag: { label: 'PPV FOREVER', cls: 'tag-ppv' },
+    price: 'TZS 1,000',
+    priceNote: 'Own it forever',
+    views: '35,120',
+  },
+  {
+    id: 'studio-session',
+    title: 'Studio Session Live Vol. 3',
+    thumb: IMG.studio,
+    time: '32:47',
+    author: 'Marioo Music',
+    avatar: IMG.avatarMarioo,
+    category: 'Music',
+    access: 'PPV Forever',
+    tag: { label: 'PPV FOREVER', cls: 'tag-ppv' },
+    price: 'TZS 800',
+    priceNote: 'Own it forever',
+    views: '21,490',
+  },
+  {
+    id: 'konser-dar',
+    title: 'Konser Dar Live — Full Show',
+    thumb: IMG.konser,
+    time: '18:22',
+    author: 'Rayvanny TV',
+    avatar: IMG.avatarRayvanny,
+    category: 'Concert',
+    access: 'Free With Ads',
+    tag: { label: 'FREE WITH ADS', cls: 'tag-free' },
+    price: 'FREE',
+    priceNote: 'Premiere ended · ads',
+    priceColor: 'var(--green)',
+    views: '18,230',
+  },
+  {
+    id: 'acoustic-vol-2',
+    title: 'Acoustic Session Vol. 2',
+    thumb: IMG.creator,
+    time: '26:05',
+    author: 'Zuchu Studio',
+    avatar: IMG.avatarZuchu,
+    category: 'Music',
+    access: 'Paid Premiere',
+    tag: { label: 'PAID PREMIERE', cls: 'tag-prem' },
+    price: 'TZS 600',
+    priceNote: '14 days left · then free',
+    views: '9,840',
+  },
+  {
+    id: 'voices-of-bongo',
+    title: 'Voices of Bongo Ep.1',
+    thumb: IMG.authSignup,
+    time: '28:14',
+    author: 'Nandy Official',
+    avatar: IMG.avatarZuchu,
+    category: 'Documentary',
+    access: 'Paid Premiere',
+    tag: { label: 'PAID PREMIERE', cls: 'tag-prem' },
+    price: 'TZS 800',
+    priceNote: '30 days left · then free',
+    views: '12,310',
+  },
+  {
+    id: 'night-life-dar',
+    title: 'Night Life Dar Ep.9',
+    thumb: IMG.authReset,
+    time: '15:38',
+    author: 'Street Vibes TZ',
+    avatar: IMG.avatarRayvanny,
+    category: 'Lifestyle',
+    access: 'Free With Ads',
+    tag: { label: 'FREE WITH ADS', cls: 'tag-free' },
+    price: 'FREE',
+    priceNote: 'Free · includes ads',
+    priceColor: 'var(--green)',
+    views: '31,720',
+  },
+  {
+    id: 'bongo-comedy-night',
+    title: 'Bongo Comedy Night — Live',
+    thumb: IMG.authLogin,
+    time: '52:11',
+    author: 'Marioo Music',
+    avatar: IMG.avatarMarioo,
+    category: 'Comedy',
+    access: 'PPV Forever',
+    tag: { label: 'PPV FOREVER', cls: 'tag-ppv' },
+    price: 'TZS 1,200',
+    priceNote: 'Own it forever',
+    views: '7,260',
+  },
+]
+
+/* ---------- VIEWER: purchase history ---------- */
+export const VIEWER_STATS = [
+  { icon: 'library', label: 'Videos Owned', value: '32' },
+  { icon: 'coins', tone: 'gold', label: 'Total Spent', value: 'TZS 24,500' },
+  { icon: 'eye', tone: 'green', label: 'Hours Watched', value: '48.5' },
+  { icon: 'ticket', label: 'This Month', value: '6 purchases' },
+]
+
+export const VIEWER_PURCHASES = [
+  { id: 'p-1', date: '28 May', video: 'Harmonize — Behind The Fame', creator: 'Konde Gang', method: 'Airtel Money', amount: 'TZS 500', status: 'Unlocked', pill: 'ok' },
+  { id: 'p-2', date: '12 May', video: 'The Journey — Live From Dar', creator: 'Zuchu Studio', method: 'M-Pesa', amount: 'TZS 1,000', status: 'Unlocked', pill: 'ok' },
+  { id: 'p-3', date: '03 May', video: 'Studio Session Live Vol. 3', creator: 'Marioo Music', method: 'M-Pesa', amount: 'TZS 800', status: 'Unlocked', pill: 'ok' },
+  { id: 'p-4', date: '27 Apr', video: 'Bongo Comedy Night — Live', creator: 'Marioo Music', method: 'M-Pesa', amount: 'TZS 1,200', status: 'Unlocked', pill: 'ok' },
+  { id: 'p-5', date: '19 Apr', video: 'Acoustic Session Vol. 2', creator: 'Zuchu Studio', method: 'Airtel Money', amount: 'TZS 600', status: 'Refunded', pill: 'pend' },
 ]

@@ -37,7 +37,7 @@ export default function Trending() {
         </div>
 
         <Reveal className="center" style={{ marginTop: 44 }}>
-          <button className="btn btn-ghost" onClick={() => navigate('/signup')}>
+          <button className="btn btn-ghost" onClick={() => navigate('/explore')}>
             <LayoutGrid />
             Explore All Videos
           </button>

@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 
 const LINKS = [
+  { to: '/explore', label: 'Explore' },
   { href: '#trending', label: 'Trending' },
   { href: '#how', label: 'How it Works' },
   { href: '#features', label: 'Features' },
@@ -24,11 +25,17 @@ export default function MobileMenu({ open, onClose }) {
       <button className="close-m" onClick={onClose} aria-label="Close menu">
         <X />
       </button>
-      {LINKS.map((l) => (
-        <a key={l.href} href={l.href} onClick={onClose}>
-          {l.label}
-        </a>
-      ))}
+      {LINKS.map((l) =>
+        l.to ? (
+          <button key={l.to} className="mm-link" onClick={() => goTo(l.to)}>
+            {l.label}
+          </button>
+        ) : (
+          <a key={l.href} href={l.href} onClick={onClose}>
+            {l.label}
+          </a>
+        )
+      )}
       <div className="mobile-menu-actions">
         <button className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
           Log in

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { LogIn, Menu, Sparkles } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import MobileMenu from './MobileMenu'
 import useScrolled from '@/hooks/useScrolled'
 
 const NAV_LINKS = [
+  { to: '/explore', label: 'Explore' },
   { href: '#trending', label: 'Trending' },
   { href: '#how', label: 'How it Works' },
   { href: '#features', label: 'Features' },
@@ -25,11 +26,17 @@ export default function Header() {
         <div className="container nav">
           <Logo />
           <nav className="nav-links">
-            {NAV_LINKS.map((l) => (
-              <a key={l.href} href={l.href}>
-                {l.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((l) =>
+              l.to ? (
+                <Link key={l.to} to={l.to}>
+                  {l.label}
+                </Link>
+              ) : (
+                <a key={l.href} href={l.href}>
+                  {l.label}
+                </a>
+              )
+            )}
           </nav>
           <div className="nav-cta">
             <button className="btn btn-ghost btn-sm nav-cta-login" onClick={() => navigate('/login')}>
