@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowLeft, Search, SlidersHorizontal, X } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
 import { ACCESS_FILTERS, CATALOG, CATEGORIES } from '@/data/content'
+import { useRole } from '@/context/RoleContext'
 
 /**
  * Browse everything on the platform.
@@ -15,6 +16,7 @@ import { ACCESS_FILTERS, CATALOG, CATEGORIES } from '@/data/content'
  */
 export default function Explore() {
   const navigate = useNavigate()
+  const { authed } = useRole()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [access, setAccess] = useState('All Access')
@@ -32,6 +34,9 @@ export default function Explore() {
 
   const filtered = query || category !== 'All' || access !== 'All Access'
 
+  /** Signed-in users belong back in the dashboard; visitors go to the site. */
+  const goBack = () => navigate(authed ? '/dashboard' : '/')
+
   const reset = () => {
     setQuery('')
     setCategory('All')
@@ -44,6 +49,13 @@ export default function Explore() {
 
       <section className="explore">
         <div className="container">
+          {/* Reached from the creator/viewer menu as well as the public site,
+              so it always offers the matching way back. */}
+          <button className="explore-back" onClick={goBack}>
+            <ArrowLeft />
+            {authed ? 'Back to dashboard' : 'Back to home'}
+          </button>
+
           <div className="explore-head">
             <h1>
               Explore <span className="brand-accent">MTONYO+</span>

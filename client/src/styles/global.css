@@ -1483,3 +1483,19 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 .loader-logo{letter-spacing:.8px}
 .crash-mark{letter-spacing:.8px}
 @media(max-width:380px){.logo-word{letter-spacing:.3px}}
+
+/* --- explore: a way back, whichever side you arrived from --- */
+.explore-back{
+  display:inline-flex;align-items:center;gap:8px;
+  margin-bottom:20px;
+  padding:9px 16px 9px 12px;
+  border-radius:99px;
+  border:1px solid var(--border2);
+  background:rgba(255,255,255,.03);
+  color:var(--muted);
+  font-size:13.5px;font-weight:600;
+  transition:.3s;
+}
+.explore-back:hover{color:#fff;border-color:var(--purple);background:rgba(124,58,237,.12)}
+.explore-back svg{width:16px;height:16px}
+@media(max-width:600px){.explore-back{margin-bottom:16px;padding:8px 14px 8px 10px;font-size:13px}}

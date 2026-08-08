@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LogIn, Menu, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Library, LogIn, Menu, Sparkles } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import MobileMenu from './MobileMenu'
 import useScrolled from '@/hooks/useScrolled'
+import { useRole } from '@/context/RoleContext'
 
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -19,6 +20,7 @@ export default function Header() {
   const scrolled = useScrolled(40)
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const { authed } = useRole()
 
   return (
     <>
@@ -39,18 +41,46 @@ export default function Header() {
             )}
           </nav>
           <div className="nav-cta">
-            <button className="btn btn-ghost btn-sm nav-cta-login" onClick={() => navigate('/login')}>
-              <LogIn size={18} />
-              <span className="btn-label">Log in</span>
-            </button>
-            <button
-              className="btn btn-gold btn-sm nav-cta-primary"
-              onClick={() => navigate('/signup')}
-            >
-              <Sparkles size={18} />
-              <span className="btn-label-full">Start Creating</span>
-              <span className="btn-label-short">Create</span>
-            </button>
+            {/* A signed-in user must never be shown "Log in" with no route back
+                to their own dashboard — that is how they got stranded on
+                /explore after opening it from the creator menu. */}
+            {authed ? (
+              <>
+                <button
+                  className="btn btn-ghost btn-sm nav-cta-login"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <Library size={18} />
+                  <span className="btn-label">My Library</span>
+                </button>
+                <button
+                  className="btn btn-gold btn-sm nav-cta-primary"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <LayoutDashboard size={18} />
+                  <span className="btn-label-full">Dashboard</span>
+                  <span className="btn-label-short">Dash</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn btn-ghost btn-sm nav-cta-login"
+                  onClick={() => navigate('/login')}
+                >
+                  <LogIn size={18} />
+                  <span className="btn-label">Log in</span>
+                </button>
+                <button
+                  className="btn btn-gold btn-sm nav-cta-primary"
+                  onClick={() => navigate('/signup')}
+                >
+                  <Sparkles size={18} />
+                  <span className="btn-label-full">Start Creating</span>
+                  <span className="btn-label-short">Create</span>
+                </button>
+              </>
+            )}
             <button
               className="hamburger"
               type="button"

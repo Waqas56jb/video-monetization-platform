@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import { useRole } from '@/context/RoleContext'
 
 const LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -14,6 +15,7 @@ const LINKS = [
 /** Full-screen mobile navigation overlay. */
 export default function MobileMenu({ open, onClose }) {
   const navigate = useNavigate()
+  const { authed } = useRole()
   useLockBodyScroll(open)
 
   // Escape must always get you out of a full-screen overlay.
@@ -46,12 +48,25 @@ export default function MobileMenu({ open, onClose }) {
         )
       )}
       <div className="mobile-menu-actions">
-        <button className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
-          Log in
-        </button>
-        <button className="btn btn-gold btn-block" onClick={() => goTo('/signup')}>
-          Start Creating
-        </button>
+        {authed ? (
+          <>
+            <button className="btn btn-ghost btn-block" onClick={() => goTo('/dashboard')}>
+              My Library
+            </button>
+            <button className="btn btn-gold btn-block" onClick={() => goTo('/dashboard')}>
+              Go to Dashboard
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
+              Log in
+            </button>
+            <button className="btn btn-gold btn-block" onClick={() => goTo('/signup')}>
+              Start Creating
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

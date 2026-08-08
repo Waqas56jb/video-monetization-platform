@@ -16,13 +16,14 @@ const ROLES = [
 export default function Signup() {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role, setRole } = useRole()
+  const { role, setRole, signIn } = useRole()
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
   const onSubmit = (e) => {
     e.preventDefault()
+    signIn(role)
     showToast('🎉 Account created! Karibu MTONYO+')
     timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 900)
   }

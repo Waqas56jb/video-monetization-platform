@@ -57,9 +57,10 @@ const GROUPS = [
 export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role } = useRole()
+  const { role, signOut } = useRole()
 
   const logout = () => {
+    signOut()
     navigate('/')
     showToast('Logged out — see you soon!')
   }

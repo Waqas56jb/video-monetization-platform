@@ -2,17 +2,24 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { getItem, setItem } from '@/lib/safeStorage'
 
 /**
- * Who is signed in: a viewer (watches and buys) or a creator (also uploads,
- * prices and earns). One account can do both — a viewer can upgrade — which is
- * why this is a single role flag rather than two separate account types.
+ * Who is using the app, and whether they are signed in.
  *
- * V1 keeps it in localStorage so testing on a phone survives a refresh. When
- * Supabase auth lands, this reads the role off the session instead and the rest
- * of the UI keeps working unchanged.
+ * A viewer watches and buys; a creator also uploads, prices and earns. One
+ * account can do both — a viewer can upgrade — so this is a single role flag
+ * rather than two account types.
+ *
+ * `authed` exists so the public chrome can adapt: a signed-in creator browsing
+ * /explore must not be shown "Log in / Start Creating" with no route back to
+ * their dashboard.
+ *
+ * V1 keeps both in localStorage so testing on a phone survives a refresh. When
+ * Supabase auth lands, this reads them off the session instead and the rest of
+ * the UI keeps working unchanged.
  */
 const RoleContext = createContext(null)
 
-const KEY = 'mtonyo.role'
+const ROLE_KEY = 'mtonyo.role'
+const AUTH_KEY = 'mtonyo.authed'
 const VALID = ['viewer', 'creator']
 
 export function useRole() {
@@ -22,22 +29,42 @@ export function useRole() {
 export function RoleProvider({ children }) {
   const [role, setRoleState] = useState(() => {
     if (typeof window === 'undefined') return 'viewer'
-    const saved = getItem(KEY)
+    const saved = getItem(ROLE_KEY)
     return VALID.includes(saved) ? saved : 'viewer'
   })
 
-  // Private mode simply means the role won't survive a refresh — never a crash.
+  const [authed, setAuthed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return getItem(AUTH_KEY) === '1'
+  })
+
+  // Losing storage (Safari private mode) simply means these don't survive a
+  // refresh — never a crash.
   useEffect(() => {
-    setItem(KEY, role)
+    setItem(ROLE_KEY, role)
   }, [role])
+
+  useEffect(() => {
+    setItem(AUTH_KEY, authed ? '1' : '0')
+  }, [authed])
 
   const setRole = useCallback((next) => {
     if (VALID.includes(next)) setRoleState(next)
   }, [])
 
+  const signIn = useCallback(
+    (next) => {
+      if (VALID.includes(next)) setRoleState(next)
+      setAuthed(true)
+    },
+    []
+  )
+
+  const signOut = useCallback(() => setAuthed(false), [])
+
   const value = useMemo(
-    () => ({ role, setRole, isCreator: role === 'creator' }),
-    [role, setRole]
+    () => ({ role, setRole, authed, signIn, signOut, isCreator: role === 'creator' }),
+    [role, setRole, authed, signIn, signOut]
   )
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>

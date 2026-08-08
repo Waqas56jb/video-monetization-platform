@@ -16,13 +16,14 @@ const ROLES = [
 export default function Login() {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role, setRole } = useRole()
+  const { role, setRole, signIn } = useRole()
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
   const onSubmit = (e) => {
     e.preventDefault()
+    signIn(role)
     showToast('Karibu tena! Logged in successfully')
     timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 800)
   }
