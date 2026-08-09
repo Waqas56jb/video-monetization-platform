@@ -6,8 +6,7 @@ import Icon from '@/components/ui/Icon'
 import PhoneMockup from './PhoneMockup'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
-import { videoLink } from '@/lib/videoView'
-import { IMG } from '@/data/copy'
+import { IMG, LANDING_SHOWCASE } from '@/data/copy'
 
 /**
  * The first thing anyone sees.
@@ -18,15 +17,27 @@ import { IMG } from '@/data/copy'
  * the revenue split, the payment methods, the payout time. Those are facts
  * about how it works, not claims about how well it is doing, so they are true
  * on day one and stay true.
+ *
+ * The phone mockup uses the landing showcase card so the hero design always
+ * looks finished — real catalogue browsing starts at Explore.
  */
 export default function Hero() {
   const navigate = useNavigate()
 
   const stats = useApi(() => api.stats.platform(), [])
-  const trending = useApi(() => api.videos.list({ sort: 'popular', limit: 1 }), [])
 
   const s = stats.data
-  const featured = trending.data?.videos?.[0] || null
+  const showcase = LANDING_SHOWCASE[0]
+  const featured = {
+    title: showcase.title,
+    thumbnailUrl: showcase.thumb,
+    category: 'Documentary',
+    creator: { name: showcase.author },
+    accessType: 'paid_premiere',
+    priceTzs: 500,
+    freePreviewSeconds: 300,
+    durationSeconds: 1214,
+  }
 
   // Real measurements once there are any; otherwise the promises, which need
   // no qualification and cannot go stale.
@@ -97,15 +108,10 @@ export default function Hero() {
               <span className="btn-label-full">Start Earning Today</span>
               <span className="btn-label-short">Start Earning</span>
             </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => navigate(featured ? videoLink(featured) : '/explore')}
-            >
+            <button className="btn btn-ghost" onClick={() => navigate('/explore')}>
               <PlayCircle />
-              <span className="btn-label-full">
-                {featured ? 'Watch a Premiere' : 'Browse Videos'}
-              </span>
-              <span className="btn-label-short">{featured ? 'Watch' : 'Browse'}</span>
+              <span className="btn-label-full">Watch a Premiere</span>
+              <span className="btn-label-short">Watch</span>
             </button>
           </Reveal>
 
@@ -135,10 +141,7 @@ export default function Hero() {
               </div>
             </div>
           ))}
-          <PhoneMockup
-            video={featured}
-            onUnlock={() => navigate(featured ? videoLink(featured) : '/explore')}
-          />
+          <PhoneMockup video={featured} onUnlock={() => navigate('/explore')} />
         </Reveal>
       </div>
 

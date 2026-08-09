@@ -22,12 +22,12 @@ export function toCard(v, { owned = false } = {}) {
     avatar: v.creator?.avatarUrl || null,
 
     tag: owned
-      ? { cls: 'owned', label: 'OWNED' }
+      ? { cls: 'tag-owned', label: 'OWNED' }
       : v.accessType === 'free_with_ads'
-        ? { cls: 'free', label: 'FREE WITH ADS' }
+        ? { cls: 'tag-free', label: 'FREE WITH ADS' }
         : v.accessType === 'paid_premiere'
-          ? { cls: 'premiere', label: premiereDays != null ? `${premiereDays} DAYS LEFT` : 'PAID PREMIERE' }
-          : { cls: 'ppv', label: 'PAY ONCE' },
+          ? { cls: 'tag-prem', label: premiereDays != null ? `${premiereDays} DAYS LEFT` : 'PAID PREMIERE' }
+          : { cls: 'tag-ppv', label: 'PAY ONCE' },
 
     price: owned ? 'Owned' : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
     priceNote: owned

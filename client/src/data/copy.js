@@ -33,6 +33,66 @@ export const IMG = {
   avatarRayvannyLg: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=140&q=80',
 }
 
+/**
+ * Landing-page showcase cards only.
+ *
+ * These are design furniture for the homepage so the marketing layout always
+ * looks complete — the same four models a visitor needs to understand at a
+ * glance. They are NOT the catalogue. Explore, Watch, Library and every
+ * dashboard number still come from the real database / demo seed.
+ */
+export const LANDING_SHOWCASE = [
+  {
+    id: 'showcase-premiere',
+    thumb: IMG.premiere,
+    time: '20:14',
+    title: 'Harmonize — Behind The Fame',
+    author: 'Konde Gang Official',
+    avatar: IMG.avatarKonde,
+    tag: { cls: 'tag-prem', label: 'PAID PREMIERE' },
+    price: 'TZS 500',
+    priceNote: '7 days left · then free',
+    views: '25,430',
+  },
+  {
+    id: 'showcase-ppv',
+    thumb: IMG.journey,
+    time: '45:02',
+    title: 'The Journey — Live From Dar',
+    author: 'Zuchu Studio',
+    avatar: IMG.avatarZuchu,
+    tag: { cls: 'tag-ppv', label: 'PPV FOREVER' },
+    price: 'TZS 1,000',
+    priceNote: 'Own it forever',
+    views: '35,120',
+  },
+  {
+    id: 'showcase-studio',
+    thumb: IMG.studio,
+    time: '32:47',
+    title: 'Studio Session Live Vol. 3',
+    author: 'Marioo Music',
+    avatar: IMG.avatarMarioo,
+    tag: { cls: 'tag-ppv', label: 'PPV FOREVER' },
+    price: 'TZS 800',
+    priceNote: 'Own it forever',
+    views: '21,490',
+  },
+  {
+    id: 'showcase-free',
+    thumb: IMG.konser,
+    time: '18:22',
+    title: 'Konser Dar Live — Full Show',
+    author: 'Rayvanny TV',
+    avatar: IMG.avatarRayvanny,
+    tag: { cls: 'tag-free', label: 'FREE WITH ADS' },
+    price: 'FREE',
+    priceNote: 'Premiere ended · ads',
+    priceColor: 'var(--green)',
+    views: '18,230',
+  },
+]
+
 /** The scrolling strip of what the platform does. */
 export const MARQUEE_ITEMS = [
   'PPV FOREVER',
