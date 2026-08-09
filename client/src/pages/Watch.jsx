@@ -179,7 +179,18 @@ export default function Watch() {
           </button>
 
           {playback.loading ? (
-            <div className="skeleton skeleton-player" />
+            <div className="stream-shell is-booting">
+              {v.thumbnailUrl ? (
+                <img
+                  className="stream-poster"
+                  src={mediaUrl(v.thumbnailUrl)}
+                  alt=""
+                  draggable={false}
+                />
+              ) : (
+                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
+            </div>
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer

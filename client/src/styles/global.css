@@ -62,12 +62,12 @@ input,select,textarea{font-family:inherit}
 .reveal-l{opacity:0;transform:translateX(-22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
 .reveal-r{opacity:0;transform:translateX(22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
 .reveal-l.in,.reveal-r.in{opacity:1;transform:none}
-.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}
+.d1{transition-delay:.05s}.d2{transition-delay:.1s}.d3{transition-delay:.14s}.d4{transition-delay:.18s}
 .page{min-height:100vh}
 
 /* ---------- PRELOADER ---------- */
-#preloader{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .7s,visibility .7s}
-#preloader.hide{opacity:0;visibility:hidden}
+#preloader{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;transition:opacity .35s ease,visibility .35s ease}
+#preloader.hide{opacity:0;visibility:hidden;pointer-events:none}
 .loader-logo{font-family:'Sora';font-size:34px;font-weight:800;letter-spacing:-1px}
 .loader-bar{width:220px;height:4px;background:var(--card2);border-radius:99px;overflow:hidden}
 .loader-bar span{display:block;height:100%;width:40%;border-radius:99px;background:linear-gradient(90deg,var(--purple),var(--gold));animation:load 1.2s ease-in-out infinite}
@@ -833,7 +833,9 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 }
 
 /* --- scroll performance: phones / tablets / touch --------------------------------
-   Keep the look, cut the work that fights the compositor while you scroll. */
+   Keep the look, cut the work that fights the compositor while you scroll.
+   Do NOT use content-visibility on landing sections — wrong intrinsic size
+   makes the page hitch/stop exactly when the video grid enters view. */
 @media (max-width: 1024px), (hover: none) {
   .grain { display: none }
   .aurora span { animation: none !important; filter: blur(64px); opacity: .34 }
@@ -842,9 +844,16 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .phone, .float-card, .upload-zone .uz-ic { animation: none !important }
   .grad-text { animation: none }
   .marquee-track { animation-duration: 40s }
-  .section { content-visibility: auto; contain-intrinsic-size: 1px 720px }
   header.scrolled { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px) }
   .vid-card, .feat, .step, .testi, .stat-card { transition-duration: .2s }
+  .vid-card:hover { transform: none }
+}
+
+/* Trending grid: reserve height so images don't shove the scroll position */
+.section-trending .vid-grid { min-height: 280px }
+.vid-thumb img {
+  background: #12121c;
+  content-visibility: auto;
 }
 
 /* Promote the main column so scroll doesn't repaint the fixed FX every frame */

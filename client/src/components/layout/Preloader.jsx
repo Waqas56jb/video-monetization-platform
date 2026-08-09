@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 /**
- * The original preloader: shows the animated bar, then fades out ~650ms after
- * `window.load` (or immediately if the page already finished loading).
+ * Brief brand splash. Kept short on purpose — waiting on window.load (every
+ * image) made first paint feel broken on mobile data.
  */
 export default function Preloader() {
   const [hide, setHide] = useState(false)
@@ -12,32 +12,30 @@ export default function Preloader() {
     let fade
     const start = () => {
       clearTimeout(fade)
-      fade = setTimeout(() => setHide(true), 350)
+      fade = setTimeout(() => setHide(true), 120)
     }
 
-    if (document.readyState === 'complete') start()
-    else window.addEventListener('load', start)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      start()
+    } else {
+      document.addEventListener('DOMContentLoaded', start, { once: true })
+      window.addEventListener('load', start, { once: true })
+    }
 
-    /**
-     * `load` waits for every image on the page, including remote artwork. On a
-     * slow connection that can take many seconds — or never fire at all if a
-     * request hangs — which left users staring at the splash screen and having
-     * to reopen the link. The splash is decoration, so it gets a hard ceiling:
-     * after this it goes away regardless of what is still downloading.
-     */
-    const ceiling = setTimeout(() => setHide(true), 1600)
+    // Hard ceiling — never block the app for long.
+    const ceiling = setTimeout(() => setHide(true), 700)
 
     return () => {
       clearTimeout(fade)
       clearTimeout(ceiling)
+      document.removeEventListener('DOMContentLoaded', start)
       window.removeEventListener('load', start)
     }
   }, [])
 
-  // Remove from the tree once the 0.7s fade-out has finished.
   useEffect(() => {
     if (!hide) return
-    const t = setTimeout(() => setGone(true), 800)
+    const t = setTimeout(() => setGone(true), 400)
     return () => clearTimeout(t)
   }, [hide])
 

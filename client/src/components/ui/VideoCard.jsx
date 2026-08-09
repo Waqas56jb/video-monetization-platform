@@ -9,7 +9,7 @@ import Reveal from './Reveal'
  * Set `reveal` to animate it in on scroll (landing); omit it inside the
  * dashboard where cards are already in view when their tab opens.
  */
-export default function VideoCard({ video, onClick, reveal = false, delay = 0 }) {
+export default function VideoCard({ video, onClick, reveal = false, delay = 0, eager = false }) {
   const {
     tag,
     thumb,
@@ -25,11 +25,19 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0 })
     action,
   } = video
 
+  const imgLoading = eager ? 'eager' : 'lazy'
+
   const body = (
     <>
       <div className="vid-thumb">
         {tag && <span className={`vid-tag ${tag.cls}`}>{tag.label}</span>}
-        <img src={thumb} alt="" loading="lazy" />
+        <img
+          src={thumb}
+          alt=""
+          loading={imgLoading}
+          decoding="async"
+          {...(eager ? { fetchpriority: 'high' } : {})}
+        />
         {time && <span className="vid-time">{time}</span>}
         <div className="vid-play">
           <span>
@@ -40,7 +48,7 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0 })
       <div className="vid-info">
         <h4>{title}</h4>
         <div className="by">
-          {avatar && <img src={avatar} alt="" loading="lazy" />}
+          {avatar && <img src={avatar} alt="" loading={imgLoading} decoding="async" />}
           {author || byline}
         </div>
         <div className="vid-meta">
