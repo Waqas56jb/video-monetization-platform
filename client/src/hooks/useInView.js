@@ -31,7 +31,8 @@ export default function useInView({ threshold = 0.12, skip = false } = {}) {
           }
         })
       },
-      { threshold }
+      // rootMargin reveals a beat early so content is ready before it hits the viewport
+      { threshold, rootMargin: '0px 0px 12% 0px' }
     )
     io.observe(el)
     return () => io.disconnect()

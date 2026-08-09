@@ -17,8 +17,11 @@
   --header-h:76px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+/* Native scrolling only — `scroll-behavior:smooth` on <html> makes wheel/touch
+   feel stuttery (especially iOS/Android). Anchor jumps still scroll smoothly
+   via ScrollToTop / explicit scrollIntoView where needed. */
+html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--header-h) + 12px)}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
 h1,h2,h3,h4,.font-display{font-family:'Sora',sans-serif}
 img{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
@@ -53,10 +56,11 @@ input,select,textarea{font-family:inherit}
 .section-head{text-align:center;max-width:720px;margin:0 auto 64px}
 .section-head h2{font-size:clamp(30px,4.5vw,48px);font-weight:800;line-height:1.15;margin:18px 0 16px}
 .section-head p{color:var(--muted);font-size:17px;line-height:1.7}
-.reveal{opacity:0;transform:translateY(44px);transition:opacity .9s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.22,1,.36,1)}
-.reveal.in{opacity:1;transform:none}
-.reveal-l{opacity:0;transform:translateX(-54px);transition:.9s cubic-bezier(.22,1,.36,1)}
-.reveal-r{opacity:0;transform:translateX(54px);transition:.9s cubic-bezier(.22,1,.36,1)}
+/* Short reveals — long 0.9s + 44px slides make the page feel like it "stops" while scrolling */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1);will-change:opacity,transform}
+.reveal.in{opacity:1;transform:none;will-change:auto}
+.reveal-l{opacity:0;transform:translateX(-22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
+.reveal-r{opacity:0;transform:translateX(22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
 .reveal-l.in,.reveal-r.in{opacity:1;transform:none}
 .d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}
 .page{min-height:100vh}
@@ -70,19 +74,21 @@ input,select,textarea{font-family:inherit}
 @keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
 
 /* ---------- AURORA / PARTICLES ---------- */
-.aurora{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
-.aurora span{position:absolute;border-radius:50%;filter:blur(110px);opacity:.5}
-.aurora .a1{width:640px;height:640px;background:#4c1d95;top:-220px;left:-160px;animation:float1 16s ease-in-out infinite}
-.aurora .a2{width:560px;height:560px;background:#2e1065;bottom:-200px;right:-140px;animation:float2 20s ease-in-out infinite}
-.aurora .a3{width:380px;height:380px;background:rgba(245,197,24,.16);top:36%;left:56%;animation:float3 18s ease-in-out infinite}
-@keyframes float1{50%{transform:translate(70px,50px) scale(1.12)}}
-@keyframes float2{50%{transform:translate(-60px,-40px) scale(1.08)}}
-@keyframes float3{50%{transform:translate(-50px,60px)}}
-.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.aurora{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;contain:strict}
+.aurora span{position:absolute;border-radius:50%;filter:blur(80px);opacity:.42;transform:translateZ(0);will-change:transform}
+.aurora .a1{width:640px;height:640px;background:#4c1d95;top:-220px;left:-160px;animation:float1 22s ease-in-out infinite}
+.aurora .a2{width:560px;height:560px;background:#2e1065;bottom:-200px;right:-140px;animation:float2 28s ease-in-out infinite}
+.aurora .a3{width:380px;height:380px;background:rgba(245,197,24,.16);top:36%;left:56%;animation:float3 24s ease-in-out infinite}
+@keyframes float1{50%{transform:translate3d(40px,30px,0) scale(1.06)}}
+@keyframes float2{50%{transform:translate3d(-36px,-24px,0) scale(1.05)}}
+@keyframes float3{50%{transform:translate3d(-28px,32px,0)}}
+/* Static grain — animated SVG noise is expensive while scrolling */
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px 180px}
 
 /* ---------- HEADER ---------- */
 header{position:fixed;top:0;left:0;right:0;z-index:200;transition:.4s}
-header.scrolled{background:rgba(10,10,18,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--border2);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+header{transform:translateZ(0)}
+header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.28)}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;min-width:0}
 .logo{display:flex;align-items:center;gap:11px;font-family:'Sora';font-weight:800;font-size:21px;letter-spacing:-.5px;min-width:0;flex-shrink:1}
 .logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:grid;place-items:center;box-shadow:var(--glow);position:relative;flex-shrink:0}
@@ -825,6 +831,24 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 @media(max-width:768px){
   .input-wrap input,.input-wrap select,.input-wrap textarea{font-size:16px;padding:14px 16px 14px 46px}
 }
+
+/* --- scroll performance: phones / tablets / touch --------------------------------
+   Keep the look, cut the work that fights the compositor while you scroll. */
+@media (max-width: 1024px), (hover: none) {
+  .grain { display: none }
+  .aurora span { animation: none !important; filter: blur(64px); opacity: .34 }
+  .aurora .a3 { display: none }
+  .hero-bg img { animation: none !important; transform: scale(1.06) }
+  .phone, .float-card, .upload-zone .uz-ic { animation: none !important }
+  .grad-text { animation: none }
+  .marquee-track { animation-duration: 40s }
+  .section { content-visibility: auto; contain-intrinsic-size: 1px 720px }
+  header.scrolled { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px) }
+  .vid-card, .feat, .step, .testi, .stat-card { transition-duration: .2s }
+}
+
+/* Promote the main column so scroll doesn't repaint the fixed FX every frame */
+.page, .dash-main, .watch-wrap { transform: translateZ(0) }
 
 /* --- respect the OS "reduce motion" setting --- */
 @media(prefers-reduced-motion:reduce){
