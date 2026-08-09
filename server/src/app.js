@@ -125,6 +125,23 @@ app.get('/health', async (_req, res) => {
     time: new Date().toISOString(),
     database: db,
     capabilities,
+
+    /**
+     * Where this API thinks its front ends live.
+     *
+     * Not secret — these are public website addresses — and knowing them
+     * answers the question that is otherwise unanswerable from outside: which
+     * site will the links inside password-reset and staff-invitation emails
+     * point at? Left on localhost by mistake, every one of those emails sends
+     * the recipient to their own machine, and nobody finds out until somebody
+     * tries to use one.
+     */
+    urls: {
+      publicApp: env.publicWebUrl,
+      adminApp: env.adminWebUrl,
+      allowedOrigins: env.corsOrigins,
+    },
+
     ...(missingConfig().length ? { needsConfiguration: missingConfig() } : {}),
   })
 })
