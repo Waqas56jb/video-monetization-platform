@@ -1,1 +1,11 @@
-node_modules
+node_modules/
+dist/
+.vercel/
+.DS_Store
+
+# Secrets never belong in the repository. Each app keeps its own .gitignore
+# too; this is the safety net, because one leaked key is not recoverable by
+# deleting it afterwards — it has to be rotated.
+.env
+.env.*
+!.env.example
