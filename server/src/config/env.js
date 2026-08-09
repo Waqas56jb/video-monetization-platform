@@ -73,6 +73,10 @@ export const env = {
   },
 
   cronSecret: process.env.CRON_SECRET || '',
+  // Signs the short-lived key that lets an <img> load the poster of a video
+  // that is not public yet. Falls back to CRON_SECRET so there is one fewer
+  // thing to forget; it only ever grants a thumbnail.
+  mediaTokenSecret: process.env.MEDIA_TOKEN_SECRET || '',
   verboseSql: bool(process.env.VERBOSE_SQL, false),
 }
 

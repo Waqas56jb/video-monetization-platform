@@ -100,12 +100,34 @@ router.post(
       { actorRole: 'system' }
     )
 
-    // The account is usable straight away — there is no emailed confirmation
-    // step and no one-time code. Signing in here means the new user lands in
-    // their dashboard rather than on a "now go check your email" dead end.
-    const { session } = await signInWithPassword({ email, password })
+    /**
+     * The account is usable straight away — no emailed confirmation and no
+     * one-time code — so sign them in here and they land in their dashboard
+     * rather than on a "now go check your email" dead end.
+     *
+     * But the account already exists by this point. If this one call fails —
+     * a rate limit, a blip in the auth service — reporting the whole
+     * registration as a failure would tell someone their password was wrong
+     * for an account that had just been created with it, and they would try
+     * again and be told the email was taken. Hand back the account without a
+     * session and say plainly what to do.
+     */
+    let session = null
+    let signInNote = null
+    try {
+      ;({ session } = await signInWithPassword({ email, password }))
+    } catch (err) {
+      log.warn(`registered ${email} but could not sign them in: ${err.message}`)
+      signInNote =
+        'Your account was created. Signing you in automatically did not work — ' +
+        'please log in with the password you just chose.'
+    }
 
-    res.status(201).json({ ...shape(profile, session), needsEmailConfirmation: false })
+    res.status(201).json({
+      ...shape(profile, session),
+      needsEmailConfirmation: false,
+      ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
+    })
   })
 )
 

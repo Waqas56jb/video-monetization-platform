@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Check, ShieldAlert, ShieldCheck, X } from 'lucide-react'
+import { Check, Play, ShieldAlert, ShieldCheck, X } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { Async } from '@/components/ui/States'
 import useApi, { tzs, timeAgo } from '@/hooks/useApi'
-import api from '@/lib/api'
+import api, { mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
+import VideoPreview from '@/components/ui/VideoPreview'
 
 /**
  * Content Review — the gate every upload must pass.
@@ -37,6 +38,7 @@ export default function ReviewTab() {
   const { data, loading, error, reload } = useApi(() => api.admin.review('pending_review'), [])
   const queue = data?.queue || []
 
+  const [previewing, setPreviewing] = useState(null)
   const [openId, setOpenId] = useState(null)
   const [mode, setMode] = useState(null) // 'approve' | 'reject'
   const [reason, setReason] = useState('')
@@ -124,16 +126,24 @@ export default function ReviewTab() {
         >
           {queue.map((v) => (
             <div className="review-card" key={v.id}>
-              <div className="rv-thumb">
+              <button
+                className="rv-thumb rv-thumb-play"
+                onClick={() => setPreviewing(v)}
+                title="Watch this video"
+                aria-label={`Watch ${v.title}`}
+              >
                 {v.thumbnailUrl ? (
-                  <img src={v.thumbnailUrl} alt="" loading="lazy" />
+                  <img src={mediaUrl(v.thumbnailUrl)} alt="" loading="lazy" />
                 ) : (
                   <span className="v-thumb-blank" />
                 )}
+                <span className="rv-play">
+                  <Play />
+                </span>
                 {v.durationSeconds > 0 && (
                   <span className="rv-duration">{formatDuration(v.durationSeconds)}</span>
                 )}
-              </div>
+              </button>
 
               <div className="rv-info">
                 <b>{v.title}</b>
@@ -155,6 +165,12 @@ export default function ReviewTab() {
               </div>
 
               <div className="rv-actions">
+                {/* Watch it first. Approving something you have not seen is
+                    the one thing this queue exists to prevent. */}
+                <button className="btn btn-ghost btn-sm" onClick={() => setPreviewing(v)}>
+                  <Play />
+                  Watch
+                </button>
                 <button className="btn btn-green btn-sm" onClick={() => startApprove(v)}>
                   <Check />
                   Approve
@@ -280,6 +296,12 @@ export default function ReviewTab() {
           ))}
         </Async>
       </Panel>
+
+      <VideoPreview
+        video={previewing}
+        open={Boolean(previewing)}
+        onClose={() => setPreviewing(null)}
+      />
     </div>
   )
 }

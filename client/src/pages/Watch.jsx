@@ -18,7 +18,7 @@ import StreamPlayer from '@/components/watch/StreamPlayer'
 import PaymentModal from '@/components/watch/PaymentModal'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
-import api, { getAccessToken } from '@/lib/api'
+import api, { getAccessToken, mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 
 /**
@@ -140,7 +140,7 @@ export default function Watch() {
             <>
               <StreamPlayer
                 src={p.playback.iframe}
-                poster={v.thumbnailUrl}
+                poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
                 onEnded={() => locked && setPreviewOver(true)}
               />

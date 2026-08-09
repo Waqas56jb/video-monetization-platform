@@ -259,3 +259,33 @@ textarea:focus { outline: none; border-color: rgba(233,185,73,.5); }
 .approve-grid input:focus { outline: none; border-color: rgba(233,185,73,.5); }
 
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- watching a video before deciding about it -------------------- */
+.preview-modal .preview-card { width: min(880px, 100%); max-width: 880px; }
+.preview-head { margin-bottom: 14px; padding-right: 34px; }
+.preview-head b { display: block; font-size: 16px; }
+.preview-head small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.preview-frame {
+  display: block; width: 100%; aspect-ratio: 16 / 9;
+  border: 0; border-radius: 12px; background: #000;
+}
+
+/* The poster is the obvious thing to click to watch something. */
+.rv-thumb-play {
+  position: relative; padding: 0; cursor: pointer;
+  background: none; border: 0; overflow: hidden;
+}
+.rv-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(233,185,73,.92); color: #14110a;
+  opacity: 0; transition: opacity .18s ease, transform .18s ease;
+  transform: scale(.85);
+}
+.rv-thumb-play:hover .rv-play,
+.rv-thumb-play:focus-visible .rv-play { opacity: 1; transform: scale(1); }
+/* Touch has no hover, so the affordance has to be visible from the start. */
+@media (hover: none) {
+  .rv-play { opacity: .92; transform: none; }
+}

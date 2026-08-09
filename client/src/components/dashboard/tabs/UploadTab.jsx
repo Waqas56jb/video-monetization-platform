@@ -6,6 +6,7 @@ import {
   Film,
   Info,
   RefreshCw,
+  Play,
   Send,
   ShieldCheck,
   UploadCloud,
@@ -14,7 +15,7 @@ import {
 import Panel from '../Panel'
 import Field from '@/components/ui/Field'
 import Icon from '@/components/ui/Icon'
-import api from '@/lib/api'
+import api, { mediaUrl } from '@/lib/api'
 import {
   ACCEPTED,
   fileSize,
@@ -23,6 +24,7 @@ import {
   watchEncoding,
 } from '@/lib/upload'
 import { useToast } from '@/context/ToastContext'
+import VideoPreview from '@/components/dashboard/VideoPreview'
 
 /**
  * Publishing a video, for real.
@@ -88,6 +90,7 @@ export default function UploadTab({ onSubmitted }) {
     premiereDays: 30,
     freePreviewMinutes: 5,
   })
+  const [previewing, setPreviewing] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -355,10 +358,18 @@ export default function UploadTab({ onSubmitted }) {
               )}
 
               {step === 'ready' && (
-                <small className="ul-note ul-ok">
-                  <Check size={13} /> Ready to play
-                  {video?.durationSeconds ? ` · ${formatDuration(video.durationSeconds)}` : ''}
-                </small>
+                <div className="ul-ready">
+                  <small className="ul-note ul-ok">
+                    <Check size={13} /> Ready to play
+                    {video?.durationSeconds ? ` · ${formatDuration(video.durationSeconds)}` : ''}
+                  </small>
+                  {/* Watch it before setting a price. Finding out afterwards
+                      that the wrong file went up is a bad way to find out. */}
+                  <button className="btn btn-ghost btn-sm" onClick={() => setPreviewing(video)}>
+                    <Play size={14} />
+                    Watch it
+                  </button>
+                </div>
               )}
 
               {error && (
@@ -550,11 +561,21 @@ export default function UploadTab({ onSubmitted }) {
                 const state = reviewState(v)
                 return (
                   <div className={`sub-item is-${state.key}`} key={v.id}>
-                    {v.thumbnailUrl ? (
-                      <img src={v.thumbnailUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className="sub-thumb-blank" />
-                    )}
+                    <button
+                      className="sub-thumb-btn"
+                      onClick={() => setPreviewing(v)}
+                      title="Watch this video"
+                      aria-label={`Watch ${v.title}`}
+                    >
+                      {v.thumbnailUrl ? (
+                        <img src={mediaUrl(v.thumbnailUrl)} alt="" loading="lazy" />
+                      ) : (
+                        <span className="sub-thumb-blank" />
+                      )}
+                      <span className="sub-play">
+                        <Play size={16} />
+                      </span>
+                    </button>
                     <div className="sub-info">
                       <b>{v.title}</b>
                       <small>
@@ -587,6 +608,12 @@ export default function UploadTab({ onSubmitted }) {
           )}
         </Panel>
       </div>
+
+      <VideoPreview
+        video={previewing}
+        open={Boolean(previewing)}
+        onClose={() => setPreviewing(null)}
+      />
     </div>
   )
 }

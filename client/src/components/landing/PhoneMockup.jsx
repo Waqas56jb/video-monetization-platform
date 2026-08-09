@@ -1,6 +1,7 @@
 import { Lock, Zap } from 'lucide-react'
 import { IMG } from '@/data/copy'
 import { duration, tzs } from '@/hooks/useApi'
+import { mediaUrl } from '@/lib/api'
 
 /**
  * The floating phone showing the paywall as it actually appears.
@@ -14,7 +15,7 @@ import { duration, tzs } from '@/hooks/useApi'
 export default function PhoneMockup({ video, onUnlock }) {
   const hasReal = Boolean(video)
 
-  const poster = video?.thumbnailUrl || IMG.premiere
+  const poster = mediaUrl(video?.thumbnailUrl) || IMG.premiere
   const title = video?.title || 'Your video, behind a paywall'
   const byline = hasReal
     ? [video.category, video.creator?.name].filter(Boolean).join(' · ')

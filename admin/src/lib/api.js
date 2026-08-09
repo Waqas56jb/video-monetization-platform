@@ -233,6 +233,15 @@ export const api = {
     updateProfile: (body) => patch('/api/staff/account/profile', body),
   },
 
+  /**
+   * Watch a video that is being reviewed.
+   *
+   * Staff get full playback from the server — deciding whether something may
+   * be published means watching it, and until this existed the review queue
+   * asked for a verdict on a file nobody could open.
+   */
+  playback: (idOrSlug) => get(`/api/playback/${idOrSlug}/playback`),
+
   admin: {
     overview: () => get('/api/admin/overview'),
     activity: () => get('/api/admin/activity'),
@@ -274,6 +283,17 @@ export const api = {
     runPremiereExpiry: () => post('/api/admin/jobs/premiere-expiry'),
   },
 }
+
+/**
+ * Absolute URL for media the API serves on our behalf.
+ *
+ * Thumbnails come back as a relative path because the API signs them per
+ * request — a signed URL expires, so it cannot be stored, and the apps live on
+ * a different origin from the API. This turns one stored value into the right
+ * address for whichever app is asking.
+ */
+export const mediaUrl = (path) =>
+  !path ? null : /^https?:\/\//i.test(path) ? path : `${BASE}${path}`
 
 export { BASE as API_BASE }
 export default api

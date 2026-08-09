@@ -278,5 +278,16 @@ export const api = {
   },
 }
 
+/**
+ * Absolute URL for media the API serves on our behalf.
+ *
+ * Thumbnails come back as a relative path because the API signs them per
+ * request — a signed URL expires, so it cannot be stored, and the apps live on
+ * a different origin from the API. This turns one stored value into the right
+ * address for whichever app is asking.
+ */
+export const mediaUrl = (path) =>
+  !path ? null : /^https?:\/\//i.test(path) ? path : `${BASE}${path}`
+
 export { BASE as API_BASE }
 export default api

@@ -238,3 +238,37 @@
   .unlock-bar { padding: 12px 14px; }
   .unlock-bar .btn { width: 100%; justify-content: center; }
 }
+
+/* ---------- a creator watching their own upload -------------------------- */
+.preview-modal .preview-card { width: min(880px, 100%); max-width: 880px; }
+.preview-head { margin-bottom: 14px; padding-right: 34px; text-align: left; }
+.preview-head b { display: block; font-size: 16px; }
+.preview-head small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.preview-frame {
+  display: block; width: 100%; aspect-ratio: 16 / 9;
+  border: 0; border-radius: 12px; background: #000;
+}
+.preview-card .stream-frame { border-radius: 12px; }
+
+.ul-ready { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.ul-ready .ul-note { margin-top: 0; }
+
+.sub-thumb-btn {
+  position: relative; padding: 0; cursor: pointer; flex-shrink: 0;
+  background: none; border: 0; border-radius: 10px; overflow: hidden;
+  line-height: 0;
+}
+.sub-thumb-btn img, .sub-thumb-btn .sub-thumb-blank { display: block; }
+.sub-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(245,197,24,.94); color: #1a1200;
+  opacity: 0; transition: opacity .18s ease, transform .18s ease;
+  transform: scale(.85);
+}
+.sub-thumb-btn:hover .sub-play,
+.sub-thumb-btn:focus-visible .sub-play { opacity: 1; transform: scale(1); }
+@media (hover: none) {
+  .sub-play { opacity: .92; transform: none; }
+}

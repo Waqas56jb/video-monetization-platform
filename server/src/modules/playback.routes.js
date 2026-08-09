@@ -5,6 +5,7 @@ import { optionalAuth } from '../middleware/auth.js'
 import { resolveAccess } from '../services/entitlement.js'
 import { getSettings } from '../services/settings.js'
 import * as cf from '../lib/cloudflare.js'
+import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { capabilities } from '../config/env.js'
 
 const router = Router()
@@ -36,7 +37,7 @@ router.get(
       throw notFound('Video not found')
     }
 
-    const access = await resolveAccess({ video, userId: req.user?.id })
+    const access = await resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role })
     const settings = await getSettings()
 
     const payload = {
@@ -103,6 +104,58 @@ router.get(
         methods: ['M-Pesa', 'Airtel Money'],
       },
     })
+  })
+)
+
+/**
+ * A video's poster image.
+ *
+ * These videos require signed URLs, so Cloudflare answers 401 to the raw
+ * thumbnail address — which is why every poster on the site rendered as a
+ * broken image. A signed URL works but expires, so it cannot be stored in the
+ * database and handed out later.
+ *
+ * So the address stored is this route, which never expires, and the signature
+ * is minted per request and redirected to. The browser caches the image; the
+ * redirect is cheap.
+ */
+router.get(
+  '/:id/thumbnail',
+  optionalAuth(),
+  asyncHandler(async (req, res) => {
+    const video = await one(
+      `select id, cloudflare_uid, thumbnail_url, creator_id, is_published, review_status, deleted_at
+         from videos where id::text = $1 or slug = $1`,
+      [req.params.id]
+    )
+    if (!video) throw notFound('Video not found')
+
+    // An unpublished video's poster is as private as the video itself.
+    const isStaff = req.user?.role === 'admin' || req.user?.role === 'sub_admin'
+    const isOwner = req.user && req.user.id === video.creator_id
+    const isPublic = video.is_published && video.review_status === 'approved' && !video.deleted_at
+
+    // An <img> cannot send an Authorization header, so a signed key in the
+    // query string is the only way a browser can prove it may see this poster.
+    const hasKey = verifyThumbnailKey(video.id, req.query.k)
+
+    if (!isPublic && !isOwner && !isStaff && !hasKey) throw notFound('Video not found')
+
+    if (!video.cloudflare_uid || !capabilities.cloudflareStream) {
+      if (video.thumbnail_url) return res.redirect(302, video.thumbnail_url)
+      throw notFound('This video has no thumbnail yet')
+    }
+
+    // Short-lived: long enough for the browser to fetch it, not long enough to
+    // be worth passing around.
+    const token = capabilities.signedPlayback
+      ? cf.signPlaybackToken(video.cloudflare_uid, { expiresInSeconds: 3600 })
+      : video.cloudflare_uid
+
+    // The signed URL changes every hour, so the redirect itself must not be
+    // cached for longer than the token it points at.
+    res.set('Cache-Control', 'private, max-age=1800')
+    res.redirect(302, cf.playbackUrls(token).thumbnail)
   })
 )
 

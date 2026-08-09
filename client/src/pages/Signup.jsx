@@ -49,6 +49,17 @@ export default function Signup() {
         return
       }
 
+      /**
+       * The account exists but signing them in did not work — a rate limit, or
+       * the auth service having a moment. Send them to log in rather than
+       * leaving them on a form that would now tell them the email is taken.
+       */
+      if (result.signInFailed || !result.session) {
+        showToast(result.message || 'Account created — please log in')
+        timer.current = setTimeout(() => navigate('/login', { replace: true }), 900)
+        return
+      }
+
       showToast(`🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`)
       timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 400)
     } catch (err) {

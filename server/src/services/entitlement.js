@@ -1,4 +1,5 @@
 import { one } from '../db/pool.js'
+import { mintThumbnailKey } from '../lib/mediaToken.js'
 
 /**
  * What may this viewer actually watch of this video?
@@ -6,7 +7,7 @@ import { one } from '../db/pool.js'
  * This is the single place the paywall is decided, so the player, the signed
  * URL endpoint and the share preview all agree.
  */
-export async function resolveAccess({ video, userId }) {
+export async function resolveAccess({ video, userId, userRole = null }) {
   const free = video.access_type === 'free_with_ads'
 
   let purchase = null
@@ -21,12 +22,24 @@ export async function resolveAccess({ video, userId }) {
   const owned = Boolean(purchase)
   const isOwner = userId && video.creator_id === userId
 
+  /**
+   * Staff can watch anything, without paying.
+   *
+   * Reviewing a video means watching it, and until now the review queue handed
+   * an administrator a decision to make about a file they could not open. It
+   * is not a loophole in the paywall: staff are the people who decide what is
+   * published at all, and every one of their actions is recorded against their
+   * name and email.
+   */
+  const isStaff = userRole === 'admin' || userRole === 'sub_admin'
+
   return {
-    // full playback is allowed when it's free, already bought, or your own
-    canWatchFull: free || owned || Boolean(isOwner),
+    // full playback when it's free, already bought, your own, or you are staff
+    canWatchFull: free || owned || Boolean(isOwner) || isStaff,
     owned,
     isOwner: Boolean(isOwner),
-    requiresPayment: !free && !owned && !isOwner,
+    isStaff,
+    requiresPayment: !free && !owned && !isOwner && !isStaff,
     freePreviewSeconds: free ? null : video.free_preview_seconds,
     priceTzs: free ? 0 : video.price_tzs,
     showsAds: free && video.ads_enabled,
@@ -42,7 +55,18 @@ export function publicVideo(v, access = null) {
     title: v.title,
     description: v.description,
     category: v.category,
-    thumbnailUrl: v.thumbnail_url,
+    /**
+     * Served through the API rather than linked straight to Cloudflare.
+     *
+     * These videos require signed URLs, so the raw thumbnail address answers
+     * 401 — which is why every poster on the site was a broken image. A signed
+     * one works but expires, so it cannot be stored. This path is stable, and
+     * the API signs a fresh one on each request.
+     *
+     * Relative on purpose: the apps live on a different origin and prefix it
+     * with their own API base, so one stored value works for both.
+     */
+    thumbnailUrl: v.cloudflare_uid ? `/api/playback/${v.id}/thumbnail` : v.thumbnail_url,
     durationSeconds: v.duration_seconds,
     accessType: v.access_type,
     priceTzs: v.price_tzs,
@@ -64,6 +88,12 @@ export function publicVideo(v, access = null) {
 export function studioVideo(v) {
   return {
     ...publicVideo(v),
+    /**
+      * The studio view is where unpublished videos are seen — the review queue
+      * and a creator's own list. Their posters are not public, and an <img>
+      * cannot authenticate, so the key rides in the URL.
+      */
+    thumbnailUrl: thumbnailFor(v),
     reviewStatus: v.review_status,
     rejectionReason: v.rejection_reason,
     submittedAt: v.submitted_at,
@@ -76,4 +106,20 @@ export function studioVideo(v) {
     deletedAt: v.deleted_at,
     createdAt: v.created_at,
   }
+}
+
+/**
+ * Where to fetch a video's poster.
+ *
+ * Public videos need nothing; anyone may see the picture of something anyone
+ * may watch. Anything else carries a signed, expiring key scoped to this one
+ * thumbnail — never the playback token, which would hand over the video too.
+ */
+function thumbnailFor(v) {
+  if (!v.cloudflare_uid) return v.thumbnail_url
+  const path = `/api/playback/${v.id}/thumbnail`
+  const isPublic = v.is_published && v.review_status === 'approved' && !v.deleted_at
+  if (isPublic) return path
+  const key = mintThumbnailKey(v.id)
+  return key ? `${path}?k=${encodeURIComponent(key)}` : path
 }

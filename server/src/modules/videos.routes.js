@@ -479,7 +479,7 @@ router.get(
       throw notFound('Video not found')
     }
 
-    const access = await resolveAccess({ video: row, userId: req.user?.id })
+    const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })
     res.json({
       video: publicVideo(withCreatorName(row), access),
       shareUrl: `${env.publicWebUrl}/watch/${row.slug || row.id}`,

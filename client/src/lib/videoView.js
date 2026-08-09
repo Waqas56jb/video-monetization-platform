@@ -1,4 +1,5 @@
 import { ACCESS_SHORT, duration, tzs, compact, daysUntil } from '@/hooks/useApi'
+import { mediaUrl } from '@/lib/api'
 
 /**
  * Turn a video from the API into the shape the card component draws.
@@ -14,7 +15,7 @@ export function toCard(v, { owned = false } = {}) {
   return {
     id: v.id,
     slug: v.slug,
-    thumb: v.thumbnailUrl,
+    thumb: mediaUrl(v.thumbnailUrl),
     time: v.durationSeconds ? duration(v.durationSeconds) : null,
     title: v.title,
     author: v.creator?.name || null,

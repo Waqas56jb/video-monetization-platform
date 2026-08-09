@@ -1,10 +1,12 @@
-import { Film, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { Film, Play, Plus, Trash2 } from 'lucide-react'
 import Panel from '../Panel'
 import TableScroll from '@/components/ui/TableScroll'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, ACCESS_SHORT } from '@/hooks/useApi'
 import api from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
+import VideoPreview from '@/components/dashboard/VideoPreview'
 
 /**
  * Everything this creator has uploaded, in whatever state it is in.
@@ -16,6 +18,7 @@ import { useToast } from '@/context/ToastContext'
  */
 export default function MyVideosTab({ onNewUpload }) {
   const showToast = useToast()
+  const [previewing, setPreviewing] = useState(null)
   const { data, loading, error, reload } = useApi(() => api.videos.mine(), [])
   const videos = data?.videos || []
 
@@ -97,6 +100,15 @@ export default function MyVideosTab({ onNewUpload }) {
                     <span className={`pill ${st.pill}`}>{st.label}</span>
                   </td>
                   <td>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setPreviewing(v)}
+                      title="Watch this video"
+                      style={{ marginRight: 6 }}
+                    >
+                      <Play size={14} />
+                      <span className="btn-label">Watch</span>
+                    </button>
                     {/* Requesting, never deleting. */}
                     {v.isPublished && !v.deletedAt && (
                       <button
@@ -115,6 +127,12 @@ export default function MyVideosTab({ onNewUpload }) {
           </tbody>
         </TableScroll>
       )}
+
+      <VideoPreview
+        video={previewing}
+        open={Boolean(previewing)}
+        onClose={() => setPreviewing(null)}
+      />
     </Panel>
   )
 }

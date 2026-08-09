@@ -11,3 +11,6 @@ tmp/
 
 # Vercel
 .vercel
+
+# scratch space for one-off probes
+.scratch/

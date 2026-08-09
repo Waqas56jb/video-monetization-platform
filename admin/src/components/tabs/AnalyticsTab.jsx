@@ -7,7 +7,7 @@ import { Async, EmptyState } from '@/components/ui/States'
 import PaymentsBarChart from '@/components/charts/PaymentsBarChart'
 import MeterList from '@/components/charts/MeterList'
 import useApi, { tzs, compact } from '@/hooks/useApi'
-import api from '@/lib/api'
+import api, { mediaUrl } from '@/lib/api'
 
 const ACCESS_LABEL = {
   ppv_forever: 'Pay once',
@@ -121,7 +121,7 @@ export default function AnalyticsTab() {
                 <tr key={v.id}>
                   <td>{i + 1}</td>
                   <td>
-                    <VideoCell thumb={v.thumbnailUrl} title={v.title} />
+                    <VideoCell thumb={mediaUrl(v.thumbnailUrl)} title={v.title} />
                   </td>
                   <td>{v.creatorName || v.creator?.name || '—'}</td>
                   <td>

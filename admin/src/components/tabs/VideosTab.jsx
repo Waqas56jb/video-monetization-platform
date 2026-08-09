@@ -6,9 +6,10 @@ import { EmptyRow, IconButton, TableWrap, VideoCell } from '@/components/ui/Tabl
 import { FilterRow, FilterSelect, SearchBar } from '@/components/ui/Filters'
 import { Async } from '@/components/ui/States'
 import useApi, { useDebounced, tzs, compact } from '@/hooks/useApi'
-import api from '@/lib/api'
+import api, { mediaUrl } from '@/lib/api'
 import { useConfirm } from '@/context/ConfirmContext'
 import { useToast } from '@/context/ToastContext'
+import VideoPreview from '@/components/ui/VideoPreview'
 
 const STATUS_FILTERS = {
   Published: 'published',
@@ -34,6 +35,7 @@ const ACCESS_LABEL = {
 export default function VideosTab() {
   const confirm = useConfirm()
   const showToast = useToast()
+  const [previewing, setPreviewing] = useState(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const debounced = useDebounced(query, 300)
@@ -133,7 +135,7 @@ export default function VideosTab() {
                 return (
                   <tr key={v.id} className={removed || !v.isPublished ? 'blocked-row' : ''}>
                     <td>
-                      <VideoCell thumb={v.thumbnailUrl} title={v.title} meta={v.category} />
+                      <VideoCell thumb={mediaUrl(v.thumbnailUrl)} title={v.title} meta={v.category} />
                     </td>
                     <td>{v.creatorName || v.creator?.name || '—'}</td>
                     <td>
@@ -145,6 +147,11 @@ export default function VideosTab() {
                     <td>{statusPill(v)}</td>
                     <td>
                       <div className="actions">
+                        <IconButton
+                          icon="play"
+                          title="Watch this video"
+                          onClick={() => setPreviewing(v)}
+                        />
                         {v.isPublished && !removed && (
                           <IconButton
                             icon="eye-off"
@@ -177,6 +184,12 @@ export default function VideosTab() {
           </TableWrap>
         </Async>
       </Panel>
+
+      <VideoPreview
+        video={previewing}
+        open={Boolean(previewing)}
+        onClose={() => setPreviewing(null)}
+      />
     </div>
   )
 }

@@ -105,9 +105,30 @@ export async function signUp({ email, password, fullName, phone }) {
 export async function signInWithPassword({ email, password }) {
   const { data, error } = await anonClient().auth.signInWithPassword({ email, password })
   if (error || !data?.session) {
-    if (/email not confirmed/i.test(error?.message || '')) {
+    const message = error?.message || ''
+
+    if (/email not confirmed/i.test(message)) {
       throw unauthorized('Please confirm your email address before signing in')
     }
+
+    /**
+     * Not every failed sign-in is a wrong password, and saying so when it is
+     * not is genuinely misleading — someone whose credentials are perfect
+     * starts doubting them, or resets a password that was never the problem.
+     * A rate limit or an outage is a fact about us, not about them.
+     */
+    if (/rate limit|too many/i.test(message) || error?.status === 429) {
+      throw serviceUnavailable(
+        'Too many sign-in attempts in a short time. Wait a minute and try again — ' +
+          'your password is fine.'
+      )
+    }
+    if (error?.status >= 500 || /fetch failed|network|timeout/i.test(message)) {
+      throw serviceUnavailable(
+        'The sign-in service is not responding. Your account is unaffected — try again shortly.'
+      )
+    }
+
     throw unauthorized('Email or password is incorrect')
   }
   return { session: data.session, user: data.user }
