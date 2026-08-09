@@ -69,8 +69,8 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
     clearInterval(polling.current)
     let elapsed = 0
 
-    polling.current = setInterval(async () => {
-      elapsed += 3
+    const tick = async () => {
+      elapsed += 1
       try {
         const res = await api.payments.one(paymentId)
         setPayment(res.payment)
@@ -96,7 +96,11 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
         setError('We did not hear back from your phone. Nothing was charged — try again.')
         setStep('failed')
       }
-    }, 3000)
+    }
+
+    // Sandbox settles in ~3s — poll every second so success appears promptly.
+    polling.current = setInterval(tick, 1000)
+    setTimeout(tick, 2500)
   }
 
   const pay = async (e) => {
@@ -113,6 +117,8 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
         videoId: video.id,
         method,
         phone: phone.trim(),
+        // Milestone 2 sandbox: always succeed after ~3s. Real AirPay in M3.
+        ...(isSandbox ? { simulate: 'success' } : {}),
       })
       setPayment(res.payment)
       watch(res.payment.id)
@@ -192,18 +198,14 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
               itself.
             </small>
 
-            {/* In sandbox the outcome is decided by the last digit, which is
-                impossible to guess and makes a perfectly working system look
-                broken to whoever is testing it. So it is written down. */}
             {isSandbox && (
               <div className="sandbox-note">
                 <FlaskConical size={14} />
                 <div>
                   <b>Test mode — no real money moves.</b>
                   <span>
-                    The last digit of the number decides what happens:{' '}
-                    <em>0</em> fails, <em>1</em> is cancelled, <em>2</em> expires, <em>3</em> never
-                    answers. <b>Anything else succeeds.</b>
+                    After about 3 seconds this will show payment successful and unlock the video.
+                    The real M-Pesa / Airtel gateway comes in Milestone 3.
                   </span>
                 </div>
               </div>
@@ -217,10 +219,19 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             <span className="pay-ic pulse">
               <Smartphone />
             </span>
-            <h3>Check your phone</h3>
+            <h3>{isSandbox ? 'Confirming test payment…' : 'Check your phone'}</h3>
             <p className="pay-sub">
-              We sent a request for <b>{tzs(video.priceTzs)}</b> to <b>{phone}</b>. Enter your PIN
-              on the handset to approve it.
+              {isSandbox ? (
+                <>
+                  Simulating a mobile-money approval for <b>{tzs(video.priceTzs)}</b> to{' '}
+                  <b>{phone}</b>. This unlocks in a few seconds.
+                </>
+              ) : (
+                <>
+                  We sent a request for <b>{tzs(video.priceTzs)}</b> to <b>{phone}</b>. Enter your
+                  PIN on the handset to approve it.
+                </>
+              )}
             </p>
             <div className="pay-dots" aria-hidden="true">
               <span />

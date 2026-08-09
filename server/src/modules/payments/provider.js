@@ -22,22 +22,20 @@ import { badRequest, serviceUnavailable } from '../../lib/errors.js'
  * A test provider that behaves like a real mobile-money STK push: it returns
  * immediately as `pending`, then confirms out-of-band a few seconds later.
  *
- * The outcome is chosen deterministically so all four required cases can be
- * demonstrated on the staging URL:
- *   - `simulate` in the request body wins, when supplied
- *   - otherwise the phone number's last digit decides:
- *       ...0  -> failed      ...1 -> cancelled     ...2 -> expired
- *       ...3  -> stays pending (never confirms)    anything else -> success
+ * Milestone 2 default: always succeed after ~3s so the unlock path is easy to
+ * demo. Optional `simulate` in the request body still forces other outcomes:
+ *   success | failed | cancelled | expired | pending
+ *
+ * Milestone 3 swaps this for AirPay behind the same interface.
  */
 const OUTCOMES = ['success', 'failed', 'cancelled', 'expired', 'pending']
 
-function decideOutcome({ phone, simulate }) {
+function decideOutcome({ simulate }) {
   if (simulate) {
     if (!OUTCOMES.includes(simulate)) throw badRequest(`simulate must be one of ${OUTCOMES.join(', ')}`)
     return simulate
   }
-  const last = String(phone).replace(/\D/g, '').slice(-1)
-  return { 0: 'failed', 1: 'cancelled', 2: 'expired', 3: 'pending' }[last] || 'success'
+  return 'success'
 }
 
 const REASONS = {
@@ -51,7 +49,7 @@ const sandbox = {
 
   async initiate({ paymentId, amountTzs, method, phone, simulate, onResolved }) {
     const providerRef = `SBX-${crypto.randomBytes(5).toString('hex').toUpperCase()}`
-    const outcome = decideOutcome({ phone, simulate })
+    const outcome = decideOutcome({ simulate })
 
     log.info(`sandbox payment ${providerRef} → ${outcome} (${method}, TZS ${amountTzs})`)
 

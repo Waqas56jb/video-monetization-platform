@@ -62,7 +62,9 @@ export const env = {
 
   payments: {
     provider: process.env.PAYMENT_PROVIDER || 'sandbox',
-    sandboxDelayMs: int(process.env.SANDBOX_CONFIRM_DELAY_MS, 4000),
+    // Milestone 2: confirm ~3s after the STK prompt so testers see success quickly.
+    // Milestone 3 (AirPay) ignores this — real provider callbacks drive settlement.
+    sandboxDelayMs: int(process.env.SANDBOX_CONFIRM_DELAY_MS, 3000),
     webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || '',
     airpay: {
       baseUrl: process.env.AIRPAY_BASE_URL || '',
