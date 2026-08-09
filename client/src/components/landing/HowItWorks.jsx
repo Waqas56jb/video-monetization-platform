@@ -11,7 +11,7 @@ export default function HowItWorks() {
       style={{ background: 'linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)' }}
     >
       <div className="container">
-        <Reveal className="section-head">
+        <Reveal className="section-head" immediate>
           <span className="badge">
             <Route style={{ width: 14, height: 14 }} />
             THE EXPERIENCE
@@ -31,6 +31,7 @@ export default function HowItWorks() {
               key={s.title}
               className={`step ${s.tone || ''}`.trim()}
               delay={s.delay || 0}
+              immediate
             >
               <span className="s-ic">
                 <Icon name={s.icon} />

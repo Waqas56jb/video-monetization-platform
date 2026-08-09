@@ -56,12 +56,16 @@ input,select,textarea{font-family:inherit}
 .section-head{text-align:center;max-width:720px;margin:0 auto 64px}
 .section-head h2{font-size:clamp(30px,4.5vw,48px);font-weight:800;line-height:1.15;margin:18px 0 16px}
 .section-head p{color:var(--muted);font-size:17px;line-height:1.7}
-/* Short reveals — long 0.9s + 44px slides make the page feel like it "stops" while scrolling */
-.reveal{opacity:0;transform:translateY(18px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1);will-change:opacity,transform}
-.reveal.in{opacity:1;transform:none;will-change:auto}
-.reveal-l{opacity:0;transform:translateX(-22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
-.reveal-r{opacity:0;transform:translateX(22px);transition:opacity .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1)}
+/* Short reveals — long slides made scroll feel stuck; keep motion light. */
+.reveal{opacity:0;transform:translateY(12px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal-l{opacity:0;transform:translateX(-14px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
+.reveal-r{opacity:0;transform:translateX(14px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
 .reveal-l.in,.reveal-r.in{opacity:1;transform:none}
+/* Landing: never leave whole sections invisible — blank-below-hero UX. */
+.landing-page .reveal,
+.landing-page .reveal-l,
+.landing-page .reveal-r{opacity:1;transform:none}
 .d1{transition-delay:.05s}.d2{transition-delay:.1s}.d3{transition-delay:.14s}.d4{transition-delay:.18s}
 .page{min-height:100vh}
 
@@ -876,11 +880,13 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 .section-trending .vid-grid { min-height: 280px }
 .vid-thumb img {
   background: #12121c;
-  content-visibility: auto;
 }
 
-/* Promote the main column so scroll doesn't repaint the fixed FX every frame */
-.page, .dash-main, .watch-wrap { transform: translateZ(0) }
+/* Isolate dashboard only — transforming `.page` broke fixed overlays and made
+   landing scroll feel stuck (whole document became one giant compositor layer). */
+.dash-main { transform: translateZ(0) }
+body.is-booting,
+body.landing-booting { overflow: hidden; touch-action: none }
 
 /* --- respect the OS "reduce motion" setting --- */
 @media(prefers-reduced-motion:reduce){

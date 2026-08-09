@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
  * Fires once when the element scrolls into view.
  * Mirrors the original IntersectionObserver + `unobserve` behaviour.
  */
-export default function useInView({ threshold = 0.12, skip = false } = {}) {
+export default function useInView({ threshold = 0, skip = false } = {}) {
   const ref = useRef(null)
   const [inView, setInView] = useState(skip)
 
@@ -31,8 +31,9 @@ export default function useInView({ threshold = 0.12, skip = false } = {}) {
           }
         })
       },
-      // rootMargin reveals a beat early so content is ready before it hits the viewport
-      { threshold, rootMargin: '0px 0px 12% 0px' }
+      // Reveal early — never wait until a large share of the block is on-screen
+      // (that left whole landing sections looking blank while scrolling).
+      { threshold, rootMargin: '120px 0px 40% 0px' }
     )
     io.observe(el)
     return () => io.disconnect()

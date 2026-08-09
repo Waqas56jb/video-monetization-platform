@@ -46,7 +46,7 @@ export default function Testimonials() {
   return (
     <section className="section" id="stories">
       <div className="container">
-        <Reveal className="section-head">
+        <Reveal className="section-head" immediate>
           <span className="badge">
             <BadgeCheck style={{ width: 14, height: 14 }} />
             {creators.length ? 'CREATORS EARNING NOW' : 'WHAT YOU GET'}
@@ -72,7 +72,7 @@ export default function Testimonials() {
         {creators.length ? (
           <div className="testi-grid">
             {creators.map((c, i) => (
-              <Reveal className="testi testi-creator" key={c.id} delay={i}>
+              <Reveal className="testi testi-creator" key={c.id} delay={i} immediate>
                 <div className="testi-user" style={{ marginTop: 0 }}>
                   {c.avatarUrl ? (
                     <img src={c.avatarUrl} alt="" loading="lazy" />
@@ -101,7 +101,7 @@ export default function Testimonials() {
         ) : (
           <div className="promise-grid">
             {PROMISES.map((p, i) => (
-              <Reveal className="promise" key={p.title} delay={i}>
+              <Reveal className="promise" key={p.title} delay={i} immediate>
                 <span className="promise-ic">
                   <p.icon />
                 </span>
@@ -112,7 +112,7 @@ export default function Testimonials() {
           </div>
         )}
 
-        <Reveal className="center" style={{ marginTop: 40 }}>
+        <Reveal className="center" style={{ marginTop: 40 }} immediate>
           <button className="btn btn-gold" onClick={() => navigate('/signup')}>
             Start selling your work
           </button>

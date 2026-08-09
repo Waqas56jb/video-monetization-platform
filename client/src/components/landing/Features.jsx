@@ -7,7 +7,7 @@ export default function Features() {
   return (
     <section className="section" id="features">
       <div className="container">
-        <Reveal className="section-head">
+        <Reveal className="section-head" immediate>
           <span className="badge">
             <Gem style={{ width: 14, height: 14 }} />
             PLATFORM POWER
@@ -23,7 +23,7 @@ export default function Features() {
 
         <div className="feat-grid">
           {FEATURES.map((f) => (
-            <Reveal key={f.title} className={`feat ${f.tone || ''}`.trim()} delay={f.delay || 0}>
+            <Reveal key={f.title} className={`feat ${f.tone || ''}`.trim()} delay={f.delay || 0} immediate>
               <span className="f-ic">
                 <Icon name={f.icon} />
               </span>

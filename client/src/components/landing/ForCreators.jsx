@@ -22,8 +22,8 @@ export default function ForCreators() {
       style={{ background: 'linear-gradient(180deg,transparent,rgba(245,197,24,.035),transparent)' }}
     >
       <div className="container earn-grid">
-        <Reveal className="earn-img" variant="left">
-          <img src={IMG.creator} alt="Creator" loading="lazy" />
+        <Reveal className="earn-img" variant="left" immediate>
+          <img src={IMG.creator} alt="Creator" loading="eager" decoding="async" />
           <div className="earn-card">
             <div className="row">
               <small>Every sale is split like this</small>
@@ -44,7 +44,7 @@ export default function ForCreators() {
           </div>
         </Reveal>
 
-        <Reveal className="earn-content" variant="right">
+        <Reveal className="earn-content" variant="right" immediate>
           <span className="badge">
             <Crown style={{ width: 14, height: 14 }} />
             FOR CREATORS

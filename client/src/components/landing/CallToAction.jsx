@@ -8,7 +8,7 @@ export default function CallToAction() {
   return (
     <section className="section">
       <div className="container">
-        <Reveal className="cta-wrap">
+        <Reveal className="cta-wrap" immediate>
           <span className="badge">
             <span className="dot" />
             JOIN 12,450+ USERS

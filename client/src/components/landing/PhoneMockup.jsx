@@ -44,7 +44,7 @@ export default function PhoneMockup({ video, onUnlock }) {
     <div className="phone">
       <div className="phone-notch" />
       <div className="phone-screen">
-        <img src={poster} alt="" loading="lazy" />
+        <img src={poster} alt="" loading="eager" fetchPriority="high" decoding="async" />
         <div className="ph-overlay">
           <span className="ph-live">{label}</span>
           <div>
