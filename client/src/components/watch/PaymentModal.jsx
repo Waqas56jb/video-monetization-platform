@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
   BadgeCheck,
@@ -130,10 +131,12 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
 
   if (!open) return null
 
-  return (
-    <div className="modal open" role="dialog" aria-modal="true" aria-label="Unlock this video">
+  // Portal to body so page transforms never break viewport centering on
+  // Android / iOS / desktop (fixed + ancestor transform = wrong box).
+  return createPortal(
+    <div className="modal open pay-modal" role="dialog" aria-modal="true" aria-label="Unlock this video">
       <div className="modal-bg" onClick={() => step !== 'waiting' && onClose()} />
-      <div className="modal-card">
+      <div className="modal-card pay-card">
         {step !== 'waiting' && (
           <button className="modal-x" onClick={onClose} aria-label="Close">
             <X />
@@ -142,7 +145,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
 
         {/* ------------------------------------------------------- form */}
         {step === 'form' && (
-          <form onSubmit={pay} noValidate>
+          <form onSubmit={pay} noValidate className="pay-form">
             <span className="pay-ic">
               <Zap />
             </span>
@@ -180,6 +183,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
               icon="smartphone"
               type="tel"
               inputMode="tel"
+              autoComplete="tel"
               placeholder={isSandbox ? '0712 345 678' : '0712 000 000'}
               value={phone}
               onChange={(e) => {
@@ -284,6 +288,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
