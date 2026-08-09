@@ -68,6 +68,19 @@ normal flow knows they exist. Add `-- --delete` to clear them.
 
 ---
 
+## Deployed
+
+| | |
+| --- | --- |
+| API | https://video-monetization-platform-backend.vercel.app |
+| Public app | https://video-monetization-platform-chi.vercel.app |
+| Control centre | https://video-monetization-platform-admin.vercel.app |
+
+Check the API first if anything looks wrong:
+`https://video-monetization-platform-backend.vercel.app/health`
+
+---
+
 ## Deploying
 
 Three Vercel projects from this one repository. **The API has to go first**,
