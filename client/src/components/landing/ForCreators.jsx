@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Crown } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 import Icon from '@/components/ui/Icon'
 import { EARN_ITEMS, IMG } from '@/data/copy'
 import useApi from '@/hooks/useApi'
@@ -22,7 +21,7 @@ export default function ForCreators() {
       style={{ background: 'linear-gradient(180deg,transparent,rgba(245,197,24,.035),transparent)' }}
     >
       <div className="container earn-grid">
-        <Reveal className="earn-img" variant="left" immediate>
+        <div className="earn-img">
           <img src={IMG.creator} alt="Creator" loading="eager" decoding="async" />
           <div className="earn-card">
             <div className="row">
@@ -42,9 +41,9 @@ export default function ForCreators() {
               </span>
             </div>
           </div>
-        </Reveal>
+        </div>
 
-        <Reveal className="earn-content" variant="right" immediate>
+        <div className="earn-content">
           <span className="badge">
             <Crown style={{ width: 14, height: 14 }} />
             FOR CREATORS
@@ -75,7 +74,7 @@ export default function ForCreators() {
             <ArrowRight />
             Become a Creator — It&apos;s Free
           </button>
-        </Reveal>
+        </div>
       </div>
     </section>
   )

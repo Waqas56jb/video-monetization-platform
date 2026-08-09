@@ -56,17 +56,27 @@ input,select,textarea{font-family:inherit}
 .section-head{text-align:center;max-width:720px;margin:0 auto 64px}
 .section-head h2{font-size:clamp(30px,4.5vw,48px);font-weight:800;line-height:1.15;margin:18px 0 16px}
 .section-head p{color:var(--muted);font-size:17px;line-height:1.7}
-/* Short reveals — long slides made scroll feel stuck; keep motion light. */
-.reveal{opacity:0;transform:translateY(12px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
-.reveal.in{opacity:1;transform:none}
-.reveal-l{opacity:0;transform:translateX(-14px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
-.reveal-r{opacity:0;transform:translateX(14px);transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)}
-.reveal-l.in,.reveal-r.in{opacity:1;transform:none}
-/* Landing: never leave whole sections invisible — blank-below-hero UX. */
-.landing-page .reveal,
-.landing-page .reveal-l,
-.landing-page .reveal-r{opacity:1;transform:none}
+/* Reveals are visible by default. Only `.is-pending` hides — so a late/broken
+   IntersectionObserver can never leave the page blank. */
+.reveal,.reveal-l,.reveal-r{
+  opacity:1;transform:none;
+  transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)
+}
+.reveal.is-pending{opacity:0;transform:translateY(12px)}
+.reveal-l.is-pending{opacity:0;transform:translateX(-14px)}
+.reveal-r.is-pending{opacity:0;transform:translateX(14px)}
+.reveal.in,.reveal-l.in,.reveal-r.in{opacity:1;transform:none}
 .d1{transition-delay:.05s}.d2{transition-delay:.1s}.d3{transition-delay:.14s}.d4{transition-delay:.18s}
+
+/* Landing boot: full page held until assets are ready, then one paint. */
+.landing-boot{
+  position:fixed;inset:0;z-index:1000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  background:var(--bg);color:var(--text);
+}
+.landing-boot-note{margin:0;font-size:13px;color:var(--muted)}
+.landing-page.is-ready{animation:landingIn .35s ease}
+@keyframes landingIn{from{opacity:.01}to{opacity:1}}
 .page{min-height:100vh}
 
 /* ---------- PRELOADER ---------- */
@@ -138,7 +148,8 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .mobile-menu-actions{display:flex;flex-direction:column;gap:12px;width:min(300px,86%);margin-top:10px;flex-shrink:0}
 
 /* ---------- HERO ---------- */
-.hero{min-height:100vh;display:flex;align-items:center;position:relative;padding:150px 0 80px;overflow:hidden}
+/* Slightly under full viewport so the next section peeks — proves content exists. */
+.hero{min-height:min(100dvh,920px);display:flex;align-items:center;position:relative;padding:150px 0 80px;overflow:hidden}
 .hero-bg{position:absolute;inset:0;z-index:-1}
 .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.22;transform:scale(1.08);animation:heroZoom 22s ease-in-out infinite alternate}
 @keyframes heroZoom{to{transform:scale(1.16)}}
@@ -667,10 +678,10 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- true mobile viewport height (avoids the iOS 100vh address-bar jump) --- */
 @supports (height:100dvh){
-  .hero{min-height:100dvh}
+  .hero{min-height:min(100dvh,920px)}
   .auth-wrap,.dash,.page{min-height:100dvh}
   .sidebar{height:100dvh}
-  #preloader{height:100dvh}
+  #preloader,.landing-boot{height:100dvh}
   .modal-card{max-height:88dvh}
 }
 
@@ -882,17 +893,16 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   background: #12121c;
 }
 
-/* Isolate dashboard only — transforming `.page` broke fixed overlays and made
-   landing scroll feel stuck (whole document became one giant compositor layer). */
+/* Isolate dashboard only — never transform `.page` (breaks fixed + scroll). */
 .dash-main { transform: translateZ(0) }
-body.is-booting,
-body.landing-booting { overflow: hidden; touch-action: none }
 
 /* --- respect the OS "reduce motion" setting --- */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
-  .reveal,.reveal-l,.reveal-r{opacity:1 !important;transform:none !important}
+  .reveal,.reveal-l,.reveal-r,
+  .reveal.is-pending,.reveal-l.is-pending,.reveal-r.is-pending{opacity:1 !important;transform:none !important}
   .aurora span{animation:none}
+  .landing-page.is-ready{animation:none}
 }
 
 /* --- print --- */

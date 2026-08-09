@@ -5,9 +5,8 @@ import usePrefersReducedMotion from '@/hooks/usePrefersReducedMotion'
  * Scroll-reveal wrapper — the React version of `.reveal / .reveal-l / .reveal-r`
  * plus the `.d1 … .d4` stagger delays.
  *
- * variant : 'up' | 'left' | 'right'
- * delay   : 0 | 1 | 2 | 3 | 4  (→ .d1 … .d4)
- * immediate: render already revealed (used for above-the-fold hero content)
+ * Content is visible by default. Pending animation is opt-in via `.is-pending`,
+ * so a late IntersectionObserver can never leave a section permanently blank.
  */
 const VARIANTS = { up: 'reveal', left: 'reveal-l', right: 'reveal-r' }
 
@@ -27,7 +26,9 @@ export default function Reveal({
   const classes = [
     VARIANTS[variant] || VARIANTS.up,
     delay ? `d${delay}` : '',
-    inView ? 'in' : '',
+    // Only hide when we are actively waiting to animate in.
+    !skip && !inView ? 'is-pending' : '',
+    inView || skip ? 'in' : '',
     className,
   ]
     .filter(Boolean)

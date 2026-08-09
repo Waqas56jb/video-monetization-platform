@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { PlayCircle, Rocket } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 import CountUp from '@/components/ui/CountUp'
 import Icon from '@/components/ui/Icon'
 import PhoneMockup from './PhoneMockup'
@@ -83,26 +82,26 @@ export default function Hero() {
 
       <div className="container hero-grid">
         <div>
-          <Reveal as="span" className="badge" immediate>
+          <span className="badge">
             <span className="dot" />
             TANZANIA&apos;S CREATOR PLATFORM
-          </Reveal>
+          </span>
 
-          <Reveal as="h1" immediate>
+          <h1>
             Upload. Sell.
             <br />
             <span className="grad-text">Get Paid</span> Before
             <br />
             You Go Free.
-          </Reveal>
+          </h1>
 
-          <Reveal as="p" className="hero-sub" delay={1} immediate>
+          <p className="hero-sub">
             The premium home for Tanzanian creators. Sell your videos with <b>PPV Forever</b> or{' '}
             <b>Paid Premiere</b>, get paid instantly via <b>M-Pesa &amp; Airtel Money</b> — then
             release free with ads and keep earning.
-          </Reveal>
+          </p>
 
-          <Reveal className="hero-actions" delay={2} immediate>
+          <div className="hero-actions">
             <button className="btn btn-gold" onClick={() => navigate('/signup')}>
               <Rocket />
               <span className="btn-label-full">Start Earning Today</span>
@@ -113,9 +112,9 @@ export default function Hero() {
               <span className="btn-label-full">Watch a Premiere</span>
               <span className="btn-label-short">Watch</span>
             </button>
-          </Reveal>
+          </div>
 
-          <Reveal className="hero-stats" delay={3} immediate>
+          <div className="hero-stats">
             {heroStats.map((st) => (
               <div className="hstat" key={st.label}>
                 <b>
@@ -126,10 +125,10 @@ export default function Hero() {
                 <span>{st.label}</span>
               </div>
             ))}
-          </Reveal>
+          </div>
         </div>
 
-        <Reveal className="hero-visual" delay={2} immediate>
+        <div className="hero-visual">
           {floatCards.map((c) => (
             <div className={`float-card ${c.cls}`} key={c.cls}>
               <span className="ic">
@@ -142,7 +141,7 @@ export default function Hero() {
             </div>
           ))}
           <PhoneMockup video={featured} onUnlock={() => navigate('/explore')} />
-        </Reveal>
+        </div>
       </div>
 
       <div className="scroll-hint" aria-hidden="true">

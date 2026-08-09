@@ -1,21 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { Flame, LayoutGrid } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 import VideoCard from '@/components/ui/VideoCard'
 import { LANDING_SHOWCASE } from '@/data/copy'
 
-/**
- * Homepage marketing grid — always visible, no scroll-reveal stagger.
- * Reveal animations on these cards were causing the scroll to "catch" when
- * the video section entered the viewport (opacity/layout jump + image decode).
- */
+/** Homepage marketing grid — always painted, no scroll-reveal. */
 export default function Trending() {
   const navigate = useNavigate()
 
   return (
     <section className="section section-trending" id="trending">
       <div className="container">
-        <Reveal className="section-head" immediate>
+        <div className="section-head">
           <span className="badge">
             <Flame style={{ width: 14, height: 14 }} />
             TRENDING NOW
@@ -27,7 +22,7 @@ export default function Trending() {
             Exclusive premieres and pay-per-view drops from Tanzania&apos;s biggest creators. Watch
             the free preview, pay with mobile money, keep watching forever.
           </p>
-        </Reveal>
+        </div>
 
         <div className="vid-grid">
           {LANDING_SHOWCASE.map((video) => (

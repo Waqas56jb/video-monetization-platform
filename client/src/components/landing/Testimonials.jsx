@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Handshake, ShieldCheck, Wallet } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 import useApi, { tzs, compact } from '@/hooks/useApi'
 import api from '@/lib/api'
 
@@ -46,7 +45,7 @@ export default function Testimonials() {
   return (
     <section className="section" id="stories">
       <div className="container">
-        <Reveal className="section-head" immediate>
+        <div className="section-head">
           <span className="badge">
             <BadgeCheck style={{ width: 14, height: 14 }} />
             {creators.length ? 'CREATORS EARNING NOW' : 'WHAT YOU GET'}
@@ -67,12 +66,12 @@ export default function Testimonials() {
               ? 'Real Tanzanian creators, real mobile money in their pockets.'
               : 'No fine print and no waiting to find out how it works. This is the deal.'}
           </p>
-        </Reveal>
+        </div>
 
         {creators.length ? (
           <div className="testi-grid">
-            {creators.map((c, i) => (
-              <Reveal className="testi testi-creator" key={c.id} delay={i} immediate>
+            {creators.map((c) => (
+              <div className="testi testi-creator" key={c.id}>
                 <div className="testi-user" style={{ marginTop: 0 }}>
                   {c.avatarUrl ? (
                     <img src={c.avatarUrl} alt="" loading="lazy" />
@@ -95,28 +94,28 @@ export default function Testimonials() {
                     <small>earned so far</small>
                   </div>
                 </div>
-              </Reveal>
+              </div>
             ))}
           </div>
         ) : (
           <div className="promise-grid">
-            {PROMISES.map((p, i) => (
-              <Reveal className="promise" key={p.title} delay={i} immediate>
+            {PROMISES.map((p) => (
+              <div className="promise" key={p.title}>
                 <span className="promise-ic">
                   <p.icon />
                 </span>
                 <b>{p.title}</b>
                 <p>{p.text}</p>
-              </Reveal>
+              </div>
             ))}
           </div>
         )}
 
-        <Reveal className="center" style={{ marginTop: 40 }} immediate>
+        <div className="center" style={{ marginTop: 40 }}>
           <button className="btn btn-gold" onClick={() => navigate('/signup')}>
             Start selling your work
           </button>
-        </Reveal>
+        </div>
       </div>
     </section>
   )

@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { LogIn, Sparkles } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 
 export default function CallToAction() {
   const navigate = useNavigate()
@@ -8,7 +7,7 @@ export default function CallToAction() {
   return (
     <section className="section">
       <div className="container">
-        <Reveal className="cta-wrap" immediate>
+        <div className="cta-wrap">
           <span className="badge">
             <span className="dot" />
             JOIN 12,450+ USERS
@@ -32,7 +31,7 @@ export default function CallToAction() {
               I Have an Account
             </button>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   )

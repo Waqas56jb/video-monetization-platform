@@ -1,5 +1,4 @@
 import { Gem } from 'lucide-react'
-import Reveal from '@/components/ui/Reveal'
 import Icon from '@/components/ui/Icon'
 import { FEATURES } from '@/data/copy'
 
@@ -7,7 +6,7 @@ export default function Features() {
   return (
     <section className="section" id="features">
       <div className="container">
-        <Reveal className="section-head" immediate>
+        <div className="section-head">
           <span className="badge">
             <Gem style={{ width: 14, height: 14 }} />
             PLATFORM POWER
@@ -19,17 +18,17 @@ export default function Features() {
             One upload. Everywhere. Real value — built with world-class streaming infrastructure and
             bank-grade payment security.
           </p>
-        </Reveal>
+        </div>
 
         <div className="feat-grid">
           {FEATURES.map((f) => (
-            <Reveal key={f.title} className={`feat ${f.tone || ''}`.trim()} delay={f.delay || 0} immediate>
+            <div key={f.title} className={`feat ${f.tone || ''}`.trim()}>
               <span className="f-ic">
                 <Icon name={f.icon} />
               </span>
               <h3>{f.title}</h3>
               <p>{f.text}</p>
-            </Reveal>
+            </div>
           ))}
         </div>
       </div>

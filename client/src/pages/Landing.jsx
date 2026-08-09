@@ -8,15 +8,34 @@ import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
+import useLandingReady from '@/hooks/useLandingReady'
 
 /**
- * Marketing homepage. Content below the hero must never sit at opacity:0
- * waiting for scroll — that made the page feel blank and “stuck”.
- * Reveals stay for light motion only after the page is already readable.
+ * Marketing homepage.
+ *
+ * The whole page is held behind a boot screen until critical assets are ready,
+ * then mounted in one shot — no hero-only flash with blank sections below,
+ * and no scroll-lock while waiting.
  */
 export default function Landing() {
+  const ready = useLandingReady()
+
+  if (!ready) {
+    return (
+      <div className="landing-boot" aria-busy="true" aria-label="Loading MTONYO+">
+        <div className="loader-logo">
+          MTONYO<span className="logo-plus">+</span>
+        </div>
+        <div className="loader-bar">
+          <span />
+        </div>
+        <p className="landing-boot-note">Loading the page…</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="page landing-page">
+    <div className="page landing-page is-ready">
       <Header />
       <Hero />
       <Marquee />
