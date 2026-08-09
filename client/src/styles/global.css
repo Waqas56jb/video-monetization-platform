@@ -68,15 +68,20 @@ input,select,textarea{font-family:inherit}
 .reveal.in,.reveal-l.in,.reveal-r.in{opacity:1;transform:none}
 .d1{transition-delay:.05s}.d2{transition-delay:.1s}.d3{transition-delay:.14s}.d4{transition-delay:.18s}
 
-/* Landing boot: full page held until assets are ready, then one paint. */
+/* Brief brand splash — page is already mounted underneath (never blocks mobile). */
 .landing-boot{
   position:fixed;inset:0;z-index:1000;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
   background:var(--bg);color:var(--text);
+  pointer-events:none;
+  animation:bootFade .38s ease forwards;
+}
+@keyframes bootFade{
+  0%,70%{opacity:1}
+  100%{opacity:0;visibility:hidden}
 }
 .landing-boot-note{margin:0;font-size:13px;color:var(--muted)}
-.landing-page.is-ready{animation:landingIn .35s ease}
-@keyframes landingIn{from{opacity:.01}to{opacity:1}}
+.landing-page.is-ready{animation:none}
 .page{min-height:100vh}
 
 /* ---------- PRELOADER ---------- */

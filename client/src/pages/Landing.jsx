@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/components/landing/Hero'
@@ -8,44 +9,45 @@ import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
-import useLandingReady from '@/hooks/useLandingReady'
 
 /**
- * Marketing homepage.
- *
- * The whole page is held behind a boot screen until critical assets are ready,
- * then mounted in one shot — no hero-only flash with blank sections below,
- * and no scroll-lock while waiting.
+ * Marketing homepage — mounts immediately so mobile never spins on
+ * remote fonts/images. A short splash sits on top and always clears.
  */
 export default function Landing() {
-  const ready = useLandingReady()
+  const [splash, setSplash] = useState(true)
 
-  if (!ready) {
-    return (
-      <div className="landing-boot" aria-busy="true" aria-label="Loading MTONYO+">
-        <div className="loader-logo">
-          MTONYO<span className="logo-plus">+</span>
-        </div>
-        <div className="loader-bar">
-          <span />
-        </div>
-        <p className="landing-boot-note">Loading the page…</p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    // Always clear — never gate on Unsplash / fonts (slow or blocked on mobile).
+    const t = setTimeout(() => setSplash(false), 380)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
-    <div className="page landing-page is-ready">
-      <Header />
-      <Hero />
-      <Marquee />
-      <Trending />
-      <HowItWorks />
-      <Features />
-      <ForCreators />
-      <Testimonials />
-      <CallToAction />
-      <Footer />
-    </div>
+    <>
+      {splash && (
+        <div className="landing-boot" aria-busy="true" aria-label="Loading MTONYO+">
+          <div className="loader-logo">
+            MTONYO<span className="logo-plus">+</span>
+          </div>
+          <div className="loader-bar">
+            <span />
+          </div>
+        </div>
+      )}
+
+      <div className={`page landing-page ${splash ? '' : 'is-ready'}`.trim()}>
+        <Header />
+        <Hero />
+        <Marquee />
+        <Trending />
+        <HowItWorks />
+        <Features />
+        <ForCreators />
+        <Testimonials />
+        <CallToAction />
+        <Footer />
+      </div>
+    </>
   )
 }

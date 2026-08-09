@@ -3,8 +3,7 @@ import { useLocation } from 'react-router-dom'
 
 /**
  * Short brand splash for non-landing routes.
- * Landing owns its own full-page boot (see useLandingReady) so we never leave
- * a half-visible homepage with blank sections under a global overlay.
+ * Landing mounts immediately with its own brief overlay — never waits on assets.
  */
 export default function Preloader() {
   const { pathname } = useLocation()

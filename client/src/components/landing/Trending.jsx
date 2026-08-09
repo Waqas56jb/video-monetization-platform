@@ -3,7 +3,7 @@ import { Flame, LayoutGrid } from 'lucide-react'
 import VideoCard from '@/components/ui/VideoCard'
 import { LANDING_SHOWCASE } from '@/data/copy'
 
-/** Homepage marketing grid — always painted, no scroll-reveal. */
+/** Homepage marketing grid — only the first card is eager on mobile data. */
 export default function Trending() {
   const navigate = useNavigate()
 
@@ -25,11 +25,11 @@ export default function Trending() {
         </div>
 
         <div className="vid-grid">
-          {LANDING_SHOWCASE.map((video) => (
+          {LANDING_SHOWCASE.map((video, i) => (
             <VideoCard
               key={video.id}
               video={video}
-              eager
+              eager={i === 0}
               onClick={() => navigate('/explore')}
             />
           ))}

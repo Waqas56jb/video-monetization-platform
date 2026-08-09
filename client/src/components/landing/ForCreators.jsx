@@ -22,7 +22,7 @@ export default function ForCreators() {
     >
       <div className="container earn-grid">
         <div className="earn-img">
-          <img src={IMG.creator} alt="Creator" loading="eager" decoding="async" />
+          <img src={IMG.creator} alt="Creator" loading="lazy" decoding="async" />
           <div className="earn-card">
             <div className="row">
               <small>Every sale is split like this</small>

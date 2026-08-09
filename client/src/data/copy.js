@@ -14,23 +14,24 @@
 /** Stock photography used as page furniture — backdrops and illustrations.
  * These are never presented as a real video thumbnail; those come from Cloudflare. */
 export const IMG = {
-  concert: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=1600&q=80',
-  premiere: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=700&q=80',
-  premiereLarge: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1400&q=80',
-  journey: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=700&q=80',
-  studio: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=700&q=80',
-  konser: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=700&q=80',
-  creator: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=900&q=80',
-  authLogin: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1000&q=80',
-  authSignup: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=1000&q=80',
-  authReset: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=1000&q=80',
-  avatarKonde: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
-  avatarKondeLg: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=140&q=80',
-  avatarZuchu: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=100&q=80',
-  avatarZuchuLg: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=140&q=80',
-  avatarMarioo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&q=80',
-  avatarRayvanny: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80',
-  avatarRayvannyLg: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=140&q=80',
+  // Leaner sizes for mobile data — Unsplash was bloating first paint.
+  concert: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=960&q=60&auto=format',
+  premiere: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=480&q=60&auto=format',
+  premiereLarge: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=960&q=65&auto=format',
+  journey: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=480&q=60&auto=format',
+  studio: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=480&q=60&auto=format',
+  konser: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=480&q=60&auto=format',
+  creator: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=640&q=60&auto=format',
+  authLogin: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&q=65&auto=format',
+  authSignup: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=65&auto=format',
+  authReset: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&q=65&auto=format',
+  avatarKonde: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=60&auto=format',
+  avatarKondeLg: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=60&auto=format',
+  avatarZuchu: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=80&q=60&auto=format',
+  avatarZuchuLg: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=120&q=60&auto=format',
+  avatarMarioo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&q=60&auto=format',
+  avatarRayvanny: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=60&auto=format',
+  avatarRayvannyLg: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=60&auto=format',
 }
 
 /**
