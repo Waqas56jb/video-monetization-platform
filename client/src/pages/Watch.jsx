@@ -43,7 +43,15 @@ export default function Watch() {
 
   const v = video.data?.video
   const p = playback.data
-  const locked = p ? !p.access?.canWatchFull : false
+  /**
+   * Assume locked until the server says otherwise.
+   *
+   * This read `false` while the playback request was still in flight, so for a
+   * moment every visitor was shown the green "In your library" badge on a video
+   * they had not bought. Brief, but it is the platform telling somebody they
+   * own something they do not.
+   */
+  const locked = p ? !p.access?.canWatchFull : true
   const signedIn = Boolean(getAccessToken())
 
   // A shared link should preview sensibly, and the tab should say what it is.
