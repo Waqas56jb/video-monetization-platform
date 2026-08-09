@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { one, many } from '../db/pool.js'
 import { asyncHandler } from '../lib/errors.js'
 import { getSettings } from '../services/settings.js'
+import { env } from '../config/env.js'
 
 /**
  * Public figures for the landing page.
@@ -44,6 +45,13 @@ router.get(
       paidToCreatorsTzs: money.to_creators,
       grossTzs: money.gross,
       creatorSplitPercent: settings.creator_split_percent,
+
+      /**
+       * Which payment provider is live. The apps use this to decide whether to
+       * explain the test outcomes — guidance that would be nonsense, and
+       * alarming, on a site taking real money.
+       */
+      paymentProvider: env.payments.provider,
 
       /**
        * Has anything actually happened here yet? The landing page uses this to

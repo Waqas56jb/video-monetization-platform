@@ -396,3 +396,17 @@
   .owned-badge .ob-full { display: none; }
   .owned-badge .ob-short { display: inline; }
 }
+
+/* In sandbox the outcome is decided by the phone number's last digit. Nobody
+   could guess that, and testing with a number that always fails makes a
+   working system look broken — so the rule is on screen. */
+.sandbox-note {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin-top: 14px; padding: 11px 13px; border-radius: 11px;
+  background: rgba(96, 165, 250, .09); border: 1px solid rgba(96, 165, 250, .28);
+  text-align: left;
+}
+.sandbox-note > svg { flex-shrink: 0; margin-top: 1px; color: #60a5fa; }
+.sandbox-note b { display: block; font-size: 12.5px; color: #93c5fd; }
+.sandbox-note span { display: block; margin-top: 3px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.sandbox-note em { font-style: normal; font-weight: 700; color: #93c5fd; }

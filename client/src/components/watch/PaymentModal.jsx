@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BadgeCheck,
+  FlaskConical,
   Library,
   Play,
   Smartphone,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react'
 import Field from '@/components/ui/Field'
 import api from '@/lib/api'
+import useApi from '@/hooks/useApi'
 import { tzs } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 
@@ -30,6 +32,10 @@ const METHODS = [
 ]
 
 export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToLibrary }) {
+  // Only ask while the dialog is open; there is no reason to poll otherwise.
+  const { data: platform } = useApi(() => api.stats.platform(), [open], { skip: !open })
+  const isSandbox = platform?.paymentProvider === 'sandbox'
+
   const [step, setStep] = useState('form') // form | waiting | done | failed
   const [method, setMethod] = useState('mpesa')
   const [phone, setPhone] = useState('')
@@ -168,7 +174,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
               icon="smartphone"
               type="tel"
               inputMode="tel"
-              placeholder="0712 000 000"
+              placeholder={isSandbox ? '0712 345 678' : '0712 000 000'}
               value={phone}
               onChange={(e) => {
                 setPhone(e.target.value)
@@ -185,6 +191,23 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
               You&apos;ll get a prompt on your phone. Approve it there and this page unlocks by
               itself.
             </small>
+
+            {/* In sandbox the outcome is decided by the last digit, which is
+                impossible to guess and makes a perfectly working system look
+                broken to whoever is testing it. So it is written down. */}
+            {isSandbox && (
+              <div className="sandbox-note">
+                <FlaskConical size={14} />
+                <div>
+                  <b>Test mode — no real money moves.</b>
+                  <span>
+                    The last digit of the number decides what happens:{' '}
+                    <em>0</em> fails, <em>1</em> is cancelled, <em>2</em> expires, <em>3</em> never
+                    answers. <b>Anything else succeeds.</b>
+                  </span>
+                </div>
+              </div>
+            )}
           </form>
         )}
 
@@ -234,7 +257,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
 
         {/* ----------------------------------------------------- failed */}
         {step === 'failed' && (
-          <div className="pay-done">
+          <div className="pay-done pay-failed">
             <span className="pay-ic bad">
               <AlertTriangle />
             </span>
