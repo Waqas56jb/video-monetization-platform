@@ -60,6 +60,34 @@ Run from `server/`:
 | `npm run cf:verify` | Upload, encode, play and clip a real file end to end |
 | `npm run cf:orphans` | Find Cloudflare videos with no record here |
 | `npm run cf:webhook <url>` | Register the encoding webhook |
+| `npm run cf:origins` | Which sites may embed each video (`-- --fix` repairs) |
+| `npm run demo:seed` | Fill the database with demo creators, videos and sales |
+| `npm run demo:status` | What demo content is there |
+| `npm run demo:clear` | Remove every trace of it |
+
+### Demo content
+
+`demo:seed` puts sample content in the **real database**, created the way a
+real creator creates it: real accounts, real Cloudflare uploads, real review and
+approval, real purchases with the revenue split recorded. It is not front-end
+fixtures — if the demo works, the platform works, because it is the same code
+path.
+
+It covers every case worth testing: pay-once-forever, a premiere with weeks
+left, one with days left, one whose window has expired and been turned
+free-with-ads by the nightly job, something free from the start, and one video
+sitting in the review queue.
+
+All of it is tagged, so `demo:clear` removes every trace on the day real
+creators arrive and touches nothing of theirs.
+
+### Housekeeping
+
+`cf:origins` is worth checking after any change to `PUBLIC_WEB_URL` or
+`ADMIN_WEB_URL`. Cloudflare stores the list of sites allowed to embed a video
+**on the video, permanently, when it is created** — so a video uploaded while
+the API was pointed somewhere else is locked to that place for good and renders
+as a blank white player. `-- --fix` repairs them.
 
 `cf:orphans` is worth running monthly. Abandoned uploads — a closed tab, a lost
 signal — leave files on Cloudflare that count against your storage minutes
