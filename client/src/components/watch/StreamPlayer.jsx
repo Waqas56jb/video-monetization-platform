@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 
 /**
  * The real player.
@@ -17,6 +18,10 @@ import { useEffect, useRef, useState } from 'react'
  * blocked, offline, changed — the video still plays and the paywall is still
  * reachable from the button underneath. Losing a nicety is acceptable;
  * losing playback is not.
+ *
+ * A blank white rectangle usually means the Stream video's `allowedOrigins`
+ * was locked to localhost when the asset was created. Repair with
+ * `npm run cf:origins -- --fix` on the server — the iframe itself cannot fix that.
  */
 const SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
 
@@ -37,6 +42,18 @@ function loadSdk() {
   return sdkPromise
 }
 
+function buildSrc(src, poster, autoplay) {
+  try {
+    const url = new URL(src)
+    if (poster) url.searchParams.set('poster', poster)
+    if (autoplay) url.searchParams.set('autoplay', 'true')
+    url.searchParams.set('preload', 'metadata')
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
 export default function StreamPlayer({
   src,
   poster,
@@ -47,9 +64,24 @@ export default function StreamPlayer({
 }) {
   const frame = useRef(null)
   const [ready, setReady] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
+  const iframeSrc = useMemo(() => (src ? buildSrc(src, poster, autoplay) : null), [src, poster, autoplay])
 
   useEffect(() => {
-    if (!src) return
+    setReady(false)
+    setTimedOut(false)
+    if (!iframeSrc) return
+
+    // If Cloudflare refuses the embed (wrong allowedOrigins), the iframe stays
+    // white and never fires play. Surface that after a short wait.
+    const timer = setTimeout(() => {
+      if (!ready) setTimedOut(true)
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [iframeSrc]) // eslint-disable-line react-hooks/exhaustive-deps -- only reset on new src
+
+  useEffect(() => {
+    if (!iframeSrc) return
     let player = null
     let alive = true
 
@@ -60,6 +92,7 @@ export default function StreamPlayer({
         player.addEventListener('ended', () => onEnded?.())
         player.addEventListener('timeupdate', () => onTimeUpdate?.(player.currentTime, player.duration))
         player.addEventListener('play', () => setReady(true))
+        player.addEventListener('loadeddata', () => setReady(true))
       } catch {
         /* the iframe plays regardless */
       }
@@ -70,24 +103,45 @@ export default function StreamPlayer({
       player = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src])
+  }, [iframeSrc])
 
-  if (!src) return null
+  if (!src) {
+    return (
+      <div className="stream-fallback" role="status">
+        <AlertTriangle size={22} />
+        <p>Playback is not available for this video yet.</p>
+      </div>
+    )
+  }
 
-  const url = new URL(src)
-  if (poster) url.searchParams.set('poster', poster)
-  if (autoplay) url.searchParams.set('autoplay', 'true')
-  url.searchParams.set('preload', 'metadata')
+  if (!iframeSrc) {
+    return (
+      <div className="stream-fallback" role="alert">
+        <AlertTriangle size={22} />
+        <p>This video could not be opened. Please refresh and try again.</p>
+      </div>
+    )
+  }
 
   return (
-    <iframe
-      ref={frame}
-      className={`stream-frame ${ready ? 'is-playing' : ''}`.trim()}
-      src={url.toString()}
-      title={title}
-      loading="lazy"
-      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-      allowFullScreen
-    />
+    <div className="stream-shell">
+      <iframe
+        ref={frame}
+        className={`stream-frame ${ready ? 'is-playing' : ''}`.trim()}
+        src={iframeSrc}
+        title={title}
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+        allowFullScreen
+      />
+      {timedOut && !ready && (
+        <div className="stream-fallback stream-fallback-overlay" role="status">
+          <AlertTriangle size={22} />
+          <p>
+            The player could not start. This is usually an embed-permission issue on the video
+            itself. Try again in a moment, or open the video from another device.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }

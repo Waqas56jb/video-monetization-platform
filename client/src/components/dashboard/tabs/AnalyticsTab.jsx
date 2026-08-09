@@ -25,10 +25,19 @@ export default function AnalyticsTab() {
 
   if (loading) return <Skeleton rows={5} />
   if (error) return <ErrorState error={error} onRetry={reload} />
+  if (!data) return <ErrorState error={{ message: 'Analytics could not be loaded.' }} onRetry={reload} />
 
-  const isCreator = data.role === 'creator'
-  const c = data.creator
-  const v = data.viewer
+  const isCreator = data.role === 'creator' || data.role === 'admin' || data.role === 'sub_admin'
+  const c = data.creator || {
+    views: 0,
+    paidUnlocks: 0,
+    conversionPercent: null,
+    published: 0,
+    daily: [],
+    topVideos: [],
+    byAccessType: [],
+  }
+  const v = data.viewer || { videosOwned: 0, spentTzs: 0, ownedSeconds: 0, purchases: 0, recent: [] }
 
   return (
     <div>

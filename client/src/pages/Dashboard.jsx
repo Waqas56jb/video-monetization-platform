@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Bell, Home, Menu } from 'lucide-react'
+import { Link, Navigate } from 'react-router-dom'
+import { Home, Menu } from 'lucide-react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
 import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
@@ -15,30 +15,47 @@ import BecomeCreatorTab from '@/components/dashboard/tabs/BecomeCreatorTab'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { DASH_TITLES } from '@/data/copy'
 import NotificationBell from '@/components/dashboard/NotificationBell'
-import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
+import { Skeleton } from '@/components/ui/States'
 
 /** Which tabs each role is allowed to open. */
 const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
 const TABS_BY_ROLE = {
   viewer: ['library', 'purchases', 'become', ...ACCOUNT_TABS],
   creator: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
+  // Staff who open the public app still get a working creator-style dashboard
+  // instead of crashing on an unknown role map.
+  admin: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
+  sub_admin: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
 }
 
 /** Where each role lands when it opens the dashboard. */
-const HOME_TAB = { viewer: 'library', creator: 'overview' }
+const HOME_TAB = {
+  viewer: 'library',
+  creator: 'overview',
+  admin: 'overview',
+  sub_admin: 'overview',
+}
+
+/** Map any known (or unknown) role onto a safe dashboard key. */
+function dashRole(role) {
+  if (role && TABS_BY_ROLE[role]) return role
+  return 'viewer'
+}
 
 export default function Dashboard() {
-  const { role, isCreator, user } = useAuth()
-  const [tab, setTab] = useState(() => HOME_TAB[role])
+  const { role, isCreator, user, loading, authed } = useAuth()
+  const safeRole = dashRole(role)
+  const [tab, setTab] = useState(() => HOME_TAB[safeRole] || 'library')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const showToast = useToast()
 
   // A role change (viewer upgrading to creator, or logging in as the other
   // role) must never leave the user staring at a tab they can no longer open.
   useEffect(() => {
-    if (!TABS_BY_ROLE[role].includes(tab)) setTab(HOME_TAB[role])
-  }, [role, tab])
+    const allowed = TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer
+    const home = HOME_TAB[safeRole] || 'library'
+    if (!allowed.includes(tab)) setTab(home)
+  }, [safeRole, tab])
 
   // Greet the person who is actually signed in, not a name from a data file.
   const firstName = (user?.fullName || '').split(' ')[0]
@@ -70,6 +87,18 @@ export default function Dashboard() {
     setTab(next)
     setDrawerOpen(false)
     window.scrollTo({ top: 0 })
+  }
+
+  if (loading) {
+    return (
+      <div className="page" style={{ padding: 40 }}>
+        <Skeleton rows={6} />
+      </div>
+    )
+  }
+
+  if (!authed) {
+    return <Navigate to="/login" replace state={{ from: '/dashboard' }} />
   }
 
   return (

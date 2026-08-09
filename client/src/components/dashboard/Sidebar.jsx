@@ -55,6 +55,8 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const showToast = useToast()
   const { role, signOut } = useRole()
   const [signingOut, setSigningOut] = useState(false)
+  // Staff who open the public app get the creator menu, not an empty sidebar.
+  const menuRole = role === 'admin' || role === 'sub_admin' ? 'creator' : role || 'viewer'
 
   /**
    * Sign out, then leave.
@@ -77,9 +79,9 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
     }
   }
 
-  const visible = GROUPS.filter((g) => g.roles.includes(role)).map((g) => ({
+  const visible = GROUPS.filter((g) => g.roles.includes(menuRole)).map((g) => ({
     ...g,
-    items: g.items.filter((i) => i.roles.includes(role)),
+    items: g.items.filter((i) => i.roles.includes(menuRole)),
   }))
 
   const activate = (item) => {
@@ -102,8 +104,8 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
 
       <aside className={`sidebar ${open ? 'open' : ''}`.trim()}>
         <Logo onClick={onClose} />
-        <span className={`role-chip role-${role}`}>
-          {role === 'creator' ? 'CREATOR ACCOUNT' : 'VIEWER ACCOUNT'}
+        <span className={`role-chip role-${menuRole}`}>
+          {menuRole === 'creator' ? 'CREATOR ACCOUNT' : 'VIEWER ACCOUNT'}
         </span>
 
         {visible.map((group) => (

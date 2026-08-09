@@ -17,7 +17,7 @@
  */
 import fs from 'node:fs'
 import { one, many, query, transaction, closePool } from '../db/pool.js'
-import { createAuthUser } from '../lib/authdb.js'
+import { createAuthUser, setAuthPassword } from '../lib/authdb.js'
 import * as cf from '../lib/cloudflare.js'
 import { getSettings, applySplit, splitPercentFor } from '../services/settings.js'
 import { ensureClips } from '../modules/playback.routes.js'
@@ -30,6 +30,8 @@ const SAMPLE = process.argv[3] || process.env.SAMPLE
 /** Everything demo carries this, so it can all be found and removed later. */
 const TAG = 'mtonyo-demo'
 const DEMO_EMAIL = (slug) => `demo.${slug}@mtonyo.demo`
+/** Fixed so the cast can be signed into during testing. Printed at seed end. */
+const DEMO_PASSWORD = 'DemoPass123!'
 
 /* ======================================================================
    THE CAST
@@ -185,14 +187,15 @@ async function seed() {
 
     if (existing) {
       creators[c.slug] = existing
-      log.info(`creator ${c.name} already exists`)
+      await setAuthPassword(existing.id, DEMO_PASSWORD).catch(() => {})
+      log.info(`creator ${c.name} already exists (password reset to demo default)`)
       continue
     }
 
     const profile = await transaction(
       async (client) => {
         const authUser = await createAuthUser(
-          { email, password: `demo-${c.slug}-${Math.random().toString(36).slice(2, 10)}`, fullName: c.name },
+          { email, password: DEMO_PASSWORD, fullName: c.name },
           client
         )
         const { rows } = await client.query(
@@ -326,7 +329,7 @@ async function seed() {
     buyer = await transaction(
       async (client) => {
         const authUser = await createAuthUser(
-          { email: buyerEmail, password: `demo-viewer-${Math.random().toString(36).slice(2, 10)}`, fullName: 'Demo Viewer' },
+          { email: buyerEmail, password: DEMO_PASSWORD, fullName: 'Demo Viewer' },
           client
         )
         const { rows } = await client.query(
@@ -338,6 +341,9 @@ async function seed() {
       { actorRole: 'admin', actorId: admin.id }
     )
     log.ok('demo viewer')
+  } else {
+    await setAuthPassword(buyer.id, DEMO_PASSWORD).catch(() => {})
+    log.info('demo viewer already exists (password reset to demo default)')
   }
 
   // Two purchases, so earnings, receipts, the revenue split and the admin's
@@ -430,7 +436,23 @@ async function seed() {
     console.log('done')
   }
 
+  // Flip any premiere whose window already ended, so free-with-ads is visible
+  // without waiting for the nightly cron.
+  try {
+    const { runPremiereExpiry } = await import('../jobs/premiere.js')
+    const result = await runPremiereExpiry()
+    const n = result?.switched?.length || 0
+    if (n) log.info(`premiere job: ${n} video(s) moved to free-with-ads`)
+  } catch (err) {
+    log.warn(`premiere job skipped: ${err.message}`)
+  }
+
   await status()
+  console.log('')
+  console.log('  sign in with any of these (same password for all demo accounts):')
+  console.log(`    password:  ${DEMO_PASSWORD}`)
+  for (const c of CREATORS) console.log(`    creator:   ${DEMO_EMAIL(c.slug)}`)
+  console.log(`    viewer:    ${DEMO_EMAIL('viewer')}`)
   console.log('')
   log.ok('demo content is live — it went through the same flow as real content')
   log.info('remove it any time with: npm run demo:clear')

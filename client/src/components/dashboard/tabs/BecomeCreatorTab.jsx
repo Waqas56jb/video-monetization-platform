@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Rocket } from 'lucide-react'
 import Panel from '../Panel'
 import Icon from '@/components/ui/Icon'
-import { useRole } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 
 const PERKS = [
@@ -32,13 +33,22 @@ const PERKS = [
  * upgrades the current account rather than creating a second one.
  */
 export default function BecomeCreatorTab({ onUpgraded }) {
-  const { setRole } = useRole()
+  const { becomeCreator } = useAuth()
   const showToast = useToast()
+  const [busy, setBusy] = useState(false)
 
-  const upgrade = () => {
-    setRole('creator')
-    showToast('🎬 Creator tools unlocked — upload your first video')
-    onUpgraded?.()
+  const upgrade = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await becomeCreator()
+      showToast('🎬 Creator tools unlocked — upload your first video')
+      onUpgraded?.()
+    } catch (err) {
+      showToast(err?.message || 'Could not enable creator tools')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -56,9 +66,9 @@ export default function BecomeCreatorTab({ onUpgraded }) {
           Airtel Money before your video ever goes free. Your library and purchases stay exactly as
           they are.
         </p>
-        <button className="btn btn-gold" onClick={upgrade}>
+        <button className="btn btn-gold" onClick={upgrade} disabled={busy}>
           <Rocket />
-          Enable Creator Tools
+          {busy ? 'Enabling…' : 'Enable Creator Tools'}
         </button>
         <small className="become-note">
           Your first upload goes to the MTONYO+ review team before it&apos;s published.

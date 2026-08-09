@@ -22,6 +22,9 @@ export default function SettingsTab() {
 
   if (loading) return <Skeleton rows={5} />
   if (error) return <ErrorState error={error} onRetry={reload} />
+  if (!data?.user) {
+    return <ErrorState error={{ message: 'Account settings could not be loaded.' }} onRetry={reload} />
+  }
 
   return (
     <div>
