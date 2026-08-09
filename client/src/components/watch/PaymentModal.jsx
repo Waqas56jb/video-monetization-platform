@@ -1,199 +1,251 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Info, Library, Play, ShieldCheck, X, Zap } from 'lucide-react'
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Library,
+  Play,
+  Smartphone,
+  X,
+  Zap,
+} from 'lucide-react'
 import Field from '@/components/ui/Field'
+import api from '@/lib/api'
+import { tzs } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 
+/**
+ * Paying for a video with mobile money.
+ *
+ * The flow mirrors what actually happens on a phone in Tanzania: you enter
+ * your number, a prompt appears on the handset, you approve it there, and this
+ * screen waits. So this waits too — polling the payment until the provider
+ * settles it — rather than pretending success the moment the button is pressed.
+ *
+ * Nothing here decides whether the video unlocks. The server does, when the
+ * provider confirms the money. This screen only reports what it is told.
+ */
 const METHODS = [
-  { value: 'mpesa', logo: 'M-PESA', logoCls: 'pm-mpesa', name: 'M-Pesa', note: 'Vodacom · Pay from your phone' },
-  { value: 'airtel', logo: 'AIRTEL', logoCls: 'pm-airtel', name: 'Airtel Money', note: 'Airtel · Pay from your phone' },
+  { value: 'mpesa', label: 'M-Pesa', hint: 'Vodacom' },
+  { value: 'airtel', label: 'Airtel Money', hint: 'Airtel' },
 ]
 
-const CONFETTI_COLORS = ['#f5c518', '#7c3aed', '#22c55e', '#a78bfa', '#ffd94a']
-
-function makeConfetti() {
-  return Array.from({ length: 36 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    background: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-    borderRadius: Math.random() > 0.5 ? '50%' : '3px',
-    animation: `confetti ${1.4 + Math.random() * 1.4}s ${Math.random() * 0.5}s ease-out forwards`,
-  }))
-}
-
-/**
- * Three-step mobile-money checkout:
- *   1 — pick M-Pesa / Airtel + confirm number
- *   2 — "check your phone" spinner (2.6s, mirrors the STK push wait)
- *   3 — success + confetti burst
- */
-export default function PaymentModal({
-  open,
-  video,
-  phone = '0712 345 890',
-  onClose,
-  onContinueWatching,
-  onGoToLibrary,
-}) {
-  const [step, setStep] = useState(1)
+export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToLibrary }) {
+  const [step, setStep] = useState('form') // form | waiting | done | failed
   const [method, setMethod] = useState('mpesa')
-  const [confetti, setConfetti] = useState([])
-  const timers = useRef([])
+  const [phone, setPhone] = useState('')
+  const [error, setError] = useState(null)
+  const [payment, setPayment] = useState(null)
+  const polling = useRef(null)
 
   useLockBodyScroll(open)
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout)
-    timers.current = []
-  }
-
-  // Reset to step 1 every time the modal opens.
   useEffect(() => {
-    if (open) {
-      setStep(1)
-      setConfetti([])
-    } else {
-      clearTimers()
-    }
+    if (open) return
+    // Reset once it has closed, so reopening starts clean.
+    setStep('form')
+    setError(null)
+    setPayment(null)
+    clearInterval(polling.current)
   }, [open])
 
-  useEffect(() => () => clearTimers(), [])
+  useEffect(() => () => clearInterval(polling.current), [])
 
-  // Close on Escape, like any well-behaved dialog.
+  // Escape closes, like any well-behaved dialog — but not while the phone is
+  // waiting on a prompt, where closing would look like the payment vanished.
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    const onKey = (e) => e.key === 'Escape' && step !== 'waiting' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, step, onClose])
 
-  const payNow = () => {
-    setStep(2)
-    timers.current.push(
-      setTimeout(() => {
-        setStep(3)
-        setConfetti(makeConfetti())
-        timers.current.push(setTimeout(() => setConfetti([]), 3200))
-      }, 2600)
-    )
+  const watch = (paymentId) => {
+    clearInterval(polling.current)
+    let elapsed = 0
+
+    polling.current = setInterval(async () => {
+      elapsed += 3
+      try {
+        const res = await api.payments.one(paymentId)
+        setPayment(res.payment)
+
+        if (res.unlocked || res.payment?.status === 'success') {
+          clearInterval(polling.current)
+          setStep('done')
+          return
+        }
+        if (['failed', 'cancelled', 'expired'].includes(res.payment?.status)) {
+          clearInterval(polling.current)
+          setError(res.payment.failureReason || 'The payment did not go through.')
+          setStep('failed')
+          return
+        }
+      } catch {
+        /* a blip is not a failed payment — keep waiting */
+      }
+
+      // Mobile money prompts expire; after three minutes, stop pretending.
+      if (elapsed > 180) {
+        clearInterval(polling.current)
+        setError('We did not hear back from your phone. Nothing was charged — try again.')
+        setStep('failed')
+      }
+    }, 3000)
   }
 
+  const pay = async (e) => {
+    e.preventDefault()
+    setError(null)
+
+    if (!/^[0-9+\s-]{9,15}$/.test(phone.trim())) {
+      return setError('Enter the mobile money number to charge')
+    }
+
+    setStep('waiting')
+    try {
+      const res = await api.payments.initiate({
+        videoId: video.id,
+        method,
+        phone: phone.trim(),
+      })
+      setPayment(res.payment)
+      watch(res.payment.id)
+    } catch (err) {
+      setError(err.message)
+      setStep('failed')
+    }
+  }
+
+  if (!open) return null
+
   return (
-    <div className={`modal ${open ? 'open' : ''}`.trim()} role="dialog" aria-modal="true" aria-label="Unlock full video">
-      <div className="modal-bg" onClick={onClose} />
-
+    <div className="modal open" role="dialog" aria-modal="true" aria-label="Unlock this video">
+      <div className="modal-bg" onClick={() => step !== 'waiting' && onClose()} />
       <div className="modal-card">
-        <button className="modal-x" onClick={onClose} aria-label="Close">
-          <X />
-        </button>
+        {step !== 'waiting' && (
+          <button className="modal-x" onClick={onClose} aria-label="Close">
+            <X />
+          </button>
+        )}
 
-        {confetti.map((c) => (
-          <span
-            key={c.id}
-            className="confetti"
-            style={{
-              left: c.left,
-              background: c.background,
-              borderRadius: c.borderRadius,
-              animation: c.animation,
-            }}
-          />
-        ))}
+        {/* ------------------------------------------------------- form */}
+        {step === 'form' && (
+          <form onSubmit={pay} noValidate>
+            <span className="pay-ic">
+              <Zap />
+            </span>
+            <h3>Unlock &ldquo;{video.title}&rdquo;</h3>
+            <p className="pay-sub">
+              One payment of <b>{tzs(video.priceTzs)}</b>. It stays in your library forever, on
+              every device you log into.
+            </p>
 
-        {/* ---- STEP 1: choose method ---- */}
-        {step === 1 && (
-          <div>
-            <h3>Unlock Full Video</h3>
-            <p className="msub">{video.title} · Paid Premiere</p>
-
-            <div className="pay-summary">
-              <div>
-                <small>Amount to pay</small>
-                <b>One-time payment</b>
+            {error && (
+              <div className="form-error" role="alert">
+                <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                <span>{error}</span>
               </div>
-              <span className="amt">{video.price}</span>
-            </div>
+            )}
 
             <div className="pay-methods">
               {METHODS.map((m) => (
                 <button
                   key={m.value}
                   type="button"
-                  className={`pay-m ${method === m.value ? 'on' : ''}`.trim()}
+                  className={`pay-method ${method === m.value ? 'on' : ''}`.trim()}
                   onClick={() => setMethod(m.value)}
                   aria-pressed={method === m.value}
                 >
-                  <span className={`pm-logo ${m.logoCls}`}>{m.logo}</span>
-                  <div>
-                    <b>{m.name}</b>
-                    <small>{m.note}</small>
-                  </div>
-                  <span className="radio" />
+                  <b>{m.label}</b>
+                  <small>{m.hint}</small>
                 </button>
               ))}
             </div>
 
             <Field
               id="pay-phone"
-              label="Mobile Money Number"
+              label="Mobile money number"
               icon="smartphone"
               type="tel"
-              defaultValue={phone}
+              inputMode="tel"
+              placeholder="0712 000 000"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value)
+                setError(null)
+              }}
+              required
             />
 
-            <button className="btn btn-gold btn-block" onClick={payNow}>
+            <button className="btn btn-gold btn-block" type="submit">
               <Zap />
-              Pay Now — {video.price}
+              Pay {tzs(video.priceTzs)}
             </button>
-            <div className="secure-note">
-              <ShieldCheck />
-              Secure, fast and encrypted payment
+            <small className="pay-note">
+              You&apos;ll get a prompt on your phone. Approve it there and this page unlocks by
+              itself.
+            </small>
+          </form>
+        )}
+
+        {/* ---------------------------------------------------- waiting */}
+        {step === 'waiting' && (
+          <div className="pay-waiting">
+            <span className="pay-ic pulse">
+              <Smartphone />
+            </span>
+            <h3>Check your phone</h3>
+            <p className="pay-sub">
+              We sent a request for <b>{tzs(video.priceTzs)}</b> to <b>{phone}</b>. Enter your PIN
+              on the handset to approve it.
+            </p>
+            <div className="pay-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
             </div>
+            <small className="pay-note">
+              Keep this page open — it unlocks the moment the payment clears.
+            </small>
           </div>
         )}
 
-        {/* ---- STEP 2: processing ---- */}
-        {step === 2 && (
-          <div className="center">
-            <div className="spinner" />
-            <h3>Check your phone…</h3>
-            <p className="msub">
-              We&apos;ve sent a payment request to <b style={{ color: '#fff' }}>{phone}</b>.
-              <br />
-              Enter your PIN to approve <b style={{ color: 'var(--gold)' }}>{video.price}</b>.
+        {/* ------------------------------------------------------- done */}
+        {step === 'done' && (
+          <div className="pay-done">
+            <span className="pay-ic good">
+              <BadgeCheck />
+            </span>
+            <h3>Unlocked</h3>
+            <p className="pay-sub">
+              <b>{video.title}</b> is yours permanently. It will always be in your library, on any
+              device you sign in to.
             </p>
-            <div className="notice" style={{ textAlign: 'left' }}>
-              <Info />
-              <span>
-                Payment is verified automatically. Your video will unlock the moment it&apos;s
-                confirmed.
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* ---- STEP 3: success ---- */}
-        {step === 3 && (
-          <div className="center">
-            <div className="success-ic">
-              <Check />
-            </div>
-            <h3 style={{ color: 'var(--green)' }}>Payment Successful!</h3>
-            <p className="msub">
-              You can now watch the <b style={{ color: '#fff' }}>full video</b>.
-              <br />
-              It&apos;s saved to your library — unlocked forever, on any device.
-            </p>
-            <button className="btn btn-gold btn-block" onClick={onContinueWatching}>
+            <button className="btn btn-gold btn-block" onClick={onUnlocked}>
               <Play />
-              Continue Watching
+              Watch it now
             </button>
-            <button
-              className="btn btn-ghost btn-block"
-              style={{ marginTop: 12 }}
-              onClick={onGoToLibrary}
-            >
+            <button className="btn btn-ghost btn-block" onClick={onGoToLibrary}>
               <Library />
-              Go to My Library
+              Go to my library
+            </button>
+          </div>
+        )}
+
+        {/* ----------------------------------------------------- failed */}
+        {step === 'failed' && (
+          <div className="pay-done">
+            <span className="pay-ic bad">
+              <AlertTriangle />
+            </span>
+            <h3>Payment not completed</h3>
+            <p className="pay-sub">{error || 'Something went wrong.'}</p>
+            {payment?.status && <small className="pay-note">Status: {payment.status}</small>}
+            <button className="btn btn-gold btn-block" onClick={() => setStep('form')}>
+              Try again
+            </button>
+            <button className="btn btn-ghost btn-block" onClick={onClose}>
+              Not now
             </button>
           </div>
         )}

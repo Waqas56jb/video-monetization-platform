@@ -1,7 +1,7 @@
 import { Route } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
 import Icon from '@/components/ui/Icon'
-import { STEPS } from '@/data/content'
+import { STEPS } from '@/data/copy'
 
 export default function HowItWorks() {
   return (

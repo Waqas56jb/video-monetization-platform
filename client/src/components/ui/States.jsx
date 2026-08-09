@@ -37,13 +37,24 @@ export function EmptyState({ icon: Icon = Inbox, title, message, action }) {
   )
 }
 
-/** Something failed — say what, and offer to try again. */
-export function ErrorState({ error, onRetry, title = 'Could not load this' }) {
+/**
+ * Something failed — say what, and offer to try again.
+ *
+ * Accepts either an Error or a plain string, because half the call sites hold
+ * one and half hold the other, and a component that silently renders
+ * "Something went wrong" when handed the wrong shape hides the very message
+ * that would have explained the problem.
+ */
+export function ErrorState({ error, message, onRetry, title = 'Could not load this' }) {
+  const text =
+    (typeof error === 'string' ? error : error?.message) ||
+    (typeof message === 'string' ? message : message?.message) ||
+    'Something went wrong.'
   return (
     <div className="state-block state-error">
       <AlertTriangle />
       <b>{title}</b>
-      <p>{error?.message || 'Something went wrong.'}</p>
+      <p>{text}</p>
       {onRetry && (
         <button className="btn btn-ghost" onClick={onRetry}>
           <RefreshCw />

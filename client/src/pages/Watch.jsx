@@ -1,255 +1,341 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
+  AlertTriangle,
+  ArrowLeft,
+  BadgeCheck,
   Calendar,
   Clock,
   Eye,
   LayoutDashboard,
   Library,
-  Plus,
+  Lock,
   Share2,
-  UserPlus,
+  Zap,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
-import Player from '@/components/watch/Player'
+import StreamPlayer from '@/components/watch/StreamPlayer'
 import PaymentModal from '@/components/watch/PaymentModal'
-import { getVideo, videoLink } from '@/data/content'
+import { ErrorState, Skeleton } from '@/components/ui/States'
+import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
+import api, { getAccessToken } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 
-const START_PROGRESS = 8 // the original player opens 8% in
-const TICK_MS = 200
-const STEP = 0.55
-
-const fmt = (secs) => `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`
-
+/**
+ * Watching a video.
+ *
+ * The paywall here is not a timer this page enforces. When a viewer has not
+ * paid, the server never generates the full video's playback token, so it
+ * never reaches the browser — there is nothing in the page to bypass. What
+ * arrives is the free preview clip and nothing else. That is why this cannot
+ * be defeated with devtools, unlike a client-side counter.
+ */
 export default function Watch() {
+  const { videoId } = useParams()
   const navigate = useNavigate()
   const showToast = useToast()
-  const { videoId } = useParams()
-  const video = useMemo(() => getVideo(videoId), [videoId])
 
-  const [progress, setProgress] = useState(START_PROGRESS)
-  const [playing, setPlaying] = useState(false)
-  const [unlocked, setUnlocked] = useState(false)
-  const [paywalled, setPaywalled] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
+  const [previewOver, setPreviewOver] = useState(false)
 
-  // Refs so the interval callback always sees fresh values without restarting.
-  const unlockedRef = useRef(unlocked)
-  unlockedRef.current = unlocked
+  const video = useApi(() => api.videos.one(videoId), [videoId])
+  const playback = useApi(() => api.playback(videoId), [videoId])
 
-  // Following a deep link to a different video resets the player, and the tab
-  // title reflects the video so a shared link previews sensibly.
+  const v = video.data?.video
+  const p = playback.data
+  const locked = p ? !p.access?.canWatchFull : false
+  const signedIn = Boolean(getAccessToken())
+
+  // A shared link should preview sensibly, and the tab should say what it is.
   useEffect(() => {
-    setProgress(START_PROGRESS)
-    setPlaying(false)
-    setUnlocked(false)
-    unlockedRef.current = false
-    setPaywalled(false)
-    setPayOpen(false)
-    document.title = `${video.title} — MTONYO+`
+    if (!v?.title) return
+    document.title = `${v.title} — MTONYO+`
     return () => {
       document.title = "MTONYO+ — Tanzania's Premium Creator Video Platform"
     }
-  }, [video.id, video.title])
+  }, [v?.title])
 
-  // Playback ticker — advances the bar and trips the paywall at freePercent.
   useEffect(() => {
-    if (!playing) return
-    const id = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + STEP
-        if (!unlockedRef.current && next >= video.freePercent) {
-          setPlaying(false)
-          setPaywalled(true)
-          return video.freePercent
-        }
-        if (next >= 100) {
-          setPlaying(false)
-          return 100
-        }
-        return next
-      })
-    }, TICK_MS)
-    return () => clearInterval(id)
-  }, [playing, video.freePercent])
+    setPreviewOver(false)
+  }, [videoId])
 
-  const togglePlay = useCallback(() => {
-    if (paywalled) return
-    // The viewer dismissed the paywall but is still sitting on the paywall
-    // point — pressing play brings the offer straight back rather than
-    // silently doing nothing.
-    if (!unlocked && progress >= video.freePercent) {
-      setPaywalled(true)
-      return
-    }
-    setPlaying((p) => !p)
-  }, [paywalled, unlocked, progress, video.freePercent])
+  // Count the view once, after the player has actually been reached.
+  useEffect(() => {
+    if (!v?.id) return
+    const t = setTimeout(() => api.videos.recordView(v.id, {}).catch(() => {}), 4000)
+    return () => clearTimeout(t)
+  }, [v?.id])
 
-  /** "Not now" — close the offer so the viewer can browse, read or leave. */
-  const dismissPaywall = useCallback(() => {
-    setPaywalled(false)
-    setPlaying(false)
-  }, [])
-
-  // Scrubbing is allowed, but a locked video can never be dragged past the preview.
-  // Pointer events cover mouse + touch (Android/iOS).
-  const onSeek = (e) => {
-    if (paywalled) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX
-    if (clientX == null) return
-    const pct = ((clientX - rect.left) / rect.width) * 100
-    const clamped = Math.min(Math.max(pct, 0), 100)
-    if (!unlocked && clamped >= video.freePercent) {
-      setProgress(video.freePercent)
-      setPlaying(false)
-      setPaywalled(true)
-      return
-    }
-    setProgress(clamped)
-  }
-
-  const unlockVideo = () => {
-    setUnlocked(true)
-    unlockedRef.current = true
-    setPaywalled(false)
+  const onUnlocked = useCallback(() => {
     setPayOpen(false)
-    showToast('🔓 Full video unlocked — saved to your library forever')
-    setPlaying(true)
-  }
+    setPreviewOver(false)
+    showToast('Unlocked — this video is yours forever')
+    playback.reload()
+    video.reload({ quiet: true })
+  }, [playback, video, showToast])
 
-  const seconds = (video.totalSeconds * progress) / 100
-
-  /**
-   * Share the video's deep link. On phones this opens the native share sheet
-   * (Instagram / TikTok / WhatsApp / Facebook all appear there); on desktop it
-   * falls back to copying the link.
-   */
-  const shareVideo = async () => {
-    const url = videoLink(video.id)
-    const payload = { title: video.title, text: `Watch "${video.title}" on MTONYO+`, url }
+  const share = async () => {
+    const url = `${window.location.origin}/watch/${v?.slug || v?.id}`
     try {
       if (navigator.share) {
-        await navigator.share(payload)
+        await navigator.share({ title: v.title, text: `Watch "${v.title}" on MTONYO+`, url })
         return
       }
       await navigator.clipboard.writeText(url)
-      showToast('Link copied — share it anywhere!')
+      showToast('Link copied — share it anywhere')
     } catch (err) {
-      if (err?.name === 'AbortError') return // user dismissed the sheet
+      if (err?.name === 'AbortError') return
       showToast(url)
     }
   }
 
-  return (
-    <div className="page">
-      <header className="scrolled watch-header">
-        <div className="container nav">
-          <Logo />
-          <div className="nav-cta watch-cta">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => navigate('/dashboard')}
-              aria-label="My Library"
-            >
-              <Library />
-              <span className="btn-label">My Library</span>
-            </button>
-            <button
-              className="btn btn-gold btn-sm"
-              onClick={() => navigate('/dashboard')}
-              aria-label="Dashboard"
-            >
-              <LayoutDashboard />
-              <span className="btn-label">Dashboard</span>
+  /* ------------------------------------------------------------ shells */
+
+  if (video.loading) {
+    return (
+      <Shell>
+        <div className="watch-wrap">
+          <div className="skeleton skeleton-player" />
+          <div className="watch-info">
+            <Skeleton rows={3} />
+          </div>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (video.error || !v) {
+    return (
+      <Shell>
+        <div className="watch-wrap">
+          <div className="watch-info">
+            <ErrorState
+              title="This video isn't available"
+              error={video.error || 'It may have been removed, or the link may be wrong.'}
+              onRetry={video.reload}
+            />
+            <button className="btn btn-gold" onClick={() => navigate('/explore')}>
+              Browse other videos
             </button>
           </div>
         </div>
-      </header>
+      </Shell>
+    )
+  }
 
+  const premiereDays = daysUntil(v.premiereEndsAt)
+  const showPaywall = locked && (previewOver || !p?.playback)
+
+  return (
+    <Shell>
       <div className="watch-wrap">
-        <Player
-          video={video}
-          progress={progress}
-          playing={playing}
-          unlocked={unlocked}
-          paywalled={paywalled}
-          currentTime={fmt(seconds)}
-          totalTime={fmt(video.totalSeconds)}
-          onBack={() => navigate('/')}
-          onTogglePlay={togglePlay}
-          onSeek={onSeek}
-          onShare={shareVideo}
-          onUnlock={() => setPayOpen(true)}
-          onDismissPaywall={dismissPaywall}
-        />
+        <div className="player">
+          <button className="pl-back" onClick={() => navigate(-1)} aria-label="Go back">
+            <ArrowLeft />
+          </button>
+
+          {playback.loading ? (
+            <div className="skeleton skeleton-player" />
+          ) : p?.playback?.iframe ? (
+            <>
+              <StreamPlayer
+                src={p.playback.iframe}
+                poster={v.thumbnailUrl}
+                title={v.title}
+                onEnded={() => locked && setPreviewOver(true)}
+              />
+              {locked && !previewOver && (
+                <div className="preview-flag">
+                  <Lock size={13} />
+                  Free preview
+                  {v.freePreviewSeconds ? ` · ${duration(v.freePreviewSeconds)}` : ''}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>{p?.note || 'This video is not ready to play yet'}</b>
+              <p>Try again in a few minutes.</p>
+            </div>
+          )}
+
+          {showPaywall && (
+            <div className="paywall">
+              <div className="paywall-card">
+                <span className="pw-ic">
+                  <Lock />
+                </span>
+                <h3>{previewOver ? 'That was the free preview' : 'Unlock this video'}</h3>
+                <p>
+                  {v.accessType === 'paid_premiere' && premiereDays != null
+                    ? `Pay once to watch it all now. In ${premiereDays} day${premiereDays === 1 ? '' : 's'} it becomes free with ads — but you keep this copy either way.`
+                    : 'Pay once with mobile money and it stays in your library forever, on every device.'}
+                </p>
+
+                <div className="pw-price">
+                  <b>{tzs(v.priceTzs)}</b>
+                  <small>one payment · yours forever</small>
+                </div>
+
+                {signedIn ? (
+                  <button className="btn btn-gold btn-block" onClick={() => setPayOpen(true)}>
+                    <Zap />
+                    Unlock with M-Pesa or Airtel
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-gold btn-block"
+                    onClick={() => navigate('/login', { state: { from: `/watch/${videoId}` } })}
+                  >
+                    <Zap />
+                    Log in to unlock
+                  </button>
+                )}
+
+                {/* Never a dead end: the viewer can always get out. */}
+                <button className="btn btn-ghost btn-block" onClick={() => navigate('/explore')}>
+                  Not now — keep browsing
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* A locked video shows its price and its way in from the start.
+            Making somebody sit through the preview before they can even see
+            what it costs is a way to lose the sale, not to protect it. */}
+        {locked && !showPaywall && (
+          <div className="unlock-bar">
+            <div className="ub-text">
+              <Lock size={15} />
+              <span>
+                <b>{tzs(v.priceTzs)}</b> to watch it all
+                {v.freePreviewSeconds ? ` · ${duration(v.freePreviewSeconds)} free preview` : ''}
+              </span>
+            </div>
+            {signedIn ? (
+              <button className="btn btn-gold btn-sm" onClick={() => setPayOpen(true)}>
+                <Zap />
+                Unlock now
+              </button>
+            ) : (
+              <button
+                className="btn btn-gold btn-sm"
+                onClick={() => navigate('/login', { state: { from: `/watch/${videoId}` } })}
+              >
+                <Zap />
+                Log in to unlock
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="watch-info">
           <div className="watch-info-top">
             <div>
-              <h1>{video.title}</h1>
+              <h1>{v.title}</h1>
               <div className="meta">
                 <span>
                   <Eye />
-                  {video.views}
+                  {compact(v.views)} views
                 </span>
-                <span>
-                  <Calendar />
-                  {video.premiered}
-                </span>
+                {v.publishedAt && (
+                  <span>
+                    <Calendar />
+                    {shortDate(v.publishedAt)}
+                  </span>
+                )}
                 <span>
                   <Clock />
-                  {video.window}
+                  {ACCESS_LABEL[v.accessType] || v.accessType}
                 </span>
               </div>
             </div>
             <div className="watch-actions">
-              <button className="btn btn-ghost btn-sm" onClick={() => showToast('Added to My List')}>
-                <Plus />
-                <span className="btn-label">My List</span>
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={shareVideo}>
+              {!locked && (
+                <span className="pill ok">
+                  <BadgeCheck size={13} /> In your library
+                </span>
+              )}
+              <button className="btn btn-ghost btn-sm" onClick={share}>
                 <Share2 />
-                <span className="btn-label">Share Preview</span>
+                <span className="btn-label">Share</span>
               </button>
             </div>
           </div>
 
-          <div className="creator-row">
-            <img src={video.creator.avatar} alt="" />
-            <div>
-              <b>{video.creator.name}</b>
-              <small>{video.creator.meta}</small>
+          {v.creator && (
+            <div className="creator-row">
+              {v.creator.avatarUrl ? (
+                <img src={v.creator.avatarUrl} alt="" />
+              ) : (
+                <span className="creator-initials">{initials(v.creator.name)}</span>
+              )}
+              <div>
+                <b>{v.creator.name}</b>
+                <small>{v.category || 'Creator on MTONYO+'}</small>
+              </div>
             </div>
-            <button
-              className="btn btn-purple btn-sm"
-              onClick={() => showToast(`Following ${video.creator.name}`)}
-            >
-              <UserPlus />
-              Follow
-            </button>
-          </div>
+          )}
 
-          <div className="watch-desc">
-            {video.description}
-            <br />
-            <br />
-            <b style={{ color: '#fff' }}>{video.termsLabel}</b> {video.terms}
+          {v.description && <div className="watch-desc">{v.description}</div>}
+
+          <div className="watch-terms">
+            <b>{ACCESS_LABEL[v.accessType]}</b>{' '}
+            {v.accessType === 'paid_premiere'
+              ? premiereDays != null
+                ? `— pay ${tzs(v.priceTzs)} to watch now. After ${premiereDays} more day${premiereDays === 1 ? '' : 's'} this becomes free with ads, and anyone who paid keeps it forever.`
+                : `— pay ${tzs(v.priceTzs)} to watch now. When the premiere window closes it becomes free with ads, and anyone who paid keeps it forever.`
+              : v.accessType === 'free_with_ads'
+                ? '— free to watch. The creator earns from the advertising shown before it.'
+                : `— pay ${tzs(v.priceTzs)} once and it is yours permanently, on any device you log into.`}
           </div>
         </div>
       </div>
 
       <PaymentModal
         open={payOpen}
-        video={video}
+        video={v}
         onClose={() => setPayOpen(false)}
-        onContinueWatching={unlockVideo}
+        onUnlocked={onUnlocked}
         onGoToLibrary={() => {
           setPayOpen(false)
           navigate('/dashboard')
         }}
       />
+    </Shell>
+  )
+}
+
+function Shell({ children }) {
+  const navigate = useNavigate()
+  return (
+    <div className="page">
+      <header className="scrolled watch-header">
+        <div className="container nav">
+          <Logo />
+          <div className="nav-cta watch-cta">
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard')}>
+              <Library />
+              <span className="btn-label">My Library</span>
+            </button>
+            <button className="btn btn-gold btn-sm" onClick={() => navigate('/dashboard')}>
+              <LayoutDashboard />
+              <span className="btn-label">Dashboard</span>
+            </button>
+          </div>
+        </div>
+      </header>
+      {children}
     </div>
   )
 }
+
+const initials = (name = '') =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join('') || '?'

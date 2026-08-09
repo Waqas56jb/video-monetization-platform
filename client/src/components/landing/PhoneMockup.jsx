@@ -1,18 +1,54 @@
 import { Lock, Zap } from 'lucide-react'
-import { IMG } from '@/data/content'
+import { IMG } from '@/data/copy'
+import { duration, tzs } from '@/hooks/useApi'
 
-/** The floating phone with the live paywall preview inside the hero. */
-export default function PhoneMockup({ onUnlock }) {
+/**
+ * The floating phone showing the paywall as it actually appears.
+ *
+ * When there is a real video to show, this shows that one — its poster, its
+ * title, its price, its free-preview length. When the platform has nothing
+ * published yet it falls back to a plain illustration of the mechanic with no
+ * invented title and no invented price, because a made-up "TZS 500" beside a
+ * made-up artist is exactly the kind of detail people take as a fact.
+ */
+export default function PhoneMockup({ video, onUnlock }) {
+  const hasReal = Boolean(video)
+
+  const poster = video?.thumbnailUrl || IMG.premiere
+  const title = video?.title || 'Your video, behind a paywall'
+  const byline = hasReal
+    ? [video.category, video.creator?.name].filter(Boolean).join(' · ')
+    : 'This is how buyers see it'
+
+  const previewText = hasReal
+    ? video.freePreviewSeconds
+      ? `You've watched ${duration(video.freePreviewSeconds)} of ${duration(video.durationSeconds)} free`
+      : 'The free preview ends here'
+    : 'The preview ends where you decide it ends'
+
+  const label =
+    video?.accessType === 'free_with_ads'
+      ? 'FREE WITH ADS'
+      : video?.accessType === 'ppv_forever'
+        ? 'PAY ONCE · FOREVER'
+        : 'PAID PREMIERE'
+
+  const cta = hasReal
+    ? video.accessType === 'free_with_ads'
+      ? 'WATCH FREE'
+      : `UNLOCK FULL VIDEO · ${tzs(video.priceTzs)}`
+    : 'UNLOCK FULL VIDEO'
+
   return (
     <div className="phone">
       <div className="phone-notch" />
       <div className="phone-screen">
-        <img src={IMG.premiere} alt="Premiere" loading="lazy" />
+        <img src={poster} alt="" loading="lazy" />
         <div className="ph-overlay">
-          <span className="ph-live">PAID PREMIERE</span>
+          <span className="ph-live">{label}</span>
           <div>
-            <div className="ph-title">Harmonize — Behind The Fame</div>
-            <div className="ph-artist">Music · Documentary</div>
+            <div className="ph-title">{title}</div>
+            <div className="ph-artist">{byline}</div>
             <div className="ph-progress">
               <span />
             </div>
@@ -22,12 +58,13 @@ export default function PhoneMockup({ onUnlock }) {
           <div className="ph-lock">
             <Lock />
             <small>
-              <b>Want to keep watching?</b>You&apos;ve watched 5:00 of 20:00 free
+              <b>Want to keep watching?</b>
+              {previewText}
             </small>
           </div>
           <button className="ph-pay" onClick={onUnlock}>
             <Zap />
-            UNLOCK FULL VIDEO · TZS 500
+            {cta}
           </button>
           <div className="ph-methods">
             <span>M-PESA</span>

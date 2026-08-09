@@ -2,10 +2,18 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Crown } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
 import Icon from '@/components/ui/Icon'
-import { EARN_ITEMS, IMG } from '@/data/content'
+import { EARN_ITEMS, IMG } from '@/data/copy'
+import useApi from '@/hooks/useApi'
+import api from '@/lib/api'
 
 export default function ForCreators() {
   const navigate = useNavigate()
+
+  // The split shown here is the real one this platform runs on, read from the
+  // settings the administrator controls — not a number painted into a mockup
+  // that would quietly become a lie the day it was changed.
+  const { data } = useApi(() => api.stats.platform(), [])
+  const creatorShare = data?.creatorSplitPercent ?? 70
 
   return (
     <section
@@ -18,19 +26,19 @@ export default function ForCreators() {
           <img src={IMG.creator} alt="Creator" loading="lazy" />
           <div className="earn-card">
             <div className="row">
-              <small>This month&apos;s earnings</small>
-              <b>+ TZS 8,745,000</b>
+              <small>Every sale is split like this</small>
+              <b>{creatorShare}% to you</b>
             </div>
             <div className="split-bar">
-              <span />
+              <span style={{ width: `${creatorShare}%` }} />
               <span />
             </div>
             <div className="split-legend">
               <span>
-                Creator <b>70%</b>
+                Creator <b>{creatorShare}%</b>
               </span>
               <span>
-                Platform <b>30%</b>
+                Platform <b>{100 - creatorShare}%</b>
               </span>
             </div>
           </div>

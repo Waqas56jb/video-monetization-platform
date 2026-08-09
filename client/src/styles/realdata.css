@@ -1,0 +1,240 @@
+/* =========================================================================
+   Real-data UI for the public app.
+
+   Added when every screen moved off the sample content file and onto the API.
+   Kept separate so the original stylesheet stays recognisably the design that
+   was signed off, and everything new is reviewable in one place.
+   ========================================================================= */
+
+/* ---------- the real player ---------------------------------------------- */
+.stream-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: #000;
+}
+.player { position: relative; }
+
+.player-empty {
+  display: grid; place-items: center; gap: 8px; text-align: center;
+  aspect-ratio: 16 / 9; padding: 24px; background: #0b0b12; color: var(--muted);
+}
+.player-empty svg { width: 28px; height: 28px; color: var(--gold); }
+.player-empty b { color: var(--text); font-size: 15px; }
+.player-empty p { margin: 0; font-size: 13px; }
+
+.skeleton-player { width: 100%; aspect-ratio: 16 / 9; border-radius: 0; }
+
+.preview-flag {
+  position: absolute; top: 14px; right: 14px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 11px; border-radius: 999px;
+  background: rgba(10,10,18,.75); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #fff; font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+}
+
+/* ---------- the paywall --------------------------------------------------- */
+.paywall {
+  position: absolute; inset: 0; z-index: 5;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(8,8,14,.86); backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+.paywall-card {
+  width: min(400px, 100%);
+  display: grid; gap: 10px; justify-items: center; text-align: center;
+  padding: 26px 22px;
+  background: var(--card, #14141d); border: 1px solid var(--border);
+  border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.55);
+}
+.paywall-card h3 { margin: 4px 0 0; font-size: 19px; }
+.paywall-card p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.pw-ic {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(245,197,24,.14); color: var(--gold);
+}
+.pw-price { margin: 6px 0 4px; display: grid; gap: 2px; }
+.pw-price b { font-family: Sora, sans-serif; font-size: 27px; color: var(--gold); }
+.pw-price small { font-size: 11.5px; color: var(--muted); }
+.paywall-card .btn { width: 100%; justify-content: center; }
+
+.watch-terms {
+  margin-top: 18px; padding: 14px 16px; border-radius: 12px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+  font-size: 13px; line-height: 1.65; color: var(--muted);
+}
+.watch-terms b { color: #fff; }
+
+.creator-initials {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(124,58,237,.22); color: #c4b5fd;
+  font-weight: 800; font-size: 14px;
+}
+
+/* ---------- paying ------------------------------------------------------- */
+.pay-ic {
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 4px;
+  display: grid; place-items: center;
+  background: rgba(245,197,24,.14); color: var(--gold);
+}
+.pay-ic.good { background: rgba(34,197,94,.14); color: var(--green); }
+.pay-ic.bad { background: rgba(239,68,68,.14); color: #f87171; }
+.pay-ic.pulse { animation: pay-pulse 1.6s ease-in-out infinite; }
+@keyframes pay-pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.08) } }
+@media (prefers-reduced-motion: reduce) { .pay-ic.pulse { animation: none } }
+
+.modal-card h3 { text-align: center; margin: 6px 0 6px; font-size: 19px; }
+.pay-sub { margin: 0 0 18px; text-align: center; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.pay-note { display: block; margin-top: 12px; text-align: center; font-size: 11.5px; line-height: 1.55; color: var(--muted2); }
+
+.pay-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.pay-method {
+  display: grid; gap: 2px; cursor: pointer; padding: 12px;
+  border-radius: 12px; background: transparent; border: 1px solid var(--border);
+}
+.pay-method b { font-size: 13.5px; color: var(--text); }
+.pay-method small { font-size: 11px; color: var(--muted); }
+.pay-method.on { background: rgba(245,197,24,.1); border-color: rgba(245,197,24,.45); }
+.pay-method.on b { color: var(--gold); }
+
+.pay-waiting, .pay-done { text-align: center; }
+.pay-done .btn { width: 100%; justify-content: center; margin-top: 10px; }
+
+.pay-dots { display: flex; gap: 7px; justify-content: center; margin: 18px 0 4px; }
+.pay-dots span {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--gold);
+  animation: pay-dot 1.2s ease-in-out infinite;
+}
+.pay-dots span:nth-child(2) { animation-delay: .18s }
+.pay-dots span:nth-child(3) { animation-delay: .36s }
+@keyframes pay-dot { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .pay-dots span { animation: none; opacity: .7 } }
+
+/* ---------- the inbox ---------------------------------------------------- */
+.bell-wrap { position: relative; }
+.bell-badge {
+  position: absolute; top: 0; right: 0;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: grid; place-items: center;
+  border-radius: 9px; background: var(--gold); color: #14110a;
+  font-size: 10.5px; font-weight: 800; line-height: 1;
+}
+
+.notif-pop {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 60;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--card, #14141d); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.5); overflow: hidden;
+}
+.notif-pop-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+}
+.notif-pop-head b { font-size: 14px; }
+.notif-pop-head button {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 0; cursor: pointer;
+  color: var(--gold); font-size: 12px; font-weight: 600;
+}
+.notif-pop-head button:disabled { opacity: .4; cursor: default; }
+
+.notif-pop-list { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+.notif-pop-list li {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: start;
+  padding: 11px 14px; border-bottom: 1px solid var(--border);
+}
+.notif-pop-list li:last-child { border-bottom: 0; }
+.notif-pop-list li.unread { background: rgba(245,197,24,.06); }
+.notif-pop-list li > div { min-width: 0; }
+.notif-pop-list b { display: block; font-size: 13px; line-height: 1.4; }
+.notif-pop-list small {
+  display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.notif-pop-list time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+.notif-pop-empty {
+  display: grid; justify-items: center; gap: 6px;
+  padding: 30px 20px; text-align: center; color: var(--muted);
+}
+.notif-pop-empty svg { color: var(--gold); opacity: .7; }
+.notif-pop-empty span { color: var(--text); font-weight: 600; font-size: 13.5px; }
+.notif-pop-empty small { font-size: 12px; }
+
+.notif-ico {
+  width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.06); color: var(--muted);
+}
+.notif-ico.k-announcement { background: rgba(96,165,250,.14); color: #60a5fa; }
+.notif-ico.k-account { background: rgba(52,211,153,.14); color: #34d399; }
+.notif-ico.k-staff_action { background: rgba(245,197,24,.14); color: var(--gold); }
+
+.dash-initials {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--gold), #b8860b);
+  color: #14110a; font-weight: 800; font-size: 13px;
+}
+
+/* ---------- what the platform promises (replaces invented testimonials) --- */
+.promise-grid {
+  display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.promise {
+  display: grid; gap: 10px; padding: 26px 24px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.03); border: 1px solid var(--border);
+}
+.promise-ic {
+  width: 46px; height: 46px; border-radius: 14px;
+  display: grid; place-items: center;
+  background: rgba(245,197,24,.14); color: var(--gold);
+}
+.promise-ic svg { width: 22px; height: 22px; }
+.promise b { font-family: Sora, sans-serif; font-size: 16.5px; }
+.promise p { margin: 0; font-size: 13.5px; line-height: 1.7; color: var(--muted); }
+
+.testi-initials {
+  width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(124,58,237,.22); color: #c4b5fd;
+  font-weight: 800; font-size: 14px;
+}
+.testi-creator { padding-top: 26px; }
+.verified-tick { width: 15px; height: 15px; margin-left: 5px; color: var(--gold); vertical-align: -2px; }
+
+/* ---------- small shared bits -------------------------------------------- */
+.link-cell {
+  background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+  color: var(--text); font: inherit; font-weight: 700;
+}
+.link-cell:hover { color: var(--gold); }
+
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.skeleton-card { display: grid; gap: 10px; }
+.skeleton-thumb { aspect-ratio: 16 / 10; border-radius: 14px; }
+.skeleton-line { height: 13px; border-radius: 6px; }
+.skeleton-line.short { width: 55%; }
+
+/* A locked video says its price up front, not only once the preview runs out. */
+.unlock-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  flex-wrap: wrap;
+  padding: 13px 18px;
+  background: rgba(245,197,24,.08); border-bottom: 1px solid rgba(245,197,24,.22);
+}
+.ub-text { display: flex; align-items: center; gap: 9px; min-width: 0; font-size: 13.5px; color: var(--muted); }
+.ub-text svg { color: var(--gold); flex-shrink: 0; }
+.ub-text b { color: var(--gold); font-size: 15px; }
+.unlock-bar .btn { flex-shrink: 0; }
+@media (max-width: 480px) {
+  .unlock-bar { padding: 12px 14px; }
+  .unlock-bar .btn { width: 100%; justify-content: center; }
+}

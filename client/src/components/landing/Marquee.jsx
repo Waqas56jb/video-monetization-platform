@@ -1,4 +1,4 @@
-import { MARQUEE_ITEMS } from '@/data/content'
+import { MARQUEE_ITEMS } from '@/data/copy'
 
 /** Infinite scrolling feature ticker. The list is doubled so the loop is seamless. */
 export default function Marquee() {

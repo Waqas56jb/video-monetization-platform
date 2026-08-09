@@ -8,3 +8,6 @@ coverage
 
 # scratch space for one-off probes and live tests
 tmp/
+
+# Vercel
+.vercel

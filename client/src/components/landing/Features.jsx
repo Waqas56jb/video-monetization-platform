@@ -1,7 +1,7 @@
 import { Gem } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
 import Icon from '@/components/ui/Icon'
-import { FEATURES } from '@/data/content'
+import { FEATURES } from '@/data/copy'
 
 export default function Features() {
   return (

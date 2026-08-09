@@ -1,10 +1,22 @@
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck } from 'lucide-react'
+import { BadgeCheck, Compass, Library } from 'lucide-react'
 import VideoCard from '@/components/ui/VideoCard'
-import { LIBRARY_VIDEOS } from '@/data/content'
+import { EmptyState, ErrorState, SkeletonCards } from '@/components/ui/States'
+import useApi from '@/hooks/useApi'
+import { toCard, videoLink } from '@/lib/videoView'
+import api from '@/lib/api'
 
+/**
+ * What this viewer owns.
+ *
+ * A purchase is permanent, so this list only ever grows. Even a video an
+ * administrator has taken down stays watchable here — the client was explicit
+ * that paid-for content must never vanish from under someone.
+ */
 export default function LibraryTab() {
   const navigate = useNavigate()
+  const { data, loading, error, reload } = useApi(() => api.library.list(), [])
+  const videos = data?.videos || []
 
   return (
     <div>
@@ -23,11 +35,33 @@ export default function LibraryTab() {
         </div>
       </div>
 
-      <div className="lib-grid">
-        {LIBRARY_VIDEOS.map((v) => (
-          <VideoCard key={v.id} video={v} onClick={() => navigate(`/watch/${v.id}`)} />
-        ))}
-      </div>
+      {loading ? (
+        <SkeletonCards count={4} />
+      ) : error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : !videos.length ? (
+        <EmptyState
+          icon={Library}
+          title="Your library is empty"
+          message="Anything you buy lands here and stays yours — on every device, forever."
+          action={
+            <button className="btn btn-gold" onClick={() => navigate('/explore')}>
+              <Compass />
+              Browse videos
+            </button>
+          }
+        />
+      ) : (
+        <div className="lib-grid">
+          {videos.map((v) => (
+            <VideoCard
+              key={v.id}
+              video={toCard(v, { owned: true })}
+              onClick={() => navigate(videoLink(v))}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

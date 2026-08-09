@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Facebook, Instagram, Twitter, Youtube } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
-import { FOOTER_LINKS } from '@/data/content'
+import { FOOTER_LINKS } from '@/data/copy'
 import { useToast } from '@/context/ToastContext'
 
 const SOCIALS = [

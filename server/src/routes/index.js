@@ -8,6 +8,7 @@ import earningsRoutes from '../modules/earnings.routes.js'
 import shareRoutes from '../modules/share.routes.js'
 import adsRoutes from '../modules/ads.routes.js'
 import adminRoutes from '../modules/admin.routes.js'
+import statsRoutes from '../modules/stats.routes.js'
 import staffRoutes from '../modules/staff.routes.js'
 import inboxRoutes from '../modules/inbox.routes.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
@@ -15,6 +16,9 @@ import { asyncHandler, forbidden } from '../lib/errors.js'
 import { env } from '../config/env.js'
 
 const router = Router()
+
+// Public platform figures for the landing page.
+router.use('/stats', statsRoutes)
 
 router.use('/auth', authRoutes)
 router.use('/videos', videoRoutes)
@@ -34,15 +38,29 @@ router.use('/inbox', inboxRoutes)
 
 /**
  * Cron entry point for a scheduler (Vercel Cron, GitHub Actions, cron-job.org).
- * Guarded by a shared secret so it cannot be triggered by anyone.
+ *
+ * This is what moves a paid premiere to free-with-ads when its window closes.
+ * Nothing else does it, so if this never runs, videos stay paid forever and
+ * the client's central promise quietly stops working — which is exactly the
+ * kind of failure nobody notices for a month.
+ *
+ * Guarded by a shared secret. Vercel Cron sends `Authorization: Bearer
+ * $CRON_SECRET` and issues a GET; other schedulers usually POST with a custom
+ * header. Both are accepted so the same URL works wherever it is scheduled.
  */
-router.post(
-  '/jobs/premiere-expiry',
-  asyncHandler(async (req, res) => {
-    const provided = req.headers['x-cron-secret'] || req.query.secret
-    if (!env.cronSecret || provided !== env.cronSecret) throw forbidden('Invalid cron secret')
-    res.json(await runPremiereExpiry())
-  })
-)
+const cronHandler = asyncHandler(async (req, res) => {
+  const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  const provided = req.headers['x-cron-secret'] || bearer || req.query.secret
+
+  if (!env.cronSecret) {
+    throw forbidden('CRON_SECRET is not set on the server, so scheduled jobs are disabled')
+  }
+  if (provided !== env.cronSecret) throw forbidden('Invalid cron secret')
+
+  res.json(await runPremiereExpiry())
+})
+
+router.post('/jobs/premiere-expiry', cronHandler)
+router.get('/jobs/premiere-expiry', cronHandler)
 
 export default router

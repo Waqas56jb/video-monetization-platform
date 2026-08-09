@@ -1,56 +1,120 @@
+import { Coins, Receipt } from 'lucide-react'
 import Panel from '../Panel'
 import StatCard from '../StatCard'
 import RevenueChart from '../RevenueChart'
 import DonutChart from '../DonutChart'
 import TableScroll from '@/components/ui/TableScroll'
-import { OVERVIEW_STATS, TRANSACTIONS } from '@/data/content'
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
+import useApi, { tzs, compact, shortDate } from '@/hooks/useApi'
+import api from '@/lib/api'
 
+/**
+ * The creator's own numbers, counted from what actually happened.
+ *
+ * A brand-new creator sees zeroes and an empty table, which is the truth and
+ * far more useful than the invented millions that used to sit here — those made
+ * it impossible to tell whether anything was working.
+ */
 export default function OverviewTab() {
+  const earnings = useApi(() => api.earnings.summary(), [])
+  const transactions = useApi(() => api.earnings.transactions(), [])
+
+  const e = earnings.data
+  const rows = transactions.data?.transactions || []
+
+  const stats = [
+    { icon: 'wallet', tone: 'gold', label: 'Available Balance', value: tzs(e?.balance?.availableTzs) },
+    { icon: 'coins', label: 'Lifetime Earnings', value: tzs(e?.balance?.lifetimeTzs) },
+    { icon: 'eye', label: 'Total Views', value: compact(e?.stats?.totalViews) },
+    { icon: 'ticket', label: 'Paid Unlocks', value: compact(e?.stats?.paidUnlocks) },
+  ]
+
   return (
     <div>
-      <div className="stat-grid">
-        {OVERVIEW_STATS.map((s) => (
-          <StatCard key={s.label} stat={s} />
-        ))}
-      </div>
+      {earnings.loading ? (
+        <Skeleton rows={2} />
+      ) : earnings.error ? (
+        <ErrorState message={earnings.error} onRetry={earnings.reload} />
+      ) : (
+        <div className="stat-grid">
+          {stats.map((s) => (
+            <StatCard key={s.label} stat={s} />
+          ))}
+        </div>
+      )}
 
       <div className="two-col">
-        <Panel title="Revenue Overview" action={<span className="link">This Month</span>}>
-          <RevenueChart />
+        <Panel title="Revenue Overview" action={<span className="link">Last 30 days</span>}>
+          {earnings.loading ? (
+            <Skeleton rows={3} />
+          ) : e?.daily?.length > 1 ? (
+            <RevenueChart series={e.daily} />
+          ) : (
+            <EmptyState
+              icon={Coins}
+              title="No earnings yet"
+              message="This chart fills in as soon as somebody buys one of your videos."
+            />
+          )}
         </Panel>
 
         <Panel title="Earnings Breakdown">
-          <DonutChart />
+          {earnings.loading ? (
+            <Skeleton rows={3} />
+          ) : e?.balance?.lifetimeTzs ? (
+            <DonutChart
+              creatorTzs={e.balance.lifetimeTzs}
+              platformTzs={e.balance.platformShareTzs}
+            />
+          ) : (
+            <EmptyState
+              icon={Coins}
+              title="Nothing to split yet"
+              message="Your share and the platform's will show here once money has moved."
+            />
+          )}
         </Panel>
       </div>
 
-      <Panel title="Recent Transactions" action={<span className="link">View All</span>}>
-        <TableScroll>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Video</th>
-              <th>Method</th>
-              <th>Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TRANSACTIONS.map((t, i) => (
-              <tr key={`${t.date}-${t.type}-${i}`}>
-                <td>{t.date}</td>
-                <td>{t.type}</td>
-                <td>{t.video}</td>
-                <td>{t.method}</td>
-                <td style={{ color: `var(--${t.tone})`, fontWeight: 700 }}>{t.amount}</td>
-                <td>
-                  <span className={`pill ${t.pill}`}>{t.status}</span>
-                </td>
+      <Panel title="Recent Transactions">
+        {transactions.loading ? (
+          <Skeleton rows={4} />
+        ) : transactions.error ? (
+          <ErrorState message={transactions.error} onRetry={transactions.reload} />
+        ) : !rows.length ? (
+          <EmptyState
+            icon={Receipt}
+            title="No transactions yet"
+            message="Every sale appears here the moment it clears, with your share of it."
+          />
+        ) : (
+          <TableScroll>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Source</th>
+                <th>Video</th>
+                <th>Gross</th>
+                <th>Your Share</th>
+                <th>Split</th>
               </tr>
-            ))}
-          </tbody>
-        </TableScroll>
+            </thead>
+            <tbody>
+              {rows.map((t) => (
+                <tr key={t.id}>
+                  <td>{shortDate(t.createdAt)}</td>
+                  <td>{t.source === 'ad' ? 'Advertising' : 'Sale'}</td>
+                  <td style={{ fontWeight: 700 }}>{t.videoTitle || '—'}</td>
+                  <td>{tzs(t.grossTzs)}</td>
+                  <td style={{ color: 'var(--green)', fontWeight: 700 }}>{tzs(t.creatorTzs)}</td>
+                  <td>
+                    <span className="pill ok">{t.splitPercent}%</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </TableScroll>
+        )}
       </Panel>
     </div>
   )

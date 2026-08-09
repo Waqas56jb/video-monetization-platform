@@ -10,9 +10,10 @@ import EarningsTab from '@/components/dashboard/tabs/EarningsTab'
 import PurchasesTab from '@/components/dashboard/tabs/PurchasesTab'
 import BecomeCreatorTab from '@/components/dashboard/tabs/BecomeCreatorTab'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
-import { DASH_TITLES, IMG } from '@/data/content'
+import { DASH_TITLES } from '@/data/copy'
+import NotificationBell from '@/components/dashboard/NotificationBell'
 import { useToast } from '@/context/ToastContext'
-import { useRole } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContext'
 
 /** Which tabs each role is allowed to open. */
 const TABS_BY_ROLE = {
@@ -24,7 +25,7 @@ const TABS_BY_ROLE = {
 const HOME_TAB = { viewer: 'library', creator: 'overview' }
 
 export default function Dashboard() {
-  const { role, isCreator } = useRole()
+  const { role, isCreator, user } = useAuth()
   const [tab, setTab] = useState(() => HOME_TAB[role])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const showToast = useToast()
@@ -35,7 +36,9 @@ export default function Dashboard() {
     if (!TABS_BY_ROLE[role].includes(tab)) setTab(HOME_TAB[role])
   }, [role, tab])
 
-  const [title, subtitle] = DASH_TITLES[tab] || DASH_TITLES.library
+  // Greet the person who is actually signed in, not a name from a data file.
+  const firstName = (user?.fullName || '').split(' ')[0]
+  const [title, subtitle] = (DASH_TITLES[tab] || DASH_TITLES.library)(firstName)
 
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
@@ -98,18 +101,15 @@ export default function Dashboard() {
             </div>
 
             <div className="dash-user">
-              <button
-                className="bell"
-                type="button"
-                onClick={() => showToast('No new notifications')}
-                aria-label="Notifications"
-              >
-                <Bell size={20} strokeWidth={2} />
-              </button>
+              <NotificationBell />
               <div className="dash-avatar">
-                <img src={IMG.avatarKonde} alt="" />
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" />
+                ) : (
+                  <span className="dash-initials">{initialsOf(user?.fullName || user?.email)}</span>
+                )}
                 <div className="dash-avatar-meta">
-                  <b>Juma Hassan</b>
+                  <b>{user?.fullName || user?.email || 'Your account'}</b>
                   <small>{isCreator ? 'Creator Account' : 'Viewer Account'}</small>
                 </div>
               </div>
@@ -130,3 +130,12 @@ export default function Dashboard() {
     </div>
   )
 }
+
+/** Two letters for an account with no picture, which is most of them. */
+const initialsOf = (name = '') =>
+  String(name)
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?'
