@@ -59,6 +59,26 @@ export default function Watch() {
     setPreviewOver(false)
   }, [videoId])
 
+  /**
+   * And a second backstop, for the case where the SDK never loads at all: then
+   * there are no time updates either, and the two checks above would both stay
+   * silent. Once the preview has been on screen for its own length plus a
+   * little slack, the offer appears regardless.
+   *
+   * Belt and braces on purpose. Everything else here is enforced by the server
+   * — the full video's token is never issued to someone who has not paid — so
+   * this is only about *asking* for the money at the right moment. Failing to
+   * ask is the one failure the server cannot cover for.
+   */
+  useEffect(() => {
+    if (!locked || previewOver) return
+    const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
+    if (!stopsAt) return
+
+    const timer = setTimeout(() => setPreviewOver(true), (stopsAt + 8) * 1000)
+    return () => clearTimeout(timer)
+  }, [locked, previewOver, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds])
+
   // Count the view once, after the player has actually been reached.
   useEffect(() => {
     if (!v?.id) return
@@ -126,6 +146,22 @@ export default function Watch() {
   const premiereDays = daysUntil(v.premiereEndsAt)
   const showPaywall = locked && (previewOver || !p?.playback)
 
+  /**
+   * Three ways the paywall can be reached, on purpose.
+   *
+   * `ended` from Cloudflare's player SDK is the precise one, but it is a
+   * third-party script: if it is blocked, slow, or changes, the event never
+   * fires and the preview simply stops with nothing asking for payment. That
+   * is exactly what was happening. So the player's own clock is watched as
+   * well, and a plain timer covers the case where the SDK never loads at all
+   * and there are no clock updates either.
+   *
+   * Everything else is enforced by the server — someone who has not paid is
+   * never issued the full video's token — so this is only about *asking* for
+   * the money at the right moment. Failing to ask is the one thing the server
+   * cannot cover for.
+   */
+
   return (
     <Shell>
       <div className="watch-wrap">
@@ -143,6 +179,10 @@ export default function Watch() {
                 poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
                 onEnded={() => locked && setPreviewOver(true)}
+                onTimeUpdate={(current) => {
+                  const stopsAt = p.playback?.stopsAtSeconds || v.freePreviewSeconds
+                  if (locked && stopsAt && current >= stopsAt - 0.4) setPreviewOver(true)
+                }}
               />
               {locked && !previewOver && (
                 <div className="preview-flag">
@@ -254,8 +294,10 @@ export default function Watch() {
             </div>
             <div className="watch-actions">
               {!locked && (
-                <span className="pill ok">
-                  <BadgeCheck size={13} /> In your library
+                <span className="owned-badge">
+                  <BadgeCheck size={14} />
+                  <span className="ob-full">In your library</span>
+                  <span className="ob-short">Owned</span>
                 </span>
               )}
               <button className="btn btn-ghost btn-sm" onClick={share}>

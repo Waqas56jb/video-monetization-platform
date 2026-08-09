@@ -42,9 +42,17 @@ export function AuthProvider({ children }) {
           setUser(res.user)
         }
       })
-      .catch(() => {
-        clearSession()
-        if (alive) setUser(null)
+      .catch((err) => {
+        /**
+         * Only a 401 means the credentials are no good. A dropped connection
+         * or a page navigating away mid-request says nothing about the
+         * session, and signing a moderator out over it — mid-review queue —
+         * is both wrong and infuriating.
+         */
+        if (err?.status === 401) {
+          clearSession()
+          if (alive) setUser(null)
+        }
       })
       .finally(() => alive && setLoading(false))
     return () => {

@@ -93,14 +93,32 @@ async function refreshAccessToken() {
       body: JSON.stringify({ refreshToken }),
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error('refresh failed')
-        const { session } = await res.json()
-        saveSession(session)
-        return session.accessToken
-      })
-      .catch(() => {
+        if (res.ok) {
+          const { session } = await res.json()
+          saveSession(session)
+          return session.accessToken
+        }
+
+        /**
+         * The server has looked at the refresh token and said no. That is a
+         * real answer, and the session is genuinely finished.
+         */
         clearSession()
         announceExpiry()
+        return null
+      })
+      .catch(() => {
+        /**
+         * The request never reached the server — offline, a dropped
+         * connection, or the page navigating away mid-flight.
+         *
+         * The session is NOT thrown away here. It used to be, and the effect
+         * was that clicking a link while any request was still in the air
+         * logged you straight out: the browser aborts the fetch, this ran, and
+         * the tokens were gone before the next page had even started. A
+         * momentary loss of signal did the same thing. Nothing about a failed
+         * connection says the credentials are bad.
+         */
         return null
       })
       .finally(() => {

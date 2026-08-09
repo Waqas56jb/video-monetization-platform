@@ -56,10 +56,21 @@ export function AuthProvider({ children }) {
       setUser(data.user)
       setCreator(data.creator || null)
       return data.user
-    } catch {
-      clearSession()
-      setUser(null)
-      setCreator(null)
+    } catch (err) {
+      /**
+       * Only a 401 means "these credentials are no good". Anything else — the
+       * network, a dropped connection, the page being navigated away from
+       * mid-request — says nothing about the session, and throwing it away
+       * over that logged people out for clicking a link at the wrong moment.
+       *
+       * The API client has already cleared the tokens if it really was a 401,
+       * so this only has to mirror that in the interface.
+       */
+      if (err?.status === 401) {
+        clearSession()
+        setUser(null)
+        setCreator(null)
+      }
       return null
     } finally {
       setLoading(false)
