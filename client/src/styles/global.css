@@ -422,8 +422,9 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .sell-opt.on .check svg{opacity:1}
 
 /* ---------- WATCH / PAYWALL ---------- */
-.watch-wrap{max-width:1060px;margin:0 auto;padding:104px 20px 70px}
-.player{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--border2);box-shadow:var(--shadow);background:#000}
+/* Medium theatre by default — fullscreen is the player's own control. */
+.watch-wrap{width:min(840px,100%);max-width:840px;margin:0 auto;padding:96px 20px 64px}
+.player{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border2);box-shadow:var(--shadow);background:#000}
 .player>img{width:100%;height:min(56vw,560px);object-fit:cover;opacity:.85}
 .player-top{position:absolute;top:0;left:0;right:0;padding:20px 24px;background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);display:flex;justify-content:space-between;align-items:center;z-index:3;gap:12px}
 .player-top .pt-l{display:flex;align-items:center;gap:12px;min-width:0}
@@ -670,7 +671,6 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 /* --- ultra-wide / 4K: let the layout breathe instead of stranding content --- */
 @media(min-width:1700px){
   .container{width:min(1360px,92%)}
-  .watch-wrap{max-width:1240px}
 }
 
 /* --- laptops & large tablets: 6 cramped step columns become 3 --- */
@@ -988,7 +988,8 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 }
 
 /* keep drawer above content; prevent horizontal page bleed */
-.page,.dash,.watch-wrap,.auth-wrap,.container{max-width:100%}
+.page,.dash,.auth-wrap,.container{max-width:100%}
+/* watch stays medium — do not stretch to full viewport width */
 
 /* touch-friendly filter / panel actions */
 @media(hover:none) and (max-width:900px){
