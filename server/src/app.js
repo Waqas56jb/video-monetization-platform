@@ -25,16 +25,61 @@ const app = express()
 app.set('trust proxy', 1)
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
+/**
+ * Which origins may call this API.
+ *
+ * In development anything on localhost is allowed, whatever port it is on.
+ * Vite moves to the next free port whenever its default is taken — open the
+ * public app twice and it is suddenly on 5176 — and a hard-coded list of two
+ * ports means the browser starts getting refused for no reason a developer can
+ * see. The rejection arrives as an opaque network failure, so it looks exactly
+ * like the API being down. That cost an afternoon once; it is not worth
+ * repeating to protect a machine that is only talking to itself.
+ *
+ * In production the allow-list is exact, and nothing is inferred.
+ */
+const LOCALHOST = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true // server-to-server and mobile webviews send none
+  if (!env.isProd && LOCALHOST.test(origin)) return true
+  if (!env.corsOrigins.length) return true // nothing configured: allow, and warn at boot
+  return env.corsOrigins.includes(origin)
+}
+
 app.use(
   cors({
     origin(origin, cb) {
-      // Server-to-server and mobile webviews send no Origin header.
-      if (!origin || !env.corsOrigins.length || env.corsOrigins.includes(origin)) return cb(null, true)
-      cb(new Error(`Origin ${origin} is not allowed`))
+      // Never throw here. An error inside this callback becomes a 500 with no
+      // usable body, which tells whoever is debugging nothing at all. Refusing
+      // the CORS headers is enough; the explicit 403 below explains why.
+      cb(null, isAllowedOrigin(origin))
     },
     credentials: true,
   })
 )
+
+/**
+ * Say plainly when an origin is blocked.
+ *
+ * Without this the browser reports a blocked request as a generic network
+ * failure — identical to the server being offline — and the app tells the user
+ * to check their connection while the server sits there working perfectly.
+ */
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (isAllowedOrigin(origin)) return next()
+
+  res.status(403).json({
+    error: {
+      code: 'ORIGIN_NOT_ALLOWED',
+      message:
+        `This API does not accept requests from ${origin}. ` +
+        `Add it to CORS_ORIGINS on the server and redeploy.`,
+      allowed: env.corsOrigins,
+    },
+  })
+})
 
 // Keep the raw body so webhook signatures can be verified byte-for-byte.
 app.use(

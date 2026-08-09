@@ -1,0 +1,20 @@
+{
+  "name": "mtonyo-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MTONYO+ — Tanzanian creator video platform. Three apps: API, public site, control centre.",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "install:all": "npm --prefix server install && npm --prefix client install && npm --prefix admin install",
+    "build": "npm --prefix client run build && npm --prefix admin run build",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "admin:create": "npm --prefix server run admin:create",
+    "cf:verify": "npm --prefix server run cf:verify",
+    "cf:orphans": "npm --prefix server run cf:orphans",
+    "mail:test": "npm --prefix server run mail:test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

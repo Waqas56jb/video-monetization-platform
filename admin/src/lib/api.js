@@ -143,7 +143,9 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
       local && !onLocalhost
         ? `This site is trying to reach the API at ${BASE}, which only exists on a ` +
           `developer machine. Set VITE_API_URL to the deployed API address and rebuild.`
-        : `Cannot reach the API at ${BASE}. It may be offline — check your connection and try again.`,
+        : `Cannot reach the API at ${BASE}. Either it is not running, or it is ` +
+          `refusing requests from ${typeof window !== 'undefined' ? window.location.origin : 'this page'} ` +
+          `— a blocked origin looks exactly like an offline server from in here.`,
       { code: 'NETWORK' }
     )
   }
