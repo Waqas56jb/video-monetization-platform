@@ -114,6 +114,7 @@ MAIL_FROM=MTONYO+ <…>
 
 PAYMENT_PROVIDER=sandbox
 CRON_SECRET=…                   # any long random string
+MEDIA_TOKEN_SECRET=…            # signs poster links for unpublished videos
 ```
 
 `DATABASE_URL` must be the **transaction pooler** (port **6543**, not 5432).
@@ -180,6 +181,13 @@ their browser. There is nothing in devtools to bypass.
 **Publication is enforced by the database.** A creator cannot move their own
 video to published even by calling the API directly — a trigger refuses it. The
 same applies to a sub-admin trying to touch an account.
+
+**Uploaded pictures live in Supabase Storage.** Profile photos and custom
+cover images go into two buckets created by a migration, so a fresh
+environment comes up complete rather than needing anything clicked into
+existence. They are uploaded with the caller's own token, so the storage
+policies apply as written — everyone writes only into a folder named after
+their own account.
 
 **Payments are in sandbox.** `PAYMENT_PROVIDER=sandbox` simulates the mobile
 money flow end to end. Going live is a change to that variable and its

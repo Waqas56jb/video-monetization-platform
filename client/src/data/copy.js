@@ -160,4 +160,7 @@ export const DASH_TITLES = {
   purchases: () => ['My Purchases', 'Every video you have paid for, and how you paid.'],
   become: () => ['Become a Creator', 'Start selling your own videos on MTONYO+.'],
   inbox: () => ['Notifications', 'Announcements and news about your account.'],
+  analytics: () => ['Analytics', 'How your videos and your spending are actually doing.'],
+  profile: () => ['My Profile', 'Your name, your photo, and how people find you.'],
+  settings: () => ['Settings', 'Your password, your email preferences, and your account.'],
 }

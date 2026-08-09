@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '@/components/ui/Logo'
 import Icon from '@/components/ui/Icon'
@@ -21,6 +21,7 @@ const GROUPS = [
       { tab: 'library', icon: 'library', label: 'My Library', roles: ['viewer', 'creator'] },
       { to: '/explore', icon: 'layout-grid', label: 'Explore Videos', roles: ['viewer', 'creator'] },
       { tab: 'purchases', icon: 'receipt', label: 'My Purchases', roles: ['viewer', 'creator'] },
+      { tab: 'analytics', icon: 'bar-chart-3', label: 'My Activity', roles: ['viewer'] },
     ],
   },
   {
@@ -31,12 +32,7 @@ const GROUPS = [
       { tab: 'upload', icon: 'upload-cloud', label: 'Upload Video', roles: ['creator'] },
       { tab: 'videos', icon: 'clapperboard', label: 'My Videos', roles: ['creator'] },
       { tab: 'earnings', icon: 'wallet', label: 'Earnings', roles: ['creator'] },
-      {
-        toast: 'Analytics coming in your full build',
-        icon: 'bar-chart-3',
-        label: 'Analytics',
-        roles: ['creator'],
-      },
+      { tab: 'analytics', icon: 'bar-chart-3', label: 'Analytics', roles: ['creator'] },
     ],
   },
   {
@@ -48,8 +44,8 @@ const GROUPS = [
     label: 'Account',
     roles: ['viewer', 'creator'],
     items: [
-      { toast: 'Profile settings', icon: 'user-cog', label: 'My Profile', roles: ['viewer', 'creator'] },
-      { toast: 'Settings', icon: 'settings', label: 'Settings', roles: ['viewer', 'creator'] },
+      { tab: 'profile', icon: 'user-cog', label: 'My Profile', roles: ['viewer', 'creator'] },
+      { tab: 'settings', icon: 'settings', label: 'Settings', roles: ['viewer', 'creator'] },
     ],
   },
 ]
@@ -58,11 +54,27 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
   const { role, signOut } = useRole()
+  const [signingOut, setSigningOut] = useState(false)
 
-  const logout = () => {
-    signOut()
-    navigate('/')
-    showToast('Logged out — see you soon!')
+  /**
+   * Sign out, then leave.
+   *
+   * Awaited on purpose: this used to navigate away while the session was still
+   * being cleared, so the dashboard could re-read a token that had not gone
+   * yet and bounce straight back. Whatever happens to the request, the local
+   * session is cleared — signOut handles that — so this always ends up
+   * signed out.
+   */
+  const logout = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await signOut()
+    } finally {
+      onClose()
+      navigate('/', { replace: true })
+      showToast('Logged out — see you soon!')
+    }
   }
 
   const visible = GROUPS.filter((g) => g.roles.includes(role)).map((g) => ({
@@ -111,9 +123,9 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
         ))}
 
         <div className="side-foot">
-          <button className="side-link" onClick={logout}>
+          <button className="side-link" onClick={logout} disabled={signingOut}>
             <Icon name="log-out" />
-            Log out
+            {signingOut ? 'Signing out…' : 'Log out'}
           </button>
         </div>
       </aside>

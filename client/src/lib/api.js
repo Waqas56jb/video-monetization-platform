@@ -151,6 +151,38 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
   return payload
 }
 
+/**
+ * Send a file.
+ *
+ * Deliberately not the JSON helper: the browser must set its own multipart
+ * boundary on Content-Type, and setting that header by hand produces a request
+ * the server cannot parse. Everything else — the token, the 401 refresh, the
+ * error shape — works the same way.
+ */
+async function sendFile(path, file, { field = 'image', method = 'POST' } = {}) {
+  const body = new FormData()
+  body.append(field, file, file.name)
+
+  const token = getAccessToken()
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body,
+    })
+  } catch {
+    throw new ApiError(`Cannot reach the API at ${BASE}.`, { code: 'NETWORK' })
+  }
+
+  const payload = await res.json().catch(() => null)
+  if (!res.ok) {
+    const e = payload?.error || {}
+    throw new ApiError(e.message || `Upload failed (${res.status})`, { status: res.status, code: e.code })
+  }
+  return payload
+}
+
 const get = (path, opts) => request(path, { ...opts, method: 'GET' })
 const post = (path, body, opts) => request(path, { ...opts, method: 'POST', body })
 const patch = (path, body, opts) => request(path, { ...opts, method: 'PATCH', body })
@@ -201,6 +233,8 @@ export const api = {
     create: (body) => post('/api/videos', body),
     update: (id, body) => patch(`/api/videos/${id}`, body),
     status: (id) => get(`/api/videos/${id}/status`),
+    uploadThumbnail: (id, file) => sendFile(`/api/videos/${id}/thumbnail`, file),
+    removeThumbnail: (id) => del(`/api/videos/${id}/thumbnail`),
     submit: (id) => post(`/api/videos/${id}/submit`),
     requestDeletion: (id, reason) => post(`/api/videos/${id}/request-deletion`, { reason }),
     recordView: (id, body) => post(`/api/videos/${id}/view`, body),
@@ -237,6 +271,16 @@ export const api = {
   ads: {
     preroll: (videoId) => get(`/api/ads/preroll/${videoId}`, { auth: Boolean(getAccessToken()) }),
     impression: (body) => post('/api/ads/impression', body, { auth: Boolean(getAccessToken()) }),
+  },
+
+  /** Your own account: details, picture, preferences, how you are getting on. */
+  account: {
+    get: () => get('/api/account'),
+    update: (body) => patch('/api/account', body),
+    uploadAvatar: (file) => sendFile('/api/account/avatar', file),
+    removeAvatar: () => del('/api/account/avatar'),
+    analytics: () => get('/api/account/analytics'),
+    close: () => post('/api/account/close', { confirm: 'DELETE' }),
   },
 
   /** Everyone has an inbox: announcements, and news about their own account. */

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { z } from 'zod'
 import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest, forbidden, notFound, conflict } from '../lib/errors.js'
@@ -10,8 +11,13 @@ import { recordAudit, clientIp } from '../services/audit.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 import { ensureClips } from './playback.routes.js'
+import { storeImage, removeImage } from '../services/uploads.js'
 
 const router = Router()
+
+// Covers are small images passing through on their way to storage; a
+// serverless host has no disk worth writing them to.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 * 1024 * 1024, files: 1 } })
 
 /** URL-safe slug, with a short suffix so titles can repeat. */
 const slugify = (title) =>
@@ -187,7 +193,10 @@ const updateSchema = z
     category: z.string().trim().max(60).optional(),
     accessType: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
     priceTzs: z.coerce.number().int().min(0).max(10_000_000).optional(),
-    freePreviewSeconds: z.coerce.number().int().min(0).max(7200).optional(),
+    // Any length at all: a 45-second teaser, twelve minutes, or an hour of a
+    // three-hour set. The only real ceiling is the video itself, and that is
+    // applied below once its duration is known.
+    freePreviewSeconds: z.coerce.number().int().min(0).max(86400).optional(),
     // Per video, never a platform-wide number: 30 / 60 / 90 / anything.
     premiereDays: z.coerce.number().int().min(1).max(3650).optional(),
   })
@@ -215,7 +224,24 @@ router.patch(
     const accessType = b.accessType ?? video.access_type
     const price = b.priceTzs ?? video.price_tzs
 
-    if (accessType !== 'free_with_ads') {
+    /**
+     * The price floor applies to a price the creator is actually setting, and
+     * to anything already live. It does NOT apply to a draft they are still
+     * filling in.
+     *
+     * It used to apply to every edit, so a creator adjusting their preview
+     * length on a brand-new draft — where the price is still zero because they
+     * have not reached that field — was told the minimum price was TZS 200 and
+     * their change was thrown away. They had asked about the preview and been
+     * refused over something else entirely.
+     *
+     * Nothing gets past this: submitting for review checks the price properly,
+     * and that is the point at which it has to be right.
+     */
+    const settingAPrice = b.priceTzs != null
+    const alreadyLive = video.is_published || video.review_status === 'approved'
+
+    if (accessType !== 'free_with_ads' && (settingAPrice || alreadyLive)) {
       if (price < settings.min_video_price_tzs) {
         throw badRequest(`The minimum price is TZS ${settings.min_video_price_tzs.toLocaleString()}`)
       }
@@ -326,6 +352,73 @@ router.post(
       video: studioVideo(updated),
       message: 'Submitted for review — the MTONYO+ team will approve it shortly',
     })
+  })
+)
+
+/**
+ * A cover the creator chose.
+ *
+ * Cloudflare picks a frame on its own, and that frame is very often a blur or
+ * the black gap between two shots — not something anyone would click. A creator
+ * who has made a proper cover should be able to use it.
+ *
+ * Stored alongside the automatic one rather than replacing it, so removing this
+ * falls straight back to the frame. Nothing is lost by trying.
+ */
+router.post(
+  '/:id/thumbnail',
+  requireAuth(),
+  requireCreator(),
+  upload.single('image'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw badRequest('Choose an image to use as the cover')
+
+    const video = await one('select * from videos where id = $1 and deleted_at is null', [req.params.id])
+    if (!video) throw notFound('Video not found')
+    if (video.creator_id !== req.user.id) throw forbidden('This is not your video')
+
+    const previous = video.custom_thumbnail_url
+
+    const { url } = await storeImage({
+      bucket: 'thumbnails',
+      file: req.file,
+      userId: req.user.id,
+      accessToken: req.accessToken,
+    })
+
+    const updated = await one(
+      'update videos set custom_thumbnail_url = $2 where id = $1 returning *',
+      [video.id, url]
+    )
+
+    if (previous) {
+      removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
+    }
+
+    res.json({ video: studioVideo(updated) })
+  })
+)
+
+/** Drop the custom cover and go back to the frame Cloudflare picked. */
+router.delete(
+  '/:id/thumbnail',
+  requireAuth(),
+  requireCreator(),
+  asyncHandler(async (req, res) => {
+    const video = await one('select * from videos where id = $1 and deleted_at is null', [req.params.id])
+    if (!video) throw notFound('Video not found')
+    if (video.creator_id !== req.user.id) throw forbidden('This is not your video')
+
+    const previous = video.custom_thumbnail_url
+    const updated = await one(
+      'update videos set custom_thumbnail_url = null where id = $1 returning *',
+      [video.id]
+    )
+    if (previous) {
+      removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
+    }
+
+    res.json({ video: studioVideo(updated) })
   })
 )
 

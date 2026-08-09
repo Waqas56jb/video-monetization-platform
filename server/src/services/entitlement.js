@@ -66,7 +66,7 @@ export function publicVideo(v, access = null) {
      * Relative on purpose: the apps live on a different origin and prefix it
      * with their own API base, so one stored value works for both.
      */
-    thumbnailUrl: v.cloudflare_uid ? `/api/playback/${v.id}/thumbnail` : v.thumbnail_url,
+    thumbnailUrl: thumbnailFor(v),
     durationSeconds: v.duration_seconds,
     accessType: v.access_type,
     priceTzs: v.price_tzs,
@@ -103,6 +103,8 @@ export function studioVideo(v) {
     cloudflareUid: v.cloudflare_uid,
     previewUid: v.preview_uid,
     socialClipUid: v.social_clip_uid,
+    // So the studio can show "you have set your own cover" and offer to undo it.
+    customThumbnailUrl: v.custom_thumbnail_url || null,
     deletedAt: v.deleted_at,
     createdAt: v.created_at,
   }
@@ -116,6 +118,13 @@ export function studioVideo(v) {
  * thumbnail — never the playback token, which would hand over the video too.
  */
 function thumbnailFor(v) {
+  /**
+   * A cover the creator chose beats the frame Cloudflare happened to grab,
+   * which is very often a blur or a black gap between shots. Stored separately
+   * so removing it falls straight back to the automatic one — nothing is lost
+   * by trying.
+   */
+  if (v.custom_thumbnail_url) return v.custom_thumbnail_url
   if (!v.cloudflare_uid) return v.thumbnail_url
   const path = `/api/playback/${v.id}/thumbnail`
   const isPublic = v.is_published && v.review_status === 'approved' && !v.deleted_at

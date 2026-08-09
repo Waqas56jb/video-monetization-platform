@@ -16,9 +16,14 @@ export async function attachUser(req) {
   const token = bearer(req)
   if (!token) return null
 
+  // Kept so a route can act *as* this person against storage, where the
+  // policies are written in terms of who is asking rather than a service key.
+  req.accessToken = token
+
   const authUser = await userFromToken(token)
   const profile = await one(
-    `select id, email, full_name, phone, role, status, avatar_url, created_at
+    `select id, email, full_name, phone, role, status, avatar_url, created_at,
+            bio, location, website, email_announcements, email_account_news
        from profiles where id = $1`,
     [authUser.id]
   )

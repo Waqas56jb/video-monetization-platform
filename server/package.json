@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MTONYO+ backend \u2014 Supabase (Postgres) + Cloudflare Stream + mobile-money payments",
+  "description": "MTONYO+ backend — Supabase (Postgres) + Cloudflare Stream + mobile-money payments",
   "engines": {
     "node": ">=20"
   },
@@ -37,6 +37,7 @@
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
     "pg": "^8.13.1",
     "zod": "^3.23.8"

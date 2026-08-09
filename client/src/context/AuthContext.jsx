@@ -18,13 +18,23 @@ export function useAuth() {
 }
 
 /** Kept so existing components can ask "is this a creator?" unchanged. */
+/**
+ * The older name for the same thing, kept so existing screens keep working.
+ *
+ * It now spreads the whole context rather than picking four fields out of it.
+ * The picked version silently returned `undefined` for anything it had not
+ * thought of — which is exactly how the Log out button came to do nothing at
+ * all: it destructured `signOut` from here, got undefined, and threw on click
+ * where nobody was looking.
+ */
 export function useRole() {
-  const { user } = useAuth()
+  const ctx = useAuth()
   return {
-    role: user?.role || 'viewer',
-    authed: Boolean(user),
-    isCreator: user?.role === 'creator' || user?.role === 'admin',
-    isAdmin: user?.role === 'admin',
+    ...ctx,
+    role: ctx.user?.role || 'viewer',
+    authed: Boolean(ctx.user),
+    isCreator: ctx.user?.role === 'creator' || ctx.user?.role === 'admin',
+    isAdmin: ctx.user?.role === 'admin',
   }
 }
 

@@ -5,6 +5,9 @@ import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
 import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
 import UploadTab from '@/components/dashboard/tabs/UploadTab'
+import ProfileTab from '@/components/dashboard/tabs/ProfileTab'
+import SettingsTab from '@/components/dashboard/tabs/SettingsTab'
+import AnalyticsTab from '@/components/dashboard/tabs/AnalyticsTab'
 import MyVideosTab from '@/components/dashboard/tabs/MyVideosTab'
 import EarningsTab from '@/components/dashboard/tabs/EarningsTab'
 import PurchasesTab from '@/components/dashboard/tabs/PurchasesTab'
@@ -16,9 +19,10 @@ import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
 
 /** Which tabs each role is allowed to open. */
+const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
 const TABS_BY_ROLE = {
-  viewer: ['library', 'purchases', 'become'],
-  creator: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings'],
+  viewer: ['library', 'purchases', 'become', ...ACCOUNT_TABS],
+  creator: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
 }
 
 /** Where each role lands when it opens the dashboard. */
@@ -124,6 +128,9 @@ export default function Dashboard() {
             {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
             {tab === 'earnings' && <EarningsTab />}
             {tab === 'become' && <BecomeCreatorTab onUpgraded={() => selectTab('overview')} />}
+            {tab === 'analytics' && <AnalyticsTab />}
+            {tab === 'profile' && <ProfileTab />}
+            {tab === 'settings' && <SettingsTab />}
           </div>
         </main>
       </div>

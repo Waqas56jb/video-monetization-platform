@@ -25,6 +25,8 @@ import {
 } from '@/lib/upload'
 import { useToast } from '@/context/ToastContext'
 import VideoPreview from '@/components/dashboard/VideoPreview'
+import PreviewDuration, { splitSeconds, toSeconds } from '@/components/dashboard/PreviewDuration'
+import ThumbnailPicker from '@/components/dashboard/ThumbnailPicker'
 
 /**
  * Publishing a video, for real.
@@ -88,7 +90,8 @@ export default function UploadTab({ onSubmitted }) {
     accessType: 'paid_premiere',
     priceTzs: 1000,
     premiereDays: 30,
-    freePreviewMinutes: 5,
+    previewValue: 5,
+    previewUnit: 'minutes',
   })
   const [previewing, setPreviewing] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -180,12 +183,13 @@ export default function UploadTab({ onSubmitted }) {
       // five-minute preview of a two-minute clip only fails later, at save.
       const seconds = Number(done.video?.durationSeconds) || 0
       if (seconds > 0) {
-        const mostMinutes = Math.max(0, Math.floor((seconds - 1) / 60))
-        setForm((f) =>
-          Number(f.freePreviewMinutes) > mostMinutes
-            ? { ...f, freePreviewMinutes: mostMinutes }
-            : f
-        )
+        const most = Math.max(0, seconds - 1)
+        setForm((f) => {
+          if (toSeconds(f.previewValue, f.previewUnit) <= most) return f
+          // Land on whichever unit reads most naturally for what is left.
+          const fitted = splitSeconds(most)
+          return { ...f, previewValue: fitted.value, previewUnit: fitted.unit }
+        })
       }
 
       setStep('ready')
@@ -229,7 +233,7 @@ export default function UploadTab({ onSubmitted }) {
         category: form.category.trim() || undefined,
         accessType: form.accessType,
         priceTzs: form.accessType === 'free_with_ads' ? 0 : Number(form.priceTzs) || 0,
-        freePreviewSeconds: Math.round(Number(form.freePreviewMinutes || 0) * 60),
+        freePreviewSeconds: toSeconds(form.previewValue, form.previewUnit),
         ...(form.accessType === 'paid_premiere' ? { premiereDays: Number(form.premiereDays) } : {}),
       })
 
@@ -260,7 +264,8 @@ export default function UploadTab({ onSubmitted }) {
       accessType: 'paid_premiere',
       priceTzs: 1000,
       premiereDays: 30,
-      freePreviewMinutes: 5,
+      previewValue: 5,
+      previewUnit: 'minutes',
     })
   }
 
@@ -270,7 +275,6 @@ export default function UploadTab({ onSubmitted }) {
   // Until the video is encoded we do not know its length, so allow anything
   // reasonable; afterwards, the running time is the ceiling.
   const durationSeconds = Number(video?.durationSeconds) || 0
-  const maxPreviewMinutes = durationSeconds ? Math.max(0, Math.floor((durationSeconds - 1) / 60)) : 120
 
   return (
     <div className="two-col">
@@ -414,29 +418,29 @@ export default function UploadTab({ onSubmitted }) {
               onChange={set('category')}
               maxLength={60}
             />
-            <Field
-              id="up-preview"
-              label="Free preview (minutes)"
-              icon="timer"
-              type="number"
-              min={0}
-              max={maxPreviewMinutes}
-              value={form.freePreviewMinutes}
-              onChange={set('freePreviewMinutes')}
-            />
           </div>
-          {durationSeconds > 0 && (
-            <p className="field-hint">
-              This video runs {formatDuration(durationSeconds)}, so the preview can be at most{' '}
-              {maxPreviewMinutes} minute{maxPreviewMinutes === 1 ? '' : 's'}.
-            </p>
-          )}
+
+          <PreviewDuration
+            id="up-preview"
+            value={form.previewValue}
+            unit={form.previewUnit}
+            videoSeconds={durationSeconds}
+            onChange={({ value, unit }) =>
+              setForm((f) => ({ ...f, previewValue: value, previewUnit: unit }))
+            }
+          />
         </Panel>
+
+        {video && step === 'ready' && (
+          <Panel title="3 · Cover Image">
+            <ThumbnailPicker video={video} onChange={(v) => setVideo(v)} disabled={submitted} />
+          </Panel>
+        )}
       </div>
 
       {/* ---- right column: pricing + submissions ---- */}
       <div>
-        <Panel title="3 · Pricing & Access">
+        <Panel title="4 · Pricing & Access">
           <div className="sell-opts">
             {SELL_OPTIONS.map((o) => (
               <button
@@ -543,7 +547,7 @@ export default function UploadTab({ onSubmitted }) {
           )}
         </Panel>
 
-        <Panel title="4 · My Submissions">
+        <Panel title="5 · My Submissions">
           {mineLoading ? (
             <div className="skeleton-wrap">
               <div className="skeleton" />
