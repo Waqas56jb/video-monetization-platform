@@ -63,13 +63,58 @@ async function cf(pathname, { method = 'GET', body, headers = {} } = {}) {
  * The file never passes through this server, which is the whole point: a
  * hundred simultaneous uploads cost us nothing and cannot slow the API down.
  */
+
+/**
+ * Which sites may embed our videos.
+ *
+ * Cloudflare stores this ON THE VIDEO, permanently, at the moment it is
+ * created. Get it wrong and that video can never be played anywhere else —
+ * changing the setting later fixes new uploads and does nothing for the ones
+ * already up. That is exactly what happened: videos uploaded while the API
+ * still had the developer's localhost in CORS_ORIGINS were locked to
+ * localhost, and rendered as a blank white player on the live site forever.
+ *
+ * So this is built from where the apps actually live, and — the important part
+ * — it refuses to produce a localhost-only list in production. An unrestricted
+ * video is a small risk; a permanently unplayable one is a dead product.
+ */
+function embedOrigins() {
+  const hostOf = (url) => {
+    try {
+      return new URL(url).host
+    } catch {
+      return String(url).replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+    }
+  }
+
+  const hosts = [env.publicWebUrl, env.adminWebUrl, ...env.corsOrigins]
+    .filter(Boolean)
+    .map(hostOf)
+    .filter(Boolean)
+
+  const unique = [...new Set(hosts)]
+  const isLocal = (h) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h)
+
+  // In production, a list of nothing but localhost would brick every video it
+  // touched. Leave it open rather than lock it to a machine nobody can reach.
+  if (env.isProd && unique.every(isLocal)) {
+    log.warn(
+      'Refusing to restrict video embedding to localhost in production — ' +
+        'set PUBLIC_WEB_URL and ADMIN_WEB_URL. Uploads will be unrestricted until then.'
+    )
+    return []
+  }
+
+  return unique
+}
+
 export async function createDirectUpload({ maxDurationSeconds = 7200, meta = {}, creatorId }) {
   const result = await cf('/stream/direct_upload', {
     method: 'POST',
     body: {
       maxDurationSeconds,
       requireSignedURLs: true, // the paywall depends on this
-      allowedOrigins: env.corsOrigins.map((o) => o.replace(/^https?:\/\//, '')),
+      allowedOrigins: embedOrigins(),
       meta: { ...meta, creatorId, platform: 'mtonyo' },
     },
   })
@@ -100,6 +145,10 @@ export async function createClip({ uid, startSeconds, endSeconds, requireSignedU
       startTimeSeconds: Math.max(0, Math.floor(startSeconds)),
       endTimeSeconds: Math.floor(endSeconds),
       requireSignedURLs,
+      // Clips had no restriction at all while the source video did, which is
+      // both inconsistent and a way to hand out the preview more widely than
+      // intended. Same rule for both.
+      allowedOrigins: embedOrigins(),
       meta: { name: name || 'clip', platform: 'mtonyo' },
     },
   })
