@@ -4,6 +4,9 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [react()],
+  // Changes on every build, so each deploy registers a distinct service worker
+  // and the previous build's caches are cleared instead of living forever.
+  define: { __BUILD_ID__: JSON.stringify(Date.now().toString(36)) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

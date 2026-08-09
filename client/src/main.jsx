@@ -23,7 +23,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js')
+      // The build id in the URL makes each deploy a *different* worker, so the
+      // browser replaces it and the old build's caches are thrown away. With a
+      // fixed URL the worker was considered unchanged and stale bundles lived
+      // on indefinitely.
+      const reg = await navigator.serviceWorker.register(`/sw.js?v=${__BUILD_ID__}`)
 
       // Check for a newer worker on every visit, so a redeploy reaches testers
       // straight away instead of them sitting on a cached old build.

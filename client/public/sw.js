@@ -5,7 +5,18 @@
    served (and access-controlled) by the streaming provider.
    ========================================================================= */
 
-const VERSION = 'mtonyo-v1'
+/**
+ * The version comes from the query string the page registers with, and that
+ * changes on every build.
+ *
+ * It used to be a constant. Because the cache names are built from it, and
+ * `activate` only deletes caches whose name does not start with it, nothing was
+ * ever deleted: a device could keep booting a months-old bundle against a
+ * backend that had moved on, and the only symptom is a screen that "sometimes
+ * breaks". Hashed asset files are immutable, so caching them hard is right —
+ * but only until the build they belong to is gone.
+ */
+const VERSION = `mtonyo-${new URL(self.location.href).searchParams.get('v') || 'dev'}`
 const SHELL_CACHE = `${VERSION}-shell`
 const ASSET_CACHE = `${VERSION}-assets`
 const IMAGE_CACHE = `${VERSION}-images`
@@ -59,8 +70,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone()
-          caches.open(SHELL_CACHE).then((c) => c.put('/', copy)).catch(() => {})
+          // Only keep a copy worth serving later. Caching an error page as the
+          // app shell is how a device ends up permanently broken offline.
+          if (res && res.ok) {
+            const copy = res.clone()
+            caches.open(SHELL_CACHE).then((c) => c.put('/', copy)).catch(() => {})
+          }
           return res
         })
         .catch(() => caches.match('/').then((cached) => cached || Response.error()))
