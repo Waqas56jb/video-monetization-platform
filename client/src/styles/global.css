@@ -154,7 +154,13 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 
 /* ---------- HERO ---------- */
 /* Slightly under full viewport so the next section peeks — proves content exists. */
-.hero{min-height:min(100dvh,920px);display:flex;align-items:center;position:relative;padding:150px 0 80px;overflow:hidden}
+:root{--marquee-h:58px}
+.hero{
+  min-height:min(calc(100dvh - var(--marquee-h)),920px);
+  display:flex;align-items:center;position:relative;overflow:hidden;
+  /* Enough to clear the fixed header, and no more than the screen can spare. */
+  padding-block:clamp(92px,12dvh,140px) clamp(20px,3.5dvh,56px);
+}
 .hero-bg{position:absolute;inset:0;z-index:-1}
 .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.22;transform:scale(1.08);animation:heroZoom 22s ease-in-out infinite alternate}
 @keyframes heroZoom{to{transform:scale(1.16)}}
@@ -163,12 +169,12 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .hero h1{font-size:clamp(34px,4.3vw,58px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin:24px 0 22px}
 .hero h1{text-transform:uppercase}
 .hero h1 br{display:block}
-.hero-sub{font-size:18.5px;color:var(--muted);line-height:1.75;max-width:540px;margin-bottom:38px}
+.hero-sub{font-size:18.5px;color:var(--muted);line-height:1.75;max-width:540px;margin-bottom:clamp(16px,2.6dvh,34px)}
 .hero-sub b{color:#fff}
-.hero-actions{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:26px;width:100%;max-width:560px}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:clamp(14px,2.2dvh,26px);width:100%;max-width:560px}
 /* Payments described by capability, not by provider — a named provider reads as
    a limit and goes stale the moment another one is connected. */
-.hero-pay{max-width:560px;width:100%;margin-bottom:30px;padding:16px 18px;border:1px solid var(--border2);border-radius:16px;background:rgba(20,20,31,.55);backdrop-filter:blur(12px)}
+.hero-pay{max-width:560px;width:100%;margin-bottom:clamp(12px,2dvh,26px);padding:clamp(11px,1.6dvh,16px) 18px;border:1px solid var(--border2);border-radius:16px;background:rgba(20,20,31,.55);backdrop-filter:blur(12px)}
 .hero-pay>b{display:block;font-family:'Sora';font-size:14.5px;margin-bottom:10px}
 .hero-pay-methods{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .hero-pay-methods span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
@@ -191,8 +197,8 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 @keyframes phoneFloat{50%{transform:translateY(-18px) rotate(-1deg)}}
 .phone-notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:112px;height:26px;background:#0d0d16;border-radius:0 0 18px 18px;z-index:5}
 .phone-screen{border-radius:32px;overflow:hidden;background:var(--bg2);position:relative}
-.phone-screen>img{height:300px;width:100%;object-fit:cover}
-.ph-overlay{position:absolute;top:0;left:0;right:0;height:300px;background:linear-gradient(180deg,rgba(10,10,18,.28),rgba(10,10,18,.15) 42%,rgba(10,10,18,.9));padding:38px 16px 12px}
+.phone-screen>img{height:clamp(200px,30dvh,300px);width:100%;object-fit:cover}
+.ph-overlay{position:absolute;top:0;left:0;right:0;height:clamp(200px,30dvh,300px);background:linear-gradient(180deg,rgba(10,10,18,.28),rgba(10,10,18,.15) 42%,rgba(10,10,18,.9));padding:38px 16px 12px}
 .ph-meta{position:absolute;left:16px;right:16px;bottom:12px}
 
 /* The play control: the one thing on the poster asking to be pressed. */
@@ -222,8 +228,8 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .ph-progress .pp-watched{background:linear-gradient(90deg,#6d28d9,var(--purple2));border-radius:99px 0 0 99px}
 .ph-progress .pp-free{background:var(--gold)}
 @keyframes prog{0%{width:8%}100%{width:34%}}
-.ph-body{padding:16px 15px 20px}
-.ph-lock{display:flex;align-items:center;gap:12px;background:rgba(124,58,237,.12);border:1px solid var(--border);padding:12px 14px;border-radius:14px;margin-bottom:14px}
+.ph-body{padding:clamp(11px,1.7dvh,16px) 15px clamp(13px,2dvh,20px)}
+.ph-lock{display:flex;align-items:center;gap:11px;background:rgba(124,58,237,.12);border:1px solid var(--border);padding:clamp(9px,1.4dvh,12px) 13px;border-radius:14px;margin-bottom:clamp(9px,1.4dvh,14px)}
 .ph-lock svg{width:20px;height:20px;color:var(--gold);flex-shrink:0}
 .ph-lock small{font-size:11.5px;color:var(--muted);line-height:1.5}
 .ph-lock small b{color:#fff;display:block;font-size:12.5px}
@@ -713,7 +719,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .stat-grid{grid-template-columns:1fr}
   .form-grid,.sell-opts{grid-template-columns:1fr}
   .foot-grid{grid-template-columns:1fr;gap:36px}
-  .hero{padding-top:110px;padding-bottom:60px}
+  .hero{padding-block:clamp(94px,12dvh,116px) clamp(22px,3.5dvh,56px)}
   .hero h1{font-size:clamp(32px,9vw,48px);letter-spacing:-1px}
   .hstat{padding:16px 6px}
   .hstat b{font-size:16px}
@@ -780,7 +786,9 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- true mobile viewport height (avoids the iOS 100vh address-bar jump) --- */
 @supports (height:100dvh){
-  .hero{min-height:min(100dvh,920px)}
+  /* Height minus the strip, as above — restating it without that room is what
+     pushed the strip off the bottom of the screen again. */
+  .hero{min-height:min(calc(100dvh - var(--marquee-h)),920px)}
   .auth-wrap,.dash,.page{min-height:100dvh}
   .sidebar{height:100dvh}
   #preloader,.landing-boot{height:100dvh}
@@ -828,7 +836,8 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- small tablets / large phones --- */
 @media(max-width:768px){
-  .hero{padding:132px 0 70px}
+  .hero{padding-block:clamp(96px,13dvh,132px) clamp(24px,4dvh,64px)}
+  .phone{width:min(252px,74vw)}
   .hero h1{letter-spacing:-1px}
   .hero-sub{font-size:17px}
   .cta-wrap{border-radius:24px}
@@ -1198,10 +1207,11 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   /* Sized so each of the three lines fits on one line at every desktop width.
      "YOUR AUDIENCE." is the longest, and at 66px it did not — so the headline
      rendered as five lines instead of three and the whole block lost its shape. */
-  font-size:clamp(34px,4vw,55px);
+  /* Whichever is smaller: what the width allows, or what the height can spare.
+     On a short laptop screen the headline is what has to give. */
+  font-size:min(clamp(32px,4vw,55px),8.4dvh);
   line-height:1.08;
   letter-spacing:-1.4px;
-  margin:24px 0 22px;
   /* The breaks are deliberate <br>s. `balance` second-guesses them. */
   text-wrap:initial;
 }
@@ -1260,13 +1270,18 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* very small phones: stats read better as labelled rows than a cramped 2×2 */
 @media(max-width:380px){
-  .hero-stats{grid-template-columns:1fr;border-radius:14px}
-  .hstat{padding:13px 14px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .hstat::before,.hstat:nth-child(2n)::before{display:none !important}
-  .hstat+.hstat{border-top:1px solid var(--border2)}
-  .hstat:nth-child(n+3){border-top:1px solid var(--border2)}
-  .hstat b{font-size:17px;margin:0}
-  .hstat span{font-size:10.5px;margin:0;text-align:right}
+  .hero-stats{grid-template-columns:repeat(3,minmax(0,1fr));border-radius:14px}
+  .hstat{padding:11px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px}
+  .hstat::before{display:none !important}
+  .hstat:nth-child(2n)::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:1px;background:var(--border2);display:block !important}
+  .hstat:nth-child(3n)::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:1px;background:var(--border2);display:block !important}
+  .hstat+.hstat{border-top:0}
+  .hstat:nth-child(n+3){border-top:0}
+  .hstat-ic{width:26px;height:26px;border-radius:8px}
+  .hstat-ic svg{width:13px;height:13px}
+  .hstat b{font-size:14px;margin:0}
+  .hstat-text{text-align:center}
+  .hstat-text span{font-size:8.5px;letter-spacing:.3px;margin-top:2px}
 }
 
 /* =========================================================================
