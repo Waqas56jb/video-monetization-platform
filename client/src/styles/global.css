@@ -33,7 +33,7 @@ input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar-thumb{background:linear-gradient(var(--purple),#4c1d95);border-radius:99px}
 
 /* ---------- UTILITIES ---------- */
-.container{width:min(1200px,92%);margin-inline:auto}
+.container{width:min(1800px,94%);margin-inline:auto}
 .grad-text{background:linear-gradient(92deg,var(--gold) 0%,var(--gold2) 35%,#fff0b3 60%,var(--gold) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% auto;animation:shine 5s linear infinite}
 .grad-purple{background:linear-gradient(92deg,var(--purple2),#c4b5fd,var(--purple2));-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes shine{to{background-position:200% center}}
@@ -193,7 +193,7 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
   overflow-wrap:normal;word-break:normal;hyphens:none}
 /* phone mockup */
 .hero-visual{position:relative;display:flex;justify-content:center}
-.phone{width:min(300px,78vw);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
+.phone{width:min(440px,45%);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
 @keyframes phoneFloat{50%{transform:translateY(-18px) rotate(-1deg)}}
 .phone-notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:112px;height:26px;background:#0d0d16;border-radius:0 0 18px 18px;z-index:5}
 .phone-screen{border-radius:32px;overflow:hidden;background:var(--bg2);position:relative}
@@ -246,7 +246,7 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .ph-methods span{font-size:8px;font-weight:700;color:var(--muted);border:1px solid var(--border2);padding:3px 6px;border-radius:99px;white-space:nowrap;letter-spacing:.2px}
 /* Title beside its icon, description underneath — the shape in the design. */
 .float-card{
-  position:absolute;width:190px;
+  position:absolute;width:var(--card-w);min-width:150px;
   background:rgba(17,17,27,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border:1px solid var(--border2);border-radius:18px;padding:16px 18px;
   box-shadow:0 22px 50px -20px rgba(0,0,0,.8);z-index:3;
@@ -262,17 +262,18 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 
 /* The dashed threads joining the cards to the phone. Decorative, so they never
    take a pointer event away from anything underneath. */
-.hero-links{position:absolute;inset:-4% -18% ;width:136%;height:108%;pointer-events:none;z-index:1;opacity:.9}
+.hero-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.95}
 /* --phone-half is half the phone's width; --card-gap is the clearance either
    side. The left pair is allowed to lap slightly over the phone, as the design
    shows; the right trio always sits clear of it. */
-.hero-visual{--phone-half:150px;--card-gap:16px;--card-lap:12px}
-.float-card{--from-centre:calc(var(--phone-half) + var(--card-gap))}
-.fc1{top:15%;right:calc(50% + var(--phone-half) - var(--card-lap));animation:phoneFloat 8s .8s ease-in-out infinite}
-.fc2{bottom:13%;right:calc(50% + var(--phone-half) - 8px);animation:phoneFloat 9s 1.4s ease-in-out infinite}
-.fc3{top:3%;left:calc(50% + var(--from-centre));animation:phoneFloat 8.5s .4s ease-in-out infinite}
-.fc4{top:39%;left:calc(50% + var(--from-centre) + 10px);animation:phoneFloat 9.5s 1s ease-in-out infinite}
-.fc5{bottom:4%;left:calc(50% + var(--from-centre));animation:phoneFloat 8.2s 1.8s ease-in-out infinite}
+.hero-visual{--card-gap:3.5%;--card-w:24%}
+/* Pinned to the stage's own edges. The phone takes what is left between them,
+   so no card can reach it however wide the screen gets. */
+.fc1{top:14%;left:0;animation:phoneFloat 8s .8s ease-in-out infinite}
+.fc2{bottom:12%;left:0;animation:phoneFloat 9s 1.4s ease-in-out infinite}
+.fc3{top:2%;right:0;animation:phoneFloat 8.5s .4s ease-in-out infinite}
+.fc4{top:38%;right:0;animation:phoneFloat 9.5s 1s ease-in-out infinite}
+.fc5{bottom:3%;right:0;animation:phoneFloat 8.2s 1.8s ease-in-out infinite}
 .scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted2);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .scroll-hint .wheel{width:24px;height:38px;border:2px solid var(--muted2);border-radius:14px;position:relative}
 .scroll-hint .wheel::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;border-radius:4px;background:var(--gold);animation:wheel 1.8s infinite}
@@ -817,7 +818,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- ultra-wide / 4K: let the layout breathe instead of stranding content --- */
 @media(min-width:1700px){
-  .container{width:min(1360px,92%)}
+  .container{width:min(1800px,94%)}
 }
 
 /* --- laptops & large tablets: 6 cramped step columns become 3 --- */
@@ -886,7 +887,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- very small phones (iPhone SE, Galaxy A0x ~320–380px) --- */
 @media(max-width:380px){
-  .container{width:min(1200px,94%)}
+  .container{width:min(1800px,94%)}
   .logo{font-size:18px;gap:9px}
   .logo-mark{width:35px;height:35px;border-radius:10px}
   .logo-mark svg{width:17px;height:17px}
@@ -1109,7 +1110,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 @media(max-width:480px){
   .watch-cta .btn:first-child{display:none}
-  .container{width:min(1200px,94%)}
+  .container{width:min(1800px,94%)}
   .hero-actions{max-width:100%;gap:10px;margin-bottom:28px}
   .hero-actions .btn{padding:14px 16px;font-size:14px;white-space:nowrap}
   .hero-stats{border-radius:16px}
@@ -1209,7 +1210,7 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
      rendered as five lines instead of three and the whole block lost its shape. */
   /* Whichever is smaller: what the width allows, or what the height can spare.
      On a short laptop screen the headline is what has to give. */
-  font-size:min(clamp(32px,4vw,55px),8.4dvh);
+  font-size:min(clamp(32px,4.4vw,66px),7.4dvh);
   line-height:1.08;
   letter-spacing:-1.4px;
   /* The breaks are deliberate <br>s. `balance` second-guesses them. */
@@ -1425,19 +1426,15 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
    five of them are with the other hero rules above — kept in ONE place, because
    a second set of `.fcN` rules further down this file is exactly what silently
    moved "Pay Once" to the wrong side of the phone. */
-.hero-visual{width:100%;max-width:540px;margin-inline:auto}
+.hero-visual{width:100%;max-width:none;margin-inline:auto}
 
 @media(max-width:1400px){
-  /* Narrower cards and a tighter gap: same arrangement, less page to put it on. */
-  .hero-visual{--card-gap:12px}
-  .float-card{width:164px;padding:13px 14px}
-  .float-card b{font-size:13.5px}
+  .float-card{padding:13px 14px}
+  .float-card b{font-size:13px}
   .float-card small{font-size:11.5px}
 }
 @media(max-width:1240px){
-  .hero-visual{--phone-half:132px;--card-gap:10px}
-  .phone{width:min(264px,78vw)}
-  .float-card{width:148px;padding:12px 13px}
+  .float-card{padding:12px 12px}
   .float-card b{font-size:12.5px}
   .float-card small{font-size:11px;line-height:1.5}
 }

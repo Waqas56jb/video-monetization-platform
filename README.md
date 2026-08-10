@@ -278,12 +278,20 @@ Watch for the same trap here as with the card positions: an `@supports
 (height:100dvh)` block further down was re-stating `.hero{min-height}` **without**
 the strip's reservation, which quietly undid it.
 
-**The hero is one diagram, and its geometry is anchored to the phone.** Five cards
-sit around the phone — two lapping its left edge, three clear of it on the right —
-joined by dashed threads. Their offsets are `calc(50% + var(--phone-half) + …)`,
-never a percentage of the stage: the stage changes width with the viewport, so a
-percentage cannot promise a card clears the phone, and that is exactly how "Pay
-Once" ended up sitting on top of it at some widths and not others.
+**The hero diagram is proportions, not pixels.** Phone, cards and gaps are shares
+of the stage — `45%`, `24%`, `3.5%` — which add to exactly 100% of it. Two things
+follow for free: no card can ever reach the phone, and the phone keeps the same
+share of the screen (~22%, matching the design) from 1280px to 1920px instead of
+shrinking into the middle of a large monitor. Cards are pinned to the stage's own
+edges, so they cannot leave it either.
+
+That replaced pixel offsets, which could not make either promise: at one width the
+right-hand cards cleared the phone and at another they sat on top of it.
+
+**The container grows with the screen.** It was capped at 1200–1360px, so a 1920px
+monitor showed the whole site in 71% of its width with 280px of dead margin either
+side, and the phone came out at 16% where the design has it at 23%. That — not a
+font size — was the whole "everything looks small" report. `min(1800px, 94%)`.
 
 Two traps in that file cost real time and are worth knowing about. `.fcN`
 positions existed in **two** places, hundreds of lines apart, and the later set

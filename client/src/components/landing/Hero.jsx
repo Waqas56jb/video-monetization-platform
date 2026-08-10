@@ -34,25 +34,25 @@ function HeroLinks() {
   return (
     <svg
       className="hero-links"
-      viewBox="0 0 600 640"
+      viewBox="0 0 1000 600"
       preserveAspectRatio="none"
       aria-hidden="true"
       focusable="false"
     >
       <g
         fill="none"
-        stroke="rgba(255,255,255,0.18)"
-        strokeWidth="1.4"
+        stroke="rgba(255,255,255,0.22)"
+        strokeWidth="1.6"
         strokeDasharray="5 7"
         strokeLinecap="round"
       >
-        {/* right: the phone's edge out to Pay Once, Paid Premiere, Free + Ads */}
-        <path d="M392 168 C 428 150, 446 128, 470 118" />
-        <path d="M396 330 C 432 328, 448 322, 470 320" />
-        <path d="M392 500 C 428 516, 446 534, 470 542" />
-        {/* left: down and across to Instant Unlock, then Creators Earn */}
-        <path d="M208 210 C 186 196, 172 190, 150 188" />
-        <path d="M208 452 C 186 468, 172 478, 150 482" />
+        {/* The phone spans x 275-725; the cards sit outside 240 and 760. Each
+            thread crosses that gap and rises or falls to meet its card. */}
+        <path d="M725 158 C 741 146, 748 106, 760 92" />
+        <path d="M725 292 C 741 292, 748 290, 760 290" />
+        <path d="M725 444 C 741 464, 748 494, 760 506" />
+        <path d="M275 182 C 259 170, 252 142, 240 130" />
+        <path d="M275 424 C 259 446, 252 472, 240 484" />
       </g>
     </svg>
   )
