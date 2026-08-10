@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -23,6 +23,8 @@ import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
+import { authUrl } from '@/lib/nextPath'
+import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 
 /**
  * Watching a video.
@@ -36,6 +38,7 @@ import { useToast } from '@/context/ToastContext'
 export default function Watch() {
   const { videoId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const showToast = useToast()
 
   const [payOpen, setPayOpen] = useState(false)
@@ -123,16 +126,49 @@ export default function Watch() {
    */
   const reportProgress = useCallback(
     (seconds, { force = false } = {}) => {
-      if (!signedIn || !v?.id) return
       const s = Math.floor(seconds || 0)
       if (!force && Math.abs(s - lastReported.current) < 10) return
       lastReported.current = s
+
+      /**
+       * This device first, always.
+       *
+       * A signed-out visitor watching a preview has no account to record against
+       * yet, and they are exactly the person who is about to sign in and expect
+       * the video to carry on. Keeping it locally covers them; the server copy is
+       * written as well whenever we know who they are.
+       */
+      rememberProgress(videoId, s)
+      if (!signedIn || !v?.id) return
+
       api.saveProgress(v.id, s).catch(() => {
         /* A lost resume point is not worth interrupting playback over. */
       })
     },
-    [signedIn, v?.id]
+    [signedIn, v?.id, videoId]
   )
+
+  /**
+   * Hand a position recorded before signing in over to the account.
+   *
+   * Runs once we know both who they are and which video this is, so the position
+   * they reached as a visitor becomes part of their history rather than being
+   * stranded in this tab.
+   */
+  useEffect(() => {
+    if (!signedIn || !v?.id) return
+    const local = recallProgress(videoId)
+    if (local <= 0) return
+    api
+      .saveProgress(v.id, local)
+      .then(() => {
+        // The account owns the position now; a second copy could only go stale.
+        forgetProgress(videoId)
+        playback.reload({ quiet: true })
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, v?.id])
 
   /* Leaving the page mid-film should still be resumable. */
   useEffect(() => {
@@ -145,6 +181,24 @@ export default function Watch() {
       flush()
     }
   }, [reportProgress])
+
+  /**
+   * Pick up an interrupted purchase.
+   *
+   * Somebody who tapped Unlock, was asked to sign in, and has just come back was
+   * halfway through buying this video. Handing them the payment sheet finishes
+   * what they started; making them find the button again is the platform
+   * forgetting what they were doing. `?unlock=1` is dropped from the URL once
+   * used, so a refresh later does not reopen it out of nowhere.
+   */
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).get('unlock')) return
+    if (!signedIn || !accessReady) return
+
+    if (needsPayment) setPayOpen(true)
+    navigate(`/watch/${videoId}`, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, signedIn, accessReady, needsPayment])
 
   /** The breaks this video carries, by placement. */
   const ads = adBreaks.data?.ads || []
@@ -299,7 +353,13 @@ export default function Watch() {
    * local hint fills the gap between paying and the reloaded playback arriving,
    * and a mid-roll returning the viewer to the middle of the film also lands here.
    */
-  const resumeAt = Math.max(Number(p?.playback?.resumeFromSeconds || 0), resumeHint)
+  const resumeAt = Math.max(
+    Number(p?.playback?.resumeFromSeconds || 0),
+    resumeHint,
+    /* Covers the visitor who watched the preview before signing in — the server
+       had nobody to record it against at the time. */
+    recallProgress(videoId)
+  )
 
   /** Why this video is playing in full — see the badge below. */
   const accessReason = (() => {
@@ -323,7 +383,22 @@ export default function Watch() {
   const openCheckout = () => {
     if (!needsPayment) return
     if (!signedIn) {
-      navigate('/login', { state: { from: `/watch/${videoId}` } })
+      /**
+       * Send them to sign in, and remember both where they were and what they
+       * were in the middle of.
+       *
+       * `next` goes in the URL so it survives a reload and the detour through
+       * Sign up; `unlock=1` is how we know, on the way back, that they were
+       * partway through buying and should be handed the payment sheet rather
+       * than left to find the button again.
+       *
+       * Their position in the preview is already in session storage, so the
+       * video also resumes where it stopped.
+       */
+      rememberProgress(videoId, watchedTo.current)
+      /* `unlock=1` belongs INSIDE the destination, not beside it: the login page
+         navigates to `next` and anything sitting next to it is left behind. */
+      navigate(authUrl('login', `/watch/${videoId}?unlock=1`))
       return
     }
     setPayOpen(true)

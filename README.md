@@ -265,6 +265,25 @@ of staff (reviewing a video means watching it), and a video that is simply free.
 The watch page now names which one applies, so an administrator browsing the
 public site sees "open to you as staff" rather than concluding the paywall failed.
 
+**A card opens its own video, because the cards are real videos.** The homepage
+Trending grid used to be drawn from a hard-coded showcase list, so the cards had
+nothing behind them and clicking one could only dump the viewer on /explore to go
+and find it again. That was not a routing mistake — there was genuinely nothing to
+route to. The grid is the live catalogue now, ordered by `sort=trending`: views
+and purchases over the last fortnight, with a purchase weighted five times a view,
+because somebody paying is a far stronger signal than somebody clicking. Lifetime
+views break ties so a quiet fortnight still produces a sensible order.
+
+**Signing in is an interruption, not a destination.** The place someone was going
+travels in the URL — `/login?next=/watch/some-video?unlock=1` — never only in
+router state, because router state does not survive a page load, the detour
+through Sign up, or an already-signed-in visitor being bounced off the login page.
+All three were losing it, which is how a viewer who tapped Unlock ended up on the
+dashboard. `?unlock=1` has to sit *inside* `next`, not beside it: the login page
+navigates to `next` and anything alongside is left behind. `safeNext` refuses
+anything that is not an internal path, so the login page cannot be turned into an
+open redirector. The dashboard is now only ever reached by choosing it.
+
 **Where a viewer got to is stored, not remembered.** `watch_progress` holds a
 position per viewer per video, which is what makes "pay, then carry on from the
 paywall" work: the page reloads its playback the moment payment lands, so a
@@ -272,6 +291,13 @@ position held in memory would already be gone. The first attempt did hold it in
 memory, and the client found the video restarting — correctly. A stored position
 grants nothing; reaching 5:00 of a film says nothing about whether you may watch
 5:01.
+
+There is a second copy in session storage, and it is not redundant. The server can
+only record a position against an account, which left out precisely the person who
+needs it most: a signed-out visitor who watches five minutes of a preview, taps
+Unlock, signs in, and expects the video to carry on. `client/src/lib/watchProgress.js`
+keeps their position from the first second, hands it over as soon as we know who
+they are, and then forgets it so there is only ever one copy that can go stale.
 
 **Nav links to a landing section work from everywhere.** Those sections only
 exist on the landing page, so a plain `#features` anchor did nothing at all from

@@ -46,7 +46,7 @@ const listQuery = z.object({
   category: z.string().trim().max(60).optional(),
   access: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
   creatorId: z.string().uuid().optional(),
-  sort: z.enum(['newest', 'popular', 'price_low', 'price_high']).default('newest'),
+  sort: z.enum(['newest', 'trending', 'popular', 'price_low', 'price_high']).default('newest'),
   limit: z.coerce.number().int().min(1).max(50).default(24),
   offset: z.coerce.number().int().min(0).default(0),
 })
@@ -71,6 +71,22 @@ router.get(
 
     const order = {
       newest: 'v.published_at desc nulls last',
+      /**
+       * Trending is what people are watching NOW, not what has the most views
+       * ever — otherwise the same handful of videos sit at the top of the
+       * homepage permanently and nothing new is ever discovered.
+       *
+       * A purchase counts for more than a view because somebody paying is a far
+       * stronger signal than somebody clicking. Lifetime views break ties so a
+       * quiet fortnight still produces a sensible order.
+       */
+      trending: `(
+        (select count(*) from video_views w
+          where w.video_id = v.id and w.created_at > now() - interval '14 days')
+        + 5 * (select count(*) from purchases pu
+                where pu.video_id = v.id and pu.status = 'active'
+                  and pu.purchased_at > now() - interval '14 days')
+      ) desc, v.views desc, v.published_at desc nulls last`,
       popular: 'v.views desc',
       price_low: 'v.price_tzs asc',
       price_high: 'v.price_tzs desc',

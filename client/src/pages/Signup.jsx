@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Crown, MailCheck, Rocket } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
+import { authUrl, nextFrom } from '@/lib/nextPath'
 
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
@@ -14,6 +15,7 @@ const ROLES = [
 
 export default function Signup() {
   const navigate = useNavigate()
+  const location = useLocation()
   const showToast = useToast()
   const { signUp, authed, loading: authLoading } = useAuth()
 
@@ -25,9 +27,13 @@ export default function Signup() {
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
+
+  /** Whatever they were doing before being asked to make an account. */
+  const next = nextFrom(location)
+
   useEffect(() => {
-    if (!authLoading && authed) navigate('/dashboard', { replace: true })
-  }, [authed, authLoading, navigate])
+    if (!authLoading && authed) navigate(next || '/dashboard', { replace: true })
+  }, [authed, authLoading, navigate, next])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -56,12 +62,12 @@ export default function Signup() {
        */
       if (result.signInFailed || !result.session) {
         showToast(result.message || 'Account created — please log in')
-        timer.current = setTimeout(() => navigate('/login', { replace: true }), 900)
+        timer.current = setTimeout(() => navigate(authUrl('login', next), { replace: true }), 900)
         return
       }
 
       showToast(`🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`)
-      timer.current = setTimeout(() => navigate('/dashboard', { replace: true }), 400)
+      timer.current = setTimeout(() => navigate(next || '/dashboard', { replace: true }), 400)
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -92,7 +98,7 @@ export default function Signup() {
             sign in.
           </span>
         </div>
-        <button className="btn btn-gold btn-block" onClick={() => navigate('/login')}>
+        <button className="btn btn-gold btn-block" onClick={() => navigate(authUrl('login', next))}>
           Go to login
         </button>
       </AuthLayout>
@@ -199,7 +205,7 @@ export default function Signup() {
       </form>
 
       <div className="auth-alt">
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account? <Link to={authUrl('login', next)}>Log in</Link>
       </div>
     </AuthLayout>
   )

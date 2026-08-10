@@ -5,6 +5,7 @@ import AuthLayout from '@/components/auth/AuthLayout'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
+import { authUrl, nextFrom } from '@/lib/nextPath'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -19,10 +20,21 @@ export default function Login() {
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
-  // Already signed in? Don't make them log in twice.
+  /**
+   * Where this person was going before they were asked to sign in.
+   *
+   * Read once, from the URL, so it survives a reload and the trip through Sign
+   * up. Signing in is an interruption to something the viewer was already doing;
+   * finishing it should put them back there, not on the dashboard.
+   */
+  const next = nextFrom(location)
+
+  // Already signed in? Don't make them log in twice — and don't lose their
+  // destination on the way past, which is how a viewer trying to unlock a video
+  // ended up on the dashboard instead.
   useEffect(() => {
-    if (!authLoading && authed) navigate('/dashboard', { replace: true })
-  }, [authed, authLoading, navigate])
+    if (!authLoading && authed) navigate(next || '/dashboard', { replace: true })
+  }, [authed, authLoading, navigate, next])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -36,8 +48,7 @@ export default function Login() {
     try {
       const user = await signIn(form)
       showToast(`Karibu tena, ${user.fullName || user.email}!`)
-      const to = location.state?.from || '/dashboard'
-      timer.current = setTimeout(() => navigate(to, { replace: true }), 400)
+      timer.current = setTimeout(() => navigate(next || '/dashboard', { replace: true }), 400)
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -114,7 +125,7 @@ export default function Login() {
 
       <div className="divider">NEW TO MTONYO+?</div>
 
-      <button className="btn btn-ghost btn-block" onClick={() => navigate('/signup')} disabled={busy}>
+      <button className="btn btn-ghost btn-block" onClick={() => navigate(authUrl('signup', next))} disabled={busy}>
         <Sparkles />
         Create Free Account
       </button>

@@ -5,7 +5,8 @@ import Icon from '@/components/ui/Icon'
 import PhoneMockup from './PhoneMockup'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
-import { IMG, LANDING_SHOWCASE } from '@/data/copy'
+import { videoLink } from '@/lib/videoView'
+import { IMG } from '@/data/copy'
 
 /**
  * The first thing anyone sees.
@@ -17,26 +18,28 @@ import { IMG, LANDING_SHOWCASE } from '@/data/copy'
  * about how it works, not claims about how well it is doing, so they are true
  * on day one and stay true.
  *
- * The phone mockup uses the landing showcase card so the hero design always
- * looks finished — real catalogue browsing starts at Explore.
+ * The phone mockup shows the video that is actually trending, and tapping it
+ * opens that video — it used to show an invented one, so the most prominent
+ * thing on the page led nowhere.
  */
 export default function Hero() {
   const navigate = useNavigate()
 
   const stats = useApi(() => api.stats.platform(), [])
 
+  /**
+   * The phone shows a real video, and tapping it opens that video.
+   *
+   * It used to show an invented one — a made-up title at a made-up price — which
+   * meant the most prominent thing on the page led nowhere. `PhoneMockup` already
+   * falls back to a plain illustration of the mechanic when the platform has
+   * nothing published, so an empty catalogue is handled without inventing
+   * anything.
+   */
+  const trending = useApi(() => api.videos.list({ sort: 'trending', limit: 1 }), [])
+  const featured = trending.data?.videos?.[0] || null
+
   const s = stats.data
-  const showcase = LANDING_SHOWCASE[0]
-  const featured = {
-    title: showcase.title,
-    thumbnailUrl: showcase.thumb,
-    category: 'Documentary',
-    creator: { name: showcase.author },
-    accessType: 'paid_premiere',
-    priceTzs: 500,
-    freePreviewSeconds: 300,
-    durationSeconds: 1214,
-  }
 
   // Real measurements once there are any; otherwise the promises, which need
   // no qualification and cannot go stale.
@@ -48,13 +51,13 @@ export default function Hero() {
       ]
     : [
         { count: s?.creatorSplitPercent ?? 70, prefix: '', suffix: '%', label: 'Of every sale is yours' },
-        { count: 2, prefix: '', suffix: '', label: 'Ways to get paid · M-Pesa & Airtel' },
+        { count: 3, prefix: '', suffix: '', label: 'Ways to get paid' },
         { count: 24, prefix: '', suffix: 'h', label: 'Withdrawal turnaround' },
       ]
 
   const floatCards = s?.hasActivity
     ? [
-        { cls: 'fc1', icon: 'badge-check', title: 'Instant unlock', sub: 'M-Pesa & Airtel Money' },
+        { cls: 'fc1', icon: 'badge-check', title: 'Instant unlock', sub: 'Mobile Money • Cards • Digital' },
         {
           cls: 'fc2',
           icon: 'wallet',
@@ -171,7 +174,10 @@ export default function Hero() {
               </div>
             </div>
           ))}
-          <PhoneMockup video={featured} onUnlock={() => navigate('/explore')} />
+          <PhoneMockup
+            video={featured}
+            onUnlock={() => navigate(featured ? videoLink(featured) : '/explore')}
+          />
         </div>
       </div>
 
