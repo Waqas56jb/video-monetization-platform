@@ -22,6 +22,42 @@ import { IMG } from '@/data/copy'
  * opens that video — it used to show an invented one, so the most prominent
  * thing on the page led nowhere.
  */
+/**
+ * The dashed threads between the phone and the cards around it.
+ *
+ * Purely decorative — they are what makes the group read as one diagram rather
+ * than five boxes that happen to be near a phone. Drawn as one SVG on a fixed
+ * viewBox and stretched to the stage, so the curves keep their shape at any
+ * width instead of needing a rule per breakpoint. Hidden wherever the cards are.
+ */
+function HeroLinks() {
+  return (
+    <svg
+      className="hero-links"
+      viewBox="0 0 600 640"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g
+        fill="none"
+        stroke="rgba(255,255,255,0.18)"
+        strokeWidth="1.4"
+        strokeDasharray="5 7"
+        strokeLinecap="round"
+      >
+        {/* right: the phone's edge out to Pay Once, Paid Premiere, Free + Ads */}
+        <path d="M392 168 C 428 150, 446 128, 470 118" />
+        <path d="M396 330 C 432 328, 448 322, 470 320" />
+        <path d="M392 500 C 428 516, 446 534, 470 542" />
+        {/* left: down and across to Instant Unlock, then Creators Earn */}
+        <path d="M208 210 C 186 196, 172 190, 150 188" />
+        <path d="M208 452 C 186 468, 172 478, 150 482" />
+      </g>
+    </svg>
+  )
+}
+
 export default function Hero() {
   const navigate = useNavigate()
 
@@ -41,46 +77,75 @@ export default function Hero() {
 
   const s = stats.data
 
-  // Real measurements once there are any; otherwise the promises, which need
-  // no qualification and cannot go stale.
+  /**
+   * The three figures under the buttons, labelled as the client's design labels
+   * them — and still counted, never claimed.
+   *
+   * Before there is anything to count, the same three slots carry facts about how
+   * the platform works instead. Those are true on day one and cannot go stale,
+   * where "TZS 0 earned by creators" on a launch day says nothing anybody wants
+   * to read.
+   */
   const heroStats = s?.hasActivity
     ? [
-        { count: s.paidToCreatorsTzs, prefix: 'TZS ', suffix: '', label: 'Paid to creators' },
-        { count: s.creators, prefix: '', suffix: '', label: 'Creators earning' },
-        { count: s.publishedVideos, prefix: '', suffix: '', label: 'Videos on sale' },
+        { icon: 'wallet', count: s.paidToCreatorsTzs, prefix: 'TZS ', suffix: '', label: 'Earned by creators' },
+        { icon: 'users', count: s.creators, prefix: '', suffix: '', label: 'Creators earning' },
+        { icon: 'clapperboard', count: s.publishedVideos, prefix: '', suffix: '', label: 'Exclusive releases' },
       ]
     : [
-        { count: s?.creatorSplitPercent ?? 70, prefix: '', suffix: '%', label: 'Of every sale is yours' },
-        { count: 3, prefix: '', suffix: '', label: 'Ways to get paid' },
-        { count: 24, prefix: '', suffix: 'h', label: 'Withdrawal turnaround' },
+        { icon: 'wallet', count: s?.creatorSplitPercent ?? 70, prefix: '', suffix: '%', label: 'Of every sale is yours' },
+        { icon: 'users', count: 3, prefix: '', suffix: '', label: 'Ways to get paid' },
+        { icon: 'clapperboard', count: 24, prefix: '', suffix: 'h', label: 'Withdrawal turnaround' },
       ]
 
-  const floatCards = s?.hasActivity
-    ? [
-        { cls: 'fc1', icon: 'badge-check', title: 'Instant unlock', sub: 'Mobile Money • Cards • Digital' },
-        {
-          cls: 'fc2',
-          icon: 'wallet',
-          title: `TZS ${Number(s.paidToCreatorsTzs).toLocaleString()}`,
-          sub: 'Paid to creators so far',
-        },
-        {
-          cls: 'fc3',
-          icon: 'trending-up',
-          title: `${Number(s.paidUnlocks).toLocaleString()} paid unlocks`,
-          sub: 'Across the platform',
-        },
-      ]
-    : [
-        {
-          cls: 'fc1',
-          icon: 'badge-check',
-          title: 'Instant unlock',
-          sub: 'Mobile Money • Cards • Digital Payments',
-        },
-        { cls: 'fc2', icon: 'wallet', title: `You keep ${s?.creatorSplitPercent ?? 70}%`, sub: 'Of every single sale' },
-        { cls: 'fc3', icon: 'trending-up', title: 'Then Free + Ads', sub: 'And it keeps earning' },
-      ]
+  /**
+   * The cards floating around the phone.
+   *
+   * Two on the left describe what the viewer and the creator each get out of a
+   * payment; three on the right are the release models, in the same order the
+   * rest of the page introduces them. The positions come from the class — see
+   * `.fc1`–`.fc5` — and the dashed lines behind them are drawn by `HeroLinks`.
+   */
+  const leftCards = [
+    {
+      cls: 'fc1',
+      tone: 'is-green',
+      icon: 'shield-check',
+      title: 'Instant Unlock',
+      body: 'Mobile Money • Cards • Digital Payments',
+    },
+    {
+      cls: 'fc2',
+      tone: 'is-purple',
+      icon: 'trending-up',
+      title: 'Creators Earn',
+      body: 'Track sales, views and earnings.',
+    },
+  ]
+
+  const rightCards = [
+    {
+      cls: 'fc3',
+      tone: 'is-gold',
+      icon: 'lock',
+      title: 'Pay Once',
+      body: 'One payment. Full access. The video stays in your library.',
+    },
+    {
+      cls: 'fc4',
+      tone: 'is-purple',
+      icon: 'calendar-clock',
+      title: 'Paid Premiere',
+      body: 'Start paid. You choose your paid period. It becomes Free + Ads automatically.',
+    },
+    {
+      cls: 'fc5',
+      tone: 'is-green',
+      icon: 'monitor-play',
+      title: 'Free + Ads',
+      body: 'Free to watch. Creators earn from advertising.',
+    },
+  ]
 
   return (
     <section className="hero">
@@ -105,7 +170,7 @@ export default function Hero() {
 
           <p className="hero-sub">
             Upload exclusive content, set your price, and earn directly from your audience. You
-            decide what stays paid, what becomes free, and when.
+            choose how people watch, what stays paid, and when your content becomes free.
           </p>
 
           <div className="hero-actions">
@@ -151,29 +216,37 @@ export default function Hero() {
           <div className="hero-stats">
             {heroStats.map((st) => (
               <div className="hstat" key={st.label}>
-                <b>
-                  {st.prefix}
-                  <CountUp to={st.count} />
-                  {st.suffix}
-                </b>
-                <span>{st.label}</span>
+                <span className="hstat-ic">
+                  <Icon name={st.icon} />
+                </span>
+                <div className="hstat-text">
+                  <b>
+                    {st.prefix}
+                    <CountUp to={st.count} />
+                    {st.suffix}
+                  </b>
+                  <span>{st.label}</span>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         <div className="hero-visual">
-          {floatCards.map((c) => (
-            <div className={`float-card ${c.cls}`} key={c.cls}>
-              <span className="ic">
-                <Icon name={c.icon} />
-              </span>
-              <div>
+          <HeroLinks />
+
+          {[...leftCards, ...rightCards].map((c) => (
+            <div className={`float-card ${c.cls} ${c.tone}`} key={c.cls}>
+              <div className="fc-head">
+                <span className="ic">
+                  <Icon name={c.icon} />
+                </span>
                 <b>{c.title}</b>
-                <small>{c.sub}</small>
               </div>
+              <small>{c.body}</small>
             </div>
           ))}
+
           <PhoneMockup
             video={featured}
             onUnlock={() => navigate(featured ? videoLink(featured) : '/explore')}

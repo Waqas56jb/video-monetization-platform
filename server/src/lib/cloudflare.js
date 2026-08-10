@@ -220,12 +220,24 @@ export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable =
 }
 
 /** Everything the player needs for one video. */
-export function playbackUrls(uidOrToken) {
+/**
+ * Cloudflare takes a poster from the very first frame unless told otherwise, and
+ * the first frame of a film is almost always black — a fade-in, a title card, a
+ * dark room. Every poster on the site came out as a black rectangle, which reads
+ * as a broken image rather than as a video.
+ *
+ * A frame a little way in is a picture of the video. This is only a default: a
+ * creator's own uploaded cover always wins, because they know their content
+ * better than a timestamp does.
+ */
+const POSTER_AT = '15s'
+
+export function playbackUrls(uidOrToken, { posterAt = POSTER_AT } = {}) {
   return {
     hls: `https://videodelivery.net/${uidOrToken}/manifest/video.m3u8`,
     dash: `https://videodelivery.net/${uidOrToken}/manifest/video.mpd`,
     iframe: `https://iframe.videodelivery.net/${uidOrToken}`,
-    thumbnail: `https://videodelivery.net/${uidOrToken}/thumbnails/thumbnail.jpg`,
+    thumbnail: `https://videodelivery.net/${uidOrToken}/thumbnails/thumbnail.jpg?time=${posterAt}&height=720`,
   }
 }
 

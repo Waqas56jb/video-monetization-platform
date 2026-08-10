@@ -159,8 +159,10 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.22;transform:scale(1.08);animation:heroZoom 22s ease-in-out infinite alternate}
 @keyframes heroZoom{to{transform:scale(1.16)}}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,18,.4),rgba(10,10,18,.75) 55%,var(--bg) 96%),radial-gradient(ellipse at 25% 40%,rgba(124,58,237,.32),transparent 55%)}
-.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:60px;align-items:center}
-.hero h1{font-size:clamp(40px,5.6vw,72px);font-weight:800;line-height:1.06;letter-spacing:-2px;margin:26px 0 24px}
+.hero-grid{display:grid;grid-template-columns:.96fr 1.04fr;gap:36px;align-items:center}
+.hero h1{font-size:clamp(34px,4.3vw,58px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin:24px 0 22px}
+.hero h1{text-transform:uppercase}
+.hero h1 br{display:block}
 .hero-sub{font-size:18.5px;color:var(--muted);line-height:1.75;max-width:540px;margin-bottom:38px}
 .hero-sub b{color:#fff}
 .hero-actions{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:26px;width:100%;max-width:560px}
@@ -173,49 +175,98 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .hero-pay-methods svg{color:var(--purple2);flex-shrink:0}
 .hero-pay-methods i{color:var(--muted2);font-style:normal}
 .hero-actions .btn{flex:1 1 auto;min-width:0;max-width:100%}
-.hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--border2);border-radius:20px;background:rgba(20,20,31,.6);backdrop-filter:blur(14px);overflow:hidden;max-width:560px;width:100%}
-.hstat{padding:22px 8px;text-align:center;position:relative;min-width:0}
+.hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--border2);border-radius:20px;background:rgba(20,20,31,.6);backdrop-filter:blur(14px);overflow:hidden;max-width:600px;width:100%}
+.hstat{padding:18px 12px;position:relative;min-width:0;display:flex;align-items:center;gap:10px}
+.hstat-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:rgba(124,58,237,.16);border:1px solid var(--border);color:var(--purple2)}
+.hstat-ic svg{width:16px;height:16px}
+.hstat-text{min-width:0}
 .hstat+.hstat::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:1px;background:var(--border2)}
-.hstat b{display:block;font-family:'Sora';font-size:clamp(18px,2.4vw,28px);font-weight:800;color:var(--gold);line-height:1.15}
-.hstat span{display:block;font-size:clamp(10px,2.6vw,12.5px);color:var(--muted2);font-weight:600;letter-spacing:.4px;text-transform:uppercase;line-height:1.3;margin-top:4px;overflow-wrap:anywhere}
+.hstat b{display:block;font-family:'Sora';font-size:clamp(15px,1.5vw,20px);font-weight:800;color:#fff;line-height:1.15;white-space:nowrap}
+.hstat-text span{display:block;font-size:9.5px;color:var(--muted2);font-weight:700;letter-spacing:.4px;text-transform:uppercase;line-height:1.35;margin-top:4px;
+  /* Break between words only — "CREATOR / S EARNING" is worse than two tidy lines. */
+  overflow-wrap:normal;word-break:normal;hyphens:none}
 /* phone mockup */
 .hero-visual{position:relative;display:flex;justify-content:center}
-.phone{width:min(330px,80vw);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
+.phone{width:min(300px,78vw);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
 @keyframes phoneFloat{50%{transform:translateY(-18px) rotate(-1deg)}}
 .phone-notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:112px;height:26px;background:#0d0d16;border-radius:0 0 18px 18px;z-index:5}
 .phone-screen{border-radius:32px;overflow:hidden;background:var(--bg2);position:relative}
-.phone-screen>img{height:250px;width:100%;object-fit:cover}
-.ph-overlay{position:absolute;top:0;left:0;right:0;height:250px;background:linear-gradient(180deg,rgba(10,10,18,.15),rgba(10,10,18,.85));display:flex;flex-direction:column;justify-content:space-between;padding:38px 16px 12px}
-.ph-live{align-self:flex-start;background:rgba(245,197,24,.95);color:#1a1200;font-size:10.5px;font-weight:800;padding:5px 11px;border-radius:99px;letter-spacing:.8px;display:flex;align-items:center;gap:5px}
-.ph-live::before{content:'';width:6px;height:6px;border-radius:50%;background:#7a1f1f;animation:pulse 1.4s infinite}
+.phone-screen>img{height:300px;width:100%;object-fit:cover}
+.ph-overlay{position:absolute;top:0;left:0;right:0;height:300px;background:linear-gradient(180deg,rgba(10,10,18,.28),rgba(10,10,18,.15) 42%,rgba(10,10,18,.9));padding:38px 16px 12px}
+.ph-meta{position:absolute;left:16px;right:16px;bottom:12px}
+
+/* The play control: the one thing on the poster asking to be pressed. */
+.ph-play{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),#e8b400);
+  color:#1a1200;display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 14px 34px -8px rgba(245,197,24,.6),0 0 0 8px rgba(245,197,24,.1);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
+}
+.ph-play svg{width:26px;height:26px;margin-left:3px;fill:currentColor}
+.ph-play:hover{transform:translate(-50%,-50%) scale(1.07)}
+
+/* Running time, bottom-right of the poster, where a player always puts it. */
+.ph-duration{
+  position:absolute;right:16px;bottom:74px;
+  background:rgba(8,8,14,.8);border:1px solid rgba(255,255,255,.12);
+  padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;
+}
+.ph-live{position:absolute;top:38px;left:16px;background:var(--purple);color:#fff;font-size:10px;font-weight:800;padding:6px 12px;border-radius:99px;letter-spacing:.9px;display:inline-flex;align-items:center;gap:5px;box-shadow:0 8px 20px -6px rgba(124,58,237,.7)}
+
 .ph-title{font-family:'Sora';font-weight:700;font-size:16px}
 .ph-artist{font-size:12px;color:var(--muted)}
-.ph-progress{height:4px;background:rgba(255,255,255,.15);border-radius:99px;margin-top:9px;overflow:hidden}
-.ph-progress span{display:block;height:100%;width:34%;background:linear-gradient(90deg,var(--purple),var(--gold));border-radius:99px;animation:prog 6s linear infinite}
+.ph-progress{height:4px;background:rgba(255,255,255,.18);border-radius:99px;margin-top:11px;overflow:hidden;display:flex}
+.ph-progress span{display:block;height:100%}
+.ph-progress .pp-watched{background:linear-gradient(90deg,#6d28d9,var(--purple2));border-radius:99px 0 0 99px}
+.ph-progress .pp-free{background:var(--gold)}
 @keyframes prog{0%{width:8%}100%{width:34%}}
 .ph-body{padding:16px 15px 20px}
 .ph-lock{display:flex;align-items:center;gap:12px;background:rgba(124,58,237,.12);border:1px solid var(--border);padding:12px 14px;border-radius:14px;margin-bottom:14px}
 .ph-lock svg{width:20px;height:20px;color:var(--gold);flex-shrink:0}
 .ph-lock small{font-size:11.5px;color:var(--muted);line-height:1.5}
 .ph-lock small b{color:#fff;display:block;font-size:12.5px}
-.ph-pay{width:100%;background:linear-gradient(135deg,var(--gold),#e0a800);color:#1a1200;font-weight:800;font-size:13.5px;padding:13px;border-radius:13px;display:flex;justify-content:center;align-items:center;gap:8px;box-shadow:0 10px 24px -6px rgba(245,197,24,.5)}
-.ph-pay svg{width:16px;height:16px;flex-shrink:0}
+.ph-pay{width:100%;background:linear-gradient(135deg,var(--gold),#e0a800);color:#1a1200;font-weight:800;font-size:11.5px;letter-spacing:-.1px;padding:13px 8px;border-radius:13px;display:flex;justify-content:center;align-items:center;gap:6px;text-align:center;line-height:1.35;box-shadow:0 10px 24px -6px rgba(245,197,24,.5)}
+.ph-pay svg{width:15px;height:15px;flex-shrink:0}
 .ph-secure{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:10.5px;color:var(--muted2);font-weight:600}
 .ph-secure svg{color:var(--green);flex-shrink:0}
-.ph-methods{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
-.ph-methods small{font-size:9.5px;color:var(--muted2);font-weight:600}
-.ph-methods span{font-size:9.5px;font-weight:700;color:var(--muted);border:1px solid var(--border2);padding:4px 8px;border-radius:99px;white-space:nowrap}
-.float-card{position:absolute;background:rgba(20,20,31,.85);backdrop-filter:blur(16px);border:1px solid var(--border2);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);z-index:3}
-.float-card .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}
-.float-card .ic svg{width:19px;height:19px}
-.float-card b{display:block;font-size:14px;font-family:'Sora'}
-.float-card small{font-size:11.5px;color:var(--muted)}
-.fc1{top:9%;left:-4%;animation:phoneFloat 8s .8s ease-in-out infinite}
-.fc1 .ic{background:rgba(34,197,94,.15);color:var(--green)}
-.fc2{bottom:16%;right:-6%;animation:phoneFloat 9s .4s ease-in-out infinite}
-.fc2 .ic{background:rgba(245,197,24,.14);color:var(--gold)}
-.fc3{bottom:-3%;left:2%;animation:phoneFloat 8.5s 1.2s ease-in-out infinite}
-.fc3 .ic{background:rgba(124,58,237,.18);color:var(--purple2)}
+.ph-methods{display:flex;justify-content:center;align-items:center;gap:4px;margin-top:8px;flex-wrap:nowrap}
+.ph-methods small{font-size:8.5px;color:var(--muted2);font-weight:600;white-space:nowrap}
+.ph-mc{display:inline-flex;align-items:center;padding:3px 6px;border:1px solid var(--border2);border-radius:99px;flex-shrink:0}
+.ph-mc i{width:9px;height:9px;border-radius:50%;display:block}
+.ph-mc i:first-child{background:#eb001b}
+.ph-mc i:last-child{background:#f79e1b;margin-left:-4px}
+.ph-methods span{font-size:8px;font-weight:700;color:var(--muted);border:1px solid var(--border2);padding:3px 6px;border-radius:99px;white-space:nowrap;letter-spacing:.2px}
+/* Title beside its icon, description underneath — the shape in the design. */
+.float-card{
+  position:absolute;width:190px;
+  background:rgba(17,17,27,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--border2);border-radius:18px;padding:16px 18px;
+  box-shadow:0 22px 50px -20px rgba(0,0,0,.8);z-index:3;
+}
+.float-card .fc-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.float-card .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.float-card .ic svg{width:17px;height:17px}
+.float-card b{font-size:13.5px;font-family:'Sora';font-weight:700;line-height:1.2;white-space:nowrap}
+.float-card small{display:block;font-size:12px;color:var(--muted);line-height:1.55}
+.float-card.is-green .ic{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.float-card.is-gold .ic{background:rgba(245,197,24,.14);border:1px solid rgba(245,197,24,.32);color:var(--gold)}
+.float-card.is-purple .ic{background:rgba(124,58,237,.2);border:1px solid var(--border);color:var(--purple2)}
+
+/* The dashed threads joining the cards to the phone. Decorative, so they never
+   take a pointer event away from anything underneath. */
+.hero-links{position:absolute;inset:-4% -18% ;width:136%;height:108%;pointer-events:none;z-index:1;opacity:.9}
+/* --phone-half is half the phone's width; --card-gap is the clearance either
+   side. The left pair is allowed to lap slightly over the phone, as the design
+   shows; the right trio always sits clear of it. */
+.hero-visual{--phone-half:150px;--card-gap:16px;--card-lap:12px}
+.float-card{--from-centre:calc(var(--phone-half) + var(--card-gap))}
+.fc1{top:15%;right:calc(50% + var(--phone-half) - var(--card-lap));animation:phoneFloat 8s .8s ease-in-out infinite}
+.fc2{bottom:13%;right:calc(50% + var(--phone-half) - 8px);animation:phoneFloat 9s 1.4s ease-in-out infinite}
+.fc3{top:3%;left:calc(50% + var(--from-centre));animation:phoneFloat 8.5s .4s ease-in-out infinite}
+.fc4{top:39%;left:calc(50% + var(--from-centre) + 10px);animation:phoneFloat 9.5s 1s ease-in-out infinite}
+.fc5{bottom:4%;left:calc(50% + var(--from-centre));animation:phoneFloat 8.2s 1.8s ease-in-out infinite}
 .scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted2);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .scroll-hint .wheel{width:24px;height:38px;border:2px solid var(--muted2);border-radius:14px;position:relative}
 .scroll-hint .wheel::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;border-radius:4px;background:var(--gold);animation:wheel 1.8s infinite}
@@ -640,7 +691,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .sidebar{position:fixed;left:-290px;width:min(272px,86vw);z-index:250;transition:.4s;height:100vh;height:100dvh}
   .sidebar.open{left:0;box-shadow:60px 0 100px rgba(0,0,0,.6)}
   .dash-main{padding:20px 14px}
-  .float-card{display:none}
+  .float-card,.hero-links{display:none}
   .watch-cta .btn-ghost{display:inline-flex}
   .watch-cta .btn-label{display:none}
   .watch-cta .btn{padding:11px;min-width:44px;min-height:44px}
@@ -1144,11 +1195,15 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   backdrop-filter:blur(10px);
 }
 .hero h1{
-  font-size:clamp(38px,5.1vw,66px);
-  line-height:1.05;
-  letter-spacing:-1.6px;
-  margin:26px 0 22px;
-  text-wrap:balance;
+  /* Sized so each of the three lines fits on one line at every desktop width.
+     "YOUR AUDIENCE." is the longest, and at 66px it did not — so the headline
+     rendered as five lines instead of three and the whole block lost its shape. */
+  font-size:clamp(34px,4vw,55px);
+  line-height:1.08;
+  letter-spacing:-1.4px;
+  margin:24px 0 22px;
+  /* The breaks are deliberate <br>s. `balance` second-guesses them. */
+  text-wrap:initial;
 }
 /* one static gold accent instead of an animated shine across the headline */
 .hero h1 .grad-text{
@@ -1168,7 +1223,10 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 
 /* --- hero: stats read as data, not decoration --- */
 .hero-stats{
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  /* Three stats, three columns. This said four — left over from when there were
+     four — which is why the figures were squeezed into two-thirds of the strip
+     and overflowed into each other. */
+  grid-template-columns:repeat(3,minmax(0,1fr));
   background:rgba(255,255,255,.022);
   border-color:rgba(255,255,255,.075);
   border-radius:16px;
@@ -1176,12 +1234,12 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 }
 .hstat b{
   color:#f2f2f7;
-  font-size:clamp(17px,2.1vw,24px);
+  font-size:clamp(15px,1.45vw,20px);
   letter-spacing:-.4px;
 }
-/* gold appears once, on the money number */
-.hstat:last-child b{color:var(--gold)}
-.hstat span{color:#7b7b8c;letter-spacing:.7px}
+/* The money figure stays white; the two counts are gold, as in the design. */
+.hstat:not(:first-child) b{color:var(--gold)}
+.hstat span{color:#7b7b8c;letter-spacing:.5px}
 
 /* the phone mock is the product shot — let it sit calmer in the frame */
 .phone{box-shadow:0 40px 90px -30px rgba(0,0,0,.85),0 0 60px -30px rgba(124,58,237,.5)}
@@ -1347,20 +1405,26 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 .hstat b{white-space:nowrap}
 .hstat b span{white-space:nowrap}
 
-.hero-visual{width:min(100%,470px);margin-inline:auto}
-.float-card{max-width:216px;padding:12px 15px}
-.float-card b{font-size:13px;line-height:1.25}
-.float-card small{font-size:11px}
-.float-card .ic{width:36px;height:36px;border-radius:11px}
-.float-card .ic svg{width:17px;height:17px}
-.fc1{top:2%;left:-9%}
-.fc2{top:44%;right:-11%;bottom:auto}
-.fc3{bottom:1%;left:-5%}
+/* The stage is deliberately narrower than its column: the cards live outside
+   the phone on both sides, and they need that room to sit in. Positions for the
+   five of them are with the other hero rules above — kept in ONE place, because
+   a second set of `.fcN` rules further down this file is exactly what silently
+   moved "Pay Once" to the wrong side of the phone. */
+.hero-visual{width:100%;max-width:540px;margin-inline:auto}
 
-@media(max-width:1200px){
-  .fc1{left:-4%}
-  .fc2{right:-5%}
-  .fc3{left:-2%}
+@media(max-width:1400px){
+  /* Narrower cards and a tighter gap: same arrangement, less page to put it on. */
+  .hero-visual{--card-gap:12px}
+  .float-card{width:164px;padding:13px 14px}
+  .float-card b{font-size:13.5px}
+  .float-card small{font-size:11.5px}
+}
+@media(max-width:1240px){
+  .hero-visual{--phone-half:132px;--card-gap:10px}
+  .phone{width:min(264px,78vw)}
+  .float-card{width:148px;padding:12px 13px}
+  .float-card b{font-size:12.5px}
+  .float-card small{font-size:11px;line-height:1.5}
 }
 
 /* `.hstat span` styles the LABEL, but CountUp also renders a <span> inside the

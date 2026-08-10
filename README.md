@@ -265,6 +265,25 @@ of staff (reviewing a video means watching it), and a video that is simply free.
 The watch page now names which one applies, so an administrator browsing the
 public site sees "open to you as staff" rather than concluding the paywall failed.
 
+**The hero is one diagram, and its geometry is anchored to the phone.** Five cards
+sit around the phone — two lapping its left edge, three clear of it on the right —
+joined by dashed threads. Their offsets are `calc(50% + var(--phone-half) + …)`,
+never a percentage of the stage: the stage changes width with the viewport, so a
+percentage cannot promise a card clears the phone, and that is exactly how "Pay
+Once" ended up sitting on top of it at some widths and not others.
+
+Two traps in that file cost real time and are worth knowing about. `.fcN`
+positions existed in **two** places, hundreds of lines apart, and the later set
+silently won — so did a stale `.hero-stats{grid-template-columns:repeat(4,…)}`
+from when there were four stats, which squeezed three figures into two thirds of
+the strip. If a hero rule appears not to apply, grep the whole file for the
+selector before changing anything.
+
+**A poster is taken from 15 seconds in, not from frame one.** Films open on black —
+a fade, a title card, a dark room — so every poster on the site rendered as a
+black rectangle that reads as a broken image. A creator's own uploaded cover
+always wins; this is only the default when there isn't one.
+
 **A card opens its own video, because the cards are real videos.** The homepage
 Trending grid used to be drawn from a hard-coded showcase list, so the cards had
 nothing behind them and clicking one could only dump the viewer on /explore to go

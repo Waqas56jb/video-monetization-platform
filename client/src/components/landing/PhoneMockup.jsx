@@ -1,4 +1,4 @@
-import { Lock, ShieldCheck, Zap } from 'lucide-react'
+import { Lock, Play, Zap } from 'lucide-react'
 import { IMG } from '@/data/copy'
 import { duration, tzs } from '@/hooks/useApi'
 import { mediaUrl } from '@/lib/api'
@@ -40,6 +40,20 @@ export default function PhoneMockup({ video, onUnlock }) {
       : `UNLOCK FULL VIDEO — ${tzs(video.priceTzs)}`
     : 'UNLOCK FULL VIDEO'
 
+  const runningTime = hasReal && video.durationSeconds ? duration(video.durationSeconds) : null
+
+  /**
+   * How the progress bar is divided.
+   *
+   * Purple is the part already watched, gold is the remainder of the free
+   * preview, and the grey behind both is what payment buys. Derived from the
+   * video's own numbers so the bar cannot disagree with the sentence under it.
+   */
+  const total = Number(video?.durationSeconds || 0)
+  const previewEnd = Number(video?.freePreviewSeconds || 0)
+  const watchedPct = total > 0 ? Math.min(72, Math.round((previewEnd / total) * 100 * 0.8)) : 26
+  const freePct = total > 0 ? Math.max(4, Math.round((previewEnd / total) * 100 * 0.2)) : 8
+
   return (
     <div className="phone">
       <div className="phone-notch" />
@@ -47,11 +61,29 @@ export default function PhoneMockup({ video, onUnlock }) {
         <img src={poster} alt="" loading="eager" fetchPriority="high" decoding="async" />
         <div className="ph-overlay">
           <span className="ph-live">{label}</span>
-          <div>
+
+          {/* The play control, and the running time in the corner where every
+              video player in the world puts it. */}
+          <button
+            className="ph-play"
+            onClick={onUnlock}
+            aria-label={hasReal ? `Watch ${title}` : 'Explore MTONYO+'}
+          >
+            <Play />
+          </button>
+          {runningTime && <span className="ph-duration">{runningTime}</span>}
+
+          <div className="ph-meta">
             <div className="ph-title">{title}</div>
             <div className="ph-artist">{byline}</div>
+            {/**
+             * Two-tone on purpose: purple is what has been watched, gold is the
+             * rest of the free preview, grey is what payment unlocks. The bar is
+             * the whole proposition in one line.
+             */}
             <div className="ph-progress">
-              <span />
+              <span className="pp-watched" style={{ width: `${watchedPct}%` }} />
+              <span className="pp-free" style={{ width: `${freePct}%` }} />
             </div>
           </div>
         </div>
@@ -68,15 +100,19 @@ export default function PhoneMockup({ video, onUnlock }) {
             {cta}
           </button>
           {/* Named providers plus an honest "more", rather than a list that
-              implies these two are the only ways to pay. */}
+              implies these are the only ways to pay. */}
           <div className="ph-secure">
-            <ShieldCheck size={12} />
+            <Lock size={11} />
             Secure payment
           </div>
           <div className="ph-methods">
             <span>M-PESA</span>
             <span>AIRTEL MONEY</span>
-            <span>CARDS</span>
+            <span>VISA</span>
+            <span className="ph-mc" aria-label="Mastercard">
+              <i />
+              <i />
+            </span>
             <small>+ more</small>
           </div>
         </div>
