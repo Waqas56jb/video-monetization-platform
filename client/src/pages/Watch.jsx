@@ -42,15 +42,22 @@ export default function Watch() {
   const [previewOver, setPreviewOver] = useState(false)
 
   /**
-   * Where the free preview ran out, so the purchase can carry on from there.
+   * Where to pick the film up from.
    *
    * Buying a video and being dropped back at 0:00 makes the viewer pay and then
-   * re-watch what they had already seen. The furthest second reached during the
-   * preview is kept in a ref — it updates several times a second and must not
-   * re-render the player — and only becomes `resumeFrom` once payment lands.
+   * re-watch what they had already seen. The authority on this is the server —
+   * `playback.resumeFromSeconds`, stored per viewer per video — because the page
+   * reloads its playback the moment payment lands, and anything held only in
+   * memory here would be gone by then. That was the first attempt at this, and
+   * it is why the client found the video restarting.
+   *
+   * `resumeHint` is the local copy used immediately after payment so the resume
+   * does not have to wait for a round trip; the server's answer wins as soon as
+   * it arrives, and is the only thing that works after a refresh.
    */
-  const previewReached = useRef(0)
-  const [resumeFrom, setResumeFrom] = useState(0)
+  const lastReported = useRef(0)
+  const watchedTo = useRef(0)
+  const [resumeHint, setResumeHint] = useState(0)
 
   /**
    * Advertising on a free-with-ads video.
@@ -99,12 +106,45 @@ export default function Watch() {
   useEffect(() => {
     setPreviewOver(false)
     setPayOpen(false)
-    setResumeFrom(0)
-    previewReached.current = 0
+    setResumeHint(0)
+    lastReported.current = 0
+    watchedTo.current = 0
     setActiveAd(null)
     playedBreaks.current = new Set()
     mainProgress.current = 0
   }, [videoId])
+
+  /**
+   * Report the position, at most every few seconds.
+   *
+   * A player reports its time several times a second; sending each one would be
+   * a request per frame for no extra accuracy. Ten seconds is close enough to
+   * resume from and cheap enough to ignore.
+   */
+  const reportProgress = useCallback(
+    (seconds, { force = false } = {}) => {
+      if (!signedIn || !v?.id) return
+      const s = Math.floor(seconds || 0)
+      if (!force && Math.abs(s - lastReported.current) < 10) return
+      lastReported.current = s
+      api.saveProgress(v.id, s).catch(() => {
+        /* A lost resume point is not worth interrupting playback over. */
+      })
+    },
+    [signedIn, v?.id]
+  )
+
+  /* Leaving the page mid-film should still be resumable. */
+  useEffect(() => {
+    const flush = () => {
+      if (watchedTo.current > 0) reportProgress(watchedTo.current, { force: true })
+    }
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [reportProgress])
 
   /** The breaks this video carries, by placement. */
   const ads = adBreaks.data?.ads || []
@@ -129,7 +169,7 @@ export default function Watch() {
   const adFinished = useCallback(() => {
     // Coming back from a mid-roll, pick the film up where it was interrupted.
     if (activeAd?.placement === 'mid_roll' && mainProgress.current > 0) {
-      setResumeFrom(mainProgress.current)
+      setResumeHint(mainProgress.current)
     }
     setActiveAd(null)
   }, [activeAd?.placement])
@@ -170,16 +210,26 @@ export default function Watch() {
     return () => clearTimeout(t)
   }, [v?.id])
 
-  const onUnlocked = useCallback(() => {
+  const onUnlocked = useCallback(async () => {
     setPayOpen(false)
     setPreviewOver(false)
 
-    // Carry on from where the preview stopped rather than restarting the film.
-    // `stopsAtSeconds` is the floor: if the SDK never reported a time we still
-    // know the preview could not have run past the point the server cut it at.
+    /**
+     * Carry on from where the preview stopped rather than restarting the film.
+     *
+     * `stopsAtSeconds` is the floor: even if the player never reported a time, the
+     * preview cannot have run past the point the server cut it at. This is
+     * written to the server BEFORE reloading playback, so the reload comes back
+     * already knowing where to resume — and so a refresh, or the same account on
+     * another device, resumes there too.
+     */
     const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
-    const from = Math.max(previewReached.current, stopsAt)
-    setResumeFrom(from)
+    const from = Math.max(watchedTo.current, stopsAt)
+    setResumeHint(from)
+
+    if (from > 0 && v?.id) {
+      await api.saveProgress(v.id, Math.floor(from)).catch(() => {})
+    }
 
     showToast(
       from > 5
@@ -189,7 +239,7 @@ export default function Watch() {
     playback.reload()
     video.reload({ quiet: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds])
+  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id])
 
   const share = async () => {
     const url = `${window.location.origin}/watch/${v?.slug || v?.id}`
@@ -241,6 +291,27 @@ export default function Watch() {
   }
 
   const premiereDays = daysUntil(v.premiereEndsAt)
+
+  /**
+   * Where playback actually begins.
+   *
+   * The server's figure wins — it is the only one that survives a refresh. The
+   * local hint fills the gap between paying and the reloaded playback arriving,
+   * and a mid-roll returning the viewer to the middle of the film also lands here.
+   */
+  const resumeAt = Math.max(Number(p?.playback?.resumeFromSeconds || 0), resumeHint)
+
+  /** Why this video is playing in full — see the badge below. */
+  const accessReason = (() => {
+    const a = p?.access
+    if (a?.owned) return { full: 'In your library', short: 'Owned', tone: '' }
+    if (a?.isOwner) return { full: 'Your own video', short: 'Yours', tone: 'is-note' }
+    if (a?.isStaff) {
+      return { full: 'Open to you as staff — not a purchase', short: 'Staff', tone: 'is-note' }
+    }
+    if (v?.accessType === 'free_with_ads') return { full: 'Free with ads', short: 'Free', tone: 'is-note' }
+    return { full: 'In your library', short: 'Owned', tone: '' }
+  })()
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(
     0,
@@ -287,21 +358,28 @@ export default function Watch() {
                 src={p.playback.iframe}
                 poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
-                /* Only the purchased video resumes. Starting the *preview* part
-                   way in would hand the viewer a clip that is already over. */
-                startAt={owned ? resumeFrom : 0}
-                playOnReady={owned && resumeFrom > 0}
+                /* The server's stored position is the authority; the local hint
+                   only covers the moment straight after payment, before the
+                   reloaded playback has come back. */
+                startAt={resumeAt}
+                playOnReady={owned && resumeAt > 0}
                 onEnded={() => {
                   if (needsPayment) {
                     setPreviewOver(true)
+                    reportProgress(p.playback?.stopsAtSeconds || v.freePreviewSeconds, { force: true })
                     return
                   }
                   runBreak('post_roll')
                 }}
                 onTimeUpdate={(current) => {
-                  if (needsPayment) previewReached.current = Math.max(previewReached.current, current)
+                  watchedTo.current = current
+                  reportProgress(current)
+
                   const stopsAt = p.playback?.stopsAtSeconds || v.freePreviewSeconds
-                  if (needsPayment && stopsAt && current >= stopsAt - 0.4) setPreviewOver(true)
+                  if (needsPayment && stopsAt && current >= stopsAt - 0.4) {
+                    setPreviewOver(true)
+                    reportProgress(stopsAt, { force: true })
+                  }
 
                   if (!needsPayment) {
                     mainProgress.current = current
@@ -399,11 +477,21 @@ export default function Watch() {
               </div>
             </div>
             <div className="watch-actions">
+              {/**
+                * Say WHY this is unlocked, not just that it is.
+                *
+                * Access can come from four different places — a purchase, being
+                * the creator, being staff, or the video being free — and they
+                * look identical on screen. That is how an administrator browsing
+                * the public site concludes the paywall has failed: every video
+                * opens for them, because reviewing content means watching it.
+                * Naming the reason turns that into information.
+                */}
               {owned && (
-                <span className="owned-badge">
+                <span className={`owned-badge ${accessReason.tone}`.trim()}>
                   <BadgeCheck size={14} />
-                  <span className="ob-full">In your library</span>
-                  <span className="ob-short">Owned</span>
+                  <span className="ob-full">{accessReason.full}</span>
+                  <span className="ob-short">{accessReason.short}</span>
                 </span>
               )}
               <button className="btn btn-ghost btn-sm" onClick={share}>

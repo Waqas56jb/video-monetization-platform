@@ -4,15 +4,16 @@ import { LayoutDashboard, Library, LogIn, Menu, Sparkles } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import MobileMenu from './MobileMenu'
 import useScrolled from '@/hooks/useScrolled'
+import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
 
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore' },
-  { href: '#trending', label: 'Trending' },
-  { href: '#how', label: 'How it Works' },
-  { href: '#features', label: 'Features' },
-  { href: '#creators', label: 'For Creators' },
-  { href: '#stories', label: 'Stories' },
+  { section: 'trending', label: 'Trending' },
+  { section: 'how', label: 'How it Works' },
+  { section: 'features', label: 'Features' },
+  { section: 'creators', label: 'For Creators' },
+  { section: 'stories', label: 'Stories' },
 ]
 
 /** Landing-page header: transparent at top, frosted glass once scrolled. */
@@ -21,6 +22,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
   const { authed } = useRole()
+  const goToSection = useSectionLink()
 
   return (
     <>
@@ -34,7 +36,14 @@ export default function Header() {
                   {l.label}
                 </Link>
               ) : (
-                <a key={l.href} href={l.href}>
+                /* Still an anchor, so it can be opened in a new tab and read by
+                   a screen reader as a link — but the handler does the work, so
+                   it also functions from pages that have no such section. */
+                <a
+                  key={l.section}
+                  href={`/#${l.section}`}
+                  onClick={(e) => goToSection(l.section, e)}
+                >
                   {l.label}
                 </a>
               )

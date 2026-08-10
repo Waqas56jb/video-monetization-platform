@@ -14,6 +14,40 @@ const router = Router()
 const FULL_TOKEN_TTL = 60 * 60 // 1 hour
 const PREVIEW_TOKEN_TTL = 15 * 60 // 15 minutes
 
+/** Don't resume from the first breath of a video, or from its dying seconds. */
+const RESUME_MIN_SECONDS = 8
+const RESUME_END_MARGIN = 15
+
+/**
+ * Where this viewer should pick up from.
+ *
+ * Returns 0 rather than a position when resuming would be unhelpful: barely
+ * started, or effectively finished — landing someone at 10:48 of a 10:53 film
+ * because that is where they stopped is technically correct and useless.
+ *
+ * For a viewer who has just paid, the stored position is the second the preview
+ * cut out, which is exactly the "resume from the paywall position" the client
+ * asked for — and because it lives in the database rather than the page, it
+ * survives the reload that happens after payment.
+ */
+async function resumePointFor({ videoId, userId, durationSeconds, capAt = null }) {
+  if (!userId) return 0
+
+  const row = await one(
+    'select seconds from watch_progress where user_id = $1 and video_id = $2',
+    [userId, videoId]
+  )
+  let seconds = Number(row?.seconds || 0)
+  if (seconds < RESUME_MIN_SECONDS) return 0
+
+  const total = Number(durationSeconds || 0)
+  if (total > 0 && seconds > total - RESUME_END_MARGIN) return 0
+
+  // A preview must never be told to start beyond its own end.
+  if (capAt != null) seconds = Math.min(seconds, Math.max(0, Number(capAt) - 3))
+  return seconds < RESUME_MIN_SECONDS ? 0 : Math.floor(seconds)
+}
+
 /**
  * The paywall, decided server-side.
  *
@@ -63,11 +97,20 @@ router.get(
       const token = capabilities.signedPlayback
         ? cf.signPlaybackToken(video.cloudflare_uid, { expiresInSeconds: FULL_TOKEN_TTL })
         : video.cloudflare_uid
+
+      const resumeFromSeconds = await resumePointFor({
+        videoId: video.id,
+        userId: req.user?.id,
+        durationSeconds: video.duration_seconds,
+      })
+
       return res.json({
         ...payload,
         playback: {
           kind: 'full',
           expiresInSeconds: FULL_TOKEN_TTL,
+          /* Someone who just paid picks up at the second the preview stopped. */
+          resumeFromSeconds,
           ...cf.playbackUrls(token),
         },
       })
@@ -87,12 +130,20 @@ router.get(
       ? cf.signPlaybackToken(previewUid, { expiresInSeconds: PREVIEW_TOKEN_TTL })
       : previewUid
 
+    const resumeFromSeconds = await resumePointFor({
+      videoId: video.id,
+      userId: req.user?.id,
+      durationSeconds: video.free_preview_seconds,
+      capAt: video.free_preview_seconds,
+    })
+
     res.json({
       ...payload,
       playback: {
         kind: 'preview',
         expiresInSeconds: PREVIEW_TOKEN_TTL,
         stopsAtSeconds: video.free_preview_seconds,
+        resumeFromSeconds,
         ...cf.playbackUrls(token),
       },
       paywall: {
@@ -104,6 +155,49 @@ router.get(
         methods: ['M-Pesa', 'Airtel Money'],
       },
     })
+  })
+)
+
+/**
+ * Remember where this viewer got to.
+ *
+ * Deliberately forgiving: it takes whatever position the player reports and
+ * never fails the request in a way the page has to handle. Losing a resume point
+ * is a small annoyance; an error here interrupting somebody's film is not.
+ *
+ * It grants nothing. Recording that a viewer reached 5:00 of a video says
+ * nothing about whether they may watch 5:01 — that is decided from `purchases`,
+ * per user and per video, every time playback is requested.
+ */
+router.put(
+  '/:id/progress',
+  optionalAuth(),
+  asyncHandler(async (req, res) => {
+    if (!req.user) return res.status(202).json({ saved: false, reason: 'not signed in' })
+
+    const seconds = Math.max(0, Math.floor(Number(req.body?.seconds) || 0))
+    const video = await one(
+      `select id, duration_seconds from videos
+        where (id::text = $1 or slug = $1) and deleted_at is null`,
+      [req.params.id]
+    )
+    if (!video) throw notFound('Video not found')
+
+    // Cap at the running time; a player occasionally reports a position slightly
+    // past the end, and a stored position beyond the film is meaningless.
+    const capped = video.duration_seconds
+      ? Math.min(seconds, Number(video.duration_seconds))
+      : seconds
+
+    await query(
+      `insert into watch_progress (user_id, video_id, seconds, updated_at)
+       values ($1,$2,$3, now())
+       on conflict (user_id, video_id)
+       do update set seconds = excluded.seconds, updated_at = now()`,
+      [req.user.id, video.id, capped]
+    )
+
+    res.status(202).json({ saved: true, seconds: capped })
   })
 )
 

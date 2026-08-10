@@ -204,6 +204,7 @@ async function sendFile(path, file, { field = 'image', method = 'POST' } = {}) {
 const get = (path, opts) => request(path, { ...opts, method: 'GET' })
 const post = (path, body, opts) => request(path, { ...opts, method: 'POST', body })
 const patch = (path, body, opts) => request(path, { ...opts, method: 'PATCH', body })
+const put = (path, body, opts) => request(path, { ...opts, method: 'PUT', body })
 const del = (path, opts) => request(path, { ...opts, method: 'DELETE' })
 
 /** Build a querystring, dropping empty values. */
@@ -285,6 +286,16 @@ export const api = {
     payload: (id) => get(`/api/share/${id}`, { auth: Boolean(getAccessToken()) }),
     generate: (id) => post(`/api/share/${id}/generate`),
   },
+
+  /**
+   * Where the viewer got to, so the video can be picked up again.
+   *
+   * Stored per viewer per video on the server rather than in the page, so it
+   * survives the reload that follows a purchase — which is the whole point:
+   * paying must continue the film, not restart it.
+   */
+  saveProgress: (videoId, seconds) =>
+    put(`/api/playback/${videoId}/progress`, { seconds }, { auth: Boolean(getAccessToken()) }),
 
   ads: {
     /**

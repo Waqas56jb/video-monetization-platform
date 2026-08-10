@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { scrollWhenReady } from '@/hooks/useSectionLink'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/components/landing/Hero'
@@ -16,12 +18,27 @@ import CallToAction from '@/components/landing/CallToAction'
  */
 export default function Landing() {
   const [splash, setSplash] = useState(true)
+  const { hash } = useLocation()
 
   useEffect(() => {
     // Always clear — never gate on Unsplash / fonts (slow or blocked on mobile).
     const t = setTimeout(() => setSplash(false), 380)
     return () => clearTimeout(t)
   }, [])
+
+  /**
+   * Arriving at /#features — from another page, or from a shared link — has to
+   * land on that section.
+   *
+   * The browser's own hash jump happens before this page has rendered its
+   * sections, so it finds nothing and leaves the viewer at the top. Waiting for
+   * the element to exist is the difference between the link working and the link
+   * appearing to do nothing at all, which is what the client reported.
+   */
+  useEffect(() => {
+    const id = hash?.replace('#', '')
+    if (id) scrollWhenReady(id)
+  }, [hash])
 
   return (
     <>

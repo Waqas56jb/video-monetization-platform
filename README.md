@@ -247,6 +247,29 @@ their own account.
 money flow end to end. Going live is a change to that variable and its
 credentials; nothing else in the app knows the difference.
 
+**An entitlement is one viewer and one video.** `purchases` is keyed on both, and
+`resolveAccess` reads it that way, so buying one video cannot reach another. Note
+the three other doors into full playback, because they look identical on screen
+and are easy to mistake for a broken paywall: the creator of a video, any member
+of staff (reviewing a video means watching it), and a video that is simply free.
+The watch page now names which one applies, so an administrator browsing the
+public site sees "open to you as staff" rather than concluding the paywall failed.
+
+**Where a viewer got to is stored, not remembered.** `watch_progress` holds a
+position per viewer per video, which is what makes "pay, then carry on from the
+paywall" work: the page reloads its playback the moment payment lands, so a
+position held in memory would already be gone. The first attempt did hold it in
+memory, and the client found the video restarting — correctly. A stored position
+grants nothing; reaching 5:00 of a film says nothing about whether you may watch
+5:01.
+
+**Nav links to a landing section work from everywhere.** Those sections only
+exist on the landing page, so a plain `#features` anchor did nothing at all from
+/explore — the label highlighted and the page stayed put, which is exactly what
+the client reported. The links now route to the landing page first, then wait for
+the section to exist before scrolling, and re-check afterwards because lazily
+loaded images above it keep moving the target for a second or two.
+
 **A lost payment confirmation heals itself.** The provider's push is the fast
 path, not the only one. It can be dropped — a missed webhook, a retry that never
 came, or a serverless instance frozen the moment its response was sent, which is

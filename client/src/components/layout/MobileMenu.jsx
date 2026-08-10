@@ -3,20 +3,25 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
 
 const LINKS = [
   { to: '/explore', label: 'Explore' },
-  { href: '#trending', label: 'Trending' },
-  { href: '#how', label: 'How it Works' },
-  { href: '#features', label: 'Features' },
-  { href: '#creators', label: 'For Creators' },
+  { section: 'trending', label: 'Trending' },
+  { section: 'how', label: 'How it Works' },
+  { section: 'features', label: 'Features' },
+  { section: 'creators', label: 'For Creators' },
+  // Was missing here while the desktop header offered it, so the same menu
+  // showed different things depending on the size of the screen.
+  { section: 'stories', label: 'Stories' },
 ]
 
 /** Full-screen mobile navigation overlay. */
 export default function MobileMenu({ open, onClose }) {
   const navigate = useNavigate()
   const { authed } = useRole()
+  const goToSection = useSectionLink()
   useLockBodyScroll(open)
 
   // Escape must always get you out of a full-screen overlay.
@@ -53,7 +58,15 @@ export default function MobileMenu({ open, onClose }) {
               {l.label}
             </button>
           ) : (
-            <a key={l.href} href={l.href} className="mm-link" onClick={onClose}>
+            <a
+              key={l.section}
+              href={`/#${l.section}`}
+              className="mm-link"
+              onClick={(e) => {
+                onClose()
+                goToSection(l.section, e)
+              }}
+            >
               {l.label}
             </a>
           )
