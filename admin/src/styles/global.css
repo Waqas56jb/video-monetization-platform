@@ -660,6 +660,9 @@ input,select{font-family:inherit;outline:none}
   background:rgba(239,68,68,.14);
   color:#fca5a5;
 }
+/* Shortcut chips sitting above the field they fill in. */
+.rv-presets-inline{margin:6px 0 7px}
+.rv-presets-inline .rv-preset{padding:5px 11px;font-size:11.5px}
 .rv-reject textarea{
   width:100%;
   background:var(--card2);
@@ -705,3 +708,20 @@ input,select{font-family:inherit;outline:none}
 .logo-word{letter-spacing:.6px}
 .logo-plus{color:var(--gold);margin-left:2px}
 .loader-logo{letter-spacing:.8px}
+
+/* ---------------- campaign form and table (Ads Management) ---------------- */
+.camp-form{margin-bottom:20px;display:flex;flex-direction:column;gap:14px}
+.camp-block{display:flex;flex-direction:column;gap:8px}
+.camp-block>b{font-size:12.5px;color:var(--muted)}
+/* Secondary line inside a table cell — an email, a target, a sub-total. */
+.cell-sub{display:block;color:var(--muted2);font-size:11px;margin-top:2px}
+/* A file input that reads as a button. */
+.ad-upload{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 11px;border-radius:8px;cursor:pointer;
+  border:1px dashed var(--border2);color:var(--muted);
+  font-size:12px;font-weight:600;transition:.2s;
+  min-height:34px;
+}
+.ad-upload:hover{border-color:var(--gold);color:var(--gold)}
+.ad-upload input{display:none}

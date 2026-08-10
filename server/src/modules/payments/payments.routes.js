@@ -81,6 +81,27 @@ router.post(
       onResolved: (payload) => settlePayment(payload),
     })
 
+    /**
+     * Keep what the provider told us, not just the reference.
+     *
+     * `verify()` needs it to settle a payment whose confirmation never arrived —
+     * see the note on the sandbox provider about scheduled work not surviving a
+     * serverless response.
+     */
+    await one(
+      `update payments set raw_callback = coalesce(raw_callback, '{}'::jsonb) || $2::jsonb
+        where id = $1 returning id`,
+      [
+        payment.id,
+        JSON.stringify({
+          initiated: {
+            settlesAs: result.settlesAs ?? null,
+            settlesAfterMs: result.settlesAfterMs ?? null,
+          },
+        }),
+      ]
+    )
+
     const updated = await one(
       `update payments set provider_ref = $2, updated_at = now() where id = $1 returning *`,
       [payment.id, result.providerRef]
@@ -100,10 +121,35 @@ router.get(
   '/:id',
   requireAuth(),
   asyncHandler(async (req, res) => {
-    const payment = await one('select * from payments where id = $1', [req.params.id])
+    let payment = await one('select * from payments where id = $1', [req.params.id])
     if (!payment) throw notFound('Payment not found')
     if (payment.user_id !== req.user.id && req.user.role !== 'admin') {
       throw forbidden('This is not your payment')
+    }
+
+    /**
+     * Ask the provider before answering, if this is still hanging.
+     *
+     * A push notification is the fast path, not the only one. It can be lost —
+     * a dropped webhook, a retry that never came, a serverless instance frozen
+     * before its callback ran — and a payment stuck on "pending" for ever is
+     * indistinguishable to the customer from having been charged for nothing.
+     * So the poll the customer's browser is already making doubles as the
+     * reconciliation: whatever the provider says now is what we record.
+     */
+    if (payment.status === 'pending' && payment.provider_ref) {
+      const verdict = await paymentProvider()
+        .verify(payment.provider_ref, payment)
+        .catch(() => ({ status: null }))
+      if (verdict?.status && verdict.status !== 'pending') {
+        await settlePayment({
+          providerRef: payment.provider_ref,
+          status: verdict.status,
+          failureReason: verdict.failureReason || null,
+          raw: { reconciled: true, via: 'status-poll' },
+        }).catch(() => {})
+        payment = (await one('select * from payments where id = $1', [payment.id])) || payment
+      }
     }
 
     const purchase =

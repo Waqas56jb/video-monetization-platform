@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Percent, Save } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { StatGrid } from '@/components/ui/StatCard'
-import { IconButton, TableWrap } from '@/components/ui/Table'
+import { IconButton, TableWrap, UserCell } from '@/components/ui/Table'
 import { Async, EmptyState } from '@/components/ui/States'
 import RevenueAreaChart from '@/components/charts/RevenueAreaChart'
 import useApi, { tzs } from '@/hooks/useApi'
@@ -142,7 +142,12 @@ export default function RevenueTab() {
                 <tbody>
                   {data.overrides.map((o) => (
                     <tr key={o.id}>
-                      <td>{o.name}</td>
+                      <td>
+                        {/* Display names are not unique. Without the email, two
+                            different people with the same name look like the
+                            same row listed twice. */}
+                        <UserCell name={o.name} sub={o.email} />
+                      </td>
                       <td>
                         {o.revenue_split_percent != null ? (
                           <b style={{ color: 'var(--purple2)' }}>{o.revenue_split_percent}%</b>
@@ -185,8 +190,16 @@ export default function RevenueTab() {
           ) : (
             <EmptyState
               icon={Percent}
-              title="Not enough history yet"
-              hint="This chart needs at least two months of sales before it means anything."
+              title={
+                totals?.gross
+                  ? `${tzs(totals.gross)} so far, all in one month`
+                  : 'No sales yet'
+              }
+              hint={
+                totals?.gross
+                  ? 'A trend line needs a second month to compare against. It appears here as soon as sales carry over into next month.'
+                  : 'This chart fills in once the first sale goes through.'
+              }
             />
           )}
         </Async>

@@ -75,11 +75,24 @@ path.
 
 It covers every case worth testing: pay-once-forever, a premiere with weeks
 left, one with days left, one whose window has expired and been turned
-free-with-ads by the nightly job, something free from the start, and one video
-sitting in the review queue.
+free-with-ads by the nightly job, something free from the start, one video
+sitting in the review queue, and a live ad campaign with impressions behind it.
 
 All of it is tagged, so `demo:clear` removes every trace on the day real
-creators arrive and touches nothing of theirs.
+creators arrive and touches nothing of theirs. A demo video that a real customer
+has bought is the one exception: it gets unpublished rather than deleted, because
+a purchase never disappears.
+
+**The footage has to be long.** The first version of this seeder gave every
+video the same fifteen-second clip, and that quietly broke the whole
+demonstration: a 15-second video with a 14-second preview plays almost to its end
+before stopping, so a paid video is indistinguishable from a free one. The client
+reported the monetisation as broken and was right to — nothing on screen could
+have told them otherwise. The sources are now real films of ten minutes and up,
+with previews that are a fraction of them, so the stop and the paywall are
+unmistakable. If you substitute your own URLs, they must answer HEAD and range
+requests or Cloudflare cannot size the file; the seeder falls back to
+downloading and re-uploading when they do not.
 
 ### Housekeeping
 
@@ -233,3 +246,39 @@ their own account.
 **Payments are in sandbox.** `PAYMENT_PROVIDER=sandbox` simulates the mobile
 money flow end to end. Going live is a change to that variable and its
 credentials; nothing else in the app knows the difference.
+
+**A lost payment confirmation heals itself.** The provider's push is the fast
+path, not the only one. It can be dropped — a missed webhook, a retry that never
+came, or a serverless instance frozen the moment its response was sent, which is
+what was actually happening here. So the status poll the customer's browser is
+already making doubles as reconciliation: if a payment is still pending, the
+provider is asked what became of it and the answer is recorded. A payment stuck
+on "pending" for ever is indistinguishable, to the person who paid, from being
+charged for nothing.
+
+**A counter is never written by hand.** `videos.views` and `videos.paid_unlocks`
+are maintained by triggers over the rows they summarise. They used to be
+incremented in application code as well, which is how the admin came to report
+3.2K views against a few hundred actual view rows, and 6 paid unlocks against 3
+purchases. Two screens quoting two numbers for one fact is worse than either
+being wrong, because it means neither can be trusted.
+
+**Advertising is a real ledger, in micro-shillings.** A CPM is priced per
+thousand impressions, so one impression is worth a fraction of a shilling.
+Rounding that to a whole number pays a creator nothing on any campaign under
+TZS 1,500 — which is most of them. Impressions are therefore recorded in
+millionths, exactly, and the whole-shilling earnings row is a daily rollup
+recomputed from them. An advertiser is billed only for an advert that reached its
+end, and the platform share is whatever is left after the creator's, never an
+independent rounding, so the split always adds up to the total.
+
+**An advert can never trap the viewer.** The skip countdown runs on wall clock,
+not on the advert's playback position. Tying it to playback looked more correct
+and was worse: when a browser refuses to autoplay, the position never moves, the
+countdown never finishes, and the viewer is left holding a frozen advert in front
+of the video they came for. Revenue is unaffected — billing is on the advert's own
+`ended` event, and time passing earns nobody anything.
+
+**Nobody who paid ever sees an advert.** Not even after the premiere they bought
+expires and the video turns free for everyone else. Skipping advertising is part
+of what they paid for, and a premiere ending is not permission to renege on it.

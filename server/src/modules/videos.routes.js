@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { z } from 'zod'
-import { one, many, query, transaction } from '../db/pool.js'
+import { one, many, query } from '../db/pool.js'
 import { asyncHandler, badRequest, forbidden, notFound, conflict } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
 import { requireAuth, requireCreator, optionalAuth } from '../middleware/auth.js'
@@ -595,14 +595,13 @@ router.post(
     const video = await one('select id from videos where id = $1 and deleted_at is null', [req.params.id])
     if (!video) throw notFound('Video not found')
 
-    await transaction(async (client) => {
-      await client.query(
-        `insert into video_views (video_id, user_id, seconds_watched, reached_paywall)
-         values ($1,$2,$3,$4)`,
-        [video.id, req.user?.id ?? null, req.body.secondsWatched, req.body.reachedPaywall]
-      )
-      await client.query('update videos set views = views + 1 where id = $1', [video.id])
-    })
+    // `videos.views` is maintained by a trigger on this insert (migration 006).
+    // Bumping it here as well would count every view twice.
+    await query(
+      `insert into video_views (video_id, user_id, seconds_watched, reached_paywall)
+       values ($1,$2,$3,$4)`,
+      [video.id, req.user?.id ?? null, req.body.secondsWatched, req.body.reachedPaywall]
+    )
     res.status(202).json({ ok: true })
   })
 )

@@ -74,10 +74,21 @@ export default function OverviewTab() {
             {revenue.data?.monthly?.length > 1 ? (
               <RevenueAreaChart series={revenue.data.monthly} />
             ) : (
+              /* A trend line needs two points, but saying "no revenue yet" while
+                 the stat card above reads TZS 15,500 makes both figures look
+                 unreliable. Say which of the two is actually missing. */
               <EmptyState
                 icon={Banknote}
-                title="No revenue yet"
-                hint="This chart fills in as soon as the first sale goes through."
+                title={
+                  revenue.data?.totals?.gross
+                    ? `${tzs(revenue.data.totals.gross)} so far, all in one month`
+                    : 'No revenue yet'
+                }
+                hint={
+                  revenue.data?.totals?.gross
+                    ? 'A trend line needs a second month to compare against. It appears here as soon as sales carry over into next month.'
+                    : 'This chart fills in as soon as the first sale goes through.'
+                }
               />
             )}
           </Async>

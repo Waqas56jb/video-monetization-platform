@@ -16,7 +16,9 @@
  * on the day real creators arrive, without touching anything of theirs.
  */
 import fs from 'node:fs'
+import crypto from 'node:crypto'
 import { one, many, query, transaction, closePool } from '../db/pool.js'
+import { recordImpression } from '../services/ads.js'
 import { createAuthUser, setAuthPassword } from '../lib/authdb.js'
 import * as cf from '../lib/cloudflare.js'
 import { getSettings, applySplit, splitPercentFor } from '../services/settings.js'
@@ -65,9 +67,37 @@ const CREATORS = [
 ]
 
 /**
+ * Where the footage comes from.
+ *
+ * Public-domain and open-licensed films from the Internet Archive, chosen for
+ * being freely redistributable and — crucially — *long*.
+ *
+ * The first version of this seeder gave every video the same fifteen-second
+ * clip, which broke the demo in a way that took a while to see: a 15-second
+ * video with a 14-second preview plays almost to the end before it stops, so a
+ * paid video is indistinguishable from a free one. The client reported the
+ * monetisation as broken, and they were right to — nothing on screen could have
+ * told them otherwise. Real running times are not a nicety here; they are what
+ * makes the paywall visible at all.
+ *
+ * Cloudflare fetches these itself, so nothing large passes through this machine.
+ * Whatever you substitute must answer HEAD and range requests, or Cloudflare
+ * cannot size the file and refuses the copy.
+ */
+const ARCHIVE = 'https://archive.org/download'
+const FOOTAGE = {
+  elephants: `${ARCHIVE}/ElephantsDream/ed_1024_512kb.mp4`, //  653s · 10m53s · 45MB
+  popeye: `${ARCHIVE}/popeye_i_dont_scare/popeye_i_dont_scare_512kb.mp4`, // 366s · 6m06s · 25MB
+}
+
+/**
  * One of each way of selling something, because that is what needs testing:
  * a premiere that is nearly over, one that has just started, something paid
  * forever, and something free with ads.
+ *
+ * Preview lengths are deliberately a small fraction of each running time. The
+ * client's own example was 300 seconds, so the flagship videos use exactly that
+ * — the video must visibly stop with most of itself still to come.
  */
 const VIDEOS = [
   {
@@ -79,19 +109,22 @@ const VIDEOS = [
     accessType: 'paid_premiere',
     priceTzs: 2500,
     premiereDays: 60,
-    previewSeconds: 90,
+    /* The client's own example: 300 seconds free, then it must stop. */
+    previewSeconds: 300,
     startedDaysAgo: 5, // 55 days of the premiere left
     featured: true,
+    source: FOOTAGE.elephants, // 653s, so ~6 minutes stay locked behind the paywall
   },
   {
     creator: 'juma',
     title: 'Live at Arusha — Full Set',
     category: 'Music',
-    description: 'The whole ninety minutes, filmed on six cameras. Recorded last month, unreleased until now.',
+    description: 'The whole set, filmed on six cameras. Recorded last month, unreleased until now.',
     accessType: 'ppv_forever',
     priceTzs: 5000,
-    previewSeconds: 120,
+    previewSeconds: 300,
     featured: true,
+    source: FOOTAGE.elephants, // 653s
   },
   {
     creator: 'juma',
@@ -102,7 +135,8 @@ const VIDEOS = [
     priceTzs: 1000,
     premiereDays: 30,
     startedDaysAgo: 28, // two days left: the countdown is worth seeing
-    previewSeconds: 45,
+    previewSeconds: 60,
+    source: FOOTAGE.popeye, // 366s
   },
   {
     creator: 'neema',
@@ -112,6 +146,8 @@ const VIDEOS = [
     accessType: 'free_with_ads',
     priceTzs: 0,
     previewSeconds: 0,
+    /* Long enough to carry a mid-roll as well as a pre- and post-roll. */
+    source: FOOTAGE.elephants, // 653s — long enough for pre-, mid- and post-roll
   },
   {
     creator: 'neema',
@@ -122,7 +158,8 @@ const VIDEOS = [
     priceTzs: 800,
     premiereDays: 90,
     startedDaysAgo: 95, // already expired: it should be free with ads by now
-    previewSeconds: 60,
+    previewSeconds: 45,
+    source: FOOTAGE.elephants, // long enough to carry a mid-roll once it turns free
   },
   {
     creator: 'asha',
@@ -131,9 +168,28 @@ const VIDEOS = [
     description: 'Out at 4am with a crew who have done this every day for thirty years.',
     accessType: 'ppv_forever',
     priceTzs: 1500,
-    previewSeconds: 75,
+    previewSeconds: 120,
+    source: FOOTAGE.elephants,
   },
 ]
+
+/**
+ * A campaign, so "Free With Ads" can be seen actually paying somebody.
+ *
+ * The CPM is set where a real premium campaign would sit. It matters: at a CPM
+ * of 1,000 a single impression is worth one shilling, and the creator's share of
+ * that rounds to nothing on screen. At 25,000 an impression is 25 TZS and the
+ * split is legible, which is the difference between demonstrating the mechanism
+ * and appearing not to have built it.
+ */
+const CAMPAIGN = {
+  name: 'Vodacom Tanzania — Q3 Data Bundles',
+  advertiser: 'Vodacom Tanzania',
+  cpmTzs: 25000,
+  placements: ['pre_roll', 'mid_roll', 'post_roll'],
+  skipAfterSeconds: 5,
+  source: FOOTAGE.popeye,
+}
 
 /* ======================================================================
    HELPERS
@@ -146,19 +202,220 @@ const slugify = (title) =>
     .replace(/^-|-$/g, '')
     .slice(0, 60)}-demo${Math.random().toString(36).slice(2, 6)}`
 
-async function sampleBytes() {
+/**
+ * Bring a video into Cloudflare and wait until it can be played.
+ *
+ * Cloudflare fetches from the URL itself. Passing a local file still works — it
+ * takes the direct-upload route instead — but the default is a real film pulled
+ * from a public source, because everything downstream depends on the running
+ * time being real.
+ */
+/** Push bytes we already hold to Cloudflare over a one-time upload URL. */
+async function pushBytes({ bytes, title, creatorId, filename = 'video.mp4' }) {
+  const upload = await cf.createDirectUpload({
+    maxDurationSeconds: 3600,
+    creatorId,
+    meta: { name: title, [TAG]: 'true' },
+  })
+  const form = new FormData()
+  form.append('file', new Blob([bytes], { type: 'video/mp4' }), filename)
+  const put = await fetch(upload.uploadUrl, { method: 'POST', body: form })
+  if (!put.ok) throw new Error(`upload failed: HTTP ${put.status}`)
+  return upload.uid
+}
+
+/** Downloaded footage, kept per URL so the same film is fetched once. */
+const downloaded = new Map()
+
+async function ingest({ url, title, creatorId, label = title }) {
+  let uid
+
   if (SAMPLE) {
     if (!fs.existsSync(SAMPLE)) throw new Error(`No such file: ${SAMPLE}`)
-    return { bytes: fs.readFileSync(SAMPLE), name: SAMPLE.split(/[\\/]/).pop() }
+    uid = await pushBytes({ bytes: fs.readFileSync(SAMPLE), title, creatorId, filename: 'sample.mp4' })
+  } else {
+    /**
+     * Prefer letting Cloudflare fetch it — it is closer to the source than we
+     * are and nothing large crosses this connection.
+     *
+     * But Cloudflare has to size the file before it will start, so the origin
+     * must answer HEAD and range requests. The Internet Archive redirects to a
+     * mirror whose hostname rotates, and some of those mirrors refuse HEAD. When
+     * that happens, fall back to pulling the bytes here and pushing them up. It
+     * is slower and it is not clever, but it does not depend on a stranger's
+     * server supporting a request it never promised to.
+     */
+    try {
+      const copied = await cf.copyFromUrl({ url, name: title, meta: { [TAG]: 'true', creatorId } })
+      uid = copied.uid
+    } catch (err) {
+      process.stdout.write('(via this machine) ')
+      let bytes = downloaded.get(url)
+      if (!bytes) {
+        const res = await fetch(url, { redirect: 'follow' })
+        if (!res.ok) {
+          throw new Error(
+            `could not fetch "${label}" (Cloudflare: ${err.message.slice(0, 60)}; direct: HTTP ${res.status})`
+          )
+        }
+        bytes = Buffer.from(await res.arrayBuffer())
+        downloaded.set(url, bytes)
+        process.stdout.write(`${(bytes.length / 1048576).toFixed(0)}MB `)
+      }
+      uid = await pushBytes({ bytes, title, creatorId })
+    }
   }
-  log.info('no file given — fetching a short public clip to use for every demo video')
-  const res = await fetch('https://download.samplelib.com/mp4/sample-15s.mp4')
-  if (!res.ok) {
-    throw new Error(
-      `Could not fetch a sample clip (HTTP ${res.status}). Pass your own: npm run demo:seed path/to.mp4`
+
+  // A quarter-hour film takes considerably longer to ingest than a clip.
+  let remote = null
+  for (let i = 0; i < 150; i++) {
+    await new Promise((r) => setTimeout(r, 4000))
+    remote = await cf.getVideo(uid).catch(() => null)
+    if (remote?.readyToStream || remote?.status?.state === 'error') break
+    if (i % 8 === 7) process.stdout.write('·')
+  }
+  if (!remote?.readyToStream) {
+    throw new Error(`"${label}" did not finish encoding (${remote?.status?.state || 'unknown'})`)
+  }
+
+  return { uid, remote, duration: Math.floor(remote.duration || 0) }
+}
+
+/**
+ * A live campaign with a real advert behind it, plus impressions to prove it.
+ *
+ * The impressions go in through the same service the player calls, so the money
+ * they generate is split and rolled up by exactly the code that will handle real
+ * traffic. Seeding the earnings row directly would demonstrate nothing.
+ */
+async function seedCampaign({ made, admin, buyer }) {
+  const existing = await one('select * from ad_campaigns where name = $1', [CAMPAIGN.name])
+  let campaign = existing
+
+  if (!campaign) {
+    process.stdout.write(`  fetching the advert for "${CAMPAIGN.advertiser}" … `)
+    const ingested = await ingest({
+      url: CAMPAIGN.source,
+      title: `AD · ${CAMPAIGN.name} (source)`,
+      creatorId: admin.id,
+      label: 'the advert',
+    })
+
+    /**
+     * Cut it down to advert length.
+     *
+     * A six-minute pre-roll is not an advert, it is a hostage situation. The
+     * clip is what the campaign serves; the full ingest stays behind it as the
+     * master, exactly as a creator's video and its preview clip relate.
+     */
+    const AD_SECONDS = 30
+    let uid = ingested.uid
+    let duration = ingested.duration
+    const remote = ingested.remote
+
+    if (duration > AD_SECONDS + 5) {
+      const clip = await cf
+        .createClip({
+          uid: ingested.uid,
+          startSeconds: 0,
+          endSeconds: AD_SECONDS,
+          requireSignedURLs: true,
+          name: `AD · ${CAMPAIGN.name}`,
+        })
+        .catch((e) => {
+          log.warn(`could not clip the advert (${e.message}) — using the full length`)
+          return null
+        })
+
+      if (clip?.uid) {
+        // Wait for the clip, then drop the master: nothing else refers to it.
+        for (let i = 0; i < 60; i++) {
+          await new Promise((r) => setTimeout(r, 3000))
+          const ready = await cf.getVideo(clip.uid).catch(() => null)
+          if (ready?.readyToStream) break
+        }
+        uid = clip.uid
+        duration = AD_SECONDS
+        await cf.deleteVideo(ingested.uid).catch(() => {})
+      }
+    }
+
+    campaign = await one(
+      `insert into ad_campaigns
+         (name, advertiser, cpm_tzs, active, cloudflare_uid, duration_seconds, thumbnail_url,
+          starts_at, ends_at, placements, skip_after_seconds, notes, created_by)
+       values ($1,$2,$3,true,$4,$5,$6,
+               now() - interval '10 days', now() + interval '80 days',
+               $7::ad_placement[], $8, $9, $10)
+       returning *`,
+      [
+        CAMPAIGN.name,
+        CAMPAIGN.advertiser,
+        CAMPAIGN.cpmTzs,
+        uid,
+        duration,
+        remote?.thumbnail || null,
+        CAMPAIGN.placements,
+        CAMPAIGN.skipAfterSeconds,
+        'Demo campaign. Remove with npm run demo:clear.',
+        admin.id,
+      ]
     )
+    console.log('done')
+    log.ok(`campaign "${campaign.name}" — ${duration}s advert, CPM ${CAMPAIGN.cpmTzs}`)
+  } else {
+    log.info(`campaign "${CAMPAIGN.name}" already exists`)
   }
-  return { bytes: Buffer.from(await res.arrayBuffer()), name: 'sample.mp4' }
+
+  /* Impressions against every video that actually carries advertising. */
+  const eligible = await many(
+    `select id, creator_id, category, access_type, ads_enabled, is_published, duration_seconds
+       from videos
+      where deleted_at is null and is_published
+        and access_type = 'free_with_ads' and ads_enabled`
+  )
+  if (!eligible.length) {
+    log.warn('no free-with-ads video to run the campaign against yet')
+    return campaign
+  }
+
+  const before = await one(
+    'select count(*)::int as n from ad_impressions where campaign_id = $1',
+    [campaign.id]
+  )
+  if (before.n >= 40) {
+    log.info(`campaign already has ${before.n} impressions`)
+    return campaign
+  }
+
+  for (const video of eligible) {
+    for (const placement of ['pre_roll', 'mid_roll', 'post_roll']) {
+      // A share of viewers skip, exactly as they would in the wild, so the
+      // completion rate on the admin screen is not a suspicious 100%.
+      for (let i = 0; i < 14; i++) {
+        const completed = Math.random() < 0.78
+        await recordImpression({
+          video,
+          campaignId: campaign.id,
+          userId: i % 3 === 0 ? buyer?.id : null,
+          placement,
+          playId: crypto.randomUUID(),
+          secondsWatched: completed ? campaign.duration_seconds : 2 + Math.floor(Math.random() * 4),
+          completed,
+        })
+      }
+    }
+  }
+
+  const after = await one(
+    `select count(*)::int as n, coalesce(sum(creator_micro_tzs),0)::bigint as creator_micro
+       from ad_impressions where campaign_id = $1`,
+    [campaign.id]
+  )
+  log.ok(
+    `${after.n} ad impressions — TZS ${Math.round(Number(after.creator_micro) / 1_000_000)} to creators`
+  )
+  return campaign
 }
 
 async function demoAdmin() {
@@ -176,8 +433,11 @@ async function seed() {
 
   const settings = await getSettings({ fresh: true })
   const admin = await demoAdmin()
-  const { bytes, name } = await sampleBytes()
-  log.info(`using ${(bytes.length / 1024 / 1024).toFixed(1)} MB of video for each demo item`)
+  log.info(
+    SAMPLE
+      ? `using ${SAMPLE} for every demo video`
+      : 'Cloudflare will fetch each film from its public source — this takes a few minutes'
+  )
 
   /* ---------------------------------------------------- the creators ---- */
   const creators = {}
@@ -231,31 +491,30 @@ async function seed() {
       continue
     }
 
-    process.stdout.write(`  uploading "${spec.title}" … `)
+    process.stdout.write(`  fetching "${spec.title}" … `)
 
-    const upload = await cf.createDirectUpload({
-      maxDurationSeconds: 3600,
+    const { uid, remote, duration } = await ingest({
+      url: spec.source || FOOTAGE.bunny,
+      title: spec.title,
       creatorId: creator.id,
-      meta: { name: spec.title, [TAG]: 'true' },
     })
+    /**
+     * Keep the preview inside the video, but never let it become the whole
+     * video. If the asked-for preview will not leave a clear locked remainder,
+     * cut it to a fifth of the running time — a paid video whose preview covers
+     * 93% of it is what made the client report the paywall as broken.
+     */
+    const asked = spec.previewSeconds
+    const preview =
+      asked > 0 && duration > 0
+        ? asked <= duration * 0.5
+          ? asked
+          : Math.max(5, Math.floor(duration / 5))
+        : Math.min(asked, Math.max(0, duration - 1))
 
-    const form = new FormData()
-    form.append('file', new Blob([bytes], { type: 'video/mp4' }), name)
-    const put = await fetch(upload.uploadUrl, { method: 'POST', body: form })
-    if (!put.ok) throw new Error(`upload failed: HTTP ${put.status}`)
-
-    // Wait for Cloudflare, because everything downstream needs the duration.
-    let remote = null
-    for (let i = 0; i < 60; i++) {
-      await new Promise((r) => setTimeout(r, 4000))
-      remote = await cf.getVideo(upload.uid).catch(() => null)
-      if (remote?.readyToStream || remote?.status?.state === 'error') break
+    if (asked > 0 && preview !== asked) {
+      process.stdout.write(`(preview trimmed ${asked}s→${preview}s of ${duration}s) `)
     }
-    if (!remote?.readyToStream) throw new Error(`"${spec.title}" did not finish encoding`)
-
-    const duration = Math.floor(remote.duration || 0)
-    // The sample is short; keep the preview inside it whatever was asked for.
-    const preview = Math.min(spec.previewSeconds, Math.max(0, duration - 1))
 
     /**
      * Exactly the path a real upload takes, because the database will not
@@ -281,7 +540,7 @@ async function seed() {
             spec.title,
             spec.description,
             spec.category,
-            upload.uid,
+            uid,
             duration,
             remote.thumbnail || null,
             spec.accessType,
@@ -290,8 +549,15 @@ async function seed() {
             spec.accessType === 'paid_premiere' ? spec.premiereDays : null,
             spec.accessType === 'free_with_ads',
             String(spec.startedDaysAgo ?? 3),
-            // A plausible view count, so Trending has a real ordering.
-            120 + Math.floor(Math.random() * 900),
+            /**
+             * Zero, deliberately.
+             *
+             * The view count comes from the view rows inserted further down, via
+             * the trigger that owns it. Seeding a number here as well was how the
+             * admin came to show 3.2K views against a few hundred actual rows —
+             * the counter and its source counted the same thing twice.
+             */
+            0,
           ]
         )
 
@@ -384,36 +650,59 @@ async function seed() {
           [video.creator_id, video.id, video.price_tzs, split.creator, split.platform, percent]
         )
 
-        await client.query(`update videos set paid_unlocks = paid_unlocks + 1 where id = $1`, [video.id])
+        // `paid_unlocks` is recounted from `purchases` by a trigger (006).
       },
       { actorRole: 'admin', actorId: admin.id }
     )
     log.ok(`demo purchase of "${video.title}"`)
   }
 
+  /* ------------------------------------------------- views that add up ---- */
+  /**
+   * Real view rows rather than an invented counter.
+   *
+   * The counter used to be written directly, which is how the admin came to
+   * report 3.2K views against 67 actual rows — two screens quoting two numbers
+   * for the same fact. Inserting the rows and letting the trigger from migration
+   * 006 do the counting means the two can never disagree.
+   */
+  for (const video of made) {
+    const already = await one(
+      'select count(*)::int as n from video_views where video_id = $1',
+      [video.id]
+    )
+    if (already.n > 20) continue
+
+    const wanted = 120 + Math.floor(Math.random() * 380)
+    const preview = Number(video.free_preview_seconds || 0)
+    await query(
+      `insert into video_views (video_id, seconds_watched, reached_paywall, created_at)
+       select $1,
+              (random() * $3)::int,
+              /* Roughly a third of viewers on a paid video get as far as the
+                 paywall — enough for the conversion figures to mean something. */
+              ($2 > 0 and random() < 0.34),
+              now() - (random() * interval '30 days')
+         from generate_series(1, $4)`,
+      [video.id, preview, Math.max(30, Number(video.duration_seconds || 60)), wanted - already.n]
+    )
+  }
+  log.ok('view history')
+
+  /* ------------------------------------------------- an advert that runs --- */
+  await seedCampaign({ made, admin, buyer })
+
   /* ----------------------------------------- one waiting to be reviewed --- */
   const pendingTitle = 'Nyerere Day — Rehearsals (awaiting review)'
   const pendingExists = await one('select id from videos where title = $1', [pendingTitle])
   if (!pendingExists) {
-    process.stdout.write(`  uploading "${pendingTitle}" … `)
+    process.stdout.write(`  fetching "${pendingTitle}" … `)
     const creator = creators.juma
-    const upload = await cf.createDirectUpload({
-      maxDurationSeconds: 3600,
+    const { uid, remote, duration } = await ingest({
+      url: FOOTAGE.popeye,
+      title: pendingTitle,
       creatorId: creator.id,
-      meta: { name: pendingTitle, [TAG]: 'true' },
     })
-    const form = new FormData()
-    form.append('file', new Blob([bytes], { type: 'video/mp4' }), name)
-    await fetch(upload.uploadUrl, { method: 'POST', body: form })
-
-    let remote = null
-    for (let i = 0; i < 60; i++) {
-      await new Promise((r) => setTimeout(r, 4000))
-      remote = await cf.getVideo(upload.uid).catch(() => null)
-      if (remote?.readyToStream || remote?.status?.state === 'error') break
-    }
-
-    const duration = Math.floor(remote?.duration || 0)
     await one(
       `insert into videos
          (creator_id, slug, title, description, category, cloudflare_uid, duration_seconds,
@@ -427,7 +716,7 @@ async function seed() {
         slugify(pendingTitle),
         pendingTitle,
         'Two days of rehearsals before the show. Submitted so the review queue is not empty.',
-        upload.uid,
+        uid,
         duration,
         remote?.thumbnail || null,
         Math.min(30, Math.max(0, duration - 1)),
@@ -480,8 +769,22 @@ async function status() {
        from purchases where user_id in (select id from profiles where email like 'demo.%@mtonyo.demo')`
   )
 
+  const ads = await one(
+    `select count(distinct c.id)::int as campaigns,
+            count(i.id)::int as impressions,
+            coalesce(sum(i.creator_micro_tzs),0)::bigint as creator_micro
+       from ad_campaigns c
+       left join ad_impressions i on i.campaign_id = c.id
+      where c.name = $1`,
+    [CAMPAIGN.name]
+  )
+
   console.log('\n  demo content in the database:')
   console.log(`    ${people.creators} creator(s), ${people.viewers} viewer(s), ${money.purchases} purchase(s) worth TZS ${money.spent.toLocaleString()}`)
+  console.log(
+    `    ${ads.campaigns} ad campaign(s), ${ads.impressions} impression(s), ` +
+      `TZS ${Math.round(Number(ads.creator_micro) / 1_000_000).toLocaleString()} of ad revenue to creators`
+  )
   if (!rows.length) {
     console.log('    (no videos)')
     return
@@ -498,24 +801,76 @@ async function status() {
 }
 
 async function clear() {
+  await query("select set_config('app.actor_role','admin',false)")
+
   const ids = await many(
-    `select v.id, v.title, v.cloudflare_uid, v.preview_uid, v.social_clip_uid
+    `select v.id, v.title, v.cloudflare_uid, v.preview_uid, v.social_clip_uid,
+            (select count(*)::int from purchases pu
+              join profiles bp on bp.id = pu.user_id
+             where pu.video_id = v.id and pu.status = 'active'
+               and bp.email not like 'demo.%@mtonyo.demo') as real_purchases
        from videos v join profiles p on p.id = v.creator_id
       where p.email like 'demo.%@mtonyo.demo'`
   )
 
-  log.info(`removing ${ids.length} demo video(s) and their Cloudflare assets`)
-  for (const v of ids) {
+  /**
+   * A demo video somebody real has paid for stops being demo content.
+   *
+   * The rule is that a purchase never vanishes, and it does not come with an
+   * exception for how the video got there. Unpublish it and leave it alone; the
+   * database would refuse the delete anyway, and it is right to.
+   */
+  const bought = ids.filter((v) => v.real_purchases > 0)
+  const removable = ids.filter((v) => v.real_purchases === 0)
+
+  for (const v of bought) {
+    await query('update videos set is_published = false where id = $1', [v.id])
+    log.warn(`kept "${v.title}" — ${v.real_purchases} real purchase(s); unpublished instead`)
+  }
+
+  /* Demo purchases are demo content and go with it. Payments and earnings first,
+     so nothing is left pointing at a row that no longer exists. */
+  const demoBuyers = `select id from profiles where email like 'demo.%@mtonyo.demo'`
+  await query(`delete from earnings where purchase_id in (
+                 select id from purchases where user_id in (${demoBuyers}))`)
+  await query(`delete from purchases where user_id in (${demoBuyers})`)
+  await query(`delete from payments  where user_id in (${demoBuyers})`)
+
+  log.info(`removing ${removable.length} demo video(s) and their Cloudflare assets`)
+  for (const v of removable) {
     for (const uid of [v.cloudflare_uid, v.preview_uid, v.social_clip_uid].filter(Boolean)) {
       await cf.deleteVideo(uid).catch(() => {})
     }
   }
 
-  await query("select set_config('app.actor_role','admin',false)")
-  await query(
-    `delete from videos where creator_id in (select id from profiles where email like 'demo.%@mtonyo.demo')`
-  )
-  await query(`delete from auth.users where email like 'demo.%@mtonyo.demo'`)
+  /* The demo campaign, its advert, and everything it earned. */
+  const campaigns = await many('select id, cloudflare_uid from ad_campaigns where name = $1', [
+    CAMPAIGN.name,
+  ])
+  for (const c of campaigns) {
+    if (c.cloudflare_uid) await cf.deleteVideo(c.cloudflare_uid).catch(() => {})
+  }
+
+  if (campaigns.length) {
+    const cids = campaigns.map((c) => c.id)
+    // The rolled-up ad earnings go with the impressions they were derived from.
+    await query('delete from earnings where campaign_id = any($1::uuid[])', [cids])
+    await query('delete from ad_impressions where campaign_id = any($1::uuid[])', [cids])
+    await query('delete from ad_campaigns where id = any($1::uuid[])', [cids])
+    log.info(`removed ${campaigns.length} demo ad campaign(s)`)
+  }
+
+  if (removable.length) {
+    await query('delete from videos where id = any($1::uuid[])', [removable.map((v) => v.id)])
+  }
+
+  // A demo creator whose video had to stay must stay too, or the video loses the
+  // person who made it.
+  if (bought.length) {
+    log.info('demo accounts kept, because content of theirs has real purchases against it')
+  } else {
+    await query(`delete from auth.users where email like 'demo.%@mtonyo.demo'`)
+  }
 
   log.ok('all demo content removed — nothing belonging to real creators was touched')
 }

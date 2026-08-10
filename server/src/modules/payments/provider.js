@@ -67,6 +67,19 @@ const sandbox = {
 
     return {
       providerRef,
+      /**
+       * What this payment will settle as, and when.
+       *
+       * The timer above is not a promise this environment can keep. On a
+       * serverless platform the function may be frozen the moment its response
+       * is sent, so anything scheduled after that may simply never run — and a
+       * payment left pending for ever reads to the customer as a platform that
+       * takes your money and gives you nothing. Recording the intended outcome
+       * lets `verify()` settle it on the next poll instead of depending on a
+       * callback that may already have been killed.
+       */
+      settlesAs: outcome,
+      settlesAfterMs: env.payments.sandboxDelayMs,
       status: 'pending',
       instructions:
         outcome === 'pending'
@@ -76,9 +89,29 @@ const sandbox = {
     }
   },
 
-  async verify() {
-    // The sandbox pushes its result; there is nothing to poll upstream.
-    return { status: null }
+  /**
+   * Settle a payment that the push never got round to.
+   *
+   * A real provider is asked "what happened to this reference?" and answers from
+   * its own records. The sandbox has no upstream, so it answers from what it
+   * decided at the outset: the outcome and the delay were written onto the
+   * payment when it was created, so once that delay has passed the answer is
+   * knowable without the timer having survived.
+   */
+  async verify(_ref, payment) {
+    const meta = payment?.raw_callback?.initiated || null
+    const settlesAs = meta?.settlesAs
+    const after = Number(meta?.settlesAfterMs ?? env.payments.sandboxDelayMs)
+
+    if (!settlesAs || settlesAs === 'pending') return { status: null }
+
+    const startedAt = payment?.created_at ? new Date(payment.created_at).getTime() : null
+    if (startedAt && Date.now() - startedAt < after) return { status: null } // not yet
+
+    return {
+      status: settlesAs === 'success' ? 'success' : settlesAs,
+      failureReason: REASONS[settlesAs] || null,
+    }
   },
 
   parseCallback(body) {

@@ -217,6 +217,21 @@ export default function ReviewTab() {
                     {terms.accessType === 'paid_premiere' && (
                       <label>
                         Premiere window (days)
+                        {/* 30 / 60 / 90 are the windows that get picked almost
+                            every time. The field stays editable underneath, so
+                            any other length is still one keystroke away. */}
+                        <div className="rv-presets rv-presets-inline">
+                          {[30, 60, 90].map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              className={`rv-preset ${Number(terms.premiereDays) === d ? 'on' : ''}`.trim()}
+                              onClick={() => setTerms((t) => ({ ...t, premiereDays: d }))}
+                            >
+                              {d} days
+                            </button>
+                          ))}
+                        </div>
                         <input
                           type="number"
                           min={1}

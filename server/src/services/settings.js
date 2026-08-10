@@ -27,6 +27,9 @@ export async function updateSettings(patch) {
     'preroll_skip_after_secs',
     'ads_on_expired_premieres',
     'share_ad_revenue',
+    'midroll_enabled',
+    'midroll_after_secs',
+    'postroll_enabled',
   ]
   const entries = Object.entries(patch).filter(([k, v]) => allowed.includes(k) && v !== undefined)
   if (!entries.length) return getSettings({ fresh: true })

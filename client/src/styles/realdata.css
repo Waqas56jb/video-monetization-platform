@@ -19,6 +19,13 @@
   margin-inline: auto;
   padding-inline: 20px;
 }
+/* 96px of clearance above the player costs a phone a third of its screen. */
+@media (max-width: 720px) {
+  .watch-wrap { padding-block: 74px 40px; padding-inline: 12px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .watch-wrap { padding-block: 62px 24px; }
+}
 .watch-wrap .player {
   width: 100%;
   max-width: 840px;
@@ -31,6 +38,136 @@
     0 0 60px -24px rgba(124, 58, 237, .35);
   background: #000;
 }
+/* -------- the player has to be wholly on screen without scrolling --------
+   The client opened a video and had to scroll to see the frame and its
+   timeline. On a phone that reads as a broken page. Cap the stage against the
+   viewport height so the player, and the unlock bar telling them what is
+   locked, are both above the fold on any device.
+
+   `dvh` rather than `vh` because mobile Safari's `vh` includes the browser
+   chrome that is currently covering the bottom of the page. */
+.watch-wrap .player {
+  max-height: min(56.25vw, 62dvh);
+}
+.watch-wrap .player .stream-shell,
+.watch-wrap .player .stream-frame,
+.watch-wrap .player .stream-poster {
+  max-height: min(56.25vw, 62dvh);
+}
+@media (max-width: 720px) {
+  /* 16:9 of the full width is short enough here; the cap only gets in the way. */
+  .watch-wrap .player,
+  .watch-wrap .player .stream-shell,
+  .watch-wrap .player .stream-frame,
+  .watch-wrap .player .stream-poster {
+    max-height: none;
+  }
+}
+/* Landscape phones are all width and no height — there the cap is the only
+   thing keeping the player from running off the bottom of the screen. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .watch-wrap .player,
+  .watch-wrap .player .stream-shell,
+  .watch-wrap .player .stream-frame,
+  .watch-wrap .player .stream-poster {
+    max-height: 74dvh;
+  }
+}
+
+/* How much of the film is free, said next to how long the film is. */
+.meta-locked { color: var(--gold, #f5c518); font-weight: 600; }
+
+/* ---------------------------- advertising ------------------------------
+   An advert must be unmistakably an advert. The badge says so, the skip
+   control says when it can be dismissed, and neither can be mistaken for
+   part of the video. */
+.ad-stage { position: relative; background: #000; }
+.ad-stage .stream-shell,
+.ad-stage .stream-frame { max-height: min(56.25vw, 62dvh); }
+@media (max-width: 720px) {
+  .ad-stage .stream-shell,
+  .ad-stage .stream-frame { max-height: none; }
+}
+.ad-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(62%, 320px);
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(8, 8, 14, .78);
+  border: 1px solid rgba(255, 255, 255, .14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ad-tag {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--gold, #f5c518);
+  color: #100c02;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.ad-skip {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: rgba(8, 8, 14, .74);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, .62);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  /* Comfortably tappable on a phone without a stylus. */
+  min-height: 42px;
+  transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+.ad-skip.is-ready {
+  color: #fff;
+  cursor: pointer;
+  border-color: rgba(245, 197, 24, .5);
+}
+.ad-skip.is-ready:hover { background: rgba(20, 20, 31, .9); border-color: var(--gold, #f5c518); }
+.ad-note {
+  position: absolute;
+  bottom: 18px;
+  left: 16px;
+  z-index: 6;
+  margin: 0;
+  max-width: 46%;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, .58);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+}
+@media (max-width: 560px) {
+  /* On a phone the note competes with the skip button for the same corner. */
+  .ad-note { display: none; }
+  .ad-skip { bottom: 10px; right: 10px; padding: 8px 13px; font-size: 12.5px; }
+  .ad-badge { top: 10px; right: 10px; font-size: 11px; max-width: 58%; }
+}
+
 .pl-back {
   position: absolute;
   top: 12px;
@@ -815,3 +952,18 @@
   color: var(--gold); font: inherit; font-weight: 700; text-decoration: underline;
 }
 .crash-link:disabled { opacity: .6; cursor: default; }
+
+/* -------- sales vs advertising, side by side in the creator's wallet ------ */
+.earn-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.earn-source { display: flex; flex-direction: column; gap: 6px; }
+.earn-source .stat-card { margin: 0; height: 100%; }
+.es-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted, #8b8b9e);
+  padding-inline: 2px;
+}

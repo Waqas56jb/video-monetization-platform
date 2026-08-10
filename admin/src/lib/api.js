@@ -297,6 +297,10 @@ export const api = {
     ads: () => get('/api/admin/ads'),
     createCampaign: (body) => post('/api/admin/ads', body),
     updateCampaign: (id, body) => patch(`/api/admin/ads/${id}`, body),
+    deleteCampaign: (id) => del(`/api/admin/ads/${id}`),
+    /** Ask Cloudflare for somewhere to put the advert, then send it there. */
+    adUploadTicket: (id) => post(`/api/admin/ads/${id}/upload`, {}),
+    adMedia: (id) => get(`/api/admin/ads/${id}/media`),
 
     runPremiereExpiry: () => post('/api/admin/jobs/premiere-expiry'),
   },

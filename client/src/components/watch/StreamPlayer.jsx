@@ -27,7 +27,7 @@ function loadSdk() {
   return sdkPromise
 }
 
-function buildSrc(src, poster, autoplay) {
+function buildSrc(src, poster, autoplay, startAt, controls) {
   try {
     const url = new URL(src)
     if (poster) url.searchParams.set('poster', poster)
@@ -35,6 +35,10 @@ function buildSrc(src, poster, autoplay) {
       url.searchParams.set('autoplay', 'true')
       url.searchParams.set('muted', 'true')
     }
+    // Where the full video should pick up — see `startAt` on the component.
+    if (startAt > 0) url.searchParams.set('startTime', `${Math.floor(startAt)}s`)
+    // An advert is not something the viewer drives.
+    if (controls === false) url.searchParams.set('controls', 'false')
     url.searchParams.set('preload', 'auto')
     // Keep the letterbox black so Stream never flashes a white canvas.
     url.searchParams.set('letterboxColor', '000000')
@@ -50,14 +54,33 @@ export default function StreamPlayer({
   autoplay = false,
   onEnded,
   onTimeUpdate,
+  /**
+   * Second to begin at.
+   *
+   * After a purchase the viewer should carry on from where the free preview
+   * stopped, not start the film again. Two mechanisms, because either alone has
+   * let us down: `startTime` in the URL decides where the first frame comes
+   * from, and the SDK seek below covers the case where Stream has already
+   * buffered from zero by the time it honours the parameter.
+   */
+  startAt = 0,
+  /**
+   * Try to start playing without a further tap.
+   *
+   * Used after a purchase, where the viewer's click on Pay is recent enough that
+   * most browsers still count it as a gesture. If one refuses, playback simply
+   * waits at the right second for them to press play — never silently at 0:00.
+   */
+  playOnReady = false,
+  controls = true,
   title = 'Video player',
 }) {
   const frame = useRef(null)
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const iframeSrc = useMemo(
-    () => (src ? buildSrc(src, poster, autoplay) : null),
-    [src, poster, autoplay]
+    () => (src ? buildSrc(src, poster, autoplay, startAt, controls) : null),
+    [src, poster, autoplay, startAt, controls]
   )
 
   const markReady = () => setReady(true)
@@ -92,6 +115,38 @@ export default function StreamPlayer({
         player.addEventListener('loadeddata', markReady)
         player.addEventListener('play', markReady)
         player.addEventListener('canplay', markReady)
+
+        // Seek once, and only if the URL parameter did not already land us
+        // there. Seeking again on every metadata event would fight the viewer
+        // every time they tried to scrub backwards.
+        if (startAt > 0) {
+          let seeked = false
+          const seek = () => {
+            if (seeked) return
+            if (player.currentTime >= startAt - 1.5) {
+              seeked = true // Stream honoured startTime; leave it alone.
+              return
+            }
+            try {
+              player.currentTime = startAt
+              seeked = true
+            } catch {
+              /* not seekable yet — the next event will try again */
+            }
+          }
+          player.addEventListener('loadedmetadata', seek)
+          player.addEventListener('canplay', seek)
+        }
+
+        if (playOnReady) {
+          let tried = false
+          player.addEventListener('canplay', () => {
+            if (tried) return
+            tried = true
+            // Autoplay may be refused; that is fine, the position is already right.
+            Promise.resolve(player.play?.()).catch(() => {})
+          })
+        }
       } catch {
         /* iframe still plays */
       }

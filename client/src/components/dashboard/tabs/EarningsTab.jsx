@@ -31,6 +31,7 @@ export default function EarningsTab() {
   const [error, setError] = useState(null)
 
   const balance = summary.data?.balance
+  const ads = summary.data?.ads
   const rows = withdrawals.data?.withdrawals || []
 
   const stats = [
@@ -38,6 +39,33 @@ export default function EarningsTab() {
     { icon: 'coins', label: 'Lifetime earnings', value: tzs(balance?.lifetimeTzs) },
     { icon: 'hourglass', label: 'Awaiting payout', value: tzs(balance?.pendingWithdrawalTzs) },
     { icon: 'check-circle-2', label: 'Already paid out', value: tzs(balance?.paidOutTzs) },
+  ]
+
+  /**
+   * Sales and advertising, kept apart.
+   *
+   * These are two different businesses to a creator. A Paid Premiere earns from
+   * sales until it expires and from advertising afterwards, and a single blended
+   * total hides the moment that handover happens — which is precisely the thing
+   * they need to be able to see.
+   */
+  const sources = [
+    {
+      icon: 'ticket',
+      label: 'From sales',
+      value: tzs(balance?.fromSalesTzs),
+      note: 'Pay-per-view and paid premieres',
+    },
+    {
+      icon: 'megaphone',
+      label: 'From advertising',
+      value: tzs(balance?.fromAdsTzs),
+      note: ads?.impressions
+        ? `${Number(ads.impressions).toLocaleString()} ad view${ads.impressions === 1 ? '' : 's'} across ${ads.videosWithImpressions} video${ads.videosWithImpressions === 1 ? '' : 's'}`
+        : ads?.videosCarryingAds
+          ? `${ads.videosCarryingAds} video${ads.videosCarryingAds === 1 ? '' : 's'} carrying ads — no views yet`
+          : 'Starts when a premiere expires and turns free with ads',
+    },
   ]
 
   const request = async (e) => {
@@ -83,11 +111,28 @@ export default function EarningsTab() {
       ) : summary.error ? (
         <ErrorState error={summary.error} onRetry={summary.reload} />
       ) : (
-        <div className="stat-grid">
-          {stats.map((s) => (
-            <StatCard key={s.label} stat={s} />
-          ))}
-        </div>
+        <>
+          <div className="stat-grid">
+            {stats.map((s) => (
+              <StatCard key={s.label} stat={s} />
+            ))}
+          </div>
+
+          <Panel title="Where the money came from">
+            <div className="earn-sources">
+              {sources.map((s) => (
+                <div className="earn-source" key={s.label}>
+                  <StatCard stat={s} />
+                  <small className="es-note">{s.note}</small>
+                </div>
+              ))}
+            </div>
+            <p className="field-note">
+              You keep {summary.data?.splitPercent ?? 70}% of both. Advertising revenue is
+              credited as adverts are watched on your free-with-ads videos.
+            </p>
+          </Panel>
+        </>
       )}
 
       <Panel title="Request a withdrawal">

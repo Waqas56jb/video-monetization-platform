@@ -287,6 +287,14 @@ export const api = {
   },
 
   ads: {
+    /**
+     * Every ad break for this video in one call — pre-roll, mid-roll, post-roll.
+     *
+     * Asked for once, up front, because the player has to know a mid-roll is
+     * coming before it reaches the middle. Fetching it on the way past would
+     * stall the video at the exact moment the viewer is watching it.
+     */
+    breaks: (videoId) => get(`/api/ads/breaks/${videoId}`, { auth: Boolean(getAccessToken()) }),
     preroll: (videoId) => get(`/api/ads/preroll/${videoId}`, { auth: Boolean(getAccessToken()) }),
     impression: (body) => post('/api/ads/impression', body, { auth: Boolean(getAccessToken()) }),
   },

@@ -121,6 +121,26 @@ export async function createDirectUpload({ maxDurationSeconds = 7200, meta = {},
   return { uploadUrl: result.uploadURL, uid: result.uid }
 }
 
+/**
+ * Have Cloudflare fetch a video from a URL itself.
+ *
+ * Used by the demo seeder. Pulling a fifteen-minute film down to this machine
+ * only to push the same bytes back up wastes both ends of the connection, and
+ * Cloudflare is far closer to the source than we are.
+ */
+export async function copyFromUrl({ url, name, meta = {}, requireSignedURLs = true }) {
+  const result = await cf('/stream/copy', {
+    method: 'POST',
+    body: {
+      url,
+      requireSignedURLs,
+      allowedOrigins: embedOrigins(),
+      meta: { ...meta, name, platform: 'mtonyo' },
+    },
+  })
+  return result
+}
+
 export async function getVideo(uid) {
   return cf(`/stream/${uid}`)
 }

@@ -55,11 +55,29 @@ router.get(
     )
 
     const daily = await many(
+      // Split by source so the chart can show sales and advertising apart from
+      // one another — a creator whose premiere has expired needs to see the
+      // handover from one to the other, not a single blended line.
       `select date_trunc('day', created_at)::date as day,
-              coalesce(sum(creator_tzs),0)::int as amount
+              coalesce(sum(creator_tzs),0)::int as amount,
+              coalesce(sum(case when source = 'sale' then creator_tzs else 0 end),0)::int as sales,
+              coalesce(sum(case when source = 'ad'   then creator_tzs else 0 end),0)::int as ads
          from earnings
         where creator_id = $1 and created_at > now() - interval '30 days'
         group by 1 order by 1`,
+      [req.user.id]
+    )
+
+    /* What the advertising side of the business is actually doing. */
+    const adStats = await one(
+      `select count(*)::int                                    as impressions,
+              count(*) filter (where completed)::int            as completed,
+              count(distinct video_id)::int                     as videos,
+              (select count(*)::int from videos
+                where creator_id = $1 and deleted_at is null
+                  and is_published and ads_enabled
+                  and access_type = 'free_with_ads')            as videos_carrying_ads
+         from ad_impressions where creator_id = $1`,
       [req.user.id]
     )
 
@@ -71,7 +89,19 @@ router.get(
         paidUnlocks: stats.paid_unlocks,
         publishedVideos: stats.published,
       },
-      daily: daily.map((d) => ({ day: d.day, amountTzs: d.amount })),
+      ads: {
+        impressions: adStats.impressions,
+        completed: adStats.completed,
+        videosWithImpressions: adStats.videos,
+        videosCarryingAds: adStats.videos_carrying_ads,
+        earnedTzs: balance.fromAdsTzs,
+      },
+      daily: daily.map((d) => ({
+        day: d.day,
+        amountTzs: d.amount,
+        salesTzs: d.sales,
+        adsTzs: d.ads,
+      })),
     })
   })
 )

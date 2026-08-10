@@ -10,6 +10,9 @@ import { notify } from '../services/notify.js'
 import { studioVideo } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
+import { campaignPerformance, microToTzs } from '../services/ads.js'
+import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails } from '../lib/cloudflare.js'
+import { capabilities } from '../config/env.js'
 
 const router = Router()
 
@@ -25,6 +28,21 @@ const asAdmin = (req) => ({ actorRole: req.user.role, actorId: req.user.id })
 
 /** How this person should be named in a log line a human will read. */
 const who = (req) => req.user.full_name || req.user.email
+
+/**
+ * An optional filter that understands "show me everything".
+ *
+ * A dropdown's All option can reach us as an absent parameter, an empty string,
+ * or the literal word "all", depending on the control that sent it. A strict
+ * enum rejects the last two with a 400, and the screen then renders as though
+ * the platform had no users — the widest possible filter producing the emptiest
+ * possible result. Treat all three as "no filter" instead.
+ */
+const anyOf = (values) =>
+  z.preprocess(
+    (v) => (v == null || v === '' || String(v).toLowerCase() === 'all' ? undefined : v),
+    z.enum(values).optional()
+  )
 
 /* ======================================================================
    OVERVIEW
@@ -244,7 +262,7 @@ router.get(
   validateQuery(
     z.object({
       q: z.string().trim().max(120).optional(),
-      status: z.enum(['published', 'unpublished', 'pending_review', 'rejected', 'deleted']).optional(),
+      status: anyOf(['published', 'unpublished', 'pending_review', 'rejected', 'deleted']),
       limit: z.coerce.number().int().min(1).max(100).default(50),
       offset: z.coerce.number().int().min(0).default(0),
     })
@@ -525,8 +543,8 @@ router.get(
   validateQuery(
     z.object({
       q: z.string().trim().max(120).optional(),
-      role: z.enum(['viewer', 'creator', 'admin']).optional(),
-      status: z.enum(['active', 'blocked', 'suspended']).optional(),
+      role: anyOf(['viewer', 'creator', 'admin', 'sub_admin']),
+      status: anyOf(['active', 'blocked', 'suspended']),
       limit: z.coerce.number().int().min(1).max(100).default(50),
       offset: z.coerce.number().int().min(0).default(0),
     })
@@ -651,7 +669,7 @@ router.get(
   '/payments',
   validateQuery(
     z.object({
-      status: z.enum(['pending', 'success', 'failed', 'cancelled', 'expired']).optional(),
+      status: anyOf(['pending', 'success', 'failed', 'cancelled', 'expired']),
       limit: z.coerce.number().int().min(1).max(200).default(100),
     })
   ),
@@ -663,7 +681,9 @@ router.get(
     params.push(limit)
 
     const rows = await many(
-      `select pay.*, v.title as video_title, p.full_name as user_name,
+      // The email as well as the name: chasing a specific payment by display
+      // name is guesswork when two customers share one.
+      `select pay.*, v.title as video_title, p.full_name as user_name, p.email as user_email,
               pu.creator_amount_tzs, pu.platform_amount_tzs, pu.split_percent
          from payments pay
          join videos v on v.id = pay.video_id
@@ -732,7 +752,12 @@ router.get(
          from earnings`
     )
     const overrides = await many(
-      `select p.id, coalesce(cp.display_name, p.full_name) as name, cp.revenue_split_percent
+      // The email comes along because display names are not unique. Two real
+      // accounts shared the name "Waqas Naveed", and the overrides table showed
+      // it twice with nothing to tell them apart — which reads as a duplicate
+      // row rather than as two different people.
+      `select p.id, coalesce(cp.display_name, p.full_name) as name, p.email,
+              cp.revenue_split_percent
          from creator_profiles cp join profiles p on p.id = cp.user_id
         order by (cp.revenue_split_percent is null), name`
     )
@@ -771,6 +796,10 @@ router.patch(
       preroll_skip_after_secs: z.coerce.number().int().min(0).max(60).optional(),
       ads_on_expired_premieres: z.boolean().optional(),
       share_ad_revenue: z.boolean().optional(),
+      midroll_enabled: z.boolean().optional(),
+      /* A mid-roll needs a middle: anything under a minute has none. */
+      midroll_after_secs: z.coerce.number().int().min(60).max(7200).optional(),
+      postroll_enabled: z.boolean().optional(),
     })
   ),
   asyncHandler(async (req, res) => {
@@ -812,61 +841,297 @@ router.post(
   })
 )
 
-/* --------------------------------------------------------------- ads ---- */
+/* ======================================================================
+   ADVERTISING
+
+   A campaign is only worth anything once it can actually be served, so every
+   field the selection logic reads is editable here: the advert itself, the
+   window it runs in, the placements it may take, and who it may run against.
+   Performance comes from the impressions rather than from a stored counter, so
+   the figures cannot drift away from what was delivered.
+   ====================================================================== */
+
+/**
+ * Campaign columns, with the placement list cast to text.
+ *
+ * `placements` is an array of a custom enum, and node-postgres has no parser for
+ * those — it hands back the raw literal `{pre_roll,mid_roll}` as a string. The
+ * admin then called `.map` on a string and the whole Ads screen went blank.
+ * Casting to `text[]` gives it an array, which is what it always looked like.
+ */
+const CAMPAIGN_COLS = `
+  id, name, advertiser, active, cpm_tzs, created_at, cloudflare_uid,
+  duration_seconds, thumbnail_url, starts_at, ends_at,
+  placements::text[] as placements,
+  target_video_ids, target_categories, target_creator_ids,
+  skip_after_seconds, notes, created_by, updated_at`
+
+/** Shape a campaign row plus its measured performance for the admin UI. */
+const campaignOut = (c, perf) => ({
+  id: c.id,
+  name: c.name,
+  advertiser: c.advertiser,
+  active: c.active,
+  cpmTzs: c.cpm_tzs,
+  cloudflareUid: c.cloudflare_uid,
+  durationSeconds: c.duration_seconds,
+  hasVideo: Boolean(c.cloudflare_uid),
+  startsAt: c.starts_at,
+  endsAt: c.ends_at,
+  placements: c.placements || [],
+  targetVideoIds: c.target_video_ids || [],
+  targetCategories: c.target_categories || [],
+  targetCreatorIds: c.target_creator_ids || [],
+  skipAfterSeconds: c.skip_after_seconds,
+  notes: c.notes,
+  createdAt: c.created_at,
+  updatedAt: c.updated_at,
+  /** Live now, or why not — the question every campaign list is really asked. */
+  status: !c.active
+    ? 'paused'
+    : !c.cloudflare_uid
+      ? 'no video'
+      : c.starts_at && new Date(c.starts_at) > new Date()
+        ? 'scheduled'
+        : c.ends_at && new Date(c.ends_at) < new Date()
+          ? 'ended'
+          : 'live',
+  performance: perf || {
+    impressions: 0, completed: 0, videos: 0,
+    revenueTzs: 0, creatorTzs: 0, platformTzs: 0, lastServedAt: null,
+  },
+})
+
 router.get(
   '/ads',
   asyncHandler(async (_req, res) => {
-    const campaigns = await many(
-      `select c.*,
-              (select count(*)::int from ad_impressions i where i.campaign_id = c.id) as impressions,
-              (select coalesce(sum(revenue_tzs),0)::int from ad_impressions i where i.campaign_id = c.id) as revenue_tzs
-         from ad_campaigns c order by c.created_at desc`
-    )
-    const stats = await one(
-      `select count(*)::int as impressions,
-              coalesce(sum(revenue_tzs),0)::int as revenue_tzs,
-              (select count(*)::int from videos where ads_enabled and is_published and deleted_at is null) as videos_with_ads
-         from ad_impressions where created_at > now() - interval '30 days'`
-    )
-    res.json({ campaigns, stats })
+    const [rows, perf, stats, categories] = await Promise.all([
+      many(`select ${CAMPAIGN_COLS} from ad_campaigns order by created_at desc`),
+      campaignPerformance(),
+      one(
+        `select count(*)::int                                          as impressions,
+                count(*) filter (where completed)::int                  as completed,
+                coalesce(sum(revenue_micro_tzs),0)::bigint              as revenue_micro,
+                coalesce(sum(creator_micro_tzs),0)::bigint              as creator_micro,
+                coalesce(sum(platform_micro_tzs),0)::bigint             as platform_micro,
+                (select count(*)::int from videos
+                  where ads_enabled and is_published and access_type = 'free_with_ads'
+                    and deleted_at is null)                             as videos_with_ads
+           from ad_impressions where created_at > now() - interval '30 days'`
+      ),
+      many(
+        `select distinct category from videos
+          where category is not null and category <> '' and deleted_at is null
+          order by category`
+      ),
+    ])
+
+    res.json({
+      campaigns: rows.map((c) => campaignOut(c, perf.get(c.id))),
+      stats: {
+        impressions: stats.impressions,
+        completed: stats.completed,
+        revenueTzs: microToTzs(stats.revenue_micro),
+        creatorTzs: microToTzs(stats.creator_micro),
+        platformTzs: microToTzs(stats.platform_micro),
+        videosWithAds: stats.videos_with_ads,
+      },
+      /* So the targeting controls can offer real choices instead of free text. */
+      options: { categories: categories.map((r) => r.category) },
+    })
   })
 )
 
+const PLACEMENTS = ['pre_roll', 'mid_roll', 'post_roll']
+
+const campaignSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  advertiser: z.string().trim().max(120).optional(),
+  cpmTzs: z.coerce.number().int().min(0).max(10_000_000).default(0),
+  active: z.boolean().default(true),
+  startsAt: z.string().datetime().nullish(),
+  endsAt: z.string().datetime().nullish(),
+  placements: z.array(z.enum(PLACEMENTS)).min(1).default(['pre_roll']),
+  targetVideoIds: z.array(z.string().uuid()).max(500).default([]),
+  targetCategories: z.array(z.string().trim().min(1).max(60)).max(60).default([]),
+  targetCreatorIds: z.array(z.string().uuid()).max(500).default([]),
+  skipAfterSeconds: z.coerce.number().int().min(0).max(120).default(5),
+  notes: z.string().trim().max(1000).optional(),
+})
+
+/** A window that ends before it starts would simply never run. */
+const checkWindow = (startsAt, endsAt) => {
+  if (startsAt && endsAt && new Date(endsAt) <= new Date(startsAt)) {
+    throw badRequest('The campaign end date must come after its start date')
+  }
+}
+
 router.post(
   '/ads',
-  validate(
-    z.object({
-      name: z.string().trim().min(2).max(120),
-      advertiser: z.string().trim().max(120).optional(),
-      cpmTzs: z.coerce.number().int().min(0).default(0),
-      active: z.boolean().default(true),
-    })
-  ),
+  validate(campaignSchema),
   asyncHandler(async (req, res) => {
+    const b = req.body
+    checkWindow(b.startsAt, b.endsAt)
+
     const c = await one(
-      `insert into ad_campaigns (name, advertiser, cpm_tzs, active) values ($1,$2,$3,$4) returning *`,
-      [req.body.name, req.body.advertiser || null, req.body.cpmTzs, req.body.active]
+      `insert into ad_campaigns
+         (name, advertiser, cpm_tzs, active, starts_at, ends_at, placements,
+          target_video_ids, target_categories, target_creator_ids,
+          skip_after_seconds, notes, created_by)
+       values ($1,$2,$3,$4,$5,$6,$7::ad_placement[],$8::uuid[],$9::text[],$10::uuid[],$11,$12,$13)
+       returning ${CAMPAIGN_COLS}`,
+      [
+        b.name, b.advertiser || null, b.cpmTzs, b.active,
+        b.startsAt || null, b.endsAt || null, b.placements,
+        b.targetVideoIds, b.targetCategories, b.targetCreatorIds,
+        b.skipAfterSeconds, b.notes || null, req.user.id,
+      ]
     )
+
     await recordStaffAction(req, {
       action: 'CREATED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
       summary: `${who(req)} created the ad campaign "${c.name}"`,
-      detail: { name: c.name },
+      detail: { name: c.name, advertiser: c.advertiser, cpmTzs: c.cpm_tzs, placements: c.placements },
     })
-    res.status(201).json({ campaign: c })
+    res.status(201).json({ campaign: campaignOut(c) })
   })
 )
 
 router.patch(
   '/ads/:id',
-  validate(z.object({ active: z.boolean().optional(), cpmTzs: z.coerce.number().int().min(0).optional() })),
+  validate(campaignSchema.partial()),
   asyncHandler(async (req, res) => {
-    const c = await one(
-      `update ad_campaigns set active = coalesce($2, active), cpm_tzs = coalesce($3, cpm_tzs)
-        where id = $1 returning *`,
-      [req.params.id, req.body.active ?? null, req.body.cpmTzs ?? null]
+    const existing = await one('select * from ad_campaigns where id = $1', [req.params.id])
+    if (!existing) throw notFound('Campaign not found')
+
+    const b = req.body
+    checkWindow(
+      b.startsAt === undefined ? existing.starts_at : b.startsAt,
+      b.endsAt === undefined ? existing.ends_at : b.endsAt
     )
+
+    const c = await one(
+      `update ad_campaigns set
+         name               = coalesce($2, name),
+         advertiser         = coalesce($3, advertiser),
+         cpm_tzs            = coalesce($4, cpm_tzs),
+         active             = coalesce($5, active),
+         starts_at          = coalesce($6, starts_at),
+         ends_at            = coalesce($7, ends_at),
+         placements         = coalesce($8::ad_placement[], placements),
+         target_video_ids   = coalesce($9::uuid[], target_video_ids),
+         target_categories  = coalesce($10::text[], target_categories),
+         target_creator_ids = coalesce($11::uuid[], target_creator_ids),
+         skip_after_seconds = coalesce($12, skip_after_seconds),
+         notes              = coalesce($13, notes),
+         updated_at         = now()
+       where id = $1 returning ${CAMPAIGN_COLS}`,
+      [
+        req.params.id,
+        b.name ?? null, b.advertiser ?? null, b.cpmTzs ?? null, b.active ?? null,
+        b.startsAt ?? null, b.endsAt ?? null, b.placements ?? null,
+        b.targetVideoIds ?? null, b.targetCategories ?? null, b.targetCreatorIds ?? null,
+        b.skipAfterSeconds ?? null, b.notes ?? null,
+      ]
+    )
+
+    const perf = await campaignPerformance(c.id)
+    await recordStaffAction(req, {
+      action: 'UPDATED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
+      summary:
+        b.active === false
+          ? `${who(req)} paused the ad campaign "${c.name}"`
+          : b.active === true
+            ? `${who(req)} resumed the ad campaign "${c.name}"`
+            : `${who(req)} edited the ad campaign "${c.name}"`,
+      detail: { changed: Object.keys(b) },
+    })
+    res.json({ campaign: campaignOut(c, perf.get(c.id)) })
+  })
+)
+
+/**
+ * Somewhere to upload the advert to.
+ *
+ * The browser sends the file straight to Cloudflare, exactly as a creator's
+ * upload does — the video never passes through this server.
+ */
+router.post(
+  '/ads/:id/upload',
+  asyncHandler(async (req, res) => {
+    const c = await one('select * from ad_campaigns where id = $1', [req.params.id])
     if (!c) throw notFound('Campaign not found')
-    res.json({ campaign: c })
+    if (!capabilities.cloudflareStream) throw badRequest('Cloudflare Stream is not configured')
+
+    const upload = await cfCreateDirectUpload({
+      name: `AD · ${c.name}`,
+      maxDurationSeconds: 600,
+      meta: { kind: 'advert', campaignId: c.id },
+    })
+
+    await query('update ad_campaigns set cloudflare_uid = $2, updated_at = now() where id = $1', [
+      c.id,
+      upload.uid,
+    ])
+
+    // `createDirectUpload` returns `uploadUrl`; reading Cloudflare's raw
+    // `uploadURL` here handed the browser `undefined` to upload to.
+    res.status(201).json({ uploadUrl: upload.uploadUrl, uid: upload.uid })
+  })
+)
+
+/**
+ * Has the advert finished encoding?
+ *
+ * Cloudflare only knows a video's duration once it has processed it, and the
+ * duration is what the player uses to decide when the skip button appears.
+ */
+router.get(
+  '/ads/:id/media',
+  asyncHandler(async (req, res) => {
+    const c = await one('select * from ad_campaigns where id = $1', [req.params.id])
+    if (!c) throw notFound('Campaign not found')
+    if (!c.cloudflare_uid) return res.json({ state: 'none' })
+
+    const details = await cfVideoDetails(c.cloudflare_uid).catch(() => null)
+    const ready = details?.readyToStream === true
+    const seconds = Math.round(Number(details?.duration || 0))
+
+    if (ready && seconds > 0 && seconds !== c.duration_seconds) {
+      await query('update ad_campaigns set duration_seconds = $2, updated_at = now() where id = $1', [
+        c.id,
+        seconds,
+      ])
+    }
+
+    res.json({
+      state: ready ? 'ready' : details ? 'processing' : 'unknown',
+      durationSeconds: seconds || c.duration_seconds || 0,
+      uid: c.cloudflare_uid,
+    })
+  })
+)
+
+/**
+ * Delete a campaign.
+ *
+ * Its impressions are kept — they are the evidence behind money already paid to
+ * creators, and deleting them would restate earnings that have been reported.
+ */
+router.delete(
+  '/ads/:id',
+  requireAdmin(),
+  asyncHandler(async (req, res) => {
+    const c = await one('select * from ad_campaigns where id = $1', [req.params.id])
+    if (!c) throw notFound('Campaign not found')
+
+    await query('delete from ad_campaigns where id = $1', [c.id])
+    await recordStaffAction(req, {
+      action: 'DELETED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
+      summary: `${who(req)} deleted the ad campaign "${c.name}"`,
+      detail: { name: c.name },
+    })
+    res.json({ deleted: true })
   })
 )
 

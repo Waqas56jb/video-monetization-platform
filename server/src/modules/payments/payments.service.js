@@ -79,7 +79,8 @@ export async function settlePayment({ providerRef, status, failureReason, raw })
          values ($1,$2,$3,'sale',$4,$5,$6,$7)`,
         [video.creator_id, video.id, purchase.id, payment.amount_tzs, split.creator, split.platform, split.percent]
       )
-      await client.query('update videos set paid_unlocks = paid_unlocks + 1 where id = $1', [video.id])
+      // `videos.paid_unlocks` is recounted from `purchases` by a trigger
+      // (migration 006), so it needs no help from here.
     }
 
     return { payment: pay[0], purchase }
