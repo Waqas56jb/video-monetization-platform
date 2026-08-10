@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { PlayCircle, Rocket } from 'lucide-react'
+import { CreditCard, PlayCircle, Rocket, Smartphone, Wallet } from 'lucide-react'
 import CountUp from '@/components/ui/CountUp'
 import Icon from '@/components/ui/Icon'
 import PhoneMockup from './PhoneMockup'
@@ -69,9 +69,14 @@ export default function Hero() {
         },
       ]
     : [
-        { cls: 'fc1', icon: 'badge-check', title: 'Instant unlock', sub: 'M-Pesa & Airtel Money' },
+        {
+          cls: 'fc1',
+          icon: 'badge-check',
+          title: 'Instant unlock',
+          sub: 'Mobile Money • Cards • Digital Payments',
+        },
         { cls: 'fc2', icon: 'wallet', title: `You keep ${s?.creatorSplitPercent ?? 70}%`, sub: 'Of every single sale' },
-        { cls: 'fc3', icon: 'trending-up', title: 'Then free with ads', sub: 'And it keeps earning' },
+        { cls: 'fc3', icon: 'trending-up', title: 'Then Free + Ads', sub: 'And it keeps earning' },
       ]
 
   return (
@@ -88,17 +93,16 @@ export default function Hero() {
           </span>
 
           <h1>
-            Upload. Sell.
+            Your Content.
             <br />
-            <span className="grad-text">Get Paid</span> Before
+            Your Audience.
             <br />
-            You Go Free.
+            <span className="grad-text">Your Earnings.</span>
           </h1>
 
           <p className="hero-sub">
-            The premium home for Tanzanian creators. Sell your videos with <b>PPV Forever</b> or{' '}
-            <b>Paid Premiere</b>, get paid instantly via <b>M-Pesa &amp; Airtel Money</b> — then
-            release free with ads and keep earning.
+            Upload exclusive content, set your price, and earn directly from your audience. You
+            decide what stays paid, what becomes free, and when.
           </p>
 
           <div className="hero-actions">
@@ -109,9 +113,36 @@ export default function Hero() {
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('/explore')}>
               <PlayCircle />
-              <span className="btn-label-full">Watch a Premiere</span>
-              <span className="btn-label-short">Watch</span>
+              <span className="btn-label-full">Explore MTONYO+</span>
+              <span className="btn-label-short">Explore</span>
             </button>
+          </div>
+
+          {/**
+           * Payments, described by what the viewer can do rather than by which
+           * companies we happen to have connected.
+           *
+           * The old line named M-Pesa and Airtel Money specifically, which reads
+           * as a limit — and dates the page the moment a third method is added.
+           */}
+          <div className="hero-pay">
+            <b>Fast, Secure &amp; Flexible Payments</b>
+            <div className="hero-pay-methods">
+              <span>
+                <Smartphone size={15} />
+                Mobile Money
+              </span>
+              <i aria-hidden="true">•</i>
+              <span>
+                <CreditCard size={15} />
+                Cards
+              </span>
+              <i aria-hidden="true">•</i>
+              <span>
+                <Wallet size={15} />
+                Digital Payments
+              </span>
+            </div>
           </div>
 
           <div className="hero-stats">

@@ -9,7 +9,7 @@ const PERKS = [
   {
     icon: 'banknote',
     title: 'Sell your way',
-    text: 'PPV Forever, or a Paid Premiere that turns into free-with-ads and keeps earning.',
+    text: 'Pay Once, or a Paid Premiere that becomes Free + Ads when your paid period ends and keeps earning.',
   },
   {
     icon: 'timer',

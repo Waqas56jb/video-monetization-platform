@@ -247,6 +247,16 @@ their own account.
 money flow end to end. Going live is a change to that variable and its
 credentials; nothing else in the app knows the difference.
 
+**The public names and the database values differ, deliberately.** A release model
+is called **Pay Once**, **Paid Premiere** or **Free + Ads** everywhere a person can
+read it — viewer, creator and admin alike. The stored enum is still
+`ppv_forever` / `paid_premiere` / `free_with_ads`, because renaming a column that
+purchases and triggers depend on would be a migration with real risk for no gain.
+So the labels live in `client/src/data/copy.js` and the `ACCESS_LABEL` maps, and
+nothing reads a label to make a decision. The word "forever" is not used in
+customer-facing copy at all: the client's point was that "the video stays in your
+library" says the same thing without implying MTONYO+ holds onto a creator's work.
+
 **An entitlement is one viewer and one video.** `purchases` is keyed on both, and
 `resolveAccess` reads it that way, so buying one video cannot reach another. Note
 the three other doors into full playback, because they look identical on screen

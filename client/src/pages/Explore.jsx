@@ -22,9 +22,9 @@ import { useRole } from '@/context/AuthContext'
  */
 const ACCESS_FILTERS = [
   { label: 'All Access', value: '' },
-  { label: 'PPV Forever', value: 'ppv_forever' },
+  { label: 'Pay Once', value: 'ppv_forever' },
   { label: 'Paid Premiere', value: 'paid_premiere' },
-  { label: 'Free With Ads', value: 'free_with_ads' },
+  { label: 'Free + Ads', value: 'free_with_ads' },
 ]
 
 const SORTS = [
@@ -88,8 +88,8 @@ export default function Explore() {
               Explore <span className="brand-accent">MTONYO+</span>
             </h1>
             <p>
-              Every premiere, pay-per-view drop and free-with-ads show on the platform. Watch the
-              free preview, pay with mobile money, keep it forever.
+              Every Paid Premiere, Pay Once release and Free + Ads show on the platform. Watch
+              the free preview, pay your way, and it stays in your library.
             </p>
           </div>
 

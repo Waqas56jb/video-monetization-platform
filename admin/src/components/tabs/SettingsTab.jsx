@@ -286,8 +286,8 @@ function PlatformPanel() {
   const TOGGLES = [
     ['registrations_open', 'Registrations open', 'Turn off to stop new accounts being created'],
     ['require_creator_approval', 'Review every upload', 'Nothing goes live until a human approves it'],
-    ['auto_premiere_to_free', 'Premieres become free with ads', 'When the paid window on a video runs out'],
-    ['preroll_enabled', 'Pre-roll ads', 'Shown before free-with-ads videos'],
+    ['auto_premiere_to_free', 'Premieres become Free + Ads', 'When the paid window on a video runs out'],
+    ['preroll_enabled', 'Pre-roll ads', 'Shown before Free + Ads videos'],
     ['ads_on_expired_premieres', 'Ads on expired premieres', 'Once a paid window has closed'],
     ['share_ad_revenue', 'Share ad revenue with creators', 'Uses the same split as sales'],
     ['maintenance_mode', 'Maintenance mode', 'Shows a notice to everyone on the public site'],

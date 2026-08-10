@@ -28,9 +28,9 @@ const REJECT_REASONS = [
 ]
 
 const ACCESS_LABEL = {
-  ppv_forever: 'Pay once, keep forever',
+  ppv_forever: 'Pay Once',
   paid_premiere: 'Paid Premiere',
-  free_with_ads: 'Free with ads',
+  free_with_ads: 'Free + Ads',
 }
 
 export default function ReviewTab() {
@@ -245,7 +245,7 @@ export default function ReviewTab() {
 
                   {terms.accessType === 'paid_premiere' && (
                     <p className="field-note">
-                      After {terms.premiereDays || 0} days this video becomes free with ads, and the
+                      After {terms.premiereDays || 0} days this video becomes Free + Ads, and the
                       creator earns from advertising instead of sales.
                     </p>
                   )}

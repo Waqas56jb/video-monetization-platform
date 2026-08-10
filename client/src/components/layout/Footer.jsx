@@ -22,7 +22,7 @@ export default function Footer() {
             <Logo />
             <p>
               The premium video platform helping Tanzanian creators monetize their content. Upload
-              first, sell it, then release free with ads.
+              first, sell it, then release Free + Ads.
             </p>
             <div className="socials">
               {SOCIALS.map(({ label, Icon }) => (

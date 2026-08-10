@@ -60,7 +60,7 @@ export default function Watch() {
   const [resumeHint, setResumeHint] = useState(0)
 
   /**
-   * Advertising on a free-with-ads video.
+   * Advertising on a Free + Ads video.
    *
    * All three breaks are fetched up front: the mid-roll has to be known before
    * playback reaches the middle. `playedBreaks` is what stops an advert from
@@ -234,7 +234,7 @@ export default function Watch() {
     showToast(
       from > 5
         ? `Unlocked — picking up from ${duration(Math.floor(from))}`
-        : 'Unlocked — this video is yours forever'
+        : 'Unlocked — it is in your library now'
     )
     playback.reload()
     video.reload({ quiet: true })
@@ -309,7 +309,7 @@ export default function Watch() {
     if (a?.isStaff) {
       return { full: 'Open to you as staff — not a purchase', short: 'Staff', tone: 'is-note' }
     }
-    if (v?.accessType === 'free_with_ads') return { full: 'Free with ads', short: 'Free', tone: 'is-note' }
+    if (v?.accessType === 'free_with_ads') return { full: 'Free + Ads', short: 'Free', tone: 'is-note' }
     return { full: 'In your library', short: 'Owned', tone: '' }
   })()
   /** How much of the film is behind the paywall — the part worth paying for. */
@@ -424,7 +424,7 @@ export default function Watch() {
                     {lockedRemainder
                       ? `Preview ended · ${duration(lockedRemainder)} still locked · `
                       : 'Preview ended · '}
-                    <b>{tzs(v.priceTzs)}</b> to unlock forever
+                    <b>{tzs(v.priceTzs)}</b> to unlock it
                   </>
                 ) : (
                   <>
@@ -521,8 +521,8 @@ export default function Watch() {
             <b>{ACCESS_LABEL[v.accessType]}</b>{' '}
             {v.accessType === 'paid_premiere'
               ? premiereDays != null
-                ? `— pay ${tzs(v.priceTzs)} to watch now. After ${premiereDays} more day${premiereDays === 1 ? '' : 's'} this becomes free with ads, and anyone who paid keeps it forever.`
-                : `— pay ${tzs(v.priceTzs)} to watch now. When the premiere window closes it becomes free with ads, and anyone who paid keeps it forever.`
+                ? `— pay ${tzs(v.priceTzs)} to watch now. After ${premiereDays} more day${premiereDays === 1 ? '' : 's'} this becomes Free + Ads, and anyone who paid keeps it in their library.`
+                : `— pay ${tzs(v.priceTzs)} to watch now. When your paid period ends it becomes Free + Ads, and anyone who paid keeps it in their library.`
               : v.accessType === 'free_with_ads'
                 ? '— free to watch. The creator earns from the advertising shown before it.'
                 : `— pay ${tzs(v.priceTzs)} once and it is yours permanently, on any device you log into.`}

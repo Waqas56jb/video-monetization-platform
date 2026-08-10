@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Crown } from 'lucide-react'
+import { ArrowRight, Check, Crown } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
-import { EARN_ITEMS, IMG } from '@/data/copy'
+import { CREATOR_CONTROL, EARN_ITEMS, IMG } from '@/data/copy'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
 
@@ -49,12 +49,29 @@ export default function ForCreators() {
             FOR CREATORS
           </span>
           <h2>
-            Your Content. Your Price. <span className="grad-text">Your Money.</span>
+            Your Content. <span className="grad-text">Your Rules.</span>
           </h2>
           <p>
-            Stop giving your best work away for free. MTONYO+ flips the model — your fans pay
-            first, then the world watches with ads. Either way, you earn.
+            Your audience pays first, then the world watches with ads. Either way, you earn — and
+            every one of those decisions is yours.
           </p>
+
+          {/**
+           * The principle, stated plainly.
+           *
+           * The client was specific about this: MTONYO+ gives creators tools and
+           * choices, it does not control their content. Four short lines saying
+           * "you choose" carry that better than a paragraph explaining it.
+           */}
+          <ul className="control-list">
+            {CREATOR_CONTROL.points.map((point) => (
+              <li key={point}>
+                <Check size={16} />
+                {point}
+              </li>
+            ))}
+          </ul>
+          <p className="control-note">{CREATOR_CONTROL.footnote}</p>
 
           <div className="earn-list">
             {EARN_ITEMS.map((item) => (
@@ -72,7 +89,7 @@ export default function ForCreators() {
 
           <button className="btn btn-gold" onClick={() => navigate('/signup')}>
             <ArrowRight />
-            Become a Creator — It&apos;s Free
+            Start Earning Today
           </button>
         </div>
       </div>

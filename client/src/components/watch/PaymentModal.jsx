@@ -151,7 +151,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             </span>
             <h3>Unlock &ldquo;{video.title}&rdquo;</h3>
             <p className="pay-sub">
-              One payment of <b>{tzs(video.priceTzs)}</b>. It stays in your library forever, on
+              One payment of <b>{tzs(video.priceTzs)}</b>. It stays in your library, on
               every device you log into.
             </p>
 

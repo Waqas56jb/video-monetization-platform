@@ -1,4 +1,4 @@
-import { Lock, Zap } from 'lucide-react'
+import { Lock, ShieldCheck, Zap } from 'lucide-react'
 import { IMG } from '@/data/copy'
 import { duration, tzs } from '@/hooks/useApi'
 import { mediaUrl } from '@/lib/api'
@@ -29,15 +29,15 @@ export default function PhoneMockup({ video, onUnlock }) {
 
   const label =
     video?.accessType === 'free_with_ads'
-      ? 'FREE WITH ADS'
+      ? 'FREE + ADS'
       : video?.accessType === 'ppv_forever'
-        ? 'PAY ONCE · FOREVER'
+        ? 'PAY ONCE'
         : 'PAID PREMIERE'
 
   const cta = hasReal
     ? video.accessType === 'free_with_ads'
       ? 'WATCH FREE'
-      : `UNLOCK FULL VIDEO · ${tzs(video.priceTzs)}`
+      : `UNLOCK FULL VIDEO — ${tzs(video.priceTzs)}`
     : 'UNLOCK FULL VIDEO'
 
   return (
@@ -67,9 +67,17 @@ export default function PhoneMockup({ video, onUnlock }) {
             <Zap />
             {cta}
           </button>
+          {/* Named providers plus an honest "more", rather than a list that
+              implies these two are the only ways to pay. */}
+          <div className="ph-secure">
+            <ShieldCheck size={12} />
+            Secure payment
+          </div>
           <div className="ph-methods">
             <span>M-PESA</span>
             <span>AIRTEL MONEY</span>
+            <span>CARDS</span>
+            <small>+ more</small>
           </div>
         </div>
       </div>

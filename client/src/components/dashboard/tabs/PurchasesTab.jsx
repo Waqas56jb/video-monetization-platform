@@ -44,7 +44,7 @@ export default function PurchasesTab() {
           <EmptyState
             icon={Receipt}
             title="You haven't bought anything yet"
-            message="Every purchase is receipted here, and what you buy stays yours forever."
+            message="Every purchase is receipted here, and what you buy stays in your library."
             action={
               <button className="btn btn-gold" onClick={() => navigate('/explore')}>
                 <Compass />

@@ -44,8 +44,10 @@ export default function Player({
           </div>
         </div>
         <span className={`pill player-pill ${unlocked ? 'ok' : 'pend'}`}>
-          <span className="pill-full">{unlocked ? '✓ UNLOCKED · YOURS FOREVER' : 'FREE PREVIEW'}</span>
-          <span className="pill-short">{unlocked ? '✓ YOURS' : 'PREVIEW'}</span>
+          <span className="pill-full">
+            {unlocked ? '✓ UNLOCKED · IN YOUR LIBRARY' : 'FREE PREVIEW'}
+          </span>
+          <span className="pill-short">{unlocked ? '✓ OWNED' : 'PREVIEW'}</span>
         </span>
       </div>
 

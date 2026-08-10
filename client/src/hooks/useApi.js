@@ -118,15 +118,15 @@ export const daysUntil = (iso) => {
 
 /** What to call each way of selling a video, in the viewer's language. */
 export const ACCESS_LABEL = {
-  ppv_forever: 'Pay once · yours forever',
+  ppv_forever: 'Pay Once',
   paid_premiere: 'Paid Premiere',
-  free_with_ads: 'Free with ads',
+  free_with_ads: 'Free + Ads',
 }
 
 export const ACCESS_SHORT = {
-  ppv_forever: 'PPV',
+  ppv_forever: 'Pay Once',
   paid_premiere: 'Premiere',
-  free_with_ads: 'Free',
+  free_with_ads: 'Free + Ads',
 }
 
 export const ACCESS_PILL = {

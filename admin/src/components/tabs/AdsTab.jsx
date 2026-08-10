@@ -11,7 +11,7 @@ import { useConfirm } from '@/context/ConfirmContext'
 import { useToast } from '@/context/ToastContext'
 
 /**
- * Advertising on free-with-ads videos.
+ * Advertising on Free + Ads videos.
  *
  * A campaign is only real once it can be served, so everything the selection
  * logic reads is editable here: the advert itself, the window it runs in, the
@@ -208,7 +208,7 @@ export default function AdsTab() {
 
   const ps = settings.data?.settings
   const AD_TOGGLES = [
-    ['preroll_enabled', 'Pre-roll ads', 'Shown before a free-with-ads video starts'],
+    ['preroll_enabled', 'Pre-roll ads', 'Shown before a Free + Ads video starts'],
     ['midroll_enabled', 'Mid-roll ads', 'Part way through videos long enough to have a middle'],
     ['postroll_enabled', 'Post-roll ads', 'Shown after the video ends'],
     ['ads_on_expired_premieres', 'Ads once a premiere ends', 'When the paid window on a video closes'],
@@ -393,7 +393,7 @@ export default function AdsTab() {
                 ))}
               </div>
               <p className="field-note">
-                Pick nothing and it runs on every free-with-ads video. Picking categories narrows it
+                Pick nothing and it runs on every Free + Ads video. Picking categories narrows it
                 to those.
               </p>
             </div>
@@ -429,7 +429,7 @@ export default function AdsTab() {
           emptyProps={{
             icon: Megaphone,
             title: 'No campaigns yet',
-            hint: 'Create one above, upload its advert, and it starts serving on free-with-ads videos.',
+            hint: 'Create one above, upload its advert, and it starts serving on Free + Ads videos.',
           }}
         >
           <TableWrap>

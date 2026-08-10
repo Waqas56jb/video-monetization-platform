@@ -19,8 +19,8 @@ export default function Trending() {
             Hot Videos <span className="grad-text">Everyone&apos;s Buying</span>
           </h2>
           <p>
-            Exclusive premieres and pay-per-view drops from Tanzania&apos;s biggest creators. Watch
-            the free preview, pay with mobile money, keep watching forever.
+            Exclusive premieres and Pay Once releases from Tanzania&apos;s biggest creators. Watch
+            the free preview, pay your way, and it stays in your library.
           </p>
         </div>
 

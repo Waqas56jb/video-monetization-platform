@@ -27,7 +27,7 @@ export default function LibraryTab() {
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <BadgeCheck style={{ color: 'var(--green)', width: 26, height: 26, flexShrink: 0 }} />
           <div>
-            <b style={{ fontFamily: 'Sora' }}>Your purchases are yours forever.</b>
+            <b style={{ fontFamily: 'Sora' }}>What you buy stays in your library.</b>
             <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 3 }}>
               Every video below stays unlocked on any device you log into — even after logout.
             </p>
@@ -43,7 +43,7 @@ export default function LibraryTab() {
         <EmptyState
           icon={Library}
           title="Your library is empty"
-          message="Anything you buy lands here and stays yours — on every device, forever."
+          message="Anything you buy lands here and stays in your library — on every device you sign in to."
           action={
             <button className="btn btn-gold" onClick={() => navigate('/explore')}>
               <Compass />

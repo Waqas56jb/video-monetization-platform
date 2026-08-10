@@ -1,6 +1,6 @@
 import { Gem } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
-import { FEATURES } from '@/data/copy'
+import { CONTENT_KINDS, FEATURES } from '@/data/copy'
 
 export default function Features() {
   return (
@@ -12,12 +12,25 @@ export default function Features() {
             PLATFORM POWER
           </span>
           <h2>
-            Everything a Creator Needs to <span className="grad-text">Monetize</span>
+            Share Any Story. <span className="grad-text">Earn Your Way.</span>
           </h2>
           <p>
-            One upload. Everywhere. Real value — built with world-class streaming infrastructure and
-            bank-grade payment security.
+            Whatever you make, MTONYO+ can sell it — built on world-class streaming infrastructure
+            and secure payments.
           </p>
+
+          {/**
+           * What people actually publish here.
+           *
+           * The page read as a film-and-music platform, which quietly tells a
+           * podcaster or a tutor that it is not for them. Naming the range is the
+           * cheapest way to say otherwise.
+           */}
+          <ul className="kind-chips">
+            {CONTENT_KINDS.map((kind) => (
+              <li key={kind}>{kind}</li>
+            ))}
+          </ul>
         </div>
 
         <div className="feat-grid">

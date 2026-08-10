@@ -7,7 +7,7 @@ import { LockKeyhole, Zap } from 'lucide-react'
  *   Want to keep watching?
  *   You've reached the end of your free preview.
  *   TZS 500
- *   One-time payment • Yours forever
+ *   One payment • Stays in your library
  *   UNLOCK & CONTINUE — TZS 500
  *   M-Pesa • Airtel Money
  *
@@ -26,7 +26,7 @@ export default function Paywall({ show, price, onUnlock, onDismiss }) {
         <p className="pw-sub">You&apos;ve reached the end of your free preview.</p>
 
         <div className="pw-price">{price}</div>
-        <p className="pw-terms">One-time payment • Yours forever</p>
+        <p className="pw-terms">One payment • Stays in your library</p>
 
         <button className="btn btn-gold btn-block pw-cta" onClick={onUnlock}>
           <Zap />

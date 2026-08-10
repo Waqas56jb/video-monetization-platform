@@ -24,21 +24,21 @@ export function toCard(v, { owned = false } = {}) {
     tag: owned
       ? { cls: 'tag-owned', label: 'OWNED' }
       : v.accessType === 'free_with_ads'
-        ? { cls: 'tag-free', label: 'FREE WITH ADS' }
+        ? { cls: 'tag-free', label: 'FREE + ADS' }
         : v.accessType === 'paid_premiere'
           ? { cls: 'tag-prem', label: premiereDays != null ? `${premiereDays} DAYS LEFT` : 'PAID PREMIERE' }
           : { cls: 'tag-ppv', label: 'PAY ONCE' },
 
     price: owned ? 'Owned' : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
     priceNote: owned
-      ? 'yours forever'
+      ? 'in your library'
       : v.accessType === 'free_with_ads'
         ? 'ad supported'
         : v.accessType === 'paid_premiere'
           ? premiereDays != null
-            ? `free with ads in ${premiereDays} days`
+            ? `Free + Ads in ${premiereDays} days`
             : 'paid premiere'
-          : 'keep it forever',
+          : 'stays in your library',
     priceColor: owned ? 'var(--green)' : v.accessType === 'free_with_ads' ? 'var(--green)' : undefined,
 
     views: `${compact(v.views)} views`,

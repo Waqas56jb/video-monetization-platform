@@ -60,7 +60,7 @@ export default function Login() {
             waiting for you.
           </>
         ),
-        text: "Every video you've purchased stays unlocked forever. Log in from any device — your content follows you.",
+        text: "Every video you've purchased stays in your library. Log in from any device — your content follows you.",
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={

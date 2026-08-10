@@ -38,7 +38,7 @@ export default function Testimonials() {
     {
       icon: Handshake,
       title: 'It keeps earning after the paywall',
-      text: 'When a Paid Premiere window closes, the video turns free with ads and carries on paying you. One upload, two ways to earn from it.',
+      text: 'When a Paid Premiere window closes, the video turns Free + Ads and carries on paying you. One upload, two ways to earn from it.',
     },
   ]
 

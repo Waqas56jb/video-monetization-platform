@@ -44,19 +44,19 @@ const SELL_OPTIONS = [
   {
     value: 'ppv_forever',
     icon: 'infinity',
-    title: 'PPV Forever',
-    text: 'Set a price and keep it paid forever. Fans buy once, own it always.',
+    title: 'Pay Once',
+    text: 'Set a price and keep it paid. Viewers pay once and it stays in their library.',
   },
   {
     value: 'paid_premiere',
     icon: 'calendar-clock',
     title: 'Paid Premiere',
-    text: 'Paid for a set period, then auto-releases free with ads — and keeps earning.',
+    text: 'Paid for a set period, then auto-releases Free + Ads — and keeps earning.',
   },
   {
     value: 'free_with_ads',
     icon: 'megaphone',
-    title: 'Free with Ads',
+    title: 'Free + Ads',
     text: 'Free to watch from day one. You earn from advertising instead of sales.',
   },
 ]
@@ -493,7 +493,7 @@ export default function UploadTab({ onSubmitted }) {
               <Info />
               <span>
                 After <b>{form.premiereDays || 0} days</b> this video automatically becomes{' '}
-                <b>FREE WITH ADS</b> and continues earning ad revenue for you. The MTONYO+ team can
+                <b>FREE + ADS</b> and continues earning ad revenue for you. The MTONYO+ team can
                 adjust this window when they review it.
               </span>
             </div>
@@ -636,7 +636,7 @@ function reviewState(v) {
 }
 
 const accessLabel = (t) =>
-  ({ ppv_forever: 'PPV Forever', paid_premiere: 'Paid Premiere', free_with_ads: 'Free with ads' })[t]
+  ({ ppv_forever: 'Pay Once', paid_premiere: 'Paid Premiere', free_with_ads: 'Free + Ads' })[t]
 
 const priceLabel = (v) =>
   v.accessType === 'free_with_ads' ? 'Free' : `TZS ${Number(v.priceTzs || 0).toLocaleString()}`

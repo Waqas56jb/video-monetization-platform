@@ -10,21 +10,18 @@ export default function CallToAction() {
         <div className="cta-wrap">
           <span className="badge">
             <span className="dot" />
-            JOIN 12,450+ USERS
+            TANZANIA&apos;S CREATOR PLATFORM
           </span>
           <h2 style={{ marginTop: 20 }}>
-            One Upload. Everywhere.
+            You Created It.
             <br />
-            <span className="grad-text">Real Value.</span>
+            <span className="grad-text">Now Let It Earn.</span>
           </h2>
-          <p>
-            Whether you create or watch — this is where Tanzanian content gets the value it
-            deserves. Free to join. Paid in minutes.
-          </p>
+          <p>Join Tanzanian creators earning directly from their audiences on MTONYO+.</p>
           <div className="cta-actions">
             <button className="btn btn-gold" onClick={() => navigate('/signup')}>
               <Sparkles />
-              Create Free Account
+              Start Earning Today
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('/login')}>
               <LogIn />

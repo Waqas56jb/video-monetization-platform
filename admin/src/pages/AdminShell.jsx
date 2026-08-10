@@ -23,7 +23,7 @@ const PAGE_META = {
   '/payments': ['Payments', 'Every transaction, as it happens'],
   '/withdrawals': ['Withdrawals', 'Creator payout requests'],
   '/revenue': ['Revenue & Splits', 'What the platform keeps, and what creators earn'],
-  '/ads': ['Ads Management', 'Campaigns on free-with-ads videos'],
+  '/ads': ['Ads Management', 'Campaigns on Free + Ads videos'],
   '/audit': ['Audit Log', 'Every action, permanently recorded'],
   '/settings': ['Settings', 'Your account, the platform, and the team'],
 }

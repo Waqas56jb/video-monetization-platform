@@ -54,7 +54,7 @@ export default function EarningsTab() {
       icon: 'ticket',
       label: 'From sales',
       value: tzs(balance?.fromSalesTzs),
-      note: 'Pay-per-view and paid premieres',
+      note: 'Pay Once and Paid Premiere sales',
     },
     {
       icon: 'megaphone',
@@ -64,7 +64,7 @@ export default function EarningsTab() {
         ? `${Number(ads.impressions).toLocaleString()} ad view${ads.impressions === 1 ? '' : 's'} across ${ads.videosWithImpressions} video${ads.videosWithImpressions === 1 ? '' : 's'}`
         : ads?.videosCarryingAds
           ? `${ads.videosCarryingAds} video${ads.videosCarryingAds === 1 ? '' : 's'} carrying ads — no views yet`
-          : 'Starts when a premiere expires and turns free with ads',
+          : 'Starts when a premiere expires and turns Free + Ads',
     },
   ]
 
@@ -129,7 +129,7 @@ export default function EarningsTab() {
             </div>
             <p className="field-note">
               You keep {summary.data?.splitPercent ?? 70}% of both. Advertising revenue is
-              credited as adverts are watched on your free-with-ads videos.
+              credited as adverts are watched on your Free + Ads videos.
             </p>
           </Panel>
         </>

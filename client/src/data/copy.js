@@ -62,9 +62,9 @@ export const LANDING_SHOWCASE = [
     title: 'The Journey — Live From Dar',
     author: 'Zuchu Studio',
     avatar: IMG.avatarZuchu,
-    tag: { cls: 'tag-ppv', label: 'PPV FOREVER' },
+    tag: { cls: 'tag-ppv', label: 'PAY ONCE' },
     price: 'TZS 1,000',
-    priceNote: 'Own it forever',
+    priceNote: 'Stays in your library',
     views: '35,120',
   },
   {
@@ -74,9 +74,9 @@ export const LANDING_SHOWCASE = [
     title: 'Studio Session Live Vol. 3',
     author: 'Marioo Music',
     avatar: IMG.avatarMarioo,
-    tag: { cls: 'tag-ppv', label: 'PPV FOREVER' },
+    tag: { cls: 'tag-ppv', label: 'PAY ONCE' },
     price: 'TZS 800',
-    priceNote: 'Own it forever',
+    priceNote: 'Stays in your library',
     views: '21,490',
   },
   {
@@ -86,7 +86,7 @@ export const LANDING_SHOWCASE = [
     title: 'Konser Dar Live — Full Show',
     author: 'Rayvanny TV',
     avatar: IMG.avatarRayvanny,
-    tag: { cls: 'tag-free', label: 'FREE WITH ADS' },
+    tag: { cls: 'tag-free', label: 'FREE + ADS' },
     price: 'FREE',
     priceNote: 'Premiere ended · ads',
     priceColor: 'var(--green)',
@@ -96,32 +96,104 @@ export const LANDING_SHOWCASE = [
 
 /** The scrolling strip of what the platform does. */
 export const MARQUEE_ITEMS = [
-  'PPV FOREVER',
-  'PAID PREMIERE',
-  'M-PESA INSTANT UNLOCK',
-  'AIRTEL MONEY',
-  '70/30 CREATOR SPLIT',
-  'AUTO SOCIAL PREVIEWS',
-  'FREE WITH ADS',
+  'INSTANT ACCESS',
+  'FLEXIBLE PAYMENTS',
+  'CREATOR CONTROL',
+  'PAID PREMIERES',
+  'FREE + ADS',
+  'PAY ONCE',
 ]
 
 /** How buying a video works, for someone who has never done it. */
 export const STEPS = [
-  { icon: 'compass', title: 'Discover', text: 'See the 60s preview shared on Instagram, TikTok or WhatsApp.' },
-  { icon: 'play-circle', title: 'Watch Preview', text: 'Get hooked with the free portion the creator chose.', delay: 1 },
-  { icon: 'lock', title: 'Paywall Appears', text: 'Video pauses at the exact paywall point. No bypass possible.', tone: 'gold', delay: 2 },
-  { icon: 'smartphone', title: 'Pay Mobile Money', text: 'Choose M-Pesa or Airtel Money. Approve on your phone.', tone: 'gold', delay: 3 },
-  { icon: 'zap', title: 'Instant Unlock', text: 'Payment verified in seconds — video continues automatically.', tone: 'green', delay: 4 },
-  { icon: 'infinity', title: 'Yours Forever', text: 'Purchases stay unlocked in your library. Even after logout.', tone: 'green', delay: 4 },
+  { icon: 'upload', title: 'Upload your content', text: 'Upload your videos safely and easily.' },
+  {
+    icon: 'sliders-horizontal',
+    title: 'Choose how people watch',
+    text: 'Pick how you want your audience to access your content.',
+    tone: 'gold',
+    delay: 1,
+  },
+  {
+    icon: 'wallet',
+    title: 'Your audience pays their way',
+    text: 'They pay using their preferred available payment method.',
+    tone: 'gold',
+    delay: 2,
+  },
+  {
+    icon: 'bar-chart-3',
+    title: 'You earn',
+    text: 'Track sales, views and earnings from your dashboard.',
+    tone: 'green',
+    delay: 3,
+  },
 ]
+
+/**
+ * The three ways a creator can release something.
+ *
+ * Named from the viewer's side of the transaction, which is the client's point:
+ * "Pay Once" says what you do, where "PPV Forever" was jargon that also implied
+ * the platform keeps the video locked up on the creator's behalf.
+ */
+export const ACCESS_OPTIONS = [
+  {
+    key: 'ppv_forever',
+    icon: 'lock',
+    label: 'Pay Once',
+    tagline: 'One payment. Full access.',
+    text: 'Viewers pay once and the video stays in their library.',
+  },
+  {
+    key: 'paid_premiere',
+    icon: 'calendar-clock',
+    tone: 'gold',
+    label: 'Paid Premiere',
+    tagline: 'Start paid. Choose when it becomes free.',
+    text:
+      'Set your price and choose your paid period. When that period ends, the video becomes ' +
+      'Free + Ads automatically.',
+  },
+  {
+    key: 'free_with_ads',
+    icon: 'megaphone',
+    tone: 'green',
+    label: 'Free + Ads',
+    tagline: 'Free to watch. Creators earn from advertising.',
+    text: 'Anyone can watch without paying while the creator earns from ads.',
+  },
+]
+
+/**
+ * What MTONYO+ is for — deliberately wider than films and music.
+ *
+ * A creator who makes podcasts or courses should see themselves on this page.
+ */
+export const CONTENT_KINDS = [
+  'Films', 'Series', 'Music', 'Concerts', 'Comedy',
+  'Documentaries', 'Sports', 'Podcasts', 'Courses', 'Behind the Scenes',
+]
+
+/** The principle the client wants running through the whole site. */
+export const CREATOR_CONTROL = {
+  heading: 'Your Content. Your Rules.',
+  points: [
+    'You choose the price.',
+    'You choose how it’s released.',
+    'You choose your paid period.',
+    'You choose when it becomes free.',
+  ],
+  footnote: 'MTONYO+ provides the platform. You control the release.',
+}
 
 /** What the platform offers creators. */
 export const FEATURES = [
   {
     icon: 'banknote',
     tone: 'gold',
-    title: 'PPV Forever & Paid Premiere',
-    text: 'Sell each video your way: keep it paid forever, or run a Paid Premiere that automatically becomes free-with-ads when its window expires — and keeps earning from ads.',
+    title: 'Pay Once & Paid Premiere',
+    text: 'Release each video your way: keep it paid, or run a Paid Premiere that becomes Free + Ads automatically when your paid period ends — and keeps earning from ads.',
   },
   {
     icon: 'timer',
@@ -132,8 +204,8 @@ export const FEATURES = [
   {
     icon: 'smartphone-nfc',
     tone: 'green',
-    title: 'M-Pesa & Airtel Money',
-    text: "Built natively for Tanzanian mobile money. Payment verified in seconds and the video unlocks instantly — permanently tied to the customer's account.",
+    title: 'Fast, Secure & Flexible Payments',
+    text: "Mobile money, cards and digital payments. Verified in seconds, and the video unlocks instantly — tied to the customer's own account.",
     delay: 2,
   },
   {
@@ -171,7 +243,7 @@ export const EARN_ITEMS = [
   {
     icon: 'megaphone',
     title: 'Ads keep paying after the premiere',
-    text: 'When your Paid Premiere goes free, pre-roll ads keep generating income forever.',
+    text: 'When your paid period ends and the video goes Free + Ads, advertising keeps paying you.',
   },
 ]
 
@@ -192,7 +264,7 @@ export const FOOTER_LINKS = {
 }
 
 /** The three ways a video can be sold, as filter labels. */
-export const ACCESS_FILTERS = ['All Access', 'PPV Forever', 'Paid Premiere', 'Free With Ads']
+export const ACCESS_FILTERS = ['All Access', 'Pay Once', 'Paid Premiere', 'Free + Ads']
 
 /** How each review state is shown to the creator who is waiting on it. */
 export const REVIEW_STATUS = {
@@ -214,7 +286,7 @@ export const DASH_TITLES = {
     name ? `Karibu, ${name} 👋` : 'Karibu 👋',
     "Here's how your content is performing today.",
   ],
-  library: () => ['My Library', 'Every video you own — unlocked forever.'],
+  library: () => ['My Library', 'Every video you own — yours to watch any time.'],
   upload: () => ['Upload New Video', 'Upload, price and submit for review — we approve within hours.'],
   videos: () => ['My Videos', 'Manage your published content and premieres.'],
   earnings: () => ['Earnings', 'Your money, transparent and withdrawable anytime.'],

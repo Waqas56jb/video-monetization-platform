@@ -10,7 +10,7 @@ import useApi, { tzs, compact } from '@/hooks/useApi'
 import api, { mediaUrl } from '@/lib/api'
 
 const ACCESS_LABEL = {
-  ppv_forever: 'Pay once',
+  ppv_forever: 'Pay Once',
   paid_premiere: 'Premiere',
   free_with_ads: 'Free + ads',
 }

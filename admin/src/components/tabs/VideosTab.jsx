@@ -20,7 +20,7 @@ const STATUS_FILTERS = {
 }
 
 const ACCESS_LABEL = {
-  ppv_forever: 'Pay once',
+  ppv_forever: 'Pay Once',
   paid_premiere: 'Premiere',
   free_with_ads: 'Free + ads',
 }

@@ -6,7 +6,7 @@ import api from '@/lib/api'
 /**
  * An advert playing in the place of the video.
  *
- * This is where "Free With Ads" stops being a label and starts being income. An
+ * This is where "Free + Ads" stops being a label and starts being income. An
  * expired Paid Premiere earns through this component: the advert plays, the
  * impression is recorded, and the creator's share of it is written to the
  * ledger by the server.
