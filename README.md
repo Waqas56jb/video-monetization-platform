@@ -265,18 +265,14 @@ of staff (reviewing a video means watching it), and a video that is simply free.
 The watch page now names which one applies, so an administrator browsing the
 public site sees "open to you as staff" rather than concluding the paywall failed.
 
-**The hero is one screen, marquee included.** The design shows everything at
-once, and on a laptop the hero alone was 885px against an 820px viewport — the
-payments card and the stats fell off the bottom and the scrolling strip sat 123px
-below the fold. Two things fix that and both matter: the hero reserves the strip's
-height (`min-height: min(calc(100dvh - var(--marquee-h)), 920px)`), and every
-vertical gap is `clamp(min, Ndvh, max)` so a shorter screen compresses rather than
-overflows. The headline is `min(clamp(...vw...), 8.4dvh)` — on a short screen the
-headline is what gives way, because everything else is information.
+**The hero is allowed to be taller than the screen.** It was briefly compressed to
+fit one viewport — every vertical gap tied to `dvh`, the phone's poster included —
+and that was the wrong trade: the phone is what the section is built around, and it
+shrank along with everything else. A landing page scrolls. The phone having presence
+matters more than the marquee sitting above the fold.
 
-Watch for the same trap here as with the card positions: an `@supports
-(height:100dvh)` block further down was re-stating `.hero{min-height}` **without**
-the strip's reservation, which quietly undid it.
+If you are tempted to make it fit again: measure the phone first. Anything that
+compresses the hero compresses that.
 
 **The hero diagram is proportions, not pixels.** Three callouts float around the
 phone — top-left, right, bottom-left — and they are *meant* to lap its edge: that
