@@ -278,15 +278,21 @@ Watch for the same trap here as with the card positions: an `@supports
 (height:100dvh)` block further down was re-stating `.hero{min-height}` **without**
 the strip's reservation, which quietly undid it.
 
-**The hero diagram is proportions, not pixels.** Phone, cards and gaps are shares
-of the stage — `45%`, `24%`, `3.5%` — which add to exactly 100% of it. Two things
-follow for free: no card can ever reach the phone, and the phone keeps the same
-share of the screen (~22%, matching the design) from 1280px to 1920px instead of
-shrinking into the middle of a large monitor. Cards are pinned to the stage's own
-edges, so they cannot leave it either.
+**The hero diagram is proportions, not pixels.** Three callouts float around the
+phone — top-left, right, bottom-left — and they are *meant* to lap its edge: that
+overlap is what makes the group read as one composed object rather than a phone
+with boxes parked beside it. The lap comes from the shares adding to more than
+100% of the stage (`28% + 54% + 28% = 110%`, so 5% of overlap each side), never
+from pushing a card outside the stage. A card positioned outside the stage is a
+card that can leave the screen, and one nearly did.
 
-That replaced pixel offsets, which could not make either promise: at one width the
-right-hand cards cleared the phone and at another they sat on top of it.
+Because the shares are shares, the phone holds the same fraction of the screen
+(~24%, matching the design) from 1280px to 1920px instead of shrinking into the
+middle of a large monitor, and no arrangement of widths can make the cards collide.
+
+Below 1024px they stop floating and become a list under the phone. They used to be
+hidden outright, which is what the client saw as them "disappearing"; floating them
+over a 390px mock would bury the very thing they describe.
 
 **The container grows with the screen.** It was capped at 1200–1360px, so a 1920px
 monitor showed the whole site in 71% of its width with 280px of dead margin either

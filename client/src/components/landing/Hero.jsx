@@ -22,42 +22,6 @@ import { IMG } from '@/data/copy'
  * opens that video — it used to show an invented one, so the most prominent
  * thing on the page led nowhere.
  */
-/**
- * The dashed threads between the phone and the cards around it.
- *
- * Purely decorative — they are what makes the group read as one diagram rather
- * than five boxes that happen to be near a phone. Drawn as one SVG on a fixed
- * viewBox and stretched to the stage, so the curves keep their shape at any
- * width instead of needing a rule per breakpoint. Hidden wherever the cards are.
- */
-function HeroLinks() {
-  return (
-    <svg
-      className="hero-links"
-      viewBox="0 0 1000 600"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g
-        fill="none"
-        stroke="rgba(255,255,255,0.22)"
-        strokeWidth="1.6"
-        strokeDasharray="5 7"
-        strokeLinecap="round"
-      >
-        {/* The phone spans x 275-725; the cards sit outside 240 and 760. Each
-            thread crosses that gap and rises or falls to meet its card. */}
-        <path d="M725 158 C 741 146, 748 106, 760 92" />
-        <path d="M725 292 C 741 292, 748 290, 760 290" />
-        <path d="M725 444 C 741 464, 748 494, 760 506" />
-        <path d="M275 182 C 259 170, 252 142, 240 130" />
-        <path d="M275 424 C 259 446, 252 472, 240 484" />
-      </g>
-    </svg>
-  )
-}
-
 export default function Hero() {
   const navigate = useNavigate()
 
@@ -99,51 +63,39 @@ export default function Hero() {
       ]
 
   /**
-   * The cards floating around the phone.
+   * The three callouts floating around the phone.
    *
-   * Two on the left describe what the viewer and the creator each get out of a
-   * payment; three on the right are the release models, in the same order the
-   * rest of the page introduces them. The positions come from the class — see
-   * `.fc1`–`.fc5` — and the dashed lines behind them are drawn by `HeroLinks`.
+   * The client's reference, word for word: top-left, right, bottom-left, each at
+   * a different height and each lapping the phone's edge rather than sitting
+   * politely beside it. That lap is what makes the group read as one composed
+   * object instead of a phone with boxes parked next to it.
+   *
+   * They speak to the creator, not the viewer — getting paid, setting the price,
+   * carrying on earning. Deliberately not the three release models: those have
+   * their own section further down the page, and repeating them here said the
+   * same thing twice and left the hero explaining nothing new.
    */
-  const leftCards = [
+  const callouts = [
     {
       cls: 'fc1',
       tone: 'is-green',
       icon: 'shield-check',
-      title: 'Instant Unlock',
-      body: 'Mobile Money • Cards • Digital Payments',
+      title: 'Get paid instantly',
+      body: 'Through mobile money and digital wallets',
     },
     {
       cls: 'fc2',
-      tone: 'is-purple',
-      icon: 'trending-up',
-      title: 'Creators Earn',
-      body: 'Track sales, views and earnings.',
+      tone: 'is-gold',
+      icon: 'wallet',
+      title: 'You set the price',
+      body: 'You decide how long it stays paid',
     },
-  ]
-
-  const rightCards = [
     {
       cls: 'fc3',
-      tone: 'is-gold',
-      icon: 'lock',
-      title: 'Pay Once',
-      body: 'One payment. Full access. The video stays in your library.',
-    },
-    {
-      cls: 'fc4',
       tone: 'is-purple',
-      icon: 'calendar-clock',
-      title: 'Paid Premiere',
-      body: 'Start paid. You choose your paid period. It becomes Free + Ads automatically.',
-    },
-    {
-      cls: 'fc5',
-      tone: 'is-green',
-      icon: 'monitor-play',
-      title: 'Free + Ads',
-      body: 'Free to watch. Creators earn from advertising.',
+      icon: 'trending-up',
+      title: 'Keep earning',
+      body: 'Even after going free with ads',
     },
   ]
 
@@ -233,9 +185,7 @@ export default function Hero() {
         </div>
 
         <div className="hero-visual">
-          <HeroLinks />
-
-          {[...leftCards, ...rightCards].map((c) => (
+          {callouts.map((c) => (
             <div className={`float-card ${c.cls} ${c.tone}`} key={c.cls}>
               <div className="fc-head">
                 <span className="ic">

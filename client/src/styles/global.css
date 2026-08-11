@@ -193,7 +193,7 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
   overflow-wrap:normal;word-break:normal;hyphens:none}
 /* phone mockup */
 .hero-visual{position:relative;display:flex;justify-content:center}
-.phone{width:min(440px,45%);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
+.phone{width:min(460px,54%);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
 @keyframes phoneFloat{50%{transform:translateY(-18px) rotate(-1deg)}}
 .phone-notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:112px;height:26px;background:#0d0d16;border-radius:0 0 18px 18px;z-index:5}
 .phone-screen{border-radius:32px;overflow:hidden;background:var(--bg2);position:relative}
@@ -266,14 +266,13 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 /* --phone-half is half the phone's width; --card-gap is the clearance either
    side. The left pair is allowed to lap slightly over the phone, as the design
    shows; the right trio always sits clear of it. */
-.hero-visual{--card-gap:3.5%;--card-w:24%}
-/* Pinned to the stage's own edges. The phone takes what is left between them,
-   so no card can reach it however wide the screen gets. */
-.fc1{top:14%;left:0;animation:phoneFloat 8s .8s ease-in-out infinite}
-.fc2{bottom:12%;left:0;animation:phoneFloat 9s 1.4s ease-in-out infinite}
-.fc3{top:2%;right:0;animation:phoneFloat 8.5s .4s ease-in-out infinite}
-.fc4{top:38%;right:0;animation:phoneFloat 9.5s 1s ease-in-out infinite}
-.fc5{bottom:3%;right:0;animation:phoneFloat 8.2s 1.8s ease-in-out infinite}
+.hero-visual{--card-w:28%}
+/* Top-left, right, bottom-left — the reference's arrangement, each at its own
+   height. Anchored to the stage edges so they cannot leave it, then pulled in by
+   `--card-lap` so they ride over the phone the way the reference does. */
+.fc1{top:11%;left:0;animation:phoneFloat 8s .8s ease-in-out infinite}
+.fc2{top:43%;right:0;animation:phoneFloat 9s .4s ease-in-out infinite}
+.fc3{bottom:8%;left:0;animation:phoneFloat 8.5s 1.4s ease-in-out infinite}
 .scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted2);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .scroll-hint .wheel{width:24px;height:38px;border:2px solid var(--muted2);border-radius:14px;position:relative}
 .scroll-hint .wheel::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;border-radius:4px;background:var(--gold);animation:wheel 1.8s infinite}
@@ -698,7 +697,13 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .sidebar{position:fixed;left:-290px;width:min(272px,86vw);z-index:250;transition:.4s;height:100vh;height:100dvh}
   .sidebar.open{left:0;box-shadow:60px 0 100px rgba(0,0,0,.6)}
   .dash-main{padding:20px 14px}
-  .float-card,.hero-links{display:none}
+  .hero-links{display:none}
+  .hero-visual{flex-direction:column;align-items:center;gap:14px}
+  .float-card{
+    position:static;width:min(420px,100%);animation:none;
+    inset:auto;
+  }
+  .float-card .fc-head{margin-bottom:6px}
   .watch-cta .btn-ghost{display:inline-flex}
   .watch-cta .btn-label{display:none}
   .watch-cta .btn{padding:11px;min-width:44px;min-height:44px}
