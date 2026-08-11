@@ -163,7 +163,7 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.22;transform:scale(1.08);animation:heroZoom 22s ease-in-out infinite alternate}
 @keyframes heroZoom{to{transform:scale(1.16)}}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,18,.4),rgba(10,10,18,.75) 55%,var(--bg) 96%),radial-gradient(ellipse at 25% 40%,rgba(124,58,237,.32),transparent 55%)}
-.hero-grid{display:grid;grid-template-columns:.96fr 1.04fr;gap:36px;align-items:center}
+.hero-grid{display:grid;grid-template-columns:.88fr 1.12fr;gap:34px;align-items:center}
 .hero h1{font-size:clamp(34px,4.3vw,58px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin:24px 0 22px}
 .hero h1{text-transform:uppercase}
 .hero h1 br{display:block}
@@ -191,7 +191,7 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
   overflow-wrap:normal;word-break:normal;hyphens:none}
 /* phone mockup */
 .hero-visual{position:relative;display:flex;justify-content:center}
-.phone{width:min(460px,54%);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
+.phone{width:min(500px,47%);border-radius:44px;border:1.5px solid rgba(255,255,255,.14);background:linear-gradient(160deg,#181826,#0d0d16);padding:14px;box-shadow:var(--shadow),var(--glow);position:relative;animation:phoneFloat 7s ease-in-out infinite;z-index:2}
 @keyframes phoneFloat{50%{transform:translateY(-18px) rotate(-1deg)}}
 .phone-notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:112px;height:26px;background:#0d0d16;border-radius:0 0 18px 18px;z-index:5}
 .phone-screen{border-radius:32px;overflow:hidden;background:var(--bg2);position:relative}
@@ -244,7 +244,11 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 .ph-methods span{font-size:8px;font-weight:700;color:var(--muted);border:1px solid var(--border2);padding:3px 6px;border-radius:99px;white-space:nowrap;letter-spacing:.2px}
 /* Title beside its icon, description underneath — the shape in the design. */
 .float-card{
-  position:absolute;width:var(--card-w);min-width:150px;
+  /* No min-width above the share: a floor of 150px stopped the three widths from
+     adding up on a narrow tablet, and the right-hand cards landed on the phone.
+     118px is below what the share ever produces at these breakpoints, so it acts
+     as a safety net rather than as a constraint. */
+  position:absolute;width:var(--card-w);min-width:118px;
   background:rgba(17,17,27,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border:1px solid var(--border2);border-radius:18px;padding:16px 18px;
   box-shadow:0 22px 50px -20px rgba(0,0,0,.8);z-index:3;
@@ -264,13 +268,15 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
 /* --phone-half is half the phone's width; --card-gap is the clearance either
    side. The left pair is allowed to lap slightly over the phone, as the design
    shows; the right trio always sits clear of it. */
-.hero-visual{--card-w:28%}
+.hero-visual{--card-w:25%}
 /* Top-left, right, bottom-left — the reference's arrangement, each at its own
    height. Anchored to the stage edges so they cannot leave it, then pulled in by
    `--card-lap` so they ride over the phone the way the reference does. */
-.fc1{top:11%;left:0;animation:phoneFloat 8s .8s ease-in-out infinite}
-.fc2{top:43%;right:0;animation:phoneFloat 9s .4s ease-in-out infinite}
-.fc3{bottom:8%;left:0;animation:phoneFloat 8.5s 1.4s ease-in-out infinite}
+.fc1{top:13%;left:3%;animation:phoneFloat 8s .8s ease-in-out infinite}
+.fc2{bottom:11%;left:3%;animation:phoneFloat 9s 1.4s ease-in-out infinite}
+.fc3{top:2%;right:0;animation:phoneFloat 8.5s .4s ease-in-out infinite}
+.fc4{top:38%;right:0;animation:phoneFloat 9.5s 1s ease-in-out infinite}
+.fc5{bottom:2%;right:0;animation:phoneFloat 8.2s 1.8s ease-in-out infinite}
 .scroll-hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted2);font-size:11px;letter-spacing:2px;text-transform:uppercase}
 .scroll-hint .wheel{width:24px;height:38px;border:2px solid var(--muted2);border-radius:14px;position:relative}
 .scroll-hint .wheel::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;border-radius:4px;background:var(--gold);animation:wheel 1.8s infinite}
@@ -696,7 +702,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .sidebar.open{left:0;box-shadow:60px 0 100px rgba(0,0,0,.6)}
   .dash-main{padding:20px 14px}
   .hero-links{display:none}
-  .hero-visual{flex-direction:column;align-items:center;gap:14px}
+  .hero-visual{flex-direction:column;align-items:center;gap:11px}
   .float-card{
     position:static;width:min(420px,100%);animation:none;
     inset:auto;

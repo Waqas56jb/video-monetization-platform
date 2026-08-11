@@ -22,6 +22,42 @@ import { IMG } from '@/data/copy'
  * opens that video — it used to show an invented one, so the most prominent
  * thing on the page led nowhere.
  */
+/**
+ * The dashed threads from the phone out to each callout.
+ *
+ * Decorative, and the reason the group reads as one diagram rather than a phone
+ * with boxes near it. Drawn once on a viewBox that maps 1:1 onto shares of the
+ * stage — the phone occupies x 265–735 of 1000 — so the curves keep their shape
+ * at any width instead of needing a rule per breakpoint.
+ */
+function HeroLinks() {
+  return (
+    <svg
+      className="hero-links"
+      viewBox="0 0 1000 600"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g
+        fill="none"
+        stroke="rgba(255,255,255,0.2)"
+        strokeWidth="1.6"
+        strokeDasharray="6 8"
+        strokeLinecap="round"
+      >
+        {/* out to Pay Once, Paid Premiere and Free + Ads */}
+        <path d="M735 150 C 762 130, 776 104, 800 92" />
+        <path d="M735 300 C 762 298, 776 294, 800 292" />
+        <path d="M735 452 C 762 472, 776 496, 800 508" />
+        {/* and back over the phone's left edge to the two on that side */}
+        <path d="M282 128 C 258 118, 244 128, 232 148" />
+        <path d="M282 474 C 258 484, 244 474, 232 454" />
+      </g>
+    </svg>
+  )
+}
+
 export default function Hero() {
   const navigate = useNavigate()
 
@@ -63,39 +99,53 @@ export default function Hero() {
       ]
 
   /**
-   * The three callouts floating around the phone.
+   * The five callouts floating around the phone, from the client's poster.
    *
-   * The client's reference, word for word: top-left, right, bottom-left, each at
-   * a different height and each lapping the phone's edge rather than sitting
-   * politely beside it. That lap is what makes the group read as one composed
-   * object instead of a phone with boxes parked next to it.
+   * Two on the left lap the phone's edge; three on the right sit clear of it,
+   * each at its own height, joined to it by the dashed threads in `HeroLinks`.
+   * Copy and icons are the poster's, word for word.
    *
-   * They speak to the creator, not the viewer — getting paid, setting the price,
-   * carrying on earning. Deliberately not the three release models: those have
-   * their own section further down the page, and repeating them here said the
-   * same thing twice and left the hero explaining nothing new.
+   * Note for whoever reads this next: an earlier message from the client asked
+   * instead for three creator-facing callouts — "Get paid instantly", "You set
+   * the price", "Keep earning". The poster is what was confirmed last and is what
+   * this follows. If that ever flips back, the three are in the git history at
+   * 43163f0 and nothing else needs to change.
    */
   const callouts = [
     {
       cls: 'fc1',
       tone: 'is-green',
       icon: 'shield-check',
-      title: 'Get paid instantly',
-      body: 'Through mobile money and digital wallets',
+      title: 'Instant Unlock',
+      body: 'Mobile Money • Cards • Digital Payments',
     },
     {
       cls: 'fc2',
-      tone: 'is-gold',
-      icon: 'wallet',
-      title: 'You set the price',
-      body: 'You decide how long it stays paid',
+      tone: 'is-purple',
+      icon: 'trending-up',
+      title: 'Creators Earn',
+      body: 'Track sales, views and earnings.',
     },
     {
       cls: 'fc3',
+      tone: 'is-gold',
+      icon: 'lock',
+      title: 'Pay Once',
+      body: 'One payment. Full access. The video stays in your library.',
+    },
+    {
+      cls: 'fc4',
       tone: 'is-purple',
-      icon: 'trending-up',
-      title: 'Keep earning',
-      body: 'Even after going free with ads',
+      icon: 'calendar-clock',
+      title: 'Paid Premiere',
+      body: 'Start paid. You choose your paid period. It becomes Free + Ads automatically.',
+    },
+    {
+      cls: 'fc5',
+      tone: 'is-green',
+      icon: 'monitor-play',
+      title: 'Free + Ads',
+      body: 'Free to watch. Creators earn from advertising.',
     },
   ]
 
@@ -185,6 +235,8 @@ export default function Hero() {
         </div>
 
         <div className="hero-visual">
+          <HeroLinks />
+
           {callouts.map((c) => (
             <div className={`float-card ${c.cls} ${c.tone}`} key={c.cls}>
               <div className="fc-head">
