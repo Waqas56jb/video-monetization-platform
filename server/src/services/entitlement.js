@@ -1,5 +1,7 @@
 import { one } from '../db/pool.js'
 import { mintThumbnailKey } from '../lib/mediaToken.js'
+import { signedThumbnailUrl } from '../lib/cloudflare.js'
+import { capabilities } from '../config/env.js'
 
 /**
  * What may this viewer actually watch of this video?
@@ -128,9 +130,44 @@ function thumbnailFor(v) {
    */
   if (v.custom_thumbnail_url) return v.custom_thumbnail_url
   if (!v.cloudflare_uid) return v.thumbnail_url
+
   const path = `/api/playback/${v.id}/thumbnail`
   const isPublic = v.is_published && v.review_status === 'approved' && !v.deleted_at
-  if (isPublic) return path
+
+  /**
+   * A public video's poster goes straight to Cloudflare's CDN. Signed here,
+   * once, at the moment the list is built.
+   *
+   * It used to be this API's own path, and the browser then had to ask us for
+   * every single card: a serverless invocation whose entire job was to sign a
+   * token and answer 302, followed by a fresh connection to Cloudflare to
+   * actually get the picture. Measured from a good connection that was 0.68s
+   * for the redirect and 0.79s for the image — about 1.5s per card, and the
+   * homepage shows eight.
+   *
+   * Worse, all eight redirects went to one host, and a browser will not open
+   * more than about six connections to a host at a time, so they queued. On a
+   * phone on mobile data, where every round trip costs four times as much, the
+   * grid below the hero sat empty for the better part of ten seconds. That is
+   * the delay the client kept reporting, and no amount of turning animations
+   * off was ever going to touch it.
+   *
+   * Signing costs one RSA operation per video. The browser then fetches the
+   * image directly from a CDN, in parallel, on connections it already has.
+   */
+  if (isPublic) {
+    if (!capabilities.signedPlayback) return path
+    try {
+      /* 400px tall: these are cards, not posters. 720 was four times the size
+         any of them is ever displayed at. */
+      return signedThumbnailUrl(v.cloudflare_uid, { height: 400 })
+    } catch {
+      return path // signing unavailable — the redirect still works
+    }
+  }
+
+  /* Not public: the poster is as private as the video, so it keeps going
+     through this API, where the key in the URL is what authorises it. */
   const key = mintThumbnailKey(v.id)
   return key ? `${path}?k=${encodeURIComponent(key)}` : path
 }

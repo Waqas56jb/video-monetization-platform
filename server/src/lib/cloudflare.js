@@ -232,13 +232,26 @@ export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable =
  */
 const POSTER_AT = '15s'
 
-export function playbackUrls(uidOrToken, { posterAt = POSTER_AT } = {}) {
+export function playbackUrls(uidOrToken, { posterAt = POSTER_AT, thumbnailHeight = 720 } = {}) {
   return {
     hls: `https://videodelivery.net/${uidOrToken}/manifest/video.m3u8`,
     dash: `https://videodelivery.net/${uidOrToken}/manifest/video.mpd`,
     iframe: `https://iframe.videodelivery.net/${uidOrToken}`,
-    thumbnail: `https://videodelivery.net/${uidOrToken}/thumbnails/thumbnail.jpg?time=${posterAt}&height=720`,
+    thumbnail: `https://videodelivery.net/${uidOrToken}/thumbnails/thumbnail.jpg?time=${posterAt}&height=${thumbnailHeight}`,
   }
+}
+
+/**
+ * A poster a browser can fetch directly, with no round trip through this API.
+ *
+ * Long-lived on purpose. A playback token is short because it unlocks a film;
+ * this one unlocks a still image of a video anybody can already see listed, so
+ * the trade is the other way round — a day of validity costs nothing and means
+ * a cached list response keeps working.
+ */
+export function signedThumbnailUrl(uid, { height = 400, expiresInSeconds = 86_400 } = {}) {
+  const token = signPlaybackToken(uid, { expiresInSeconds })
+  return playbackUrls(token, { thumbnailHeight: height }).thumbnail
 }
 
 /** Verify the signature Cloudflare puts on its webhook calls. */
