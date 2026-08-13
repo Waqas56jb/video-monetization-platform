@@ -1,6 +1,6 @@
 import { Route } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
-import { STEPS, ACCESS_OPTIONS } from '@/data/copy'
+import { STEPS } from '@/data/copy'
 
 export default function HowItWorks() {
   return (
@@ -35,30 +35,9 @@ export default function HowItWorks() {
           ))}
         </div>
 
-        {/**
-         * The three ways to release something, spelled out in the client's own
-         * words. This is the decision a creator has to understand before
-         * anything else on the platform makes sense.
-         */}
-        <div className="section-head" style={{ marginTop: 72 }}>
-          <h2>
-            You Choose How Your <span className="grad-text">Audience Watches</span>
-          </h2>
-          <p>Three options, chosen per video — not once for your whole channel.</p>
-        </div>
-
-        <div className="access-options">
-          {ACCESS_OPTIONS.map((o) => (
-            <div key={o.key} className={`access-option ${o.tone || ''}`.trim()}>
-              <span className="ao-ic">
-                <Icon name={o.icon} />
-              </span>
-              <h4>{o.label}</h4>
-              <b className="ao-tagline">{o.tagline}</b>
-              <p>{o.text}</p>
-            </div>
-          ))}
-        </div>
+        {/* The three release models used to sit here as a third row of cards
+            directly under this one. They have their own section now — see
+            AccessModels — because they are the product, not a footnote. */}
       </div>
     </section>
   )

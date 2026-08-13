@@ -1933,3 +1933,69 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .legal-body p{font-size:15px;line-height:1.72}
   .legal-tabs{margin:24px 0 30px;padding-bottom:24px}
 }
+
+/* =========================================================================
+   THE THREE RELEASE MODELS
+   ------------------------------------------------------------------------
+   This replaced a third row of identical cards sitting directly beneath two
+   other rows of identical cards — "heading → rectangular boxes → empty space
+   → heading → more boxes", which is exactly how it read.
+
+   Full-width bands, alternating sides, each carrying a picture of what
+   actually happens rather than another paragraph. Built from boxes and text
+   with no images at all: every visitor here is on mobile data, and a section
+   explaining the business model should not cost three downloads to read.
+   ========================================================================= */
+.section-models{background:linear-gradient(180deg,transparent,rgba(124,58,237,.045),transparent)}
+.models{display:grid;gap:26px}
+.model{
+  display:grid;grid-template-columns:1fr 1.05fr;gap:clamp(24px,4vw,64px);align-items:center;
+  padding:clamp(24px,3.4vw,44px);
+  border:1px solid var(--border2);border-radius:24px;
+  background:linear-gradient(135deg,rgba(20,20,31,.72),rgba(20,20,31,.34));
+  backdrop-filter:blur(14px);position:relative;overflow:hidden;
+}
+/* A tinted edge per model, so the three read as one family rather than three
+   competing card designs. */
+.model::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)}
+.model.gold::before{background:var(--gold)}
+.model.green::before{background:var(--green)}
+.model.is-flipped .model-copy{order:2}
+.model.is-flipped .model-viz{order:1}
+
+.model-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:rgba(124,58,237,.16);border:1px solid var(--border);color:var(--purple2);margin-bottom:16px}
+.model.gold .model-ic{background:rgba(233,185,73,.14);color:var(--gold)}
+.model.green .model-ic{background:rgba(34,197,94,.13);color:var(--green)}
+.model-ic svg{width:21px;height:21px}
+.model-copy h3{font-size:clamp(21px,2.5vw,27px);font-weight:800;letter-spacing:-.5px;margin:0 0 8px}
+.model-tagline{display:block;font-size:15px;color:#fff;margin-bottom:12px}
+.model-copy p{color:var(--muted);font-size:15.5px;line-height:1.72;margin:0}
+
+.model-viz{display:grid;gap:12px;padding:20px;border:1px solid var(--border2);border-radius:18px;background:rgba(10,10,18,.5);min-width:0}
+.mv-head,.mv-foot{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.mv-head svg,.mv-foot svg{flex-shrink:0}
+.mv-foot.is-good{color:var(--green)}
+.mv-track{display:flex;gap:6px;min-height:74px}
+.mv-seg{flex:1 1 0;min-width:0;border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;justify-content:center;gap:3px;border:1px solid var(--border2)}
+.mv-seg-label{font-size:13px;font-weight:700;color:#fff;line-height:1.25}
+.mv-seg small{font-size:10.5px;line-height:1.4;color:var(--muted2)}
+.mv-seg.is-free{background:rgba(255,255,255,.045)}
+.mv-seg.is-paid{background:linear-gradient(135deg,rgba(124,58,237,.28),rgba(124,58,237,.12));border-color:rgba(124,58,237,.35)}
+.mv-seg.is-ads{background:linear-gradient(135deg,rgba(233,185,73,.2),rgba(233,185,73,.07));border-color:rgba(233,185,73,.3)}
+
+@media(hover:hover){
+  .model{transition:border-color .3s,transform .3s}
+  .model:hover{border-color:rgba(255,255,255,.16);transform:translateY(-3px)}
+}
+@media(max-width:900px){
+  .model{grid-template-columns:1fr;gap:24px;border-radius:20px}
+  /* Stacked, the words always come first. Flipping only means anything while
+     the two halves sit side by side. */
+  .model.is-flipped .model-copy,.model.is-flipped .model-viz{order:0}
+}
+@media(max-width:600px){
+  .model{padding:22px 18px}
+  .model-viz{padding:15px}
+  .mv-track{min-height:66px}
+  .mv-seg{padding:10px 11px}
+}

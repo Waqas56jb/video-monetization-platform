@@ -7,6 +7,7 @@ import Hero from '@/components/landing/Hero'
 import Marquee from '@/components/landing/Marquee'
 import Trending from '@/components/landing/Trending'
 import HowItWorks from '@/components/landing/HowItWorks'
+import AccessModels from '@/components/landing/AccessModels'
 import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
@@ -59,6 +60,7 @@ export default function Landing() {
         <Marquee />
         <Trending />
         <HowItWorks />
+        <AccessModels />
         <Features />
         <ForCreators />
         <Testimonials />
