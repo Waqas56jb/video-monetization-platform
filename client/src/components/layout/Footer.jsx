@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Facebook, Instagram, Twitter, Youtube } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { FOOTER_LINKS } from '@/data/copy'
+import useSectionLink from '@/hooks/useSectionLink'
 import { useToast } from '@/context/ToastContext'
 
 const SOCIALS = [
@@ -13,6 +14,10 @@ const SOCIALS = [
 
 export default function Footer() {
   const showToast = useToast()
+  /* Those sections only exist on the landing page, so a raw href did nothing at
+     all from /explore or a policy page — the same fault the client already
+     reported in the header nav. */
+  const goToSection = useSectionLink()
 
   return (
     <footer>
@@ -44,7 +49,11 @@ export default function Footer() {
           <div className="foot-col">
             <h4>Platform</h4>
             {FOOTER_LINKS.platform.map((l) => (
-              <a key={l.hash} href={l.hash}>
+              <a
+                key={l.hash}
+                href={l.hash}
+                onClick={(e) => goToSection(l.hash.replace('#', ''), e)}
+              >
                 {l.label}
               </a>
             ))}
@@ -60,18 +69,11 @@ export default function Footer() {
           </div>
 
           <div className="foot-col">
-            <h4>Support</h4>
-            {FOOTER_LINKS.support.map((label) => (
-              <a
-                key={label}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  showToast(`${label} — coming in your full build`)
-                }}
-              >
-                {label}
-              </a>
+            <h4>Legal</h4>
+            {FOOTER_LINKS.legal.map((l) => (
+              <Link key={l.to} to={l.to}>
+                {l.label}
+              </Link>
             ))}
           </div>
         </div>

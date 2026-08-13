@@ -229,7 +229,18 @@ export const FOOTER_LINKS = {
     { label: 'Reset Password', to: '/reset' },
     { label: 'My Dashboard', to: '/dashboard' },
   ],
-  support: ['Help Center', 'Creator Guide', 'Terms of Service', 'Privacy Policy'],
+  /**
+   * These were plain strings that popped a "coming in your full build" toast.
+   * A storefront that takes money has to let somebody read the terms before
+   * they pay, not after they ask for them.
+   */
+  legal: [
+    { label: 'Terms of Service', to: '/legal/terms' },
+    { label: 'Privacy Policy', to: '/legal/privacy' },
+    { label: 'Creator Agreement', to: '/legal/creators' },
+    { label: 'Payments & Refunds', to: '/legal/payments' },
+    { label: 'Copyright & Reporting', to: '/legal/copyright' },
+  ],
 }
 
 /** How each review state is shown to the creator who is waiting on it. */

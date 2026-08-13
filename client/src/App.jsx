@@ -12,6 +12,7 @@ import Reset from '@/pages/Reset'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Dashboard from '@/pages/Dashboard'
 import Watch from '@/pages/Watch'
+import Legal from '@/pages/Legal'
 
 export default function App() {
   return (
@@ -32,6 +33,10 @@ export default function App() {
         {/* deep link: a shared URL opens that exact video's watch & buy page */}
         <Route path="/watch" element={<Watch />} />
         <Route path="/watch/:videoId" element={<Watch />} />
+
+        {/* Terms, privacy, the creator agreement, copyright and refunds. */}
+        <Route path="/legal" element={<Navigate to="/legal/terms" replace />} />
+        <Route path="/legal/:doc" element={<Legal />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </AuthProvider>

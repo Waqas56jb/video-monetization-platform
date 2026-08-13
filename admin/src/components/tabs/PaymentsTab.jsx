@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, Undo2 } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { StatGrid } from '@/components/ui/StatCard'
 import { EmptyRow, TableWrap } from '@/components/ui/Table'
@@ -7,15 +7,20 @@ import { FilterRow, FilterSelect, SearchBar } from '@/components/ui/Filters'
 import { Async } from '@/components/ui/States'
 import useApi, { tzs, compact, dateTime } from '@/hooks/useApi'
 import api from '@/lib/api'
+import { useToast } from '@/context/ToastContext'
+import { useAuth } from '@/context/AuthContext'
 
 const MONO = { fontFamily: 'monospace', color: 'var(--muted)' }
-const PILL = { success: 'ok', pending: 'pend', failed: 'bad', cancelled: '', expired: '' }
+const PILL = { success: 'ok', pending: 'pend', failed: 'bad', cancelled: '', expired: '', refunded: 'pend' }
 const METHOD = { mpesa: 'M-Pesa', airtel: 'Airtel Money', card: 'Card' }
 
 /** Every transaction, as it happened. */
 export default function PaymentsTab() {
+  const showToast = useToast()
+  const { isAdmin } = useAuth()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
+  const [busyId, setBusyId] = useState(null)
 
   const { data, loading, error, reload } = useApi(
     () => api.admin.payments({ status: status.toLowerCase(), limit: 200 }),
@@ -37,6 +42,35 @@ export default function PaymentsTab() {
     )
   }, [all, query])
 
+  /**
+   * Record a refund.
+   *
+   * The money itself is returned by hand in the provider's portal — nothing here
+   * can move it. What this does is make the platform agree with what happened:
+   * the payment reads refunded, the buyer loses access, and the creator's credit
+   * is reversed so they cannot withdraw against a sale that no longer exists.
+   */
+  const refund = async (p) => {
+    const reason = window.prompt(
+      `Refund ${tzs(p.amount_tzs)} to ${p.user_name || p.user_email || 'this customer'}?\n\n` +
+        'This removes their access to the video and reverses the creator’s share.\n' +
+        'It does NOT send the money back — do that in the provider’s portal.\n\n' +
+        'Reason (the customer sees this):'
+    )
+    if (reason === null) return
+
+    setBusyId(p.id)
+    try {
+      const res = await api.admin.refundPayment(p.id, reason.trim() || undefined)
+      showToast(res.message || 'Refund recorded')
+      reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const succeeded = all.filter((p) => p.status === 'success')
   const stats = [
     { icon: 'credit-card', label: 'Transactions', value: compact(all.length) },
@@ -57,7 +91,7 @@ export default function PaymentsTab() {
             <FilterSelect
               value={status}
               onChange={setStatus}
-              options={['Success', 'Pending', 'Failed', 'Cancelled']}
+              options={['Success', 'Pending', 'Failed', 'Cancelled', 'Refunded']}
               allLabel="All Status"
             />
           </FilterRow>
@@ -89,10 +123,13 @@ export default function PaymentsTab() {
                 <th>Split (C/P)</th>
                 <th>When</th>
                 <th>Status</th>
+                {isAdmin && <th />}
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && <EmptyRow colSpan={8}>No transactions match this search.</EmptyRow>}
+              {rows.length === 0 && (
+                <EmptyRow colSpan={isAdmin ? 9 : 8}>No transactions match this search.</EmptyRow>
+              )}
               {rows.map((p) => (
                 <tr key={p.id}>
                   <td style={MONO}>{(p.provider_reference || p.id).slice(0, 14)}</td>
@@ -109,6 +146,25 @@ export default function PaymentsTab() {
                   <td>
                     <span className={`pill ${PILL[p.status] ?? ''}`}>{p.status}</span>
                   </td>
+                  {/* Refunding is money leaving the platform, so it stays with
+                      the administrator rather than the moderation team. */}
+                  {isAdmin && (
+                    <td>
+                      {p.status === 'success' && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => refund(p)}
+                          disabled={busyId === p.id}
+                          title="Record a refund and remove access"
+                        >
+                          <Undo2 size={14} />
+                          <span className="btn-label">
+                            {busyId === p.id ? 'Refunding…' : 'Refund'}
+                          </span>
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

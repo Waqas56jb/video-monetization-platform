@@ -269,6 +269,12 @@ export const api = {
     reject: (id, reason) => post(`/api/admin/review/${id}/reject`, { reason }),
     /** Send it back for a correction without discarding the submission. */
     requestChanges: (id, note) => post(`/api/admin/review/${id}/request-changes`, { note }),
+    /**
+     * Record a refund: marks the payment, ends the entitlement and reverses the
+     * creator's credit. It does not move money — that is done by hand in the
+     * provider's portal.
+     */
+    refundPayment: (id, reason) => post(`/api/admin/payments/${id}/refund`, { reason }),
     /** Is outbound email actually working, or only configured? */
     emailHealth: () => get('/api/admin/health/email'),
     sendTestEmail: () => post('/api/admin/health/email'),

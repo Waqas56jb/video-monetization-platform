@@ -457,7 +457,31 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .role-toggle button span{overflow:hidden;text-overflow:ellipsis}
 .role-toggle button.on{background:linear-gradient(135deg,var(--purple),#5b21b6);color:#fff;box-shadow:0 8px 20px -6px rgba(124,58,237,.5)}
 .field{margin-bottom:20px}
-.field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:9px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:9px;overflow-wrap:break-word}
+
+/* --- a textarea that is not inside .input-wrap ----------------------------
+   "About you" is a bare <textarea> in a plain .field, and nothing here styled
+   it — so it rendered as the browser's own white box with square corners,
+   sitting on a dark panel. Every other input in the app goes through
+   `.input-wrap`, which is why this was the only one that looked wrong.        */
+.field textarea{
+  width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:14px;
+  padding:14px 16px;color:#fff;font-size:14.5px;line-height:1.6;
+  transition:.3s;outline:none;resize:vertical;min-height:112px;
+}
+.field textarea:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}
+.field textarea::placeholder{color:var(--muted2)}
+
+/* --- Email preferences ----------------------------------------------------
+   `.check-row` was written in the markup and never given a single rule, so the
+   panel was a bare checkbox butted against a wall of text with no alignment,
+   no spacing and no separation between the two options. That is what the
+   client saw and reported.                                                    */
+.check-row{display:flex;align-items:flex-start;gap:13px;padding:15px 0;cursor:pointer;border-bottom:1px solid var(--border2)}
+.check-row:last-of-type{border-bottom:0;padding-bottom:4px}
+.check-row input[type=checkbox]{width:19px;height:19px;margin-top:2px;flex-shrink:0;accent-color:var(--purple);cursor:pointer}
+.check-row>span{display:block;min-width:0;font-size:14px;font-weight:600;color:#fff;line-height:1.45}
+.check-row small{display:block;margin-top:5px;font-size:12.5px;font-weight:400;line-height:1.6;color:var(--muted);max-width:56ch}
 .input-wrap{position:relative}
 .input-wrap>svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted2);pointer-events:none}
 .input-wrap input,.input-wrap select{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:14px;padding:15px 16px 15px 48px;color:#fff;font-size:14.5px;transition:.3s;outline:none}
@@ -1005,6 +1029,10 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 /* --- iOS zooms any input under 16px on focus: bump it on small screens --- */
 @media(max-width:768px){
   .input-wrap input,.input-wrap select,.input-wrap textarea{font-size:16px;padding:14px 16px 14px 46px}
+  /* Same rule, for the one textarea that is not inside an .input-wrap. */
+  .field textarea{font-size:16px}
+  /* A checkbox is a tap target before it is a control. */
+  .check-row input[type=checkbox]{width:22px;height:22px}
 }
 
 /* --- scroll performance: phones / tablets / touch --------------------------------
@@ -1880,3 +1908,28 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 /* Explains a limit the creator did not choose — e.g. the preview ceiling
    that only becomes knowable once Cloudflare reports the running time. */
 .field-hint { margin: -6px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--muted2); }
+
+/* =========================================================================
+   POLICIES — terms, privacy, creator agreement, copyright, refunds
+   Long-form reading, so the measure is capped: a 1800px container would give
+   180-character lines nobody can follow back to the left margin.
+   ========================================================================= */
+.legal{padding:132px 0 90px}
+.legal-back{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;font-weight:600;margin-bottom:26px;background:none;border:0;cursor:pointer}
+.legal-back:hover{color:#fff}
+.legal-back svg{width:16px;height:16px}
+.legal-head{max-width:70ch}
+.legal-head h1{font-size:clamp(30px,4.4vw,46px);font-weight:800;line-height:1.14;letter-spacing:-1px;margin:16px 0 14px}
+.legal-head p{color:var(--muted);font-size:17px;line-height:1.72}
+.legal-head small{display:block;margin-top:14px;font-size:12.5px;color:var(--muted2)}
+.legal-tabs{display:flex;flex-wrap:wrap;gap:9px;margin:30px 0 40px;padding-bottom:30px;border-bottom:1px solid var(--border2)}
+.legal-body{max-width:74ch}
+.legal-body section{margin-bottom:38px}
+.legal-body h2{font-size:clamp(19px,2.2vw,23px);font-weight:700;color:#fff;margin:0 0 14px;letter-spacing:-.3px}
+.legal-body p{color:var(--muted);font-size:15.5px;line-height:1.78;margin:0 0 13px}
+.legal-body p:last-child{margin-bottom:0}
+@media(max-width:600px){
+  .legal{padding:104px 0 60px}
+  .legal-body p{font-size:15px;line-height:1.72}
+  .legal-tabs{margin:24px 0 30px;padding-bottom:24px}
+}

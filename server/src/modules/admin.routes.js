@@ -741,7 +741,7 @@ router.get(
   '/payments',
   validateQuery(
     z.object({
-      status: anyOf(['pending', 'success', 'failed', 'cancelled', 'expired']),
+      status: anyOf(['pending', 'success', 'failed', 'cancelled', 'expired', 'refunded']),
       limit: z.coerce.number().int().min(1).max(200).default(100),
     })
   ),
@@ -766,6 +766,113 @@ router.get(
       params
     )
     res.json({ payments: rows })
+  })
+)
+
+/**
+ * Refund a sale.
+ *
+ * The client asked for Refunded alongside the other four payment states, and it
+ * was the only one with nowhere to come from: the status existed, nothing could
+ * set it, and an administrator who had actually returned somebody's money had no
+ * way to say so.
+ *
+ * Three things move together or none of them do. The payment is marked
+ * refunded; the entitlement stops being active, which is what actually closes
+ * access, because `resolveAccess` only ever counts an active purchase; and the
+ * creator's credit is reversed, because otherwise they could withdraw against a
+ * sale that no longer exists.
+ *
+ * The reversal is a negative ledger entry rather than a deleted one. Money that
+ * moved and then moved back is two facts, and a ledger that quietly loses the
+ * first cannot be reconciled against the payments it came from.
+ *
+ * This does NOT move money. Mobile money refunds are made by hand in the
+ * provider's own portal; this records that it happened and takes the access back.
+ */
+router.post(
+  '/payments/:id/refund',
+  requireAdmin(),
+  validate(z.object({ reason: z.string().trim().max(500).optional() })),
+  asyncHandler(async (req, res) => {
+    const payment = await one('select * from payments where id = $1', [req.params.id])
+    if (!payment) throw notFound('Payment not found')
+    if (payment.status === 'refunded') throw conflict('This payment has already been refunded')
+    if (payment.status !== 'success') {
+      throw badRequest(`Only a successful payment can be refunded — this one is ${payment.status}`)
+    }
+
+    const reason = req.body.reason || 'Refunded by an administrator'
+
+    const outcome = await transaction(async (client) => {
+      await client.query(
+        `update payments set status = 'refunded', failure_reason = $2, updated_at = now()
+          where id = $1`,
+        [payment.id, reason]
+      )
+
+      const { rows: reversed } = await client.query(
+        `update purchases set status = 'refunded'
+          where payment_id = $1 and status = 'active'
+        returning id, creator_amount_tzs, platform_amount_tzs, amount_tzs, split_percent, video_id`,
+        [payment.id]
+      )
+
+      const video = await client.query('select creator_id from videos where id = $1', [payment.video_id])
+      const creatorId = video.rows[0]?.creator_id
+
+      for (const p of reversed) {
+        if (!creatorId) continue
+        await client.query(
+          `insert into earnings
+             (creator_id, video_id, purchase_id, source, gross_tzs, creator_tzs, platform_tzs, split_percent)
+           values ($1,$2,$3,'sale',$4,$5,$6,$7)`,
+          [
+            creatorId,
+            p.video_id,
+            p.id,
+            -p.amount_tzs,
+            -p.creator_amount_tzs,
+            -p.platform_amount_tzs,
+            p.split_percent,
+          ]
+        )
+      }
+
+      // `videos.paid_unlocks` needs no help — the trigger from migration 006
+      // recounts active purchases, and this one has stopped being active.
+      return { reversed: reversed.length }
+    }, asAdmin(req))
+
+    await recordStaffAction(req, {
+      action: 'REFUNDED_PAYMENT',
+      entityType: 'payment',
+      entityId: payment.id,
+      summary: `${who(req)} refunded TZS ${Number(payment.amount_tzs).toLocaleString()}`,
+      body: reason,
+      detail: { amountTzs: payment.amount_tzs, videoId: payment.video_id, reason },
+    })
+
+    await notify({
+      userId: payment.user_id,
+      kind: 'account',
+      title: 'Your payment has been refunded',
+      body: `${reason} Access to that video has been removed.`,
+      actor: req.user,
+      action: 'refund',
+      entityType: 'payment',
+      entityId: payment.id,
+    })
+
+    const fresh = await one('select * from payments where id = $1', [payment.id])
+    res.json({
+      payment: fresh,
+      accessRemoved: outcome.reversed > 0,
+      message:
+        outcome.reversed > 0
+          ? 'Refunded. Access removed and the creator’s credit reversed.'
+          : 'Refunded. There was no active purchase left to reverse.',
+    })
   })
 )
 
