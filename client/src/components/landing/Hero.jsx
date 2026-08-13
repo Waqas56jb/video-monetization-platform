@@ -171,8 +171,8 @@ export default function Hero() {
           </h1>
 
           <p className="hero-sub">
-            Upload exclusive content, set your price, and earn directly from your audience. You
-            choose how people watch, what stays paid, and when your content becomes free.
+            Upload your content, choose how people watch, and earn your way. You set the price,
+            and you decide whether a video stays paid or ever becomes free.
           </p>
 
           <div className="hero-actions">

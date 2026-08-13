@@ -164,7 +164,7 @@ export default function AnalyticsTab() {
           <EmptyState
             icon={Eye}
             title="You haven't bought anything yet"
-            message="Anything you buy is yours permanently, and it will be listed here."
+            message="Anything you buy stays in your library, and it will be listed here."
             action={
               <button className="btn btn-gold" onClick={() => navigate('/explore')}>
                 <Compass />

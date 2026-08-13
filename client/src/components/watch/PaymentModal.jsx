@@ -256,8 +256,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             </span>
             <h3>Unlocked</h3>
             <p className="pay-sub">
-              <b>{video.title}</b> is yours permanently. It will always be in your library, on any
-              device you sign in to.
+              <b>{video.title}</b> stays in your library, on any device you sign in to.
             </p>
             <button className="btn btn-gold btn-block" onClick={onUnlocked}>
               <Play />

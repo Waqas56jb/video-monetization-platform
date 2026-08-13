@@ -150,7 +150,8 @@ export const CREATOR_CONTROL = {
     'You choose the price.',
     'You choose how it’s released.',
     'You choose your paid period.',
-    'You choose when it becomes free.',
+    /* "when" implied every video eventually goes free. Only a Paid Premiere does. */
+    'You choose if and when it becomes free.',
   ],
   footnote: 'MTONYO+ provides the platform. You control the release.',
 }

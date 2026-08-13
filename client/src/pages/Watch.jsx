@@ -643,7 +643,7 @@ export default function Watch() {
                 : `— pay ${tzs(v.priceTzs)} to watch now. When your paid period ends it becomes Free + Ads, and anyone who paid keeps it in their library.`
               : v.accessType === 'free_with_ads'
                 ? '— free to watch. The creator earns from the advertising shown before it.'
-                : `— pay ${tzs(v.priceTzs)} once and it is yours permanently, on any device you log into.`}
+                : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
           </div>
         </div>
       </div>
