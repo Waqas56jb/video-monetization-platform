@@ -201,7 +201,41 @@ async function sendFile(path, file, { field = 'image', method = 'POST' } = {}) {
   return payload
 }
 
-const get = (path, opts) => request(path, { ...opts, method: 'GET' })
+/**
+ * Two components asking for the same thing at the same moment make one request.
+ *
+ * The landing page mounts Hero, ForCreators and Testimonials together, and all
+ * three independently ask for `/api/stats`. That is three identical requests to
+ * one host, on a page that also wants its images from somewhere — and a browser
+ * will only keep about six connections open to a host at a time, so the
+ * duplicates were competing with the content for the same slots.
+ *
+ * This is deduplication, not caching. Only requests that are genuinely in
+ * flight together are shared; once one settles the next call goes to the
+ * network exactly as before. Nothing is held, nothing goes stale, and no
+ * component had to change.
+ *
+ * GET only, no body, and never when the caller passed an AbortSignal — one
+ * component unmounting must not cancel a request another one is still waiting
+ * on.
+ */
+const inFlight = new Map()
+
+function dedupedGet(path, opts = {}) {
+  if (opts.body !== undefined || opts.signal) return request(path, { ...opts, method: 'GET' })
+
+  // Keyed by token as well: the same path answers differently to a signed-in
+  // viewer and an anonymous one.
+  const key = `${path}|${(opts.auth === false ? '' : getAccessToken()) || 'anon'}`
+  const running = inFlight.get(key)
+  if (running) return running
+
+  const pending = request(path, { ...opts, method: 'GET' }).finally(() => inFlight.delete(key))
+  inFlight.set(key, pending)
+  return pending
+}
+
+const get = (path, opts) => dedupedGet(path, opts)
 const post = (path, body, opts) => request(path, { ...opts, method: 'POST', body })
 const patch = (path, body, opts) => request(path, { ...opts, method: 'PATCH', body })
 const put = (path, body, opts) => request(path, { ...opts, method: 'PUT', body })
