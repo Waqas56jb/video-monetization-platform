@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { Film, Play, Plus, Trash2 } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Film, Play, Plus, Send, Trash2, X } from 'lucide-react'
 import Panel from '../Panel'
 import TableScroll from '@/components/ui/TableScroll'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
+import Field, { SelectField } from '@/components/ui/Field'
+import PreviewDuration, { splitSeconds, toSeconds } from '@/components/dashboard/PreviewDuration'
 import useApi, { tzs, compact, ACCESS_SHORT } from '@/hooks/useApi'
+import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import { CATEGORIES } from '@/data/copy'
 import api from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import VideoPreview from '@/components/dashboard/VideoPreview'
@@ -35,6 +40,76 @@ export default function MyVideosTab({ onNewUpload }) {
       reload({ quiet: true })
     } catch (err) {
       showToast(err.message)
+    }
+  }
+
+  /**
+   * Editing a submission that has come back.
+   *
+   * This table was read-only, which made "Changes requested" — and "Rejected"
+   * before it — a dead end: the creator was told exactly what to fix and given
+   * no way to fix it. Their only option was to upload the whole file again.
+   *
+   * Anything not yet approved can be corrected here and sent straight back. The
+   * file is untouched; only the details around it change.
+   */
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(null)
+  const [saving, setSaving] = useState(false)
+  useLockBodyScroll(Boolean(editing))
+
+  const canEdit = (v) =>
+    !v.deletedAt &&
+    !v.isPublished &&
+    v.reviewStatus !== 'pending_review' &&
+    v.reviewStatus !== 'approved'
+
+  const startEdit = (v) => {
+    const preview = splitSeconds(v.freePreviewSeconds || 0)
+    setEditing(v)
+    setForm({
+      title: v.title || '',
+      description: v.description || '',
+      // A category typed before the fixed list existed will not be on it; start
+      // them empty rather than showing a value the picker cannot represent.
+      category: CATEGORIES.includes(v.category) ? v.category : '',
+      accessType: v.accessType || 'ppv_forever',
+      priceTzs: v.priceTzs ?? 0,
+      premiereDays: v.premiereDays ?? 30,
+      previewValue: preview.value,
+      previewUnit: preview.unit,
+    })
+  }
+
+  const setField = (key) => (e) =>
+    setForm((f) => ({ ...f, [key]: e?.target ? e.target.value : e }))
+
+  const save = async ({ thenSubmit }) => {
+    if (!editing || !form) return
+    if (form.title.trim().length < 3) return showToast('Give the video a title')
+    setSaving(true)
+    try {
+      await api.videos.update(editing.id, {
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        category: form.category || undefined,
+        accessType: form.accessType,
+        priceTzs: form.accessType === 'free_with_ads' ? 0 : Number(form.priceTzs) || 0,
+        freePreviewSeconds: toSeconds(form.previewValue, form.previewUnit),
+        ...(form.accessType === 'paid_premiere' ? { premiereDays: Number(form.premiereDays) } : {}),
+      })
+      if (thenSubmit) {
+        const res = await api.videos.submit(editing.id)
+        showToast(res.message || 'Sent for review')
+      } else {
+        showToast('Changes saved')
+      }
+      setEditing(null)
+      reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -109,6 +184,25 @@ export default function MyVideosTab({ onNewUpload }) {
                       <Play size={14} />
                       <span className="btn-label">Watch</span>
                     </button>
+                    {/* The way back into review. Without it, a note from the
+                        reviewer was something to read and nothing to act on. */}
+                    {canEdit(v) && (
+                      <button
+                        className="btn btn-gold btn-sm"
+                        onClick={() => startEdit(v)}
+                        title="Edit the details and send for review"
+                        style={{ marginRight: 6 }}
+                      >
+                        <Send size={14} />
+                        <span className="btn-label">
+                          {v.reviewStatus === 'changes_requested'
+                            ? 'Fix & resubmit'
+                            : v.reviewStatus === 'rejected'
+                              ? 'Edit & resubmit'
+                              : 'Edit & submit'}
+                        </span>
+                      </button>
+                    )}
                     {/* Requesting, never deleting. */}
                     {v.isPublished && !v.deletedAt && (
                       <button
@@ -128,6 +222,132 @@ export default function MyVideosTab({ onNewUpload }) {
         </TableScroll>
       )}
 
+      {editing &&
+        form &&
+        createPortal(
+          <div
+            className="modal open"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Edit ${editing.title}`}
+          >
+            <div className="modal-bg" onClick={() => !saving && setEditing(null)} />
+            <div className="modal-card edit-card">
+              <button
+                className="modal-x"
+                onClick={() => setEditing(null)}
+                aria-label="Close"
+                disabled={saving}
+              >
+                <X />
+              </button>
+
+              <h3>Edit &amp; resubmit</h3>
+
+              {editing.rejectionReason && (
+                <div className="notice" style={{ marginTop: 12 }}>
+                  <span>
+                    <b>The reviewer asked for:</b> {editing.rejectionReason}
+                  </span>
+                </div>
+              )}
+
+              <Field
+                id="ev-title"
+                label="Video title"
+                icon="type"
+                type="text"
+                value={form.title}
+                onChange={setField('title')}
+                maxLength={160}
+              />
+              <Field
+                id="ev-desc"
+                label="Description"
+                icon="align-left"
+                type="text"
+                value={form.description}
+                onChange={setField('description')}
+                maxLength={4000}
+              />
+              <SelectField
+                id="ev-cat"
+                label="Category"
+                icon="tag"
+                placeholder="Choose a category"
+                options={CATEGORIES}
+                value={form.category}
+                onChange={setField('category')}
+              />
+              <SelectField
+                id="ev-access"
+                label="How people watch it"
+                icon="lock"
+                options={[
+                  { value: 'ppv_forever', label: 'Pay Once' },
+                  { value: 'paid_premiere', label: 'Paid Premiere' },
+                  { value: 'free_with_ads', label: 'Free + Ads' },
+                ]}
+                value={form.accessType}
+                onChange={setField('accessType')}
+              />
+
+              {form.accessType !== 'free_with_ads' && (
+                <div className="form-grid">
+                  <Field
+                    id="ev-price"
+                    label="Price (TZS)"
+                    icon="banknote"
+                    type="number"
+                    min={0}
+                    value={form.priceTzs}
+                    onChange={setField('priceTzs')}
+                  />
+                  {form.accessType === 'paid_premiere' && (
+                    <Field
+                      id="ev-days"
+                      label="Paid for (days)"
+                      icon="hourglass"
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={form.premiereDays}
+                      onChange={setField('premiereDays')}
+                    />
+                  )}
+                </div>
+              )}
+
+              <PreviewDuration
+                id="ev-preview"
+                value={form.previewValue}
+                unit={form.previewUnit}
+                videoSeconds={editing.durationSeconds || 0}
+                onChange={({ value, unit }) =>
+                  setForm((f) => ({ ...f, previewValue: value, previewUnit: unit }))
+                }
+              />
+
+              <button
+                className="btn btn-gold btn-block"
+                onClick={() => save({ thenSubmit: true })}
+                disabled={saving}
+              >
+                <Send />
+                {saving ? 'Sending…' : 'Save & submit for review'}
+              </button>
+              <button
+                className="btn btn-ghost btn-block"
+                onClick={() => save({ thenSubmit: false })}
+                disabled={saving}
+              >
+                Save without submitting
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
       <VideoPreview
         video={previewing}
         open={Boolean(previewing)}
@@ -140,6 +360,8 @@ export default function MyVideosTab({ onNewUpload }) {
 function statusOf(v) {
   if (v.deletedAt) return { pill: 'bad', label: 'Removed' }
   if (v.reviewStatus === 'rejected') return { pill: 'bad', label: 'Rejected' }
+  /* Not a rejection — the submission is alive and waiting on the creator. */
+  if (v.reviewStatus === 'changes_requested') return { pill: 'pend', label: 'Changes requested' }
   if (v.reviewStatus === 'pending_review') return { pill: 'pend', label: 'Awaiting review' }
   if (v.isPublished) return { pill: 'ok', label: 'Live' }
   if (v.reviewStatus === 'approved') return { pill: 'ok', label: 'Approved' }

@@ -35,64 +35,16 @@ export const IMG = {
 }
 
 /**
- * Landing-page showcase cards only.
+ * There used to be a LANDING_SHOWCASE here: four hand-written cards with
+ * invented creators, invented view counts and invented prices, sitting on the
+ * homepage as though they were real releases.
  *
- * These are design furniture for the homepage so the marketing layout always
- * looks complete — the same four models a visitor needs to understand at a
- * glance. They are NOT the catalogue. Explore, Watch, Library and every
- * dashboard number still come from the real database / demo seed.
+ * It is gone, and nothing replaced it — the homepage grid reads the live
+ * catalogue now. The client's instruction was plain: "Remove fake/demo creator
+ * earnings presented as real unless they are actual production data." A figure
+ * on a storefront is a claim, and a made-up one is a false claim however good
+ * it makes the layout look.
  */
-export const LANDING_SHOWCASE = [
-  {
-    id: 'showcase-premiere',
-    thumb: IMG.premiere,
-    time: '20:14',
-    title: 'Harmonize — Behind The Fame',
-    author: 'Konde Gang Official',
-    avatar: IMG.avatarKonde,
-    tag: { cls: 'tag-prem', label: 'PAID PREMIERE' },
-    price: 'TZS 500',
-    priceNote: '7 days left · then free',
-    views: '25,430',
-  },
-  {
-    id: 'showcase-ppv',
-    thumb: IMG.journey,
-    time: '45:02',
-    title: 'The Journey — Live From Dar',
-    author: 'Zuchu Studio',
-    avatar: IMG.avatarZuchu,
-    tag: { cls: 'tag-ppv', label: 'PAY ONCE' },
-    price: 'TZS 1,000',
-    priceNote: 'Stays in your library',
-    views: '35,120',
-  },
-  {
-    id: 'showcase-studio',
-    thumb: IMG.studio,
-    time: '32:47',
-    title: 'Studio Session Live Vol. 3',
-    author: 'Marioo Music',
-    avatar: IMG.avatarMarioo,
-    tag: { cls: 'tag-ppv', label: 'PAY ONCE' },
-    price: 'TZS 800',
-    priceNote: 'Stays in your library',
-    views: '21,490',
-  },
-  {
-    id: 'showcase-free',
-    thumb: IMG.konser,
-    time: '18:22',
-    title: 'Konser Dar Live — Full Show',
-    author: 'Rayvanny TV',
-    avatar: IMG.avatarRayvanny,
-    tag: { cls: 'tag-free', label: 'FREE + ADS' },
-    price: 'FREE',
-    priceNote: 'Premiere ended · ads',
-    priceColor: 'var(--green)',
-    views: '18,230',
-  },
-]
 
 /** The scrolling strip of what the platform does. */
 export const MARQUEE_ITEMS = [
@@ -170,10 +122,26 @@ export const ACCESS_OPTIONS = [
  *
  * A creator who makes podcasts or courses should see themselves on this page.
  */
-export const CONTENT_KINDS = [
+/**
+ * The categories. One list, and this is it.
+ *
+ * The homepage advertised these ten while the upload form took free text and
+ * Explore listed whatever strings happened to exist in the database — so the
+ * three never agreed, which is exactly what the client reported. A creator
+ * typing "documentry" created a category of one, permanently.
+ *
+ * Everything reads from here now: the upload picker, the Explore filters and
+ * the landing strip. Explore additionally shows any category already in the
+ * database that is not on this list, so content uploaded before the list
+ * existed stays reachable instead of disappearing from the filters.
+ */
+export const CATEGORIES = [
   'Films', 'Series', 'Music', 'Concerts', 'Comedy',
   'Documentaries', 'Sports', 'Podcasts', 'Courses', 'Behind the Scenes',
 ]
+
+/** The same list, under the name the landing page has always called it. */
+export const CONTENT_KINDS = CATEGORIES
 
 /** The principle the client wants running through the whole site. */
 export const CREATOR_CONTROL = {
@@ -222,7 +190,7 @@ export const FEATURES = [
   },
   {
     icon: 'shield-check',
-    title: 'Bulletproof Protection',
+    title: 'Secure Streaming Protection',
     text: 'Signed, expiring stream URLs mean copied links die instantly. Adaptive streaming delivers smooth playback even on slow connections.',
     delay: 2,
   },
@@ -262,9 +230,6 @@ export const FOOTER_LINKS = {
   ],
   support: ['Help Center', 'Creator Guide', 'Terms of Service', 'Privacy Policy'],
 }
-
-/** The three ways a video can be sold, as filter labels. */
-export const ACCESS_FILTERS = ['All Access', 'Pay Once', 'Paid Premiere', 'Free + Ads']
 
 /** How each review state is shown to the creator who is waiting on it. */
 export const REVIEW_STATUS = {

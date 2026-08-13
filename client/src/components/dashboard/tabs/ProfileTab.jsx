@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Camera, Check, Save, Trash2, User } from 'lucide-react'
 import Panel from '../Panel'
-import Field from '@/components/ui/Field'
+import Field, { PasswordField } from '@/components/ui/Field'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { shortDate } from '@/hooks/useApi'
 import api from '@/lib/api'
@@ -300,8 +300,20 @@ function PayoutForm({ creator, onSaved }) {
   const showToast = useToast()
   const [phone, setPhone] = useState(creator?.payoutPhone || '')
   const [method, setMethod] = useState(creator?.payoutMethod || 'mpesa')
+  const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+
+  /**
+   * The password is only asked for when something actually changes.
+   *
+   * This is the bank account, and thirty seconds at an unlocked phone would
+   * otherwise be enough to point a creator's earnings somewhere else — they
+   * would find out at the next withdrawal. Someone who opens this panel and
+   * saves it unchanged is not asked for anything.
+   */
+  const changed =
+    phone.trim() !== (creator?.payoutPhone || '') || method !== (creator?.payoutMethod || 'mpesa')
 
   const save = async (e) => {
     e.preventDefault()
@@ -309,9 +321,17 @@ function PayoutForm({ creator, onSaved }) {
     if (!/^[0-9+\s-]{9,15}$/.test(phone.trim())) {
       return setError('Enter the mobile money number your payouts should go to')
     }
+    if (changed && !password) {
+      return setError('Confirm your password to change where your money is sent')
+    }
     setSaving(true)
     try {
-      await api.account.update({ payoutPhone: phone.trim(), payoutMethod: method })
+      await api.account.update({
+        payoutPhone: phone.trim(),
+        payoutMethod: method,
+        ...(changed ? { currentPassword: password } : {}),
+      })
+      setPassword('')
       showToast('Payout details saved')
       onSaved?.()
     } catch (err) {
@@ -361,6 +381,26 @@ function PayoutForm({ creator, onSaved }) {
         Withdrawals are sent here. Check it carefully — money sent to the wrong number is not
         easy to get back.
       </p>
+
+      {changed && (
+        <>
+          <PasswordField
+            id="pf-payout-pass"
+            label="Confirm your password"
+            placeholder="••••••••"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              setError(null)
+            }}
+          />
+          <p className="field-hint">
+            Asked for because you are changing where your money is sent. We will email you
+            afterwards either way.
+          </p>
+        </>
+      )}
 
       <button className="btn btn-gold" type="submit" disabled={saving}>
         <Save />

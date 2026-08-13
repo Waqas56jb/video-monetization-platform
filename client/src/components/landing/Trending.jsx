@@ -35,11 +35,11 @@ export default function Trending() {
             TRENDING NOW
           </span>
           <h2>
-            Hot Videos <span className="grad-text">Everyone&apos;s Buying</span>
+            Trending <span className="grad-text">Now</span>
           </h2>
           <p>
-            Exclusive premieres and Pay Once releases from Tanzania&apos;s biggest creators. Watch
-            the free preview, pay your way, and it stays in your library.
+            What people are watching and buying this fortnight. Watch the free preview, pay your
+            way, and it stays in your library.
           </p>
         </div>
 

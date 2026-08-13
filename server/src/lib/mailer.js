@@ -29,11 +29,31 @@ function getTransport() {
       port: env.smtp.port,
       secure: env.smtp.secure, // 465 = implicit TLS; 587 upgrades with STARTTLS
       auth: { user: env.smtp.user, pass: env.smtp.pass },
-      pool: true,
-      maxConnections: 3,
-      // Gmail throttles hard on bursts; three at a time keeps us well inside it.
-      rateDelta: 1000,
-      rateLimit: 5,
+
+      /**
+       * No connection pool, deliberately.
+       *
+       * A pool keeps sockets open and caches them on this module. That is
+       * exactly wrong on a serverless host: the instance is frozen the moment
+       * its response is sent, so the next request thaws holding a socket the
+       * other end closed long ago. The send then hangs until the platform kills
+       * the function — and a killed function logs nothing, which is how a
+       * broken mailer stays invisible. One connection per message costs a
+       * handshake and always works.
+       */
+      pool: false,
+
+      /**
+       * Fail fast and loudly.
+       *
+       * Without these, a refused or black-holed connection sits there until
+       * `maxDuration` (30s in vercel.json) kills the whole request, producing no
+       * error anyone can read. Ten seconds is far longer than a healthy SMTP
+       * handshake ever needs.
+       */
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     })
   }
   return transport

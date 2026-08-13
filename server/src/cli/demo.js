@@ -103,7 +103,7 @@ const VIDEOS = [
   {
     creator: 'asha',
     title: 'Behind The Fame — A Coast Documentary',
-    category: 'Documentary',
+    category: 'Documentaries',
     description:
       'Three months with the musicians of Bagamoyo, from the rehearsal room to a sold-out night on the beach.',
     accessType: 'paid_premiere',
@@ -141,7 +141,7 @@ const VIDEOS = [
   {
     creator: 'neema',
     title: 'How To Cook Pilau Properly',
-    category: 'Food',
+    category: 'Courses',
     description: 'The rice, the spices, and the two things everybody gets wrong.',
     accessType: 'free_with_ads',
     priceTzs: 0,
@@ -152,7 +152,7 @@ const VIDEOS = [
   {
     creator: 'neema',
     title: 'Ugali & Samaki — Sunday Cooking',
-    category: 'Food',
+    category: 'Courses',
     description: 'A whole Sunday lunch, start to finish, for four people.',
     accessType: 'paid_premiere',
     priceTzs: 800,
@@ -164,7 +164,7 @@ const VIDEOS = [
   {
     creator: 'asha',
     title: 'The Fishermen of Kilwa',
-    category: 'Documentary',
+    category: 'Documentaries',
     description: 'Out at 4am with a crew who have done this every day for thirty years.',
     accessType: 'ppv_forever',
     priceTzs: 1500,

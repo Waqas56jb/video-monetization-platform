@@ -267,6 +267,11 @@ export const api = {
     review: (status) => get(`/api/admin/review${qs({ status })}`),
     approve: (id, body) => post(`/api/admin/review/${id}/approve`, body),
     reject: (id, reason) => post(`/api/admin/review/${id}/reject`, { reason }),
+    /** Send it back for a correction without discarding the submission. */
+    requestChanges: (id, note) => post(`/api/admin/review/${id}/request-changes`, { note }),
+    /** Is outbound email actually working, or only configured? */
+    emailHealth: () => get('/api/admin/health/email'),
+    sendTestEmail: () => post('/api/admin/health/email'),
 
     videos: (params) => get(`/api/admin/videos${qs(params)}`),
     updateVideo: (id, body) => patch(`/api/admin/videos/${id}`, body),

@@ -313,9 +313,25 @@ router.post(
     try {
       await sendMail({ to: profile.email, subject: tpl.subject, html: tpl.html })
     } catch (err) {
-      // Do not leak a delivery failure as "this address exists". Log it for us,
-      // answer the caller exactly as before.
+      /**
+       * The response stays byte-for-byte identical — a delivery failure must
+       * never become a way to discover which addresses are registered.
+       *
+       * But it must not vanish either. A runtime log is gone within the hour on
+       * a serverless host, and that is exactly how a broken mailer went
+       * unnoticed while every single reset request reported success to the
+       * person waiting for an email that was never sent. The audit log is
+       * permanent, and an admin can read it.
+       */
       log.error(`reset email to ${profile.email} failed: ${err.message}`)
+      await recordAudit({
+        actorId: profile.id,
+        action: 'PASSWORD_RESET_EMAIL_FAILED',
+        entityType: 'profile',
+        entityId: profile.id,
+        detail: { email: profile.email, error: err.message },
+        ip: clientIp(req),
+      })
       return res.json(identical)
     }
 

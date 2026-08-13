@@ -12,7 +12,8 @@ import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
 import { campaignPerformance, microToTzs } from '../services/ads.js'
 import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails } from '../lib/cloudflare.js'
-import { capabilities } from '../config/env.js'
+import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
+import { capabilities, env } from '../config/env.js'
 
 const router = Router()
 
@@ -104,7 +105,13 @@ router.get(
 
 router.get(
   '/review',
-  validateQuery(z.object({ status: z.enum(['pending_review', 'approved', 'rejected']).default('pending_review') })),
+  validateQuery(
+    z.object({
+      status: z
+        .enum(['pending_review', 'approved', 'rejected', 'changes_requested'])
+        .default('pending_review'),
+    })
+  ),
   asyncHandler(async (req, res) => {
     const rows = await many(
       `select v.*, coalesce(cp.display_name, p.full_name) as creator_name,
@@ -126,17 +133,24 @@ router.get(
   })
 )
 
+/**
+ * Approval carries a note, and nothing else.
+ *
+ * It used to accept accessType, priceTzs, freePreviewSeconds and premiereDays,
+ * and wrote them straight over whatever the creator had chosen — without ever
+ * telling them. The client's instruction was explicit: "Admin may Approve,
+ * Reject or Request Changes, but should not silently alter commercial
+ * settings. Our principle is 'Your Content. Your Rules.'"
+ *
+ * A reviewer who thinks the terms are wrong now says so with Request Changes,
+ * and the creator makes the change themselves. Nobody's price is ever quietly
+ * rewritten by someone the viewer is not buying from.
+ */
 const approveSchema = z.object({
-  // The admin may change the Paid Premiere window before approving —
-  // 30 / 60 / 90 or anything else, decided per video and per artist.
-  premiereDays: z.coerce.number().int().min(1).max(3650).optional(),
-  accessType: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
-  priceTzs: z.coerce.number().int().min(0).optional(),
-  freePreviewSeconds: z.coerce.number().int().min(0).max(7200).optional(),
   note: z.string().trim().max(500).optional(),
 })
 
-/** Approve and publish. This is the only path that can set `is_published`. */
+/** Approve and publish, on the creator's own terms. */
 router.post(
   '/review/:id/approve',
   validate(approveSchema),
@@ -145,39 +159,31 @@ router.post(
     if (!video) throw notFound('Video not found')
     if (video.review_status === 'approved') throw conflict('This video is already approved')
 
-    const b = req.body
-    const accessType = b.accessType ?? video.access_type
-    if (accessType === 'paid_premiere' && !(b.premiereDays ?? video.premiere_days)) {
-      throw badRequest('Set the Paid Premiere duration before approving')
+    /**
+     * A Paid Premiere with no window cannot go live — there would be nothing to
+     * expire, and it would sit paid forever. Ask the creator for one rather than
+     * inventing a number on their behalf.
+     */
+    if (video.access_type === 'paid_premiere' && !video.premiere_days) {
+      throw badRequest(
+        'This Paid Premiere has no paid period set. Use "Request changes" and ask the creator to choose one.'
+      )
     }
 
     const updated = await transaction(async (client) => {
       const { rows } = await client.query(
         `update videos set
-           access_type          = coalesce($2, access_type),
-           price_tzs            = case when coalesce($2, access_type) = 'free_with_ads'
-                                       then 0 else coalesce($3, price_tzs) end,
-           free_preview_seconds = coalesce($4, free_preview_seconds),
-           premiere_days        = case when coalesce($2, access_type) = 'paid_premiere'
-                                       then coalesce($5, premiere_days) else null end,
-           ads_enabled          = (coalesce($2, access_type) = 'free_with_ads'),
+           ads_enabled          = (access_type = 'free_with_ads'),
            review_status        = 'approved',
            rejection_reason     = null,
-           reviewed_by          = $6,
+           reviewed_by          = $2,
            reviewed_at          = now(),
            is_published         = true,
            published_at         = coalesce(published_at, now()),
-           premiere_started_at  = case when coalesce($2, access_type) = 'paid_premiere'
+           premiere_started_at  = case when access_type = 'paid_premiere'
                                        then coalesce(premiere_started_at, now()) else null end
          where id = $1 returning *`,
-        [
-          video.id,
-          b.accessType ?? null,
-          b.priceTzs ?? null,
-          b.freePreviewSeconds ?? null,
-          b.premiereDays ?? null,
-          req.user.id,
-        ]
+        [video.id, req.user.id]
       )
       return rows[0]
     }, asAdmin(req))
@@ -192,10 +198,12 @@ router.post(
       summary: `${who(req)} approved "${video.title}"`,
       detail: {
         title: video.title,
+        // Recorded so the log shows the terms it went live on — these are the
+        // creator's, unchanged.
         accessType: updated.access_type,
         premiereDays: updated.premiere_days,
         priceTzs: updated.price_tzs,
-        note: b.note || null,
+        note: req.body.note || null,
       },
     })
 
@@ -203,7 +211,7 @@ router.post(
       userId: video.creator_id,
       kind: 'account',
       title: `"${video.title}" is approved and live`,
-      body: b.note || 'Your video passed review and is now visible to viewers.',
+      body: req.body.note || 'Your video passed review and is now visible to viewers.',
       actor: req.user,
       action: 'approve',
       entityType: 'video',
@@ -211,6 +219,70 @@ router.post(
     })
 
     res.json({ video: studioVideo(updated), message: 'Approved and published' })
+  })
+)
+
+/**
+ * Ask for a correction, without throwing the submission away.
+ *
+ * Between "this is fine" and "this is not publishable" sits the ordinary case:
+ * one thing needs fixing. Until now a reviewer had only Reject, which reads to
+ * a creator as "start again" and discards work that was nearly right — and it
+ * was the only way to influence terms the reviewer disagreed with, which is how
+ * silently editing someone's price came to feel reasonable.
+ *
+ * The video stays where it is, the note travels with it, and the creator edits
+ * and resubmits the same video. `changes_requested` is not `pending_review`, so
+ * it leaves the queue and stops being counted as waiting on staff.
+ */
+router.post(
+  '/review/:id/request-changes',
+  validate(
+    z.object({
+      note: z.string().trim().min(5, 'Tell the creator what to change').max(1000),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const video = await one('select * from videos where id = $1 and deleted_at is null', [req.params.id])
+    if (!video) throw notFound('Video not found')
+    if (video.review_status === 'approved') {
+      throw conflict('This video is already live. Unpublish it first if it needs changing.')
+    }
+
+    const updated = await one(
+      `update videos
+          set review_status = 'changes_requested',
+              rejection_reason = $2,
+              reviewed_by = $3,
+              reviewed_at = now(),
+              is_published = false
+        where id = $1 returning *`,
+      [video.id, req.body.note, req.user.id]
+    )
+
+    await recordStaffAction(req, {
+      action: 'CHANGES_REQUESTED',
+      entityType: 'video',
+      entityId: video.id,
+      summary: `${who(req)} asked for changes to "${video.title}"`,
+      detail: { title: video.title, note: req.body.note },
+    })
+
+    await notify({
+      userId: video.creator_id,
+      kind: 'account',
+      title: `"${video.title}" needs a small change`,
+      body: req.body.note,
+      actor: req.user,
+      action: 'request_changes',
+      entityType: 'video',
+      entityId: video.id,
+    })
+
+    res.json({
+      video: studioVideo(updated),
+      message: 'Sent back to the creator with your note',
+    })
   })
 )
 
@@ -777,6 +849,95 @@ router.get(
    ====================================================================== */
 
 router.get('/settings', asyncHandler(async (_req, res) => res.json({ settings: await getSettings({ fresh: true }) })))
+
+/* ----------------------------------------------------------- email health */
+/**
+ * Does outbound email actually work?
+ *
+ * `/health` reports `email: true` as soon as the three SMTP variables are
+ * non-empty, which proves nothing — a wrong password looks identical to a right
+ * one from there. That gap is how every password-reset request came back
+ * "success" while nothing was ever delivered: the send failed, the failure was
+ * swallowed to avoid leaking which addresses exist, and no screen anywhere said
+ * the mailer was broken.
+ *
+ * This asks the server properly. It opens a connection and authenticates
+ * without sending anything, and turns the raw SMTP error into something a
+ * non-technical administrator can act on.
+ */
+const mailHint = (message = '') => {
+  if (/invalid login|username and password|535|BadCredentials/i.test(message)) {
+    return (
+      'The mail server rejected the credentials. For Gmail, SMTP_PASS must be a ' +
+      '16-character App Password — not the account password. ' +
+      'Google Account → Security → 2-Step Verification → App passwords.'
+    )
+  }
+  if (/does not match|553|not allowed to send as/i.test(message)) {
+    return 'MAIL_FROM must be the same address as SMTP_USER, or an alias that address is allowed to send as.'
+  }
+  if (/self.signed|certificate|wrong version number|SSL/i.test(message)) {
+    return 'TLS negotiation failed. Port 465 needs SMTP_SECURE=true; port 587 needs SMTP_SECURE=false.'
+  }
+  if (/timeout|ETIMEDOUT|ECONNREFUSED|ENOTFOUND/i.test(message)) {
+    return 'Could not reach the mail server at all. Check SMTP_HOST and SMTP_PORT, and that the host allows outbound SMTP.'
+  }
+  return 'Check SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER and SMTP_PASS on the server.'
+}
+
+router.get(
+  '/health/email',
+  asyncHandler(async (_req, res) => {
+    if (!capabilities.email) {
+      return res.status(503).json({
+        ok: false,
+        configured: false,
+        error: 'SMTP_HOST, SMTP_USER or SMTP_PASS is missing on the server.',
+        hint: 'Set all three, then redeploy the API.',
+      })
+    }
+    try {
+      const info = await verifyMail()
+      res.json({ ok: true, configured: true, host: info.host, from: info.from })
+    } catch (err) {
+      res.status(502).json({
+        ok: false,
+        configured: true,
+        host: env.smtp.host,
+        port: env.smtp.port,
+        secure: env.smtp.secure,
+        from: env.smtp.from,
+        error: err.message,
+        hint: mailHint(err.message),
+      })
+    }
+  })
+)
+
+/**
+ * Send a real message to the signed-in staff member.
+ *
+ * `verify()` only proves the credentials are accepted; it does not prove a
+ * message survives the trip. Deliberately sent to the caller's own address and
+ * nobody else's, so this can never be turned into a way to mail strangers.
+ */
+router.post(
+  '/health/email',
+  asyncHandler(async (req, res) => {
+    if (!capabilities.email) throw badRequest('Email is not configured on the server.')
+    const tpl = passwordChangedEmail({ name: req.user.full_name })
+    try {
+      const info = await sendMail({
+        to: req.user.email,
+        subject: 'MTONYO+ mail test',
+        html: tpl.html,
+      })
+      res.json({ ok: true, sentTo: req.user.email, messageId: info.messageId })
+    } catch (err) {
+      res.status(502).json({ ok: false, sentTo: req.user.email, error: err.message, hint: mailHint(err.message) })
+    }
+  })
+)
 
 router.patch(
   '/settings',

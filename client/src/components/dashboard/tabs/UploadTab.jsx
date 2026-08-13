@@ -13,8 +13,9 @@ import {
   X,
 } from 'lucide-react'
 import Panel from '../Panel'
-import Field from '@/components/ui/Field'
+import Field, { SelectField } from '@/components/ui/Field'
 import Icon from '@/components/ui/Icon'
+import { CATEGORIES } from '@/data/copy'
 import api, { mediaUrl } from '@/lib/api'
 import {
   ACCEPTED,
@@ -407,16 +408,18 @@ export default function UploadTab({ onSubmitted }) {
             onChange={set('description')}
             maxLength={4000}
           />
+          {/* A fixed list, not free text. Typed categories never matched the
+              ones the homepage and Explore advertise, and a single typo used to
+              create a category of one that nobody could ever browse to. */}
           <div className="form-grid">
-            <Field
+            <SelectField
               id="up-cat"
               label="Category"
               icon="tag"
-              type="text"
-              placeholder="Music"
+              placeholder="Choose a category"
+              options={CATEGORIES}
               value={form.category}
               onChange={set('category')}
-              maxLength={60}
             />
           </div>
 
@@ -493,8 +496,8 @@ export default function UploadTab({ onSubmitted }) {
               <Info />
               <span>
                 After <b>{form.premiereDays || 0} days</b> this video automatically becomes{' '}
-                <b>FREE + ADS</b> and continues earning ad revenue for you. The MTONYO+ team can
-                adjust this window when they review it.
+                <b>FREE + ADS</b> and continues earning ad revenue for you. You choose this
+                period — it is yours to set.
               </span>
             </div>
           )}
@@ -599,6 +602,18 @@ export default function UploadTab({ onSubmitted }) {
                           <b>Reason:</b> {v.rejectionReason}
                         </small>
                       )}
+                      {state.key === 'changes' && (
+                        <small className="sub-note sub-changes">
+                          {v.rejectionReason && (
+                            <>
+                              <b>Requested:</b> {v.rejectionReason}
+                              <br />
+                            </>
+                          )}
+                          Make the change in <b>My Videos</b>, then submit it again — you do not
+                          need to upload the file a second time.
+                        </small>
+                      )}
                       {state.key === 'draft' && (
                         <small className="sub-note">
                           Not submitted yet — finish the details and send it for review.
@@ -627,6 +642,13 @@ export default function UploadTab({ onSubmitted }) {
 function reviewState(v) {
   if (v.deletedAt) return { key: 'rejected', pill: 'bad', icon: 'x-circle', label: 'Removed' }
   if (v.reviewStatus === 'rejected') return { key: 'rejected', pill: 'bad', icon: 'x-circle', label: 'Rejected' }
+  /**
+   * Not a rejection. The reviewer wants one thing fixed and the submission is
+   * still alive — the video stays editable and can be sent back with the same
+   * Submit button, rather than being uploaded again from scratch.
+   */
+  if (v.reviewStatus === 'changes_requested')
+    return { key: 'changes', pill: 'pend', icon: 'pencil', label: 'Changes requested' }
   if (v.reviewStatus === 'pending_review')
     return { key: 'pending', pill: 'pend', icon: 'hourglass', label: 'Awaiting review' }
   if (v.isPublished) return { key: 'live', pill: 'ok', icon: 'check-circle-2', label: 'Live' }

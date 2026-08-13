@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Play, ShieldAlert, ShieldCheck, X } from 'lucide-react'
+import { Check, PencilLine, Play, ShieldAlert, ShieldCheck, X } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { Async } from '@/components/ui/States'
 import useApi, { tzs, timeAgo } from '@/hooks/useApi'
@@ -27,6 +27,20 @@ const REJECT_REASONS = [
   'Breaks the community guidelines',
 ]
 
+/**
+ * The corrections that come up again and again. Presets, not a fixed list —
+ * the box underneath stays editable, because the useful note is usually the
+ * specific one.
+ */
+const CHANGE_REQUESTS = [
+  'Please choose a category from the list',
+  'The free preview is too long for this video',
+  'Set a paid period for this premiere',
+  'Add a proper cover image',
+  'The description needs more detail',
+  'Improve the title — it does not describe the content',
+]
+
 const ACCESS_LABEL = {
   ppv_forever: 'Pay Once',
   paid_premiere: 'Paid Premiere',
@@ -40,43 +54,53 @@ export default function ReviewTab() {
 
   const [previewing, setPreviewing] = useState(null)
   const [openId, setOpenId] = useState(null)
-  const [mode, setMode] = useState(null) // 'approve' | 'reject'
+  const [mode, setMode] = useState(null) // 'approve' | 'changes' | 'reject'
   const [reason, setReason] = useState('')
-  const [terms, setTerms] = useState({})
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const startApprove = (v) => {
+  const open = (v, next) => {
     setOpenId(v.id)
-    setMode('approve')
-    setTerms({
-      accessType: v.accessType,
-      priceTzs: v.priceTzs ?? 0,
-      premiereDays: v.premiereDays ?? 30,
-      note: '',
-    })
-  }
-
-  const startReject = (v) => {
-    setOpenId(v.id)
-    setMode('reject')
+    setMode(next)
     setReason('')
+    setNote('')
   }
 
   const close = () => {
     setOpenId(null)
     setMode(null)
     setReason('')
+    setNote('')
   }
 
+  /**
+   * Approve on the creator's own terms.
+   *
+   * This panel used to let a reviewer edit the price, the access type and the
+   * premiere window on the way past, and the creator was never told. It sends a
+   * note now and nothing else — if the terms look wrong, that is what Request
+   * changes is for.
+   */
   const approve = async (v) => {
     setBusy(true)
     try {
-      const body = { accessType: terms.accessType, note: terms.note || undefined }
-      if (terms.accessType !== 'free_with_ads') body.priceTzs = Number(terms.priceTzs) || 0
-      if (terms.accessType === 'paid_premiere') body.premiereDays = Number(terms.premiereDays)
-
-      await api.admin.approve(v.id, body)
+      await api.admin.approve(v.id, note.trim() ? { note: note.trim() } : {})
       showToast(`"${v.title}" is approved and live`)
+      close()
+      reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestChanges = async (v) => {
+    if (note.trim().length < 5) return showToast('Tell the creator what needs changing')
+    setBusy(true)
+    try {
+      await api.admin.requestChanges(v.id, note.trim())
+      showToast(`Sent back to ${v.creator?.name || 'the creator'} with your note`)
       close()
       reload({ quiet: true })
     } catch (err) {
@@ -171,11 +195,17 @@ export default function ReviewTab() {
                   <Play />
                   Watch
                 </button>
-                <button className="btn btn-green btn-sm" onClick={() => startApprove(v)}>
+                <button className="btn btn-green btn-sm" onClick={() => open(v, 'approve')}>
                   <Check />
                   Approve
                 </button>
-                <button className="btn btn-red btn-sm" onClick={() => startReject(v)}>
+                {/* The middle ground. Without it, one small fixable problem had
+                    to be a rejection — which reads as "start again". */}
+                <button className="btn btn-gold btn-sm" onClick={() => open(v, 'changes')}>
+                  <PencilLine />
+                  Request changes
+                </button>
+                <button className="btn btn-red btn-sm" onClick={() => open(v, 'reject')}>
                   <X />
                   Reject
                 </button>
@@ -183,78 +213,51 @@ export default function ReviewTab() {
 
               {openId === v.id && mode === 'approve' && (
                 <div className="rv-reject">
-                  <label>Terms this video goes live on</label>
+                  <label>Publishing on the creator&apos;s terms</label>
                   <p className="field-note" style={{ marginTop: -6 }}>
-                    Set per video, not once for the whole platform — one artist can have a 30-day
-                    premiere and another 90.
+                    {v.creator?.name || 'The creator'} chose these. Approving publishes them
+                    exactly as they are — if something is wrong, use <b>Request changes</b> and
+                    let them fix it.
                   </p>
 
-                  <div className="rv-presets">
-                    {Object.entries(ACCESS_LABEL).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={`rv-preset ${terms.accessType === value ? 'on' : ''}`.trim()}
-                        onClick={() => setTerms((t) => ({ ...t, accessType: value }))}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  {/* Read-only on purpose. This panel used to let a reviewer
+                      rewrite the price and the premiere window on the way past,
+                      and the creator was never told it had happened. */}
+                  <div className="rv-terms">
+                    <span>
+                      <small>Release</small>
+                      <b>{ACCESS_LABEL[v.accessType] || v.accessType}</b>
+                    </span>
+                    {v.accessType !== 'free_with_ads' && (
+                      <span>
+                        <small>Price</small>
+                        <b>{tzs(v.priceTzs)}</b>
+                      </span>
+                    )}
+                    {v.accessType === 'paid_premiere' && (
+                      <span>
+                        <small>Paid period</small>
+                        <b>{v.premiereDays} days</b>
+                      </span>
+                    )}
+                    <span>
+                      <small>Free preview</small>
+                      <b>{v.freePreviewSeconds ? formatDuration(v.freePreviewSeconds) : 'None'}</b>
+                    </span>
                   </div>
 
-                  <div className="approve-grid">
-                    {terms.accessType !== 'free_with_ads' && (
-                      <label>
-                        Price (TZS)
-                        <input
-                          type="number"
-                          min={0}
-                          value={terms.priceTzs}
-                          onChange={(e) => setTerms((t) => ({ ...t, priceTzs: e.target.value }))}
-                        />
-                      </label>
-                    )}
-                    {terms.accessType === 'paid_premiere' && (
-                      <label>
-                        Premiere window (days)
-                        {/* 30 / 60 / 90 are the windows that get picked almost
-                            every time. The field stays editable underneath, so
-                            any other length is still one keystroke away. */}
-                        <div className="rv-presets rv-presets-inline">
-                          {[30, 60, 90].map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              className={`rv-preset ${Number(terms.premiereDays) === d ? 'on' : ''}`.trim()}
-                              onClick={() => setTerms((t) => ({ ...t, premiereDays: d }))}
-                            >
-                              {d} days
-                            </button>
-                          ))}
-                        </div>
-                        <input
-                          type="number"
-                          min={1}
-                          max={3650}
-                          value={terms.premiereDays}
-                          onChange={(e) => setTerms((t) => ({ ...t, premiereDays: e.target.value }))}
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  {terms.accessType === 'paid_premiere' && (
+                  {v.accessType === 'paid_premiere' && (
                     <p className="field-note">
-                      After {terms.premiereDays || 0} days this video becomes Free + Ads, and the
-                      creator earns from advertising instead of sales.
+                      After {v.premiereDays} days this becomes Free + Ads automatically, and
+                      everyone who paid keeps it in their library.
                     </p>
                   )}
 
                   <textarea
                     rows={2}
                     placeholder="Optional note to the creator…"
-                    value={terms.note}
-                    onChange={(e) => setTerms((t) => ({ ...t, note: e.target.value }))}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
                   />
 
                   <div className="rv-reject-actions">
@@ -264,6 +267,49 @@ export default function ReviewTab() {
                     <button className="btn btn-green btn-sm" onClick={() => approve(v)} disabled={busy}>
                       <Check />
                       {busy ? 'Publishing…' : 'Approve & Publish'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {openId === v.id && mode === 'changes' && (
+                <div className="rv-reject">
+                  <label htmlFor={`changes-${v.id}`}>
+                    What needs changing? The creator sees this and can fix it and resubmit.
+                  </label>
+
+                  <div className="rv-presets">
+                    {CHANGE_REQUESTS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        className={`rv-preset ${note === r ? 'on' : ''}`.trim()}
+                        onClick={() => setNote(r)}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    id={`changes-${v.id}`}
+                    rows={3}
+                    value={note}
+                    placeholder="Be specific — this note is the only thing they have to work from…"
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+
+                  <div className="rv-reject-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={close}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-gold btn-sm"
+                      onClick={() => requestChanges(v)}
+                      disabled={busy}
+                    >
+                      <PencilLine />
+                      {busy ? 'Sending…' : 'Send back for changes'}
                     </button>
                   </div>
                 </div>

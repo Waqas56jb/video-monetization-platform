@@ -150,7 +150,7 @@ router.get(
         priceTzs: video.price_tzs,
         heading: 'Want to keep watching?',
         subheading: "You've reached the end of your free preview.",
-        terms: 'One-time payment • Yours forever',
+        terms: 'One-time payment • Stays in your library',
         cta: `UNLOCK & CONTINUE — TZS ${Number(video.price_tzs).toLocaleString()}`,
         methods: ['M-Pesa', 'Airtel Money'],
       },

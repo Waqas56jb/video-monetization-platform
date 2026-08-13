@@ -7,6 +7,7 @@ import VideoCard from '@/components/ui/VideoCard'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import useApi, { useDebounced } from '@/hooks/useApi'
 import { toCard, videoLink } from '@/lib/videoView'
+import { CATEGORIES } from '@/data/copy'
 import api from '@/lib/api'
 import { useRole } from '@/context/AuthContext'
 
@@ -56,10 +57,20 @@ export default function Explore() {
   const total = results.data?.total ?? 0
   const filtered = Boolean(query || category || access)
 
-  const categoryChips = useMemo(
-    () => ['', ...(categories.data?.categories || []).map((c) => c.category)],
-    [categories.data]
-  )
+  /**
+   * The ten canonical categories always show, in the same order as the
+   * homepage. This list used to be built purely from whatever strings existed
+   * in the database, which is why the two screens never agreed.
+   *
+   * Anything already in the database that is not canonical is appended rather
+   * than dropped — content categorised before the fixed list existed stays
+   * reachable instead of quietly disappearing from the filters.
+   */
+  const categoryChips = useMemo(() => {
+    const fromDb = (categories.data?.categories || []).map((c) => c.category).filter(Boolean)
+    const extras = fromDb.filter((c) => !CATEGORIES.includes(c))
+    return ['', ...CATEGORIES, ...extras]
+  }, [categories.data])
 
   const reset = () => {
     setQuery('')

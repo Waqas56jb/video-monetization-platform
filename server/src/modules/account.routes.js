@@ -6,6 +6,8 @@ import { asyncHandler, badRequest } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { requireAuth } from '../middleware/auth.js'
 import { storeImage, removeImage } from '../services/uploads.js'
+import { verifyPassword } from '../lib/authdb.js'
+import { notify } from '../services/notify.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 
 /**
@@ -88,6 +90,11 @@ const profileSchema = z
 
     emailAnnouncements: z.boolean().optional(),
     emailAccountNews: z.boolean().optional(),
+
+    /**
+     * Required only when the payout details change — see below.
+     */
+    currentPassword: z.string().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change' })
 
@@ -96,6 +103,36 @@ router.patch(
   validate(profileSchema),
   asyncHandler(async (req, res) => {
     const b = req.body
+
+    /**
+     * Changing where the money goes is a sensitive action.
+     *
+     * Everything else on this form is a preference; the payout number is the
+     * bank account. Somebody who gets thirty seconds at an unlocked phone could
+     * otherwise point a creator's entire earnings at their own line, and the
+     * creator would find out at the next withdrawal.
+     *
+     * So it costs a password — and the account is told afterwards, because the
+     * notification is how a creator learns about a change they did not make.
+     */
+    const changingPayout = b.payoutPhone !== undefined || b.payoutMethod !== undefined
+    if (changingPayout) {
+      const current = await one(
+        'select payout_phone, payout_method from creator_profiles where user_id = $1',
+        [req.user.id]
+      )
+      const reallyChanging =
+        (b.payoutPhone !== undefined && (b.payoutPhone || null) !== (current?.payout_phone || null)) ||
+        (b.payoutMethod !== undefined && (b.payoutMethod || null) !== (current?.payout_method || null))
+
+      if (reallyChanging) {
+        if (!b.currentPassword) {
+          throw badRequest('Confirm your password to change your payout details')
+        }
+        const ok = await verifyPassword(req.user.id, b.currentPassword)
+        if (!ok) throw badRequest('Your current password is not correct')
+      }
+    }
 
     /**
      * An empty string means "clear this", null means "leave it alone". They are
@@ -155,6 +192,30 @@ router.patch(
       },
       { actorRole: 'system', actorId: req.user.id }
     )
+
+    /**
+     * Tell them it happened. The password stops a stranger making the change;
+     * this is how the creator finds out if one somehow did — and the audit row
+     * is what an administrator reads when a payout is disputed. The number
+     * itself is deliberately not written to the log.
+     */
+    if (changingPayout) {
+      await recordAudit({
+        actorId: req.user.id,
+        action: 'CHANGED_PAYOUT_DETAILS',
+        entityType: 'profile',
+        entityId: req.user.id,
+        detail: { method: creator?.payout_method ?? null },
+        ip: clientIp(req),
+      })
+      await notify({
+        userId: req.user.id,
+        kind: 'account',
+        title: 'Your payout details were changed',
+        body: 'If this was not you, change your password immediately and contact support.',
+        action: 'payout_details',
+      })
+    }
 
     res.json(shape(profile, creator))
   })
