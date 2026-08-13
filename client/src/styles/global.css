@@ -1041,15 +1041,70 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
    makes the page hitch/stop exactly when the video grid enters view. */
 @media (max-width: 1024px), (hover: none) {
   .grain { display: none }
-  .aurora span { animation: none !important; filter: blur(64px); opacity: .34 }
-  .aurora .a3 { display: none }
   .hero-bg img { animation: none !important; transform: scale(1.06) }
   .phone, .float-card, .upload-zone .uz-ic { animation: none !important }
   .grad-text { animation: none }
+  /* A glowing dot on every badge, pulsing a box-shadow forever. Small, but it
+     repaints for the whole life of the page and there is one in each section. */
+  .badge .dot { animation: none }
   .marquee-track { animation-duration: 40s }
-  header.scrolled { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px) }
   .vid-card, .feat, .step, .testi, .stat-card { transition-duration: .2s }
   .vid-card:hover { transform: none }
+
+  /* ======================================================================
+     No backdrop-filter. Anywhere.
+
+     This is what made the page stall just below the hero, and it is worth
+     being precise about why. A blurred panel is not painted once: the
+     browser has to rasterise whatever is behind it, blur that, and
+     composite the result — and while you scroll, "whatever is behind it"
+     is different on every single frame. There were twenty-nine of these
+     declarations, and eight or ten are on screen together at exactly the
+     point the hero ends: the badges, the two ghost buttons, the payment
+     strip, the stats strip, the sticky header, then every video card's
+     tag. A mid-range Android cannot blur ten regions sixty times a second
+     and scroll at the same time, so it stops scrolling.
+
+     The panels underneath are already dark and nearly opaque, so removing
+     the blur costs almost nothing to look at once the alpha is topped up —
+     which is what the rules below do. Desktop keeps the frosting.
+     ====================================================================== */
+  *, *::before, *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* The alpha the blur was quietly providing, given back directly. */
+  header.scrolled { background: rgba(10, 10, 18, .97) }
+  .badge { background: rgba(124, 58, 237, .18) }
+  .btn-ghost { background: rgba(255, 255, 255, .06) }
+  .hero-pay { background: rgba(20, 20, 31, .9) }
+  .hero-stats { background: rgba(17, 17, 26, .92) }
+  .earn-card { background: rgba(20, 20, 31, .96) }
+  .modal-bg { background: rgba(5, 5, 10, .93) }
+  .paywall { background: rgba(8, 8, 14, .95) }
+  .sidebar-scrim { background: rgba(5, 5, 10, .8) }
+  .model { background: linear-gradient(135deg, rgba(20, 20, 31, .92), rgba(16, 16, 25, .82)) }
+
+  /* ----------------------------------------------------------------------
+     The aurora, without a filter pass.
+
+     `filter: blur(80px)` on a fixed, full-screen layer is a second large
+     blur the compositor carries for the whole session — and `will-change:
+     transform` pins it in GPU memory even though the animation is off here.
+
+     A radial gradient with a soft stop IS a blur, computed once by the
+     rasteriser and never again. Same haze, none of the cost.
+     ---------------------------------------------------------------------- */
+  .aurora span {
+    animation: none !important;
+    filter: none;
+    will-change: auto;
+    opacity: .55;
+  }
+  .aurora .a1 { background: radial-gradient(circle, rgba(76, 29, 149, .5), transparent 68%) }
+  .aurora .a2 { background: radial-gradient(circle, rgba(46, 16, 101, .45), transparent 68%) }
+  .aurora .a3 { display: none }
 
   /* --------------------------------------------------------------------
      Nothing on a phone waits for an observer before it is allowed to be
