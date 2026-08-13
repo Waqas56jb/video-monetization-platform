@@ -20,13 +20,33 @@ import { Skeleton } from '@/components/ui/States'
 
 /** Which tabs each role is allowed to open. */
 const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
+const CREATOR_TABS = ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings']
+
 const TABS_BY_ROLE = {
   viewer: ['library', 'purchases', 'become', ...ACCOUNT_TABS],
-  creator: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
-  // Staff who open the public app still get a working creator-style dashboard
-  // instead of crashing on an unknown role map.
-  admin: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
-  sub_admin: ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', ...ACCOUNT_TABS],
+  creator: [...CREATOR_TABS, ...ACCOUNT_TABS],
+
+  /**
+   * An admin passes the creator role check on the server, so the creator tabs
+   * work for them — they simply show nothing, which is honest.
+   */
+  admin: [...CREATOR_TABS, ...ACCOUNT_TABS],
+
+  /**
+   * A sub-admin does NOT.
+   *
+   * `requireCreator` lets an admin through and refuses everyone else, so every
+   * creator endpoint answered a sub-admin with "This action requires the creator
+   * role" — and they were being shown Overview, Upload, My Videos and Earnings
+   * anyway. Four tabs, each one a red error panel. That is exactly what the
+   * screenshots show.
+   *
+   * On the public site a sub-admin is a viewer: they watch and they buy. Their
+   * actual work is in the control centre. "Become a creator" is left out
+   * deliberately — taking it would set their role to `creator` and quietly
+   * strip the staff access they were given.
+   */
+  sub_admin: ['library', 'purchases', ...ACCOUNT_TABS],
 }
 
 /** Where each role lands when it opens the dashboard. */
@@ -34,7 +54,7 @@ const HOME_TAB = {
   viewer: 'library',
   creator: 'overview',
   admin: 'overview',
-  sub_admin: 'overview',
+  sub_admin: 'library',
 }
 
 /** Map any known (or unknown) role onto a safe dashboard key. */

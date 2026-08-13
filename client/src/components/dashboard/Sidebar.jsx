@@ -56,7 +56,17 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const { role, signOut } = useRole()
   const [signingOut, setSigningOut] = useState(false)
   // Staff who open the public app get the creator menu, not an empty sidebar.
-  const menuRole = role === 'admin' || role === 'sub_admin' ? 'creator' : role || 'viewer'
+  /**
+   * An admin passes the server's creator check, so the creator menu works for
+   * them — the screens are simply empty, which is honest.
+   *
+   * A sub-admin does not. `requireCreator` lets an admin through and refuses
+   * everyone else, so every one of those screens answered them with "This
+   * action requires the creator role" — Overview, Upload, My Videos and
+   * Earnings, four tabs, four red error panels. On the public site a sub-admin
+   * is a viewer; their actual work is in the control centre.
+   */
+  const menuRole = role === 'admin' ? 'creator' : role === 'sub_admin' ? 'viewer' : role || 'viewer'
 
   /**
    * Sign out, then leave.
@@ -79,10 +89,20 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
     }
   }
 
-  const visible = GROUPS.filter((g) => g.roles.includes(menuRole)).map((g) => ({
-    ...g,
-    items: g.items.filter((i) => i.roles.includes(menuRole)),
-  }))
+  const visible = GROUPS.filter((g) => g.roles.includes(menuRole))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter(
+        (i) =>
+          i.roles.includes(menuRole) &&
+          /* Not for staff. Taking it would set their role to `creator` and
+             quietly strip the sub-admin access they were given. */
+          !(i.tab === 'become' && role === 'sub_admin')
+      ),
+    }))
+    // A group whose every item was filtered out should not leave a heading
+    // floating over nothing.
+    .filter((g) => g.items.length > 0)
 
   const activate = (item) => {
     if (item.tab) return onTab(item.tab)

@@ -644,6 +644,24 @@
   background: var(--card, #14141d); border: 1px solid var(--border);
   border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.5); overflow: hidden;
 }
+
+/* On a phone the panel spans the content, not the button.
+   `right: 0` anchors it to the bell — and the bell is not at the edge of the
+   screen, the avatar sits to its right. A 358px panel hung off a button that
+   ends 60px short of the edge therefore started 28px off the LEFT of the
+   screen, which is why the heading read "…fications" and the body text was cut
+   in half.
+   `.dash-main` carries a transform, so it is the containing block for a fixed
+   child: this pins the panel to the dashboard column and it still scrolls with
+   the bell rather than floating over the page. */
+@media (max-width: 600px) {
+  .notif-pop {
+    position: fixed;
+    top: 64px; left: 12px; right: 12px;
+    width: auto;
+  }
+  .notif-pop-list { max-height: min(340px, 58vh); }
+}
 .notif-pop-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--border);
