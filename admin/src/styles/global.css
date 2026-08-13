@@ -72,6 +72,9 @@ input,select{font-family:inherit;outline:none}
 /* pills */
 .pill{font-size:11px;font-weight:800;padding:5px 12px;border-radius:99px;letter-spacing:.4px;display:inline-flex;align-items:center;gap:6px}
 .pill.ok{background:rgba(34,197,94,.13);color:var(--green)}
+/* Featured is an editorial choice, not a state the platform measured — gold
+   rather than green so it never reads as "approved". */
+.pill.gold{background:rgba(233,185,73,.14);color:var(--gold)}
 .pill.pend{background:rgba(245,197,24,.12);color:var(--gold)}
 .pill.free{background:rgba(124,58,237,.15);color:var(--purple2)}
 .pill.bad{background:rgba(239,68,68,.13);color:#fca5a5}

@@ -80,7 +80,16 @@ router.get(
        * stronger signal than somebody clicking. Lifetime views break ties so a
        * quiet fortnight still produces a sensible order.
        */
-      trending: `(
+      /**
+       * Anything an administrator has featured comes first, and everything
+       * else is measured.
+       *
+       * Featured is an editorial decision — a new creator's first release has
+       * no fortnight of history and would never surface on merit, however good
+       * it is. It sorts ahead rather than being mixed into the score, so the
+       * measurement underneath stays honest and un-nudged.
+       */
+      trending: `v.featured desc, (
         (select count(*) from video_views w
           where w.video_id = v.id and w.created_at > now() - interval '14 days')
         + 5 * (select count(*) from purchases pu

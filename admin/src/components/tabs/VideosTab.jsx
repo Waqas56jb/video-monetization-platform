@@ -13,11 +13,23 @@ import VideoPreview from '@/components/ui/VideoPreview'
 
 const STATUS_FILTERS = {
   Published: 'published',
+  Featured: 'featured',
   Unpublished: 'unpublished',
   'Awaiting review': 'pending_review',
+  'Changes requested': 'changes_requested',
   Rejected: 'rejected',
   Removed: 'deleted',
 }
+
+/**
+ * The same ten the public site offers. Kept here rather than imported because
+ * the two apps do not share a module — if that list ever changes, it changes in
+ * `client/src/data/copy.js` and here.
+ */
+const CATEGORIES = [
+  'Films', 'Series', 'Music', 'Concerts', 'Comedy',
+  'Documentaries', 'Sports', 'Podcasts', 'Courses', 'Behind the Scenes',
+]
 
 const ACCESS_LABEL = {
   ppv_forever: 'Pay Once',
@@ -38,11 +50,12 @@ export default function VideosTab() {
   const [previewing, setPreviewing] = useState(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
+  const [category, setCategory] = useState('')
   const debounced = useDebounced(query, 300)
 
   const { data, loading, error, reload } = useApi(
-    () => api.admin.videos({ q: debounced, status: STATUS_FILTERS[status], limit: 100 }),
-    [debounced, status]
+    () => api.admin.videos({ q: debounced, status: STATUS_FILTERS[status], category, limit: 100 }),
+    [debounced, status, category]
   )
 
   const rows = data?.videos || []
@@ -50,7 +63,7 @@ export default function VideosTab() {
     { icon: 'clapperboard', label: 'Videos', value: compact(rows.length) },
     { icon: 'eye', label: 'Total Views', value: compact(rows.reduce((n, v) => n + (v.views || 0), 0)) },
     { icon: 'ticket', label: 'Paid Unlocks', value: compact(rows.reduce((n, v) => n + (v.paidUnlocks || 0), 0)) },
-    { icon: 'shield-check', label: 'Published', value: compact(rows.filter((v) => v.isPublished).length) },
+    { icon: 'star', tone: 'gold', label: 'Featured', value: compact(rows.filter((v) => v.featured).length) },
   ]
 
   const act = async (fn, message) => {
@@ -96,6 +109,12 @@ export default function VideosTab() {
               onChange={setStatus}
               options={Object.keys(STATUS_FILTERS)}
               allLabel="All Videos"
+            />
+            <FilterSelect
+              value={category}
+              onChange={setCategory}
+              options={CATEGORIES}
+              allLabel="All categories"
             />
           </FilterRow>
         }
@@ -144,7 +163,14 @@ export default function VideosTab() {
                     <td>{v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs)}</td>
                     <td>{compact(v.views)}</td>
                     <td>{v.buyers ?? 0}</td>
-                    <td>{statusPill(v)}</td>
+                    <td>
+                      {statusPill(v)}
+                      {v.featured && !removed && (
+                        <span className="pill gold" style={{ marginLeft: 6 }}>
+                          Featured
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <div className="actions">
                         <IconButton
@@ -152,6 +178,23 @@ export default function VideosTab() {
                           title="Watch this video"
                           onClick={() => setPreviewing(v)}
                         />
+                        {/* Editorial control. Trending is measured and cannot be
+                            steered; this is how something gets to the front of
+                            the homepage on purpose — a new creator's first
+                            release has no history to rank on. */}
+                        {v.isPublished && !removed && (
+                          <IconButton
+                            icon={v.featured ? 'star-off' : 'star'}
+                            title={v.featured ? 'Remove from featured' : 'Feature on the homepage'}
+                            tone={v.featured ? undefined : 'good'}
+                            onClick={() =>
+                              act(
+                                () => api.admin.updateVideo(v.id, { featured: !v.featured }),
+                                v.featured ? 'No longer featured' : 'Featured on the homepage'
+                              )
+                            }
+                          />
+                        )}
                         {v.isPublished && !removed && (
                           <IconButton
                             icon="eye-off"

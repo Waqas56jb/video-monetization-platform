@@ -334,20 +334,31 @@ router.get(
   validateQuery(
     z.object({
       q: z.string().trim().max(120).optional(),
-      status: anyOf(['published', 'unpublished', 'pending_review', 'rejected', 'deleted']),
+      status: anyOf([
+        'published',
+        'unpublished',
+        'pending_review',
+        'changes_requested',
+        'rejected',
+        'deleted',
+        'featured',
+      ]),
+      category: z.string().trim().max(60).optional(),
       limit: z.coerce.number().int().min(1).max(100).default(50),
       offset: z.coerce.number().int().min(0).default(0),
     })
   ),
   asyncHandler(async (req, res) => {
-    const { q, status, limit, offset } = req.validatedQuery
+    const { q, status, category, limit, offset } = req.validatedQuery
     const where = ['1=1']
     const params = []
 
     if (q) { params.push(`%${q}%`); where.push(`v.title ilike $${params.length}`) }
+    if (category) { params.push(category); where.push(`v.category = $${params.length}`) }
     if (status === 'published') where.push('v.is_published and v.deleted_at is null')
     else if (status === 'unpublished') where.push('not v.is_published and v.deleted_at is null')
     else if (status === 'deleted') where.push('v.deleted_at is not null')
+    else if (status === 'featured') where.push('v.featured and v.deleted_at is null')
     else if (status) { params.push(status); where.push(`v.review_status = $${params.length}`) }
     else where.push('v.deleted_at is null')
 
@@ -379,6 +390,8 @@ router.patch(
       freePreviewSeconds: z.coerce.number().int().min(0).max(7200).optional(),
       premiereDays: z.coerce.number().int().min(1).max(3650).optional(),
       adsEnabled: z.boolean().optional(),
+      /* The front-page choice. Deliberately not tied to publication. */
+      featured: z.boolean().optional(),
     })
   ),
   asyncHandler(async (req, res) => {
@@ -396,7 +409,8 @@ router.patch(
              free_preview_seconds = coalesce($4, free_preview_seconds),
              premiere_days        = case when coalesce($2, access_type) = 'paid_premiere'
                                          then coalesce($5, premiere_days) else null end,
-             ads_enabled          = coalesce($6, (coalesce($2, access_type) = 'free_with_ads'))
+             ads_enabled          = coalesce($6, (coalesce($2, access_type) = 'free_with_ads')),
+             featured             = coalesce($7, featured)
            where id = $1 returning *`,
           [
             video.id,
@@ -405,6 +419,7 @@ router.patch(
             b.freePreviewSeconds ?? null,
             b.premiereDays ?? null,
             b.adsEnabled ?? null,
+            b.featured ?? null,
           ]
         )
         return rows[0]

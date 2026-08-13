@@ -74,6 +74,8 @@ export function publicVideo(v, access = null) {
     premiereDays: v.premiere_days,
     premiereEndsAt: v.premiere_ends_at,
     adsEnabled: v.ads_enabled,
+    /* Editorial, not measured — see migration 010. */
+    featured: v.featured ?? false,
     views: v.views,
     paidUnlocks: v.paid_unlocks,
     publishedAt: v.published_at,
