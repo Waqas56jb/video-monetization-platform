@@ -733,7 +733,12 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .btn-label-short{display:inline}
 }
 @media(max-width:600px){
-  .section{padding:74px 0}
+  /* 110px of air between sections is generous on a 1440px monitor and simply
+     lost space on a phone — a screen and a half of scrolling that carries
+     nothing, which is part of what read as "the page is still loading".
+     `.section-head` already carries 64px of its own below it. */
+  .section{padding:52px 0}
+  .section-head{margin-bottom:38px}
   .vid-grid,.feat-grid,.testi-grid,.lib-grid{grid-template-columns:1fr}
   .steps{grid-template-columns:1fr 1fr}
   .access-options{grid-template-columns:1fr}
@@ -1017,6 +1022,27 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   header.scrolled { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px) }
   .vid-card, .feat, .step, .testi, .stat-card { transition-duration: .2s }
   .vid-card:hover { transform: none }
+
+  /* --------------------------------------------------------------------
+     Nothing on a phone waits for an observer before it is allowed to be
+     seen.
+
+     Scroll-reveal is a desktop nicety. On a phone it is the whole reported
+     bug: every section below the fold starts at opacity 0, and if the
+     IntersectionObserver is slow — a cold JS parse on mobile data is
+     exactly when it is — the page is a header followed by a screen and a
+     half of nothing. The client did not describe an animation that felt
+     late. They described a site that would not load.
+
+     The animation still runs everywhere a pointer exists. Here the content
+     is simply present.
+     -------------------------------------------------------------------- */
+  .reveal, .reveal-l, .reveal-r,
+  .reveal.is-pending, .reveal-l.is-pending, .reveal-r.is-pending {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* Trending grid: reserve height so images don't shove the scroll position */
@@ -1280,27 +1306,43 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 @media(max-width:600px){
   .hero .badge{font-size:10.5px;letter-spacing:1.3px;padding:6px 13px}
   .hero h1{margin:20px 0 18px}
-  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  /* 2×2 needs a horizontal rule between the rows, not just vertical ones */
-  .hstat:nth-child(2n)::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:1px;background:var(--border2)}
-  .hstat:nth-child(odd)::before{display:none}
-  .hstat:nth-child(n+3){border-top:1px solid var(--border2)}
+
+  /* ------------------------------------------------------------------
+     The hero is content-sized on a phone.
+
+     `min-height:min(100dvh,920px)` with the content vertically centred is
+     right on a desktop, where the phone mock fills the other half of the
+     grid. On a 390px screen that column is gone, so the same rule reserves
+     a full screen and centres a short block of text inside it — a header,
+     a large empty band, then the rest of the page. That empty band is what
+     the screenshots show.
+
+     This is not the hero being compressed to fit — it is the hero being
+     allowed to be exactly as tall as what is in it.
+     ------------------------------------------------------------------ */
+  .hero{min-height:auto}
+
+  /* One stat per row.
+
+     Two columns gave each figure ~170px, so "OF EVERY SALE IS YOURS" broke
+     across three lines next to a number that needed one. A labelled row is
+     legible at any width and never wraps into rubble. */
+  .hero-stats{grid-template-columns:1fr}
+  .hstat{padding:14px 16px}
+  .hstat::before{display:none !important}
+  .hstat+.hstat{border-top:1px solid var(--border2)}
 }
 
-/* very small phones: stats read better as labelled rows than a cramped 2×2 */
 @media(max-width:380px){
-  .hero-stats{grid-template-columns:repeat(3,minmax(0,1fr));border-radius:14px}
-  .hstat{padding:11px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px}
-  .hstat::before{display:none !important}
-  .hstat:nth-child(2n)::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:1px;background:var(--border2);display:block !important}
-  .hstat:nth-child(3n)::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:1px;background:var(--border2);display:block !important}
-  .hstat+.hstat{border-top:0}
-  .hstat:nth-child(n+3){border-top:0}
-  .hstat-ic{width:26px;height:26px;border-radius:8px}
-  .hstat-ic svg{width:13px;height:13px}
-  .hstat b{font-size:14px;margin:0}
-  .hstat-text{text-align:center}
-  .hstat-text span{font-size:8.5px;letter-spacing:.3px;margin-top:2px}
+  /* Still one per row — this used to force three columns onto the narrowest
+     screens of all, which is the opposite of what the comment above it
+     claimed it was doing. */
+  .hero-stats{border-radius:14px}
+  .hstat{padding:12px 14px;gap:11px}
+  .hstat-ic{width:28px;height:28px;border-radius:8px}
+  .hstat-ic svg{width:14px;height:14px}
+  .hstat b{font-size:15px;margin:0}
+  .hstat-text span{font-size:9px;letter-spacing:.3px;margin-top:2px}
 }
 
 /* =========================================================================
