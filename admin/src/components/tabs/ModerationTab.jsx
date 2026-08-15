@@ -3,7 +3,7 @@ import { Flag, ShieldCheck, Trash2 } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { Async } from '@/components/ui/States'
 import useApi, { timeAgo } from '@/hooks/useApi'
-import api from '@/lib/api'
+import api, { mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 
 /**
@@ -178,8 +178,8 @@ export default function ModerationTab() {
           {requests.map((r) => (
             <div className="review-card" key={r.id}>
               <div className="rv-thumb">
-                {r.thumbnail_url ? (
-                  <img src={r.thumbnail_url} alt="" loading="lazy" />
+                {r.thumbnailUrl ? (
+                  <img src={mediaUrl(r.thumbnailUrl)} alt="" loading="lazy" />
                 ) : (
                   <span className="v-thumb-blank" />
                 )}

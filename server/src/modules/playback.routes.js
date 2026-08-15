@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { one, query } from '../db/pool.js'
 import { asyncHandler, notFound, forbidden } from '../lib/errors.js'
 import { optionalAuth } from '../middleware/auth.js'
-import { resolveAccess } from '../services/entitlement.js'
+import { resolveAccess, thumbnailFor } from '../services/entitlement.js'
 import { getSettings } from '../services/settings.js'
 import * as cf from '../lib/cloudflare.js'
 import { verifyThumbnailKey } from '../lib/mediaToken.js'
@@ -80,7 +80,10 @@ router.get(
       durationSeconds: video.duration_seconds,
       accessType: video.access_type,
       access,
-      thumbnailUrl: video.thumbnail_url,
+      /* The player's poster. This was the raw Cloudflare address, which needs a
+         signature these videos require — so the frame behind the play button
+         was blank while the video itself played perfectly. */
+      thumbnailUrl: thumbnailFor(video),
       // Ads only ever run on free-with-ads videos.
       preroll:
         access.showsAds && settings.preroll_enabled

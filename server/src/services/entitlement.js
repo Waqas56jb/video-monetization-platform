@@ -121,7 +121,7 @@ export function studioVideo(v) {
  * may watch. Anything else carries a signed, expiring key scoped to this one
  * thumbnail — never the playback token, which would hand over the video too.
  */
-function thumbnailFor(v) {
+export function thumbnailFor(v) {
   /**
    * A cover the creator chose beats the frame Cloudflare happened to grab,
    * which is very often a blur or a black gap between shots. Stored separately

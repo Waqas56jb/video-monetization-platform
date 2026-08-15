@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { one, many } from '../db/pool.js'
 import { asyncHandler, notFound } from '../lib/errors.js'
 import { requireAuth } from '../middleware/auth.js'
+import { thumbnailFor } from '../services/entitlement.js'
 import { env } from '../config/env.js'
 
 const router = Router()
@@ -20,7 +21,14 @@ router.get(
     const rows = await many(
       `select pu.id as purchase_id, pu.purchased_at, pu.amount_tzs,
               pay.method, pay.provider_ref,
-              v.id, v.slug, v.title, v.description, v.category, v.thumbnail_url,
+              v.id, v.slug, v.title, v.description, v.category,
+              -- Everything thumbnailFor() needs to decide how this poster is
+              -- addressed. Selecting only thumbnail_url is what left My Library
+              -- showing empty cards: that column holds Cloudflare's raw
+              -- address, and these videos require a signed one, so the browser
+              -- was asking for something that answers 401.
+              v.thumbnail_url, v.custom_thumbnail_url, v.cloudflare_uid,
+              v.is_published, v.review_status, v.deleted_at,
               v.duration_seconds, v.access_type, v.price_tzs, v.views,
               coalesce(cp.display_name, p.full_name) as creator_name,
               p.avatar_url as creator_avatar, v.creator_id
@@ -41,7 +49,7 @@ router.get(
         title: r.title,
         description: r.description,
         category: r.category,
-        thumbnailUrl: r.thumbnail_url,
+        thumbnailUrl: thumbnailFor(r),
         durationSeconds: r.duration_seconds,
         accessType: r.access_type,
         views: r.views,

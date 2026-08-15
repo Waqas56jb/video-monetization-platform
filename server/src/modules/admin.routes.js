@@ -7,7 +7,7 @@ import { requireAuth, requireStaff, requireAdmin, requirePermission } from '../m
 import { getSettings, updateSettings, applySplit, splitPercentFor } from '../services/settings.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
-import { studioVideo } from '../services/entitlement.js'
+import { studioVideo, thumbnailFor } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
 import { campaignPerformance, microToTzs } from '../services/ads.js'
@@ -694,7 +694,11 @@ router.get(
   '/deletion-requests',
   asyncHandler(async (_req, res) => {
     const rows = await many(
-      `select r.*, v.title, v.thumbnail_url, v.slug,
+      // An unpublished video's poster still needs a key in the URL, and a
+      // removal request is exactly the case where the video may not be public.
+      `select r.*, v.title, v.slug,
+              v.id as video_id, v.thumbnail_url, v.custom_thumbnail_url,
+              v.cloudflare_uid, v.is_published, v.review_status, v.deleted_at,
               coalesce(cp.display_name, p.full_name) as creator_name,
               (select count(*)::int from purchases pu where pu.video_id = r.video_id and pu.status='active') as buyers
          from video_deletion_requests r
@@ -704,7 +708,14 @@ router.get(
         where r.status = 'pending'
         order by r.created_at asc`
     )
-    res.json({ requests: rows })
+    /* `r.*` carries the REQUEST's id, so the video's has to be handed over
+       explicitly — otherwise the poster is addressed by the wrong record. */
+    res.json({
+      requests: rows.map((r) => ({
+        ...r,
+        thumbnailUrl: thumbnailFor({ ...r, id: r.video_id }),
+      })),
+    })
   })
 )
 

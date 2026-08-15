@@ -3,6 +3,7 @@ import { one } from '../db/pool.js'
 import { asyncHandler, notFound } from '../lib/errors.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
 import { ensureClips } from './playback.routes.js'
+import { thumbnailFor } from '../services/entitlement.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 
@@ -63,7 +64,7 @@ router.get(
     const encoded = encodeURIComponent(`${text} ${deepLink}`)
 
     res.json({
-      video: { id: video.id, slug: video.slug, title, thumbnailUrl: video.thumbnail_url },
+      video: { id: video.id, slug: video.slug, title, thumbnailUrl: thumbnailFor(video) },
       deepLink,
       title,
       text,
