@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Home, Menu } from 'lucide-react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
@@ -66,16 +66,32 @@ function dashRole(role) {
 export default function Dashboard() {
   const { role, isCreator, user, loading, authed } = useAuth()
   const safeRole = dashRole(role)
-  const [tab, setTab] = useState(() => HOME_TAB[safeRole] || 'library')
+  const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // A role change (viewer upgrading to creator, or logging in as the other
-  // role) must never leave the user staring at a tab they can no longer open.
-  useEffect(() => {
-    const allowed = TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer
-    const home = HOME_TAB[safeRole] || 'library'
-    if (!allowed.includes(tab)) setTab(home)
-  }, [safeRole, tab])
+  /**
+   * Which tab is open lives in the URL.
+   *
+   * The whole dashboard is one route, and the open tab used to be React state.
+   * The browser therefore had no idea the person had moved from Library to
+   * Upload to My Videos — none of it was in the history. So Back from a video
+   * came here and landed on whichever tab is home, which is not the tab they
+   * left, and Back inside the dashboard skipped everything they had done and
+   * left the dashboard entirely. That is the "it opens a different page"
+   * everybody hits.
+   *
+   * `?tab=` fixes all of it at once: Back walks the tabs in order, Back from a
+   * video returns to the tab it was opened from, and a link to a tab can be
+   * sent to somebody. `/dashboard` still matches the same route, so nothing
+   * about the routing changed.
+   *
+   * Derived rather than stored, so a role change cannot strand somebody on a
+   * tab they may no longer open — the fallback is simply computed again.
+   */
+  const allowed = TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer
+  const home = HOME_TAB[safeRole] || 'library'
+  const requested = params.get('tab')
+  const tab = allowed.includes(requested) ? requested : home
 
   // Greet the person who is actually signed in, not a name from a data file.
   const firstName = (user?.fullName || '').split(' ')[0]
@@ -104,7 +120,9 @@ export default function Dashboard() {
   }, [drawerOpen])
 
   const selectTab = (next) => {
-    setTab(next)
+    // A push, not a replace — each tab is somewhere the person went, and Back
+    // should return them to the last one.
+    setParams({ tab: next })
     setDrawerOpen(false)
     window.scrollTo({ top: 0 })
   }
