@@ -8,6 +8,7 @@ import PaymentsBarChart from '@/components/charts/PaymentsBarChart'
 import MeterList from '@/components/charts/MeterList'
 import useApi, { tzs, compact } from '@/hooks/useApi'
 import api, { mediaUrl } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 
 const ACCESS_LABEL = {
   ppv_forever: 'Pay Once',
