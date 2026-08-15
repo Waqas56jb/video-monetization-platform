@@ -2001,6 +2001,81 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 }
 
 /* =========================================================================
+   FOR CREATORS — where the money actually goes
+   ------------------------------------------------------------------------
+   Was a percentage bar. A bar shows a ratio but not a journey, and the
+   question a creator is really asking is "what happens to the shilling my
+   viewer just paid". So it is drawn as that: one payment, then a split.
+   ========================================================================= */
+.earn-badge{position:absolute;left:22px;bottom:22px;right:22px;padding:16px 20px;border-radius:16px;background:rgba(10,10,18,.82);border:1px solid rgba(233,185,73,.28)}
+.earn-badge b{display:block;font-family:'Sora',sans-serif;font-size:clamp(28px,3.4vw,40px);font-weight:800;line-height:1;color:var(--gold);letter-spacing:-1px}
+.earn-badge small{display:block;margin-top:5px;font-size:12.5px;color:var(--muted)}
+
+.flow{margin:22px 0 26px;padding:18px;border:1px solid var(--border2);border-radius:18px;background:rgba(8,8,14,.4)}
+.flow-step{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border2)}
+.flow-step svg{grid-row:span 2;color:var(--purple2)}
+.flow-step b{font-size:13.5px}
+.flow-step small{font-size:11.5px;color:var(--muted2)}
+/* A drawn arrow rather than a character: it scales with the layout and never
+   picks up a font's own idea of what an arrow looks like. */
+.flow-arrow{display:block;width:2px;height:22px;margin:0 auto;background:linear-gradient(180deg,var(--border),transparent);position:relative}
+.flow-arrow::after{content:'';position:absolute;bottom:0;left:50%;width:7px;height:7px;border-right:2px solid var(--border);border-bottom:2px solid var(--border);transform:translate(-50%,2px) rotate(45deg)}
+.flow-split{display:flex;gap:8px}
+.flow-share{min-width:0;padding:13px 14px;border-radius:12px;border:1px solid var(--border2);flex-basis:0}
+.flow-share b{display:block;font-family:'Sora',sans-serif;font-size:21px;font-weight:800;line-height:1;letter-spacing:-.5px}
+.flow-share small{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}
+.flow-share.is-creator{background:linear-gradient(135deg,rgba(233,185,73,.2),rgba(233,185,73,.06));border-color:rgba(233,185,73,.32)}
+.flow-share.is-creator b{color:var(--gold)}
+.flow-share.is-platform{background:rgba(255,255,255,.035)}
+.flow-share.is-platform b{color:var(--muted)}
+.flow-note{margin:13px 0 0;font-size:12px;color:var(--muted2);line-height:1.55}
+
+/* =========================================================================
+   CREATOR SPOTLIGHT — real people, not a row of tiles
+   ========================================================================= */
+.spotlight{display:grid;gap:20px;max-width:1080px;margin-inline:auto}
+.spot-lead{display:grid;grid-template-columns:200px 1fr;gap:clamp(20px,3vw,38px);align-items:center;padding:clamp(20px,2.6vw,32px);border:1px solid var(--border2);border-radius:24px;background:linear-gradient(140deg,rgba(20,20,31,.7),rgba(16,16,25,.32))}
+.spot-face{width:200px;height:200px;border-radius:20px;overflow:hidden;background:var(--card2);display:grid;place-items:center}
+.spot-face img{width:100%;height:100%;object-fit:cover}
+.spot-initials{font-family:'Sora',sans-serif;font-size:52px;font-weight:800;color:var(--purple2)}
+.spot-initials.sm{font-size:16px;width:44px;height:44px;border-radius:12px;background:var(--card2);display:grid;place-items:center;flex-shrink:0}
+.spot-kicker{display:inline-block;font-family:'Sora',sans-serif;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.spot-body h3{display:flex;align-items:center;gap:8px;font-size:clamp(22px,2.6vw,32px);font-weight:800;letter-spacing:-.7px;margin:0 0 6px}
+.spot-meta{color:var(--muted);font-size:14px;margin:0 0 18px}
+.spot-amount b{display:block;font-family:'Sora',sans-serif;font-size:clamp(24px,3vw,34px);font-weight:800;color:var(--green);line-height:1;letter-spacing:-.8px}
+.spot-amount small{display:block;margin-top:6px;font-size:12.5px;color:var(--muted2)}
+.spot-rest{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.spot-rest li{display:flex;align-items:center;gap:13px;padding:13px 16px;border:1px solid var(--border2);border-radius:15px;background:rgba(255,255,255,.022);min-width:0}
+.spot-rest img{width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0}
+.spot-rest li>div{min-width:0;flex:1}
+.spot-rest b{display:flex;align-items:center;gap:6px;font-size:14px}
+.spot-rest small{display:block;font-size:12px;color:var(--muted2);margin-top:2px}
+.spot-amt{font-family:'Sora',sans-serif;font-weight:800;font-size:14.5px;color:var(--green);white-space:nowrap}
+
+/* --- the pre-launch version: commitments as editorial rows --- */
+.promises{list-style:none;margin:0;padding:0;display:grid;gap:14px;max-width:900px;margin-inline:auto;counter-reset:none}
+.promise-row{display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:start;padding:22px 24px;border:1px solid var(--border2);border-radius:20px;background:linear-gradient(120deg,rgba(20,20,31,.6),transparent)}
+.promise-n{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;line-height:1;color:rgba(255,255,255,.09);letter-spacing:-1px}
+.promise-row .promise-ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(124,58,237,.15);border:1px solid var(--border);color:var(--purple2);flex-shrink:0}
+.promise-row b{display:block;font-size:16px;margin-bottom:6px}
+.promise-row p{color:var(--muted);font-size:14.5px;line-height:1.7;margin:0;max-width:62ch}
+
+@media(max-width:820px){
+  .spot-lead{grid-template-columns:1fr;text-align:left}
+  .spot-face{width:100%;height:auto;aspect-ratio:16/10}
+  .flow-split{flex-direction:column}
+  .flow-share{flex-basis:auto}
+}
+@media(max-width:600px){
+  .earn-badge{left:14px;right:14px;bottom:14px;padding:13px 16px}
+  .flow{padding:15px;margin:18px 0 22px}
+  .promise-row{grid-template-columns:auto 1fr;gap:14px;padding:18px}
+  .promise-n{display:none}
+  .spot-rest li{padding:12px 13px;gap:11px}
+  .spot-amt{font-size:13.5px}
+}
+
+/* =========================================================================
    PLATFORM POWER — three stories, asymmetric
    ------------------------------------------------------------------------
    Was a 3×2 grid of icon cards. Deliberately NOT the alternating band the

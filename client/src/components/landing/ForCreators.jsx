@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Check, Crown } from 'lucide-react'
+import { ArrowRight, Check, Crown, Smartphone } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
 import { CREATOR_CONTROL, EARN_ITEMS, IMG } from '@/data/copy'
 import useApi from '@/hooks/useApi'
@@ -23,23 +23,11 @@ export default function ForCreators() {
       <div className="container earn-grid">
         <div className="earn-img">
           <img src={IMG.creator} alt="Creator" loading="lazy" decoding="async" />
-          <div className="earn-card">
-            <div className="row">
-              <small>Every sale is split like this</small>
-              <b>{creatorShare}% to you</b>
-            </div>
-            <div className="split-bar">
-              <span style={{ width: `${creatorShare}%` }} />
-              <span />
-            </div>
-            <div className="split-legend">
-              <span>
-                Creator <b>{creatorShare}%</b>
-              </span>
-              <span>
-                Platform <b>{100 - creatorShare}%</b>
-              </span>
-            </div>
+          {/* The headline number stays on the picture; the working is below,
+              where it has room to be followed. */}
+          <div className="earn-badge">
+            <b>{creatorShare}%</b>
+            <small>of every sale is yours</small>
           </div>
         </div>
 
@@ -72,6 +60,43 @@ export default function ForCreators() {
             ))}
           </ul>
           <p className="control-note">{CREATOR_CONTROL.footnote}</p>
+
+          {/**
+           * Where the money actually goes.
+           *
+           * This was a percentage bar, which shows a ratio but not a journey —
+           * and the question a creator is really asking is "what happens to the
+           * shilling my viewer just paid". So it is drawn as that: one payment,
+           * arriving, then splitting.
+           *
+           * The split is read from platform settings, not painted in. If an
+           * administrator changes it, this changes with it rather than quietly
+           * becoming untrue.
+           */}
+          <div className="flow" role="img" aria-label={`A viewer's payment splits ${creatorShare}% to the creator and ${100 - creatorShare}% to the platform`}>
+            <div className="flow-step">
+              <Smartphone size={15} />
+              <b>A viewer pays</b>
+              <small>M-Pesa or Airtel Money</small>
+            </div>
+
+            <span className="flow-arrow" aria-hidden="true" />
+
+            <div className="flow-split">
+              <div className="flow-share is-creator" style={{ flexGrow: creatorShare }}>
+                <b>{creatorShare}%</b>
+                <small>You</small>
+              </div>
+              <div className="flow-share is-platform" style={{ flexGrow: 100 - creatorShare }}>
+                <b>{100 - creatorShare}%</b>
+                <small>Platform</small>
+              </div>
+            </div>
+
+            <p className="flow-note">
+              Credited the moment the payment clears — not at the end of a month.
+            </p>
+          </div>
 
           <div className="earn-list">
             {EARN_ITEMS.map((item) => (

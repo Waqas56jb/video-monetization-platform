@@ -69,46 +69,93 @@ export default function Testimonials() {
         </div>
 
         {creators.length ? (
-          <div className="testi-grid">
-            {creators.map((c) => (
-              <div className="testi testi-creator" key={c.id}>
-                <div className="testi-user" style={{ marginTop: 0 }}>
-                  {c.avatarUrl ? (
-                    <img src={c.avatarUrl} alt="" loading="lazy" />
-                  ) : (
-                    <span className="testi-initials">{initials(c.name)}</span>
+          /**
+           * A spotlight, not a row of equal cards.
+           *
+           * These are real people from the API, and the leading earner
+           * deserves to be seen rather than tiled. No quote is attached to any
+           * of them — nobody has been asked for one, and inventing one would be
+           * putting words in a real creator's mouth.
+           */
+          <div className="spotlight">
+            {(() => {
+              const [lead, ...rest] = creators
+              return (
+                <>
+                  <article className="spot-lead">
+                    <div className="spot-face">
+                      {lead.avatarUrl ? (
+                        <img src={lead.avatarUrl} alt="" loading="lazy" decoding="async" />
+                      ) : (
+                        <span className="spot-initials">{initials(lead.name)}</span>
+                      )}
+                    </div>
+                    <div className="spot-body">
+                      <span className="spot-kicker">Earning on MTONYO+</span>
+                      <h3>
+                        {lead.name}
+                        {lead.verified && <BadgeCheck className="verified-tick" />}
+                      </h3>
+                      <p className="spot-meta">
+                        {[lead.location, `${compact(lead.videos)} video${lead.videos === 1 ? '' : 's'}`]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                      <div className="spot-amount">
+                        <b>{tzs(lead.earnedTzs)}</b>
+                        <small>paid out to them so far</small>
+                      </div>
+                    </div>
+                  </article>
+
+                  {rest.length > 0 && (
+                    <ul className="spot-rest">
+                      {rest.map((c) => (
+                        <li key={c.id}>
+                          {c.avatarUrl ? (
+                            <img src={c.avatarUrl} alt="" loading="lazy" decoding="async" />
+                          ) : (
+                            <span className="spot-initials sm">{initials(c.name)}</span>
+                          )}
+                          <div>
+                            <b>
+                              {c.name}
+                              {c.verified && <BadgeCheck className="verified-tick" />}
+                            </b>
+                            <small>
+                              {compact(c.videos)} video{c.videos === 1 ? '' : 's'}
+                            </small>
+                          </div>
+                          <span className="spot-amt">{tzs(c.earnedTzs)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  <div>
-                    <b>
-                      {c.name}
-                      {c.verified && <BadgeCheck className="verified-tick" />}
-                    </b>
-                    <small>
-                      {[c.location, `${compact(c.videos)} video${c.videos === 1 ? '' : 's'}`]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </small>
-                  </div>
-                  <div className="amt">
-                    <b>{tzs(c.earnedTzs)}</b>
-                    <small>earned so far</small>
-                  </div>
-                </div>
-              </div>
-            ))}
+                </>
+              )
+            })()}
           </div>
         ) : (
-          <div className="promise-grid">
-            {PROMISES.map((p) => (
-              <div className="promise" key={p.title}>
+          /**
+           * Until somebody has actually been paid, this is the honest version
+           * of social proof: what the platform commits to, stated plainly.
+           * Editorial rows rather than three equal cards — the same reason
+           * every other section stopped being a grid.
+           */
+          <ol className="promises">
+            {PROMISES.map((p, i) => (
+              <li className="promise-row" key={p.title}>
+                <span className="promise-n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
                 <span className="promise-ic">
-                  <p.icon />
+                  <p.icon size={19} />
                 </span>
-                <b>{p.title}</b>
-                <p>{p.text}</p>
-              </div>
+                <div>
+                  <b>{p.title}</b>
+                  <p>{p.text}</p>
+                </div>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
 
         <div className="center" style={{ marginTop: 40 }}>
