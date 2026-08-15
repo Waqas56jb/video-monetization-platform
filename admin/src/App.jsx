@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { useCallback, useRef } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ToastProvider, useToast } from '@/context/ToastContext'
 import { ConfirmProvider } from '@/context/ConfirmContext'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
@@ -49,11 +49,33 @@ function Router() {
   const { authed, loading, logout } = useAuth()
   const showToast = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  /**
+   * Where this person was going before they were asked to sign in.
+   *
+   * When the session is gone, every path renders the login form without
+   * changing the URL — so the address bar still says /withdrawals while the
+   * form is on screen. That is the right behaviour, and it made signing back in
+   * feel broken: the destination was thrown away and everybody landed on the
+   * dashboard, no matter what they had been in the middle of. A moderator
+   * whose session lapsed while reading the review queue had to find their way
+   * back to it every time.
+   *
+   * Captured in a ref rather than read at submit time, because by then the
+   * component has re-rendered and the location is the login page's own.
+   */
+  const intended = useRef(null)
+  if (!authed && !loading && location.pathname !== '/login' && location.pathname !== '/reset') {
+    intended.current = location.pathname + location.search
+  }
 
   const onLogin = useCallback(
     (u) => {
       showToast(`Welcome back, ${u.fullName || u.email}`)
-      navigate('/dashboard')
+      const back = intended.current
+      intended.current = null
+      navigate(back || '/dashboard', { replace: true })
     },
     [navigate, showToast]
   )
@@ -61,7 +83,8 @@ function Router() {
   const onLogout = useCallback(async () => {
     await logout()
     showToast('Signed out')
-    navigate('/login')
+    intended.current = null
+    navigate('/login', { replace: true })
   }, [logout, navigate, showToast])
 
   // Restoring a session takes a moment; showing the login form during it would

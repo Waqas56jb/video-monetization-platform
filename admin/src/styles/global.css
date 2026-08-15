@@ -76,6 +76,12 @@ input,select{font-family:inherit;outline:none}
    rather than green so it never reads as "approved". */
 .pill.gold{background:rgba(233,185,73,.14);color:var(--gold)}
 
+/* --- server-side paging, where a table is bigger than one screenful ------- */
+.pager{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:16px 0 4px;font-size:12.5px;color:var(--muted)}
+.date-filter{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:8px 11px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none;color-scheme:dark}
+.date-filter:focus{border-color:var(--purple)}
+@media(max-width:600px){.date-filter{font-size:16px}}
+
 /* --- staff permissions ---------------------------------------------------- */
 .perm-chips{display:flex;flex-wrap:wrap;gap:5px;max-width:280px}
 .perm-chips .pill{font-size:10.5px;padding:3px 8px}
