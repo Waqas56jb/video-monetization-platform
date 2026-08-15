@@ -12,6 +12,20 @@ import { useToast } from '@/context/ToastContext'
 const PILL = { pending: 'pend', approved: 'ok', paid: 'ok', rejected: 'bad', cancelled: '' }
 
 /**
+ * What each state means to the person waiting on the money.
+ *
+ * The raw enum was being printed — "pending", "paid" — which tells a creator
+ * the column name rather than where their request has got to. These are the
+ * three the database actually stores; anything unrecognised falls back to the
+ * raw value rather than being hidden.
+ */
+const STATUS_LABEL = {
+  pending: 'Awaiting review',
+  paid: 'Paid out',
+  rejected: 'Declined',
+}
+
+/**
  * The money, and getting it out.
  *
  * The available balance is lifetime earnings minus anything already withdrawn
@@ -230,7 +244,9 @@ export default function EarningsTab() {
                   <td>{w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}</td>
                   <td>{w.payout_phone || '—'}</td>
                   <td>
-                    <span className={`pill ${PILL[w.status] ?? ''}`}>{w.status}</span>
+                    <span className={`pill ${PILL[w.status] ?? ''}`}>
+                      {STATUS_LABEL[w.status] || w.status}
+                    </span>
                   </td>
                   <td>
                     {w.status === 'pending' && (

@@ -527,7 +527,12 @@ export default function Watch() {
           )}
 
           {showLockGate && (
-            <LockGate priceLabel={tzs(v.priceTzs)} onUnlock={openCheckout} />
+            <LockGate
+              priceLabel={tzs(v.priceTzs)}
+              /* The gate says what this particular release model buys. */
+              accessType={v.accessType}
+              onUnlock={openCheckout}
+            />
           )}
         </div>
 
@@ -634,6 +639,21 @@ export default function Watch() {
           )}
 
           {v.description && <div className="watch-desc">{v.description}</div>}
+
+          {/**
+           * The promise a premiere buyer most needs to see, and the one most
+           * easily misread: the window ending does not take anything from them.
+           * Only shown to somebody who actually holds the entitlement.
+           */}
+          {p?.access?.owned && v.accessType === 'paid_premiere' && (
+            <div className="watch-assure">
+              <BadgeCheck size={15} />
+              <span>
+                Purchased during the premiere — <b>your access stays ad-free</b>, including after
+                this becomes Free + Ads for everyone else.
+              </span>
+            </div>
+          )}
 
           <div className="watch-terms">
             <b>{ACCESS_LABEL[v.accessType]}</b>{' '}

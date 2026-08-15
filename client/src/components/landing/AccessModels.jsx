@@ -91,6 +91,13 @@ const DIAGRAMS = {
           { label: 'The whole video', note: 'No paywall', tone: 'is-free', grow: 5 },
         ]}
       />
+      {/* Where the adverts actually sit. The platform serves all three, and a
+          creator deciding on this model should know that before choosing it. */}
+      <ul className="mv-slots">
+        <li>Pre-roll</li>
+        <li>Mid-roll</li>
+        <li>Post-roll</li>
+      </ul>
       <div className="mv-foot is-good">
         <PlayCircle size={14} />
         You earn a share of every advert shown

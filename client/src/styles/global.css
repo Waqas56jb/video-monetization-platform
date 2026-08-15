@@ -2000,6 +2000,29 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
   .legal-tabs{margin:24px 0 30px;padding-bottom:24px}
 }
 
+/* --- hero: the second action is a door, not a footnote ---------------------
+   Both hero actions address a real visitor — one comes to watch, one comes to
+   sell. A plain ghost button beside a gold one reads as "and also this". */
+.btn-ghost.btn-strong{border-color:rgba(124,58,237,.42);background:rgba(124,58,237,.1);color:#fff}
+@media(hover:hover){.btn-ghost.btn-strong:hover{border-color:var(--purple);background:rgba(124,58,237,.18)}}
+
+/* --- video cards read as film stills, not product photos ------------------- */
+.vid-thumb{position:relative}
+.vid-shade{position:absolute;inset:auto 0 0 0;height:58%;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(6,6,10,.72));z-index:1}
+.vid-tag,.vid-time{z-index:2}
+
+/* --- where the adverts sit, on the Free + Ads story --- */
+.mv-slots{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0}
+.mv-slots li{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);padding:5px 10px;border-radius:99px;background:rgba(233,185,73,.1);border:1px solid rgba(233,185,73,.22)}
+
+/* --- the lock gate names the model it is gating --- */
+.lg-model{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+
+/* --- the premiere promise, for somebody who already paid --- */
+.watch-assure{display:flex;align-items:flex-start;gap:10px;margin:16px 0 0;padding:13px 15px;border-radius:14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);font-size:13.5px;line-height:1.6;color:var(--text)}
+.watch-assure svg{color:var(--green);flex-shrink:0;margin-top:1px}
+.watch-assure b{color:var(--green)}
+
 /* =========================================================================
    FOR CREATORS — where the money actually goes
    ------------------------------------------------------------------------

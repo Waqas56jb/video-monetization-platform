@@ -38,6 +38,10 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
           decoding="async"
           {...(eager ? { fetchpriority: 'high' } : {})}
         />
+        {/* A gradient foot rather than a flat crop: the thumbnail reads as a
+            still from a film instead of a product photo, and the badge and
+            duration sitting on it stay legible whatever the frame is. */}
+        <span className="vid-shade" aria-hidden="true" />
         {time && <span className="vid-time">{time}</span>}
         <div className="vid-play">
           <span>

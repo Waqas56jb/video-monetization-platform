@@ -45,11 +45,26 @@ export function EmptyState({ icon: Icon = Inbox, title, message, action }) {
  * "Something went wrong" when handed the wrong shape hides the very message
  * that would have explained the problem.
  */
+/**
+ * Messages this app writes are written for people. Anything that looks like it
+ * came from a library, a driver or a stack is not, and showing it helps nobody
+ * — it only worries them. Those are replaced with something true and useful.
+ */
+const TECHNICAL = /(fetch failed|networkerror|econn|etimedout|enotfound|unexpected token|<!doctype|json\.parse|500|502|503|undefined is not|cannot read propert)/i
+
+function readable(raw) {
+  if (!raw || typeof raw !== 'string') return 'Something went wrong. Please try again.'
+  if (TECHNICAL.test(raw)) {
+    return 'We could not reach the server just now. Check your connection and try again.'
+  }
+  return raw
+}
+
 export function ErrorState({ error, message, onRetry, title = 'Could not load this' }) {
-  const text =
+  const text = readable(
     (typeof error === 'string' ? error : error?.message) ||
-    (typeof message === 'string' ? message : message?.message) ||
-    'Something went wrong.'
+      (typeof message === 'string' ? message : message?.message)
+  )
   return (
     <div className="state-block state-error">
       <AlertTriangle />
@@ -72,6 +87,15 @@ export function ErrorState({ error, message, onRetry, title = 'Could not load th
 export function Async({ loading, error, onRetry, isEmpty, empty, skeleton, children }) {
   if (loading) return skeleton || <Skeleton />
   if (error) return <ErrorState error={error} onRetry={onRetry} />
-  if (isEmpty) return empty || <EmptyState title="Nothing here yet" />
+  if (isEmpty) {
+    return (
+      empty || (
+        <EmptyState
+          title="Nothing here yet"
+          message="This fills in as soon as there is something to show."
+        />
+      )
+    )
+  }
   return children
 }

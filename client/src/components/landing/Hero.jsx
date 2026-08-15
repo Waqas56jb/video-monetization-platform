@@ -175,16 +175,24 @@ export default function Hero() {
             and you decide whether a video stays paid or ever becomes free.
           </p>
 
+          {/**
+           * Two doors, named for what is behind them.
+           *
+           * These read "Start Earning Today" and "Explore MTONYO+", which is
+           * one audience addressed twice — a viewer arriving is told to start
+           * earning. The platform has two kinds of visitor and the hero should
+           * offer each of them their own way in.
+           */}
           <div className="hero-actions">
-            <button className="btn btn-gold" onClick={() => navigate('/signup')}>
-              <Rocket />
-              <span className="btn-label-full">Start Earning Today</span>
-              <span className="btn-label-short">Start Earning</span>
-            </button>
-            <button className="btn btn-ghost" onClick={() => navigate('/explore')}>
+            <button className="btn btn-gold" onClick={() => navigate('/explore')}>
               <PlayCircle />
-              <span className="btn-label-full">Explore MTONYO+</span>
-              <span className="btn-label-short">Explore</span>
+              <span className="btn-label-full">Watch Content</span>
+              <span className="btn-label-short">Watch</span>
+            </button>
+            <button className="btn btn-ghost btn-strong" onClick={() => navigate('/signup')}>
+              <Rocket />
+              <span className="btn-label-full">Start Creating</span>
+              <span className="btn-label-short">Create</span>
             </button>
           </div>
 
