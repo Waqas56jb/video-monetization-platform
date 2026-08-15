@@ -288,7 +288,13 @@ export const api = {
     status: (id) => get(`/api/videos/${id}/status`),
     uploadThumbnail: (id, file) => sendFile(`/api/videos/${id}/thumbnail`, file),
     removeThumbnail: (id) => del(`/api/videos/${id}/thumbnail`),
-    submit: (id) => post(`/api/videos/${id}/submit`),
+    /**
+     * The Creator Agreement's rights representation is made here, and the
+     * server refuses the submission without it.
+     */
+    submit: (id) => post(`/api/videos/${id}/submit`, { confirmRights: true }),
+    /** Report a video. Works signed out — infringement should not need an account. */
+    report: (idOrSlug, body) => post(`/api/videos/${idOrSlug}/report`, body, { auth: Boolean(getAccessToken()) }),
     requestDeletion: (id, reason) => post(`/api/videos/${id}/request-deletion`, { reason }),
     recordView: (id, body) => post(`/api/videos/${id}/view`, body),
   },

@@ -333,10 +333,33 @@ router.patch(
  * A creator can only ever reach `pending_review` — publication is an admin
  * decision, and the database refuses anything else.
  */
+/**
+ * What the creator is confirming when they submit.
+ *
+ * Kept as a constant rather than typed into the form, so the sentence stored
+ * against the video is the sentence they were shown — and if the wording is
+ * ever changed, older submissions still carry the one that was agreed to.
+ */
+export const RIGHTS_STATEMENT =
+  'I made this content, or I hold every right needed to sell it on MTONYO+ — ' +
+  'including the rights of anyone appearing in it and of any music used.'
+
 router.post(
   '/:id/submit',
   requireAuth(),
   requireCreator(),
+  validate(
+    z.object({
+      /**
+       * The Creator Agreement says this representation is made on upload. It
+       * was never asked for and never recorded, so a copyright claim arrived
+       * with no evidence the creator had ever made it. Required to submit.
+       */
+      confirmRights: z.literal(true, {
+        errorMap: () => ({ message: 'Confirm you hold the rights to this content before submitting' }),
+      }),
+    })
+  ),
   asyncHandler(async (req, res) => {
     const video = await one('select * from videos where id = $1 and deleted_at is null', [req.params.id])
     if (!video) throw notFound('Video not found')
@@ -358,10 +381,15 @@ router.post(
           set review_status = 'pending_review',
               submitted_at = now(),
               rejection_reason = null,
+              /* Recorded with the wording that was agreed to, and only set
+                 once — the first submission is when the representation was
+                 made. */
+              rights_confirmed_at = coalesce(rights_confirmed_at, now()),
+              rights_statement    = coalesce(rights_statement, $3),
               premiere_days = case when access_type = 'paid_premiere'
                                    then coalesce(premiere_days, $2) else null end
         where id = $1 returning *`,
-      [video.id, settings.default_premiere_days]
+      [video.id, settings.default_premiere_days, RIGHTS_STATEMENT]
     )
 
     await recordAudit({
@@ -628,6 +656,87 @@ router.post(
       [video.id, req.user?.id ?? null, req.body.secondsWatched, req.body.reachedPaywall]
     )
     res.status(202).json({ ok: true })
+  })
+)
+
+/**
+ * Report a video.
+ *
+ * The Copyright & Reporting page tells people to write to support, and until
+ * now that was the only route — an email address on a policy page, with nothing
+ * connecting it to the moderation queue staff actually work from. Somebody who
+ * finds their own film being sold here should be able to say so from the video.
+ *
+ * Open to signed-out visitors on purpose. Requiring an account to report
+ * infringement protects nobody except the person infringing. The reporter is
+ * recorded when we know who they are, and one open report per person per video
+ * is enough — hammering the button should not bury the queue.
+ */
+router.post(
+  '/:id/report',
+  optionalAuth(),
+  validate(
+    z.object({
+      reason: z.enum(['copyright', 'inappropriate', 'misleading', 'illegal', 'other']),
+      detail: z.string().trim().max(1500).optional(),
+      /* So we can come back to somebody who is not signed in. */
+      email: z.string().email().optional().or(z.literal('')),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const video = await one(
+      `select id, title, creator_id from videos
+        where (id::text = $1 or slug = $1) and deleted_at is null`,
+      [req.params.id]
+    )
+    if (!video) throw notFound('Video not found')
+
+    const { reason, detail, email } = req.body
+
+    /* A second open report from the same person says nothing new. Answer as
+       though it worked — they did what was asked of them. */
+    if (req.user) {
+      const existing = await one(
+        `select id from content_reports
+          where video_id = $1 and reporter_id = $2 and status = 'open'`,
+        [video.id, req.user.id]
+      )
+      if (existing) {
+        return res.status(202).json({
+          ok: true,
+          message: 'You have already reported this video — our team is looking at it.',
+        })
+      }
+    }
+
+    const report = await one(
+      `insert into content_reports
+         (video_id, reporter_id, reporter_email, reason, detail, ip)
+       values ($1,$2,$3,$4::report_reason,$5,$6) returning id`,
+      [
+        video.id,
+        req.user?.id ?? null,
+        (email || req.user?.email || null) ?? null,
+        reason,
+        detail || null,
+        clientIp(req),
+      ]
+    )
+
+    await recordAudit({
+      actorId: req.user?.id ?? null,
+      action: 'CONTENT_REPORTED',
+      entityType: 'video',
+      entityId: video.id,
+      detail: { reason, title: video.title },
+      ip: clientIp(req),
+    })
+
+    res.status(201).json({
+      ok: true,
+      reportId: report.id,
+      message: 'Thank you — our moderation team will review this.',
+    })
   })
 )
 

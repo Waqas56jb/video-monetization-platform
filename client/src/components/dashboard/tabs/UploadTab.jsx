@@ -97,6 +97,14 @@ export default function UploadTab({ onSubmitted }) {
   const [previewing, setPreviewing] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  /**
+   * The representation the Creator Agreement says is made on upload.
+   *
+   * It was never asked for and never stored, so a copyright claim arrived with
+   * no record that the creator had ever made it. The server refuses the
+   * submission without it and keeps the wording that was agreed to.
+   */
+  const [rightsOk, setRightsOk] = useState(false)
 
   /* -------- my submissions, from the API -------- */
   const [mine, setMine] = useState([])
@@ -224,6 +232,9 @@ export default function UploadTab({ onSubmitted }) {
   const submit = async () => {
     if (!video) return
     if (form.title.trim().length < 3) return setError('Give the video a title')
+    if (!rightsOk) {
+      return setError('Confirm you hold the rights to this content before submitting')
+    }
 
     setSubmitting(true)
     setError(null)
@@ -521,6 +532,27 @@ export default function UploadTab({ onSubmitted }) {
             </span>
           </div>
 
+          {/* The Creator Agreement's representation, made here and recorded
+              against this video with the wording that was shown. */}
+          <label className="check-row rights-check">
+            <input
+              type="checkbox"
+              checked={rightsOk}
+              onChange={(e) => {
+                setRightsOk(e.target.checked)
+                setError(null)
+              }}
+              disabled={submitted}
+            />
+            <span>
+              I hold the rights to this content
+              <small>
+                I made it, or I hold every right needed to sell it on MTONYO+ — including the
+                rights of anyone appearing in it and of any music used.
+              </small>
+            </span>
+          </label>
+
           {submitted ? (
             <>
               <div className="notice">
@@ -539,9 +571,13 @@ export default function UploadTab({ onSubmitted }) {
             <button
               className="btn btn-gold btn-block"
               onClick={submit}
-              disabled={!canSubmit || submitting}
+              disabled={!canSubmit || submitting || !rightsOk}
               title={
-                canSubmit ? 'Send this to the review team' : 'Finish uploading your video first'
+                !canSubmit
+                  ? 'Finish uploading your video first'
+                  : !rightsOk
+                    ? 'Confirm you hold the rights to this content'
+                    : 'Send this to the review team'
               }
             >
               <Send />

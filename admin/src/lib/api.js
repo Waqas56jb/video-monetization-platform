@@ -275,6 +275,9 @@ export const api = {
      * provider's portal.
      */
     refundPayment: (id, reason) => post(`/api/admin/payments/${id}/refund`, { reason }),
+    /** What viewers have flagged, and deciding it. */
+    reports: (params) => get(`/api/admin/reports${qs(params)}`),
+    decideReport: (id, body) => post(`/api/admin/reports/${id}/decide`, body),
     /** Is outbound email actually working, or only configured? */
     emailHealth: () => get('/api/admin/health/email'),
     sendTestEmail: () => post('/api/admin/health/email'),

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, Megaphone, Menu, ShieldAlert, UserCog } from 'lucide-react'
-import { SearchBar } from '@/components/ui/Filters'
 import { useNotifications } from '@/context/NotificationsContext'
 import { useAuth } from '@/context/AuthContext'
 
@@ -16,7 +15,6 @@ const timeAgo = (iso) => {
 }
 
 export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) {
-  const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const { items, unread, markAllRead, markRead } = useNotifications()
   const { user, roleLabel } = useAuth()
@@ -65,12 +63,15 @@ export default function Topbar({ title, subtitle, onToggleDrawer, drawerOpen }) 
       </div>
 
       <div className="top-r">
-        <SearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Search anything…"
-          ariaLabel="Global search"
-        />
+        {/**
+         * The global search box is gone.
+         *
+         * It held its value in state and did nothing with it — a box that
+         * looked like search, accepted typing, and never searched anything. A
+         * control room that lies about one control is not trusted about the
+         * rest. Every screen that holds records has its own working search
+         * (Videos, Users, Payments, Audit), and those are real.
+         */}
 
         <div className="bell-wrap" ref={wrap}>
           <button

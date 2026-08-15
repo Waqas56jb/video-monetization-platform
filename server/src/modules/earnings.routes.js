@@ -173,7 +173,23 @@ router.post(
     }
 
     const withdrawal = await transaction(async (client) => {
-      // Recompute inside the transaction so two requests cannot both pass.
+      /**
+       * Serialise every withdrawal request for this creator.
+       *
+       * Recomputing inside the transaction was not enough on its own. Postgres
+       * reads at READ COMMITTED by default, so two requests arriving together
+       * both saw the same balance, both found it sufficient, and both inserted
+       * — a creator with 50,000 available could withdraw it twice by
+       * double-tapping. Neither row is wrong on its own, which is what makes it
+       * hard to spot afterwards.
+       *
+       * The lock is held to the end of the transaction and is scoped to this
+       * creator, so nobody else's request waits on it.
+       */
+      await client.query('select pg_advisory_xact_lock(hashtext($1))', [
+        `withdrawal:${req.user.id}`,
+      ])
+
       const { rows: earn } = await client.query(
         `select coalesce(sum(creator_tzs),0)::int as lifetime from earnings where creator_id = $1`,
         [req.user.id]

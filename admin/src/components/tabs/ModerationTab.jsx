@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShieldCheck, Trash2 } from 'lucide-react'
+import { Flag, ShieldCheck, Trash2 } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { Async } from '@/components/ui/States'
 import useApi, { timeAgo } from '@/hooks/useApi'
@@ -14,10 +14,48 @@ import { useToast } from '@/context/ToastContext'
  * bought must survive. So there are three outcomes here, and only one of them
  * is "remove" — the others keep the video reachable for the people who paid.
  */
+const REASON_LABEL = {
+  copyright: 'Copyright',
+  inappropriate: 'Inappropriate',
+  misleading: 'Misleading',
+  illegal: 'Illegal',
+  other: 'Other',
+}
+
 export default function ModerationTab() {
   const showToast = useToast()
   const { data, loading, error, reload } = useApi(() => api.admin.deletionRequests(), [])
   const requests = data?.requests || []
+
+  /**
+   * What viewers have flagged.
+   *
+   * Reports used to have nowhere to go — the policy page gave an email address
+   * and nothing connected it to this queue, so a copyright claim depended on
+   * somebody remembering to forward it. They arrive here now, alongside the
+   * removal requests, because they are the same job.
+   */
+  const reports = useApi(() => api.admin.reports({ status: 'open', limit: 50 }), [])
+  const [reportBusy, setReportBusy] = useState(null)
+
+  const decideReport = async (r, decision, unpublish) => {
+    setReportBusy(r.id)
+    try {
+      await api.admin.decideReport(r.id, { decision, unpublish })
+      showToast(
+        decision === 'uphold'
+          ? unpublish
+            ? `Report upheld — "${r.title}" taken down`
+            : 'Report upheld'
+          : 'Report dismissed'
+      )
+      reports.reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setReportBusy(null)
+    }
+  }
 
   const [openId, setOpenId] = useState(null)
   const [note, setNote] = useState('')
@@ -44,8 +82,78 @@ export default function ModerationTab() {
     }
   }
 
+  const openReports = reports.data?.reports || []
+
   return (
     <div className="tab">
+      <Panel
+        title={`Reported Content${openReports.length ? ` · ${openReports.length}` : ''}`}
+        action={
+          <span className="badge">
+            <Flag style={{ width: 14, height: 14 }} />
+            FROM VIEWERS
+          </span>
+        }
+      >
+        <Async
+          loading={reports.loading}
+          error={reports.error}
+          onRetry={reports.reload}
+          empty={!openReports.length}
+          rows={2}
+          emptyProps={{
+            icon: Flag,
+            title: 'Nothing reported',
+            hint: 'Reports raised from a video land here. Copyright claims are the ones to read first.',
+          }}
+        >
+          {openReports.map((r) => (
+            <div className="review-card report-row" key={r.id}>
+              <div className="rv-info">
+                <b>{r.title}</b>
+                <div className="rv-meta">
+                  <span className={`pill ${r.reason === 'copyright' ? 'bad' : 'pend'}`}>
+                    {REASON_LABEL[r.reason] || r.reason}
+                  </span>
+                  <span className="pill">{r.creator_name}</span>
+                  {!r.is_published && <span className="pill">Already unpublished</span>}
+                </div>
+                {r.detail && <p className="rv-desc">{r.detail}</p>}
+                <small className="rv-time">
+                  Reported {timeAgo(r.created_at)}
+                  {r.reporter_name ? ` by ${r.reporter_name}` : ' by a visitor'}
+                  {r.reporter_email ? ` · ${r.reporter_email}` : ''}
+                </small>
+              </div>
+
+              <div className="rv-actions">
+                <button
+                  className="btn btn-red btn-sm"
+                  onClick={() => decideReport(r, 'uphold', true)}
+                  disabled={reportBusy === r.id}
+                >
+                  Uphold &amp; take down
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => decideReport(r, 'uphold', false)}
+                  disabled={reportBusy === r.id}
+                >
+                  Uphold only
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => decideReport(r, 'dismiss', false)}
+                  disabled={reportBusy === r.id}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </Async>
+      </Panel>
+
       <Panel
         title={`Removal Requests${requests.length ? ` · ${requests.length}` : ''}`}
         action={

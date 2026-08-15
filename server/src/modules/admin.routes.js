@@ -545,6 +545,111 @@ router.delete(
   })
 )
 
+/* ======================================================================
+   CONTENT REPORTS — what viewers have flagged
+   ====================================================================== */
+
+router.get(
+  '/reports',
+  validateQuery(
+    z.object({
+      status: anyOf(['open', 'upheld', 'dismissed']),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
+      offset: z.coerce.number().int().min(0).default(0),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const { status, limit, offset } = req.validatedQuery
+    const where = ['1=1']
+    const params = []
+    if (status) { params.push(status); where.push(`r.status = $${params.length}::report_status`) }
+
+    params.push(limit, offset)
+    const rows = await many(
+      `select r.*, v.title, v.slug, v.is_published, v.review_status,
+              coalesce(cp.display_name, p.full_name) as creator_name,
+              reporter.full_name as reporter_name
+         from content_reports r
+         join videos v   on v.id = r.video_id
+         join profiles p on p.id = v.creator_id
+         left join creator_profiles cp on cp.user_id = v.creator_id
+         left join profiles reporter on reporter.id = r.reporter_id
+        where ${where.join(' and ')}
+        order by (r.status = 'open') desc, r.created_at desc
+        limit $${params.length - 1} offset $${params.length}`,
+      params
+    )
+    const total = await one(
+      `select count(*)::int as n from content_reports r where ${where.join(' and ')}`,
+      params.slice(0, params.length - 2)
+    )
+    res.json({ reports: rows, total: total?.n ?? 0, limit, offset })
+  })
+)
+
+/**
+ * Decide a report.
+ *
+ * Upholding one can take the video down in the same action, because leaving
+ * infringing material up while somebody remembers to go and unpublish it is the
+ * gap the report was raised to close. Dismissing records why, so a second
+ * report about the same thing is not started from nothing.
+ */
+router.post(
+  '/reports/:id/decide',
+  validate(
+    z.object({
+      decision: z.enum(['uphold', 'dismiss']),
+      unpublish: z.boolean().default(false),
+      note: z.string().trim().max(600).optional(),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const report = await one('select * from content_reports where id = $1', [req.params.id])
+    if (!report) throw notFound('Report not found')
+    if (report.status !== 'open') throw conflict('This report has already been decided')
+
+    const { decision, unpublish, note } = req.body
+    const video = await one('select * from videos where id = $1', [report.video_id])
+
+    await transaction(async (client) => {
+      await client.query(
+        `update content_reports
+            set status = $2::report_status, decided_by = $3, decided_at = now(), decision_note = $4
+          where id = $1`,
+        [report.id, decision === 'uphold' ? 'upheld' : 'dismissed', req.user.id, note || null]
+      )
+      if (decision === 'uphold' && unpublish && video?.is_published) {
+        await client.query('update videos set is_published = false where id = $1', [video.id])
+      }
+    }, asAdmin(req))
+
+    await recordStaffAction(req, {
+      action: decision === 'uphold' ? 'REPORT_UPHELD' : 'REPORT_DISMISSED',
+      entityType: 'video',
+      entityId: report.video_id,
+      summary: `${who(req)} ${decision === 'uphold' ? 'upheld' : 'dismissed'} a report on "${video?.title ?? 'a video'}"`,
+      body: note || null,
+      detail: { reason: report.reason, unpublished: decision === 'uphold' && unpublish },
+    })
+
+    if (decision === 'uphold' && unpublish && video) {
+      await notify({
+        userId: video.creator_id,
+        kind: 'account',
+        title: `"${video.title}" was taken down after a report`,
+        body: note || 'Contact support if you believe this was a mistake.',
+        actor: req.user,
+        action: 'report',
+        entityType: 'video',
+        entityId: video.id,
+      })
+    }
+
+    res.json({ ok: true, decision })
+  })
+)
+
 /* ------------------------------------------------- creator delete requests */
 router.get(
   '/deletion-requests',
@@ -1096,22 +1201,93 @@ router.patch(
   })
 )
 
+/**
+ * The permanent record, paged and filterable on the server.
+ *
+ * This returned the newest hundred rows and nothing else — no paging, no date
+ * range, no way to ask "what did this person do". An audit log you cannot
+ * query is a log nobody reads, and the answer to "who approved that video in
+ * March" was to scroll until you found it, or to raise the limit until the
+ * browser was holding thousands of rows it had no use for.
+ *
+ * Every filter is applied in SQL against indexed columns, and the total comes
+ * back with the page so the interface can say where you are in it.
+ */
 router.get(
   '/audit',
-  validateQuery(z.object({ q: z.string().max(120).optional(), limit: z.coerce.number().int().min(1).max(200).default(100) })),
+  validateQuery(
+    z.object({
+      q: z.string().trim().max(120).optional(),
+      /** Who did it. */
+      actorId: z.string().uuid().optional(),
+      /** Exactly which action, for when you already know what you are after. */
+      action: z.string().trim().max(60).optional(),
+      /** What kind of thing it was done to: video, profile, withdrawal… */
+      entityType: z.string().trim().max(40).optional(),
+      /** Inclusive date range, as plain YYYY-MM-DD. */
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      limit: z.coerce.number().int().min(1).max(200).default(50),
+      offset: z.coerce.number().int().min(0).default(0),
+    })
+  ),
   asyncHandler(async (req, res) => {
-    const { q, limit } = req.validatedQuery
+    const { q, actorId, action, entityType, from, to, limit, offset } = req.validatedQuery
+
+    const where = ['1=1']
     const params = []
-    let where = '1=1'
-    if (q) { params.push(`%${q}%`); where = `(a.action ilike $1 or a.entity_type ilike $1 or p.full_name ilike $1)` }
-    params.push(limit)
-    const rows = await many(
-      `select a.*, p.full_name as actor_name, p.email as actor_email
-         from audit_log a left join profiles p on p.id = a.actor_id
-        where ${where} order by a.created_at desc limit $${params.length}`,
-      params
-    )
-    res.json({ entries: rows })
+    /**
+     * One value, however many times it appears. The free-text search compares
+     * the same term against four columns, so every `$?` in a fragment resolves
+     * to the one parameter that was pushed for it.
+     */
+    const add = (sql, value) => {
+      params.push(value)
+      where.push(sql.replaceAll('$?', `$${params.length}`))
+    }
+
+    if (q) {
+      add(
+        '(a.action ilike $? or a.entity_type ilike $? or p.full_name ilike $? or p.email ilike $?)',
+        `%${q}%`
+      )
+    }
+    if (actorId) add('a.actor_id = $?', actorId)
+    if (action) add('a.action = $?', action)
+    if (entityType) add('a.entity_type = $?', entityType)
+    if (from) add('a.created_at >= $?::date', from)
+    // Inclusive of the whole end day, not midnight at the start of it.
+    if (to) add("a.created_at < ($?::date + interval '1 day')", to)
+
+    const clause = where.join(' and ')
+
+    const [rows, total, actions] = await Promise.all([
+      many(
+        `select a.*, p.full_name as actor_name, p.email as actor_email
+           from audit_log a left join profiles p on p.id = a.actor_id
+          where ${clause}
+          order by a.created_at desc
+          limit $${params.length + 1} offset $${params.length + 2}`,
+        [...params, limit, offset]
+      ),
+      one(
+        `select count(*)::int as n
+           from audit_log a left join profiles p on p.id = a.actor_id
+          where ${clause}`,
+        params
+      ),
+      /* The actions actually present, so the filter offers real choices
+         rather than a list somebody has to keep in step by hand. */
+      many(`select distinct action from audit_log order by action`),
+    ])
+
+    res.json({
+      entries: rows,
+      total: total?.n ?? 0,
+      limit,
+      offset,
+      options: { actions: actions.map((r) => r.action) },
+    })
   })
 )
 

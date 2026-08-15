@@ -77,6 +77,39 @@ export async function pickCampaign({ video, placement }) {
   return rows[0] ?? null
 }
 
+/**
+ * Could this campaign legitimately have played here, in this placement?
+ *
+ * The impression endpoint is called by the player, which means the campaign id,
+ * the placement and the "completed" flag all arrive from a browser. Without
+ * this check, anyone could post an impression naming any live campaign and
+ * claim it finished — inflating an advertiser's spend and paying a creator for
+ * an advert nobody watched. Neither is recoverable once it has been reported.
+ *
+ * So the same predicate that chose the advert is re-run before any money moves.
+ * It answers the only question that matters: was this campaign actually
+ * servable against this video, in this slot, at this moment.
+ */
+export async function campaignServable({ video, campaignId, placement }) {
+  if (!campaignId) return null
+  const rows = await many(
+    `select * from ad_campaigns
+      where id = $5
+        and active = true
+        and cloudflare_uid is not null
+        and $2 = any(placements)
+        and (starts_at is null or starts_at <= now())
+        and (ends_at   is null or ends_at   >= now())
+        and (cardinality(target_video_ids)   = 0 or $1 = any(target_video_ids))
+        and (cardinality(target_creator_ids) = 0 or $3 = any(target_creator_ids))
+        and (cardinality(target_categories)  = 0 or lower(coalesce($4,'')) = any(
+              select lower(c) from unnest(target_categories) c))
+      limit 1`,
+    [video.id, placement, video.creator_id, video.category, campaignId]
+  )
+  return rows[0] ?? null
+}
+
 /** The advert, shaped for the player, with a signed token if the account needs one. */
 export function adPayload(campaign, { placement, skipAfterSeconds }) {
   const token = capabilities.signedPlayback
@@ -145,13 +178,30 @@ export async function recordImpression({
   completed = false,
 }) {
   const settings = await getSettings()
-  const campaign = campaignId
-    ? await one('select * from ad_campaigns where id = $1', [campaignId])
-    : null
+
+  /**
+   * The campaign is re-verified, not merely looked up.
+   *
+   * Everything this function is told — which campaign, which placement, whether
+   * it finished — comes from a browser. Fetching the campaign by id and
+   * trusting it would let anyone post an impression naming any live campaign
+   * and claim it completed, which spends an advertiser's budget and pays a
+   * creator for an advert nobody saw.
+   */
+  const campaign = await campaignServable({ video, campaignId, placement })
+
+  /**
+   * Also enforce the mid-roll rule here, not only where the break was offered.
+   * A video with no middle cannot have had an advert in it, whatever the
+   * request says.
+   */
+  const midrollValid =
+    placement !== 'mid_roll' ||
+    Number(video.duration_seconds || 0) > Number(settings.midroll_after_secs || 300)
 
   // An advert abandoned after two seconds was not delivered, and an advertiser
   // should not be billed for it.
-  const billable = completed && campaign != null
+  const billable = completed && campaign != null && midrollValid
   const micro = billable ? microPerImpression(campaign.cpm_tzs) : 0
 
   const percent = settings.share_ad_revenue ? await splitPercentFor(video.creator_id) : 0

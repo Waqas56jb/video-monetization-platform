@@ -7,6 +7,7 @@ import {
   Calendar,
   Clock,
   Eye,
+  Flag,
   LayoutDashboard,
   Library,
   Lock,
@@ -20,6 +21,7 @@ import AdBreak from '@/components/watch/AdBreak'
 import LockGate from '@/components/watch/LockGate'
 import PaymentModal from '@/components/watch/PaymentModal'
 import ShareSheet from '@/components/watch/ShareSheet'
+import ReportDialog from '@/components/watch/ReportDialog'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
@@ -46,6 +48,8 @@ export default function Watch() {
   const [previewOver, setPreviewOver] = useState(false)
   /* The share sheet — what is going out, shown before it goes. */
   const [sharing, setSharing] = useState(false)
+  /* Reporting, from the video itself rather than an address on a policy page. */
+  const [reporting, setReporting] = useState(false)
 
   /**
    * Where to pick the film up from.
@@ -596,6 +600,13 @@ export default function Watch() {
 
           {v.description && <div className="watch-desc">{v.description}</div>}
 
+          {/* Quiet on purpose: a report link that competes with Share invites
+              misuse, and one that cannot be found protects nobody. */}
+          <button className="report-link" onClick={() => setReporting(true)}>
+            <Flag size={13} />
+            Report this video
+          </button>
+
           {/**
            * The promise a premiere buyer most needs to see, and the one most
            * easily misread: the window ending does not take anything from them.
@@ -625,6 +636,13 @@ export default function Watch() {
       </div>
 
       <ShareSheet open={sharing} video={v} onClose={() => setSharing(false)} />
+
+      <ReportDialog
+        open={reporting}
+        video={v}
+        signedIn={signedIn}
+        onClose={() => setReporting(false)}
+      />
 
       <PaymentModal
         open={payOpen}
