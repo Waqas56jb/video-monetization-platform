@@ -23,9 +23,20 @@ const ACCESS_LABEL = {
  * worth acting on.
  */
 export default function AnalyticsTab() {
+  /**
+   * Analytics reads from two permission-gated modules. Somebody without them
+   * gets a 403 rather than a chart, so the request is not made — the section
+   * is simply not part of their view.
+   */
+  const { can } = useAuth()
+  const seePayments = can('payments')
+  const seeVideos = can('videos')
+
   const overview = useApi(() => api.admin.overview(), [])
-  const payments = useApi(() => api.admin.payments({ limit: 200 }), [])
-  const videos = useApi(() => api.admin.videos({ status: 'published', limit: 100 }), [])
+  const payments = useApi(() => api.admin.payments({ limit: 200 }), [], { skip: !seePayments })
+  const videos = useApi(() => api.admin.videos({ status: 'published', limit: 100 }), [], {
+    skip: !seeVideos,
+  })
 
   const rows = payments.data?.payments || []
   const succeeded = rows.filter((p) => p.status === 'success')

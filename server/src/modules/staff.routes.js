@@ -3,7 +3,13 @@ import { z } from 'zod'
 import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
-import { requireAuth, requireStaff, requireAdmin } from '../middleware/auth.js'
+import {
+  requireAuth,
+  requireStaff,
+  requireAdmin,
+  requirePermission,
+  STAFF_MODULES,
+} from '../middleware/auth.js'
 import { createAuthUser, issueResetToken, setAuthEmail, deleteAuthUser, verifyPassword } from '../lib/authdb.js'
 import { sendMail, staffInviteEmail, announcementEmail } from '../lib/mailer.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
@@ -28,6 +34,16 @@ import { log } from '../lib/logger.js'
  */
 const router = Router()
 router.use(requireAuth(), requireStaff())
+
+/**
+ * Announcing is a module like any other.
+ *
+ * Broadcasting to every creator on the platform is not something everybody
+ * brought in to review uploads should be able to do, and it was previously
+ * open to any sub-admin. The notification inbox below is not gated — reading
+ * your own messages is not a permission.
+ */
+router.use('/announcements', requirePermission('announcements'))
 
 /* ======================================================================
    NOTIFICATIONS — the admin's record of everything the team does
@@ -284,7 +300,12 @@ router.get(
               (select count(*)::int from audit_log a where a.actor_id = p.id)   as action_count,
               exists (select 1 from password_resets r
                        where r.user_id = p.id and r.purpose = 'invite'
-                         and r.used_at is null and r.expires_at > now())        as invite_pending
+                         and r.used_at is null and r.expires_at > now())        as invite_pending,
+              coalesce(
+                (select array_agg(sp.module::text order by sp.module)
+                   from staff_permissions sp where sp.user_id = p.id),
+                '{}'
+              )                                                                 as permissions
          from profiles p
         where p.role = 'sub_admin'
         order by p.created_at desc`
@@ -302,8 +323,82 @@ router.get(
         lastActionAt: r.last_action_at,
         actionCount: r.action_count,
         invitePending: r.invite_pending,
+        permissions: r.permissions || [],
       })),
+      /* So the interface offers the real list rather than one kept in step by
+         hand — the enum in the database is the authority. */
+      modules: STAFF_MODULES,
     })
+  })
+)
+
+/**
+ * Set exactly which modules a sub-admin may open.
+ *
+ * Replaces the whole set rather than adding one at a time: the screen presents
+ * a list of checkboxes, and "what they have now" is the thing being saved. It
+ * is also the honest shape for an audit entry — the record says what they were
+ * left holding, not which box was clicked.
+ *
+ * Administrator only, and the database refuses anyone else through
+ * guard_staff_permissions(), so a sub-admin cannot grant themselves a module
+ * even by calling this directly with their own id.
+ */
+router.put(
+  '/sub-admins/:id/permissions',
+  requireAdmin(),
+  validate(
+    z.object({
+      modules: z.array(z.enum(STAFF_MODULES)).max(STAFF_MODULES.length),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const target = await one(`select * from profiles where id = $1 and role = 'sub_admin'`, [
+      req.params.id,
+    ])
+    if (!target) throw notFound('Sub-admin not found')
+
+    const wanted = [...new Set(req.body.modules)]
+
+    const before = await many('select module from staff_permissions where user_id = $1', [target.id])
+
+    await transaction(
+      async (c) => {
+        await c.query('delete from staff_permissions where user_id = $1', [target.id])
+        if (wanted.length) {
+          await c.query(
+            `insert into staff_permissions (user_id, module, granted_by)
+             select $1, unnest($2::staff_module[]), $3`,
+            [target.id, wanted, req.user.id]
+          )
+        }
+      },
+      { actorRole: 'admin', actorId: req.user.id }
+    )
+
+    await recordStaffAction(req, {
+      action: 'STAFF_PERMISSIONS_CHANGED',
+      entityType: 'profile',
+      entityId: target.id,
+      summary: `${req.user.full_name || req.user.email} changed what ${target.full_name} can access`,
+      body: wanted.length ? wanted.join(', ') : 'No modules — they can see nothing',
+      detail: { from: before.map((r) => r.module), to: wanted },
+    })
+
+    await notify({
+      userId: target.id,
+      kind: 'account',
+      title: 'Your access has been updated',
+      body: wanted.length
+        ? `You can now work on: ${wanted.join(', ')}.`
+        : 'You currently have no modules assigned. Ask an administrator.',
+      actor: req.user,
+      action: 'permissions',
+      entityType: 'profile',
+      entityId: target.id,
+    })
+
+    res.json({ ok: true, permissions: wanted })
   })
 )
 

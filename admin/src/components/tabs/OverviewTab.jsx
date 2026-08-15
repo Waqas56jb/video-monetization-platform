@@ -10,6 +10,7 @@ import RevenueAreaChart from '@/components/charts/RevenueAreaChart'
 import DonutChart from '@/components/charts/DonutChart'
 import useApi, { tzs, compact, shortDate, timeAgo } from '@/hooks/useApi'
 import api from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import { useConfirm } from '@/context/ConfirmContext'
 import { useToast } from '@/context/ToastContext'
 
@@ -23,10 +24,23 @@ import { useToast } from '@/context/ToastContext'
 export default function OverviewTab() {
   const showToast = useToast()
   const confirm = useConfirm()
+  const { can } = useAuth()
+
+  /**
+   * The dashboard shows what this person is allowed to see.
+   *
+   * These panels read from modules that are permission-gated on the server. A
+   * moderator with no `withdrawals` grant asking for the payout queue gets a
+   * 403 — correct, and it would render here as a broken panel on the landing
+   * screen. Not asking is the honest version: the panel is simply not part of
+   * their dashboard.
+   */
+  const seeRevenue = can('revenue')
+  const seeWithdrawals = can('withdrawals')
 
   const overview = useApi(() => api.admin.overview(), [])
-  const withdrawals = useApi(() => api.admin.withdrawals(), [])
-  const revenue = useApi(() => api.admin.revenue(), [])
+  const withdrawals = useApi(() => api.admin.withdrawals(), [], { skip: !seeWithdrawals })
+  const revenue = useApi(() => api.admin.revenue(), [], { skip: !seeRevenue })
   const activity = useApi(() => api.admin.activity(), [])
 
   const o = overview.data
@@ -68,6 +82,7 @@ export default function OverviewTab() {
     <div className="tab">
       <StatGrid stats={stats} />
 
+      {seeRevenue && (
       <div className="two-col">
         <Panel title="Revenue Overview" action={<span className="link">Last 30 days</span>}>
           <Async loading={revenue.loading} error={revenue.error} onRetry={revenue.reload} rows={4}>
@@ -111,8 +126,10 @@ export default function OverviewTab() {
           </Async>
         </Panel>
       </div>
+      )}
 
       <div className="two-col">
+        {seeWithdrawals && (
         <Panel
           title="Pending Withdrawals"
           action={
@@ -174,6 +191,7 @@ export default function OverviewTab() {
             </TableWrap>
           </Async>
         </Panel>
+        )}
 
         <Panel
           title="Recent Activity"

@@ -24,46 +24,58 @@ const NAV = [
   {
     label: 'Management',
     items: [
-      { path: '/users', icon: 'users', label: 'Users', adminOnly: true },
-      { path: '/creators', icon: 'video', label: 'Creators', adminOnly: true },
-      { path: '/videos', icon: 'clapperboard', label: 'Videos' },
-      { path: '/review', icon: 'shield-check', label: 'Content Review', badge: 'review' },
-      { path: '/moderation', icon: 'shield-alert', label: 'Moderation' },
+      { path: '/users', icon: 'users', label: 'Users', adminOnly: true, module: 'users' },
+      { path: '/creators', icon: 'video', label: 'Creators', adminOnly: true, module: 'creators' },
+      { path: '/videos', icon: 'clapperboard', label: 'Videos', module: 'videos' },
+      { path: '/review', icon: 'shield-check', label: 'Content Review', badge: 'review', module: 'review' },
+      { path: '/moderation', icon: 'shield-alert', label: 'Moderation', module: 'moderation' },
     ],
   },
   {
     label: 'Communication',
-    items: [{ path: '/announcements', icon: 'megaphone', label: 'Announcements' }],
+    items: [{ path: '/announcements', icon: 'megaphone', label: 'Announcements', module: 'announcements' }],
   },
   {
     label: 'Finance',
     items: [
-      { path: '/payments', icon: 'credit-card', label: 'Payments' },
-      { path: '/withdrawals', icon: 'banknote', label: 'Withdrawals', badge: 'withdrawals' },
-      { path: '/revenue', icon: 'percent', label: 'Revenue & Splits', adminOnly: true },
-      { path: '/ads', icon: 'megaphone', label: 'Ads Management' },
+      { path: '/payments', icon: 'credit-card', label: 'Payments', module: 'payments' },
+      { path: '/withdrawals', icon: 'banknote', label: 'Withdrawals', badge: 'withdrawals', module: 'withdrawals' },
+      { path: '/revenue', icon: 'percent', label: 'Revenue & Splits', adminOnly: true, module: 'revenue' },
+      { path: '/ads', icon: 'megaphone', label: 'Ads Management', module: 'ads' },
     ],
   },
   {
     label: 'System',
     items: [
-      { path: '/audit', icon: 'scroll-text', label: 'Audit Log' },
-      { path: '/settings', icon: 'settings', label: 'Settings' },
+      { path: '/audit', icon: 'scroll-text', label: 'Audit Log', module: 'audit' },
+      { path: '/settings', icon: 'settings', label: 'Settings', module: 'settings' },
     ],
   },
 ]
 
 export default function Sidebar({ open, onClose, onLogout, counts = {} }) {
-  const { isAdmin, roleLabel, user } = useAuth()
+  const { isAdmin, roleLabel, user, can } = useAuth()
   const { unread } = useNotifications()
 
   const groups = useMemo(
     () =>
       NAV.map((g) => ({
         ...g,
-        items: g.items.filter((i) => !i.adminOnly || isAdmin),
+        /**
+         * Two gates, and both matter.
+         *
+         * `adminOnly` is the account-level rule that has always been here.
+         * `module` is the per-sub-admin permission: showing somebody a tab
+         * whose every request will be refused is worse than not showing it.
+         *
+         * Neither is security. The server checks the same permission on every
+         * one of these routes, and that check is what actually decides.
+         */
+        items: g.items.filter(
+          (i) => (!i.adminOnly || isAdmin) && (!i.module || can(i.module))
+        ),
       })).filter((g) => g.items.length),
-    [isAdmin]
+    [isAdmin, can]
   )
 
   const badgeFor = (key) => {

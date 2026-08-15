@@ -23,6 +23,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(Boolean(getAccessToken()))
   const [error, setError] = useState(null)
+  /**
+   * Which modules this staff member may open.
+   *
+   * Presentation only. Every route checks the same permission again on the
+   * server — this exists so the interface does not offer a moderator the
+   * Withdrawals tab and then refuse every request inside it.
+   */
+  const [permissions, setPermissions] = useState([])
 
   /* -------- restore an existing session on first load -------- */
   useEffect(() => {
@@ -40,6 +48,7 @@ export function AuthProvider({ children }) {
           setUser(null)
         } else {
           setUser(res.user)
+          setPermissions(res.permissions || [])
         }
       })
       .catch((err) => {
@@ -78,6 +87,13 @@ export function AuthProvider({ children }) {
 
     saveSession(res.session)
     setUser(res.user)
+    // Login answers with the profile; the permission set comes from /me.
+    try {
+      const me = await api.auth.me()
+      setPermissions(me.permissions || [])
+    } catch {
+      setPermissions([])
+    }
     return res.user
   }, [])
 
@@ -95,6 +111,7 @@ export function AuthProvider({ children }) {
   const reload = useCallback(async () => {
     const res = await api.auth.me()
     setUser(res.user)
+    setPermissions(res.permissions || [])
     return res.user
   }, [])
 
@@ -113,8 +130,14 @@ export function AuthProvider({ children }) {
       /** Account management is the administrator's alone. */
       canManageAccounts: user?.role === 'admin',
       roleLabel: user?.role === 'sub_admin' ? 'SUB ADMIN' : 'SUPER ADMIN',
+      permissions,
+      /**
+       * May this person open that module? An administrator always can — their
+       * role is the permission — which is also exactly what the server does.
+       */
+      can: (module) => user?.role === 'admin' || permissions.includes(module),
     }),
-    [user, loading, error, login, logout, reload]
+    [user, loading, error, login, logout, reload, permissions]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

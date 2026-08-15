@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest, conflict, notFound } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
-import { requireAuth, requireStaff, requireAdmin } from '../middleware/auth.js'
+import { requireAuth, requireStaff, requireAdmin, requirePermission } from '../middleware/auth.js'
 import { getSettings, updateSettings, applySplit, splitPercentFor } from '../services/settings.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
@@ -23,6 +23,45 @@ const router = Router()
  * requireAdmin() below, because a sub-admin must not see or change them.
  */
 router.use(requireAuth(), requireStaff())
+
+/**
+ * Per-module permissions, applied by path prefix.
+ *
+ * "sub_admin" was a single switch — in, or not in — which let somebody brought
+ * on to review uploads also decide withdrawals and change the revenue split.
+ * Each area now asks the narrower question, and mounting the check on the
+ * prefix means a route added under one of these paths later is covered by
+ * default rather than by somebody remembering.
+ *
+ * An administrator passes every one of these; their role is the permission.
+ * The routes that were already `requireAdmin()` keep it — this is an additional
+ * gate, never a replacement for one.
+ *
+ * `/overview` and `/activity` are deliberately not listed: they are the landing
+ * screen, they expose counts rather than records, and a staff member with no
+ * modules at all should still be able to see that the queue exists.
+ */
+router.use('/review', requirePermission('review'))
+router.use('/videos', requirePermission('videos'))
+router.use('/reports', requirePermission('moderation'))
+router.use('/deletion-requests', requirePermission('moderation'))
+router.use('/users', requirePermission('users'))
+router.use('/creators', requirePermission('creators'))
+router.use('/payments', requirePermission('payments'))
+router.use('/withdrawals', requirePermission('withdrawals'))
+router.use('/revenue', requirePermission('revenue'))
+router.use('/ads', requirePermission('ads'))
+router.use('/audit', requirePermission('audit'))
+
+/**
+ * `/settings` is deliberately NOT gated as a whole.
+ *
+ * Reading platform configuration is not a privilege — the Ads screen needs to
+ * know whether pre-roll is switched on, Creators needs the default split, and
+ * gating the read would break screens whose own permission the person already
+ * holds. Changing it is the sensitive half, and PATCH keeps its requireAdmin()
+ * below. The `settings` module governs the Settings screen itself.
+ */
 
 /** The database guard reads this, and it must be the caller's real role. */
 const asAdmin = (req) => ({ actorRole: req.user.role, actorId: req.user.id })

@@ -440,11 +440,48 @@ function TeamPanel() {
   const [inviteError, setInviteError] = useState(null)
   const [inviting, setInviting] = useState(false)
 
+  /**
+   * Which modules a sub-admin may open.
+   *
+   * A sub-admin used to be one switch: in, or not in. Somebody brought on to
+   * review uploads could also decide withdrawals and change the revenue split.
+   * The list of modules comes from the server so it can never drift from the
+   * enum the database enforces.
+   */
+  const [modules, setModules] = useState([])
+  const [editingPerms, setEditingPerms] = useState(null)
+  const [draftPerms, setDraftPerms] = useState([])
+  const [savingPerms, setSavingPerms] = useState(false)
+
+  useEffect(() => {
+    if (!editingPerms) return
+    setDraftPerms(editingPerms.permissions || [])
+  }, [editingPerms])
+
+  const savePermissions = async () => {
+    setSavingPerms(true)
+    try {
+      await api.admin.setPermissions(editingPerms.id, draftPerms)
+      showToast(
+        draftPerms.length
+          ? `${editingPerms.fullName} can now access ${draftPerms.length} module${draftPerms.length === 1 ? '' : 's'}`
+          : `${editingPerms.fullName} now has no access`
+      )
+      setEditingPerms(null)
+      load()
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setSavingPerms(false)
+    }
+  }
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.staff.subAdmins()
       setTeam(res.subAdmins || [])
+      setModules(res.modules || [])
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -586,6 +623,7 @@ function TeamPanel() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Status</th>
+                <th>Can access</th>
                 <th>Actions taken</th>
                 <th>Last active</th>
                 <th style={{ textAlign: 'right' }}>Manage</th>
@@ -607,9 +645,30 @@ function TeamPanel() {
                       <span className="pill bad">{s.status}</span>
                     )}
                   </td>
+                  <td>
+                    {/* What they can actually reach. A sub-admin holding
+                        nothing is not broken — they simply have not been given
+                        a job yet, and saying so is more useful than an empty
+                        cell. */}
+                    {s.permissions?.length ? (
+                      <div className="perm-chips">
+                        {s.permissions.map((m) => (
+                          <span className="pill" key={m}>
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="pill warn">No access yet</span>
+                    )}
+                  </td>
                   <td>{s.actionCount}</td>
                   <td>{s.lastActionAt ? new Date(s.lastActionAt).toLocaleDateString() : '—'}</td>
                   <td className="row-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditingPerms(s)}>
+                      <KeyRound size={14} />
+                      Access
+                    </button>
                     {s.invitePending && (
                       <button className="btn btn-ghost btn-sm" onClick={() => resend(s)}>
                         <RotateCw size={14} />
@@ -636,6 +695,64 @@ function TeamPanel() {
           </table>
         </div>
       </Async>
+
+      {/**
+        * Choosing what one person can reach.
+        *
+        * Presented as the whole set rather than one grant at a time, because
+        * that is the question being answered — what should this person be able
+        * to do — and it is also what the audit entry records.
+        *
+        * Nothing here is security. Every module is checked again on the server
+        * on every request, and again by a trigger in the database, so a
+        * sub-admin cannot grant themselves anything by calling the API.
+        */}
+      {editingPerms && (
+        <div className="modal open" role="dialog" aria-modal="true" aria-label="Staff access">
+          <div className="modal-bg" onClick={() => !savingPerms && setEditingPerms(null)} />
+          <div className="modal-card perm-card">
+            <h3>What {editingPerms.fullName} can access</h3>
+            <p className="field-note">
+              They see only what is ticked. Anything else is refused by the server, not just
+              hidden.
+            </p>
+
+            <div className="perm-grid">
+              {modules.map((m) => {
+                const on = draftPerms.includes(m)
+                return (
+                  <label key={m} className={`perm-opt ${on ? 'on' : ''}`.trim()}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() =>
+                        setDraftPerms((list) =>
+                          on ? list.filter((x) => x !== m) : [...list, m]
+                        )
+                      }
+                    />
+                    <span>{m}</span>
+                  </label>
+                )
+              })}
+            </div>
+
+            <div className="perm-actions">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setEditingPerms(null)}
+                disabled={savingPerms}
+              >
+                Cancel
+              </button>
+              <button className="btn btn-gold btn-sm" onClick={savePermissions} disabled={savingPerms}>
+                <Save size={14} />
+                {savingPerms ? 'Saving…' : 'Save access'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Panel>
   )
 }

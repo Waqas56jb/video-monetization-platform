@@ -75,6 +75,18 @@ input,select{font-family:inherit;outline:none}
 /* Featured is an editorial choice, not a state the platform measured — gold
    rather than green so it never reads as "approved". */
 .pill.gold{background:rgba(233,185,73,.14);color:var(--gold)}
+
+/* --- staff permissions ---------------------------------------------------- */
+.perm-chips{display:flex;flex-wrap:wrap;gap:5px;max-width:280px}
+.perm-chips .pill{font-size:10.5px;padding:3px 8px}
+.perm-card{max-width:520px;max-height:88dvh;overflow-y:auto;text-align:left}
+.perm-card h3{margin:0 0 6px;font-size:18px}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:18px 0}
+.perm-opt{display:flex;align-items:center;gap:9px;padding:11px 13px;border:1px solid var(--border2);border-radius:12px;cursor:pointer;font-size:13px;text-transform:capitalize;transition:.2s}
+.perm-opt.on{border-color:var(--purple);background:rgba(124,58,237,.12)}
+.perm-opt input{accent-color:var(--purple);width:16px;height:16px;flex-shrink:0}
+.perm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:600px){.perm-card{max-width:none}.perm-chips{max-width:none}}
 .pill.pend{background:rgba(245,197,24,.12);color:var(--gold)}
 .pill.free{background:rgba(124,58,237,.15);color:var(--purple2)}
 .pill.bad{background:rgba(239,68,68,.13);color:#fca5a5}

@@ -13,7 +13,7 @@ import {
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
 import { asyncHandler, badRequest, forbidden, notFound } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, permissionsFor } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
@@ -181,7 +181,17 @@ router.get(
          from creator_profiles where user_id = $1`,
       [req.user.id]
     )
-    res.json({ ...shape(req.user, null), creator })
+    /**
+     * What this staff member may open.
+     *
+     * Sent so the control centre can hide what it must not offer — an interface
+     * that shows a moderator the Withdrawals tab and then refuses every request
+     * inside it is a worse experience than not showing it. This is presentation
+     * only: every one of those routes checks the same permission again on the
+     * server, and that check is what actually decides.
+     */
+    const permissions = await permissionsFor(req.user)
+    res.json({ ...shape(req.user, null), creator, permissions })
   })
 )
 

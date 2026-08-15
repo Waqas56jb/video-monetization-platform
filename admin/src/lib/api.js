@@ -201,6 +201,9 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
 const get = (path, opts) => request(path, { ...opts, method: 'GET' })
 const post = (path, body, opts) => request(path, { ...opts, method: 'POST', body })
 const patch = (path, body, opts) => request(path, { ...opts, method: 'PATCH', body })
+/* Replacing a whole set rather than amending one — permissions are saved as
+   "what they hold now", which is a PUT. */
+const put = (path, body, opts) => request(path, { ...opts, method: 'PUT', body })
 const del = (path, opts) => request(path, { ...opts, method: 'DELETE' })
 
 /** Build a querystring, dropping empty values and the "All" filter defaults. */
@@ -277,6 +280,8 @@ export const api = {
     refundPayment: (id, reason) => post(`/api/admin/payments/${id}/refund`, { reason }),
     /** What viewers have flagged, and deciding it. */
     reports: (params) => get(`/api/admin/reports${qs(params)}`),
+    /** Exactly which modules a sub-admin may open. Administrator only. */
+    setPermissions: (id, modules) => put(`/api/staff/sub-admins/${id}/permissions`, { modules }),
     decideReport: (id, body) => post(`/api/admin/reports/${id}/decide`, body),
     /** Is outbound email actually working, or only configured? */
     emailHealth: () => get('/api/admin/health/email'),

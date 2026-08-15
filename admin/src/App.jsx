@@ -31,6 +31,20 @@ function AdminOnly({ children }) {
   return isAdmin ? children : <Navigate to="/dashboard" replace />
 }
 
+/**
+ * A route a sub-admin only opens if they hold the module.
+ *
+ * The sidebar already hides these, but a bookmark, a back button or a typed URL
+ * reaches the route directly — and landing on a screen where every request is
+ * refused looks like the platform is broken rather than like a permission they
+ * were not given. The server refuses those requests either way; this is about
+ * where the person ends up.
+ */
+function Needs({ module, children }) {
+  const { can } = useAuth()
+  return can(module) ? children : <Navigate to="/dashboard" replace />
+}
+
 function Router() {
   const { authed, loading, logout } = useAuth()
   const showToast = useToast()
@@ -73,21 +87,24 @@ function Router() {
         <Route path="/dashboard" element={<OverviewTab />} />
         <Route path="/analytics" element={<AnalyticsTab />} />
         <Route path="/notifications" element={<NotificationsTab />} />
-        <Route path="/announcements" element={<AnnouncementsTab />} />
+        <Route
+          path="/announcements"
+          element={<Needs module="announcements"><AnnouncementsTab /></Needs>}
+        />
 
         {/* Accounts are the administrator's alone. */}
         <Route path="/users" element={<AdminOnly><UsersTab /></AdminOnly>} />
         <Route path="/creators" element={<AdminOnly><CreatorsTab /></AdminOnly>} />
         <Route path="/revenue" element={<AdminOnly><RevenueTab /></AdminOnly>} />
 
-        <Route path="/videos" element={<VideosTab />} />
-        <Route path="/review" element={<ReviewTab />} />
-        <Route path="/moderation" element={<ModerationTab />} />
-        <Route path="/payments" element={<PaymentsTab />} />
-        <Route path="/withdrawals" element={<WithdrawalsTab />} />
-        <Route path="/ads" element={<AdsTab />} />
-        <Route path="/audit" element={<AuditTab />} />
-        <Route path="/settings" element={<SettingsTab />} />
+        <Route path="/videos" element={<Needs module="videos"><VideosTab /></Needs>} />
+        <Route path="/review" element={<Needs module="review"><ReviewTab /></Needs>} />
+        <Route path="/moderation" element={<Needs module="moderation"><ModerationTab /></Needs>} />
+        <Route path="/payments" element={<Needs module="payments"><PaymentsTab /></Needs>} />
+        <Route path="/withdrawals" element={<Needs module="withdrawals"><WithdrawalsTab /></Needs>} />
+        <Route path="/ads" element={<Needs module="ads"><AdsTab /></Needs>} />
+        <Route path="/audit" element={<Needs module="audit"><AuditTab /></Needs>} />
+        <Route path="/settings" element={<Needs module="settings"><SettingsTab /></Needs>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
