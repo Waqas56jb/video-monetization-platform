@@ -197,6 +197,45 @@ export const FEATURES = [
   },
 ]
 
+/**
+ * Platform Power, as three stories rather than six tiles.
+ *
+ * The six features below are unchanged — every word of them survives — but a
+ * 3×2 grid of icon cards is what the client meant by "a PDF made of boxes",
+ * and six equal tiles also flatten the difference between "you can set a
+ * preview length" and "nobody can steal your film". Grouped into three, each
+ * one answers a question somebody actually has: how do people find it, how do
+ * I get paid, and how do I know it is working.
+ */
+export const PLATFORM_POWERS = [
+  {
+    key: 'discover',
+    kicker: 'Discover',
+    title: 'One link. The exact video.',
+    text:
+      'Every release gets its own address and its own 60-second clip, so a share on WhatsApp opens the film itself — not a homepage somebody has to search from.',
+    points: ['Smart Deep Links', 'Auto Social Previews', 'Secure Streaming Protection'],
+  },
+  {
+    key: 'monetize',
+    kicker: 'Monetize',
+    title: 'Paid on your terms.',
+    text:
+      'You set the price, the free preview and the paid period — per video, not once for your whole channel. Viewers pay with the money already on their phone.',
+    tone: 'gold',
+    points: ['Pay Once & Paid Premiere', 'You Set the Free Preview', 'Mobile Money, Cards & Digital'],
+  },
+  {
+    key: 'grow',
+    kicker: 'Grow',
+    title: 'See it as it happens.',
+    text:
+      'Views, unlocks and the share of every sale that is yours, updating as they land. Withdraw to M-Pesa or Airtel Money whenever the balance is there.',
+    tone: 'green',
+    points: ['Live earnings dashboard', 'Conversion and view tracking', 'Ads keep paying after a premiere'],
+  },
+]
+
 /** Why a creator should bother. */
 export const EARN_ITEMS = [
   {

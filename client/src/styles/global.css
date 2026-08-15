@@ -2001,6 +2001,78 @@ section[id]{scroll-margin-top:calc(var(--header-h) + 18px)}
 }
 
 /* =========================================================================
+   PLATFORM POWER — three stories, asymmetric
+   ------------------------------------------------------------------------
+   Was a 3×2 grid of icon cards. Deliberately NOT the alternating band the
+   release models use: repeating that shape twice in a row would recreate
+   the same "every section looks the same" problem one level up. One wide
+   band, then two columns.
+   ========================================================================= */
+.power{
+  display:grid;gap:clamp(22px,3vw,44px);align-items:center;
+  padding:clamp(22px,3vw,40px);
+  border:1px solid var(--border2);border-radius:24px;
+  background:linear-gradient(140deg,rgba(20,20,31,.66),rgba(16,16,25,.3));
+  position:relative;overflow:hidden;min-width:0;
+}
+.power::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)}
+.power.gold::before{background:var(--gold)}
+.power.green::before{background:var(--green)}
+.power.is-lead{grid-template-columns:1fr 1.06fr;margin-bottom:22px}
+.power-pair{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.power-pair .power{align-content:start}
+
+.power-kicker{display:inline-block;font-family:'Sora',sans-serif;font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--purple2);margin-bottom:12px}
+.power.gold .power-kicker{color:var(--gold)}
+.power.green .power-kicker{color:var(--green)}
+.power-copy h3{font-size:clamp(20px,2.3vw,28px);font-weight:800;letter-spacing:-.6px;line-height:1.2;margin:0 0 11px}
+.power-copy>p{color:var(--muted);font-size:15.5px;line-height:1.7;margin:0 0 18px;max-width:46ch}
+.power-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.power-list li{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--text);min-width:0}
+.power-list svg{flex-shrink:0;color:var(--green)}
+
+/* --- the composed visuals (no images: mobile data is the constraint) --- */
+.power-viz{min-width:0}
+.pw-viz{display:grid;gap:12px;padding:18px;border:1px solid var(--border2);border-radius:18px;background:rgba(8,8,14,.55)}
+.pw-viz small{font-size:11.5px;color:var(--muted2);line-height:1.5}
+.pw-link{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--border2);border-radius:11px;background:rgba(255,255,255,.03);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.pw-link svg{color:var(--purple2);flex-shrink:0}
+.pw-link b{color:#fff}
+.pw-cards{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px}
+.pw-card{height:52px;border-radius:11px;background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(255,255,255,.03));border:1px solid var(--border2);display:grid;place-items:center;color:var(--purple2)}
+.pw-card.is-lead{background:linear-gradient(135deg,rgba(124,58,237,.34),rgba(124,58,237,.1));border-color:rgba(124,58,237,.4)}
+.pw-bar{display:flex;gap:5px}
+.pw-seg{padding:11px 12px;border-radius:10px;font-size:11.5px;font-weight:700;border:1px solid var(--border2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pw-seg.is-free{flex:1;background:rgba(255,255,255,.045);color:var(--muted)}
+.pw-seg.is-paid{flex:2;background:linear-gradient(135deg,rgba(233,185,73,.22),rgba(233,185,73,.07));border-color:rgba(233,185,73,.3);color:var(--gold)}
+.pw-pay{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 13px;border-radius:11px;background:rgba(233,185,73,.1);border:1px solid rgba(233,185,73,.24)}
+.pw-pay b{font-size:13px;color:var(--gold)}
+.pw-methods{font-size:11.5px;color:var(--muted)}
+.pw-chart{display:flex;align-items:flex-end;gap:6px;height:74px}
+.pw-chart span{flex:1;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--green),rgba(34,197,94,.18))}
+.pw-grow-foot{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text)}
+.pw-grow-foot svg{color:var(--green);flex-shrink:0}
+
+/* The content-type strip is supporting material, not the design. */
+.kind-chips-strip{margin-top:30px;justify-content:center}
+
+@media(hover:hover){
+  .power{transition:border-color .3s,transform .3s}
+  .power:hover{border-color:rgba(255,255,255,.14);transform:translateY(-2px)}
+}
+@media(max-width:1024px){
+  .power.is-lead{grid-template-columns:1fr;gap:24px}
+  .power-pair{grid-template-columns:1fr;gap:18px}
+  .power-copy>p{max-width:none}
+}
+@media(max-width:600px){
+  .power{padding:20px 17px;border-radius:20px}
+  .pw-viz{padding:15px}
+  .power-copy h3{font-size:20px}
+  .power-copy>p{font-size:15px}
+}
+
+/* =========================================================================
    HOW MTONYO+ WORKS — a journey, not four cards
    ------------------------------------------------------------------------
    Four boxes in a row say nothing about order; they read as four separate
