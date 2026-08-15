@@ -19,6 +19,7 @@ import StreamPlayer from '@/components/watch/StreamPlayer'
 import AdBreak from '@/components/watch/AdBreak'
 import LockGate from '@/components/watch/LockGate'
 import PaymentModal from '@/components/watch/PaymentModal'
+import ShareSheet from '@/components/watch/ShareSheet'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
@@ -43,7 +44,7 @@ export default function Watch() {
 
   const [payOpen, setPayOpen] = useState(false)
   const [previewOver, setPreviewOver] = useState(false)
-  /* Fetching the promo clip takes a moment; stop a second tap starting again. */
+  /* The share sheet — what is going out, shown before it goes. */
   const [sharing, setSharing] = useState(false)
 
   /**
@@ -298,60 +299,15 @@ export default function Watch() {
   }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id])
 
   /**
-   * Share the actual clip, not just a link.
+   * Sharing moved into its own sheet.
    *
-   * The requirement was explicit: "share the actual preview video through
-   * supported Instagram/TikTok/Facebook/WhatsApp sharing flows — not just a
-   * plain URL." Neither Instagram nor TikTok has a public web publishing API,
-   * so the OS share sheet carrying a real file is the only route that exists at
-   * all — and it only works if we hand it a File, which means fetching the
-   * 60-second promo the server already generates.
-   *
-   * Every step degrades to the link: no clip cut yet, a browser without Web
-   * Share Level 2, a download that fails. A share button that silently does
-   * nothing is worse than one that shares a URL.
+   * Calling `navigator.share` straight from this button worked on a phone and
+   * did almost nothing visible on a desktop, where there is no OS share sheet:
+   * the link went to the clipboard and a toast mentioned it. That is thin
+   * feedback for the platform's main growth loop. The behaviour underneath is
+   * unchanged — same deep link, same 60-second clip attached where the browser
+   * supports files — but it is now something the person can see before sending.
    */
-  const share = async () => {
-    if (sharing) return
-    const url = `${window.location.origin}/watch/${v?.slug || v?.id}`
-    const text = `Watch "${v.title}" on MTONYO+`
-
-    setSharing(true)
-    try {
-      let file = null
-      try {
-        const payload = await api.share.payload(v.slug || v.id)
-        const clipUrl = payload?.clip?.downloadUrl
-        if (clipUrl && navigator.canShare) {
-          showToast('Preparing the clip…')
-          const res = await fetch(clipUrl)
-          if (res.ok) {
-            const blob = await res.blob()
-            const candidate = new File([blob], `${(v.slug || 'mtonyo').slice(0, 40)}.mp4`, {
-              type: blob.type || 'video/mp4',
-            })
-            // Ask before sharing: a browser that cannot take files throws here
-            // rather than dropping them silently.
-            if (navigator.canShare({ files: [candidate] })) file = candidate
-          }
-        }
-      } catch {
-        /* The clip is the bonus. The link is the guarantee. */
-      }
-
-      if (navigator.share) {
-        await navigator.share(file ? { files: [file], title: v.title, text, url } : { title: v.title, text, url })
-        return
-      }
-      await navigator.clipboard.writeText(url)
-      showToast('Link copied — share it anywhere')
-    } catch (err) {
-      if (err?.name === 'AbortError') return
-      showToast(url)
-    } finally {
-      setSharing(false)
-    }
-  }
 
   /* ------------------------------------------------------------ shells */
 
@@ -617,9 +573,9 @@ export default function Watch() {
                   <span className="ob-short">{accessReason.short}</span>
                 </span>
               )}
-              <button className="btn btn-ghost btn-sm" onClick={share} disabled={sharing}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setSharing(true)}>
                 <Share2 />
-                <span className="btn-label">{sharing ? 'Preparing…' : 'Share'}</span>
+                <span className="btn-label">Share</span>
               </button>
             </div>
           </div>
@@ -667,6 +623,8 @@ export default function Watch() {
           </div>
         </div>
       </div>
+
+      <ShareSheet open={sharing} video={v} onClose={() => setSharing(false)} />
 
       <PaymentModal
         open={payOpen}

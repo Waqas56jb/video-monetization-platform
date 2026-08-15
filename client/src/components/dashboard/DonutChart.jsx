@@ -20,9 +20,25 @@ export default function DonutChart({ creatorTzs = 0, platformTzs = 0 }) {
   const theirs = Number(platformTzs) || 0
   const total = yours + theirs
 
-  const yourPct = total ? Math.round((yours / total) * 100) : 0
-  const theirPct = total ? 100 - yourPct : 0
-  const yourLen = total ? (yours / total) * CIRC : 0
+  /**
+   * No money yet means no chart.
+   *
+   * With nothing to divide this drew a full ring reading 0% / TZS 0 — a chart
+   * that looks like a measurement and measures nothing. An empty state says
+   * the same thing honestly and tells the creator what fills it.
+   */
+  if (total <= 0) {
+    return (
+      <div className="donut-wrap donut-empty">
+        <b>Nothing to split yet</b>
+        <p>Your share and the platform&apos;s appear here as soon as somebody buys one of your videos.</p>
+      </div>
+    )
+  }
+
+  const yourPct = Math.round((yours / total) * 100)
+  const theirPct = 100 - yourPct
+  const yourLen = (yours / total) * CIRC
 
   return (
     <div className="donut-wrap">
