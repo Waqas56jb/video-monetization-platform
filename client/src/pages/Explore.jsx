@@ -8,6 +8,7 @@ import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import useApi, { useDebounced } from '@/hooks/useApi'
 import { toCard, videoLink } from '@/lib/videoView'
 import { CATEGORIES } from '@/data/copy'
+import useGoBack, { hasHistory } from '@/hooks/useGoBack'
 import api from '@/lib/api'
 import { useRole } from '@/context/AuthContext'
 
@@ -78,8 +79,19 @@ export default function Explore() {
     setAccess('')
   }
 
-  /** Signed-in users belong back in the dashboard; visitors go to the site. */
-  const goBack = () => navigate(authed ? '/dashboard' : '/')
+  /**
+   * Actually go back.
+   *
+   * This used to push /dashboard, which is not the same thing: it threw away
+   * whichever tab the person had come from and dropped them on the dashboard's
+   * default. The button said Back and behaved like a link.
+   *
+   * The fallback only applies to somebody who arrived here directly — on a
+   * shared link, or as their first page — where there is nothing of ours
+   * behind them to return to.
+   */
+  const goBack = useGoBack(authed ? '/dashboard' : '/')
+  const canGoBack = hasHistory()
 
   return (
     <div className="page">
@@ -91,7 +103,10 @@ export default function Explore() {
               so it always offers the matching way back. */}
           <button className="explore-back" onClick={goBack}>
             <ArrowLeft />
-            {authed ? 'Back to dashboard' : 'Back to home'}
+            {/* Only name a destination when that is genuinely where this
+                goes — otherwise it is just "back", and it returns to
+                wherever they were. */}
+            {canGoBack ? 'Back' : authed ? 'Back to dashboard' : 'Back to home'}
           </button>
 
           <div className="explore-head">

@@ -27,6 +27,7 @@ import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } fr
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
+import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 
 /**
@@ -43,6 +44,7 @@ export default function Watch() {
   const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
+  const goBack = useGoBack('/explore')
 
   const [payOpen, setPayOpen] = useState(false)
   const [previewOver, setPreviewOver] = useState(false)
@@ -411,7 +413,11 @@ export default function Watch() {
     <Shell>
       <div className="watch-wrap">
         <div className={`player ${showLockGate ? 'is-gated' : ''}`.trim()}>
-          <button className="pl-back" onClick={() => navigate(-1)} aria-label="Go back">
+          {/* Somebody who opened this on a shared link has nothing of ours
+              behind them, and a bare navigate(-1) would take them off the site
+              — back to WhatsApp, usually. Explore is the useful destination
+              there. */}
+          <button className="pl-back" onClick={goBack} aria-label="Go back">
             <ArrowLeft />
           </button>
 
