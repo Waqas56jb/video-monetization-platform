@@ -33,6 +33,22 @@ import { useLocation, useNavigate } from 'react-router-dom'
  * were. Landing near the section and then correcting is what makes the link feel
  * reliable rather than intermittent.
  */
+/**
+ * Where a correctly-scrolled section should end up.
+ *
+ * `scrollIntoView({block:'start'})` parks the target at the scrollport's
+ * `scroll-padding-top`, so that — not zero — is the resting position. The drift
+ * check used to compare against a hard-coded 90px, which happened to sit one
+ * pixel either side of the real value; a small change to the header height
+ * would have turned every successful scroll into a re-scroll loop. Reading the
+ * computed value keeps the check honest whatever the header does.
+ */
+function restingTop() {
+  const raw = getComputedStyle(document.documentElement).scrollPaddingTop
+  const n = Number.parseFloat(raw)
+  return Number.isFinite(n) ? n : 0
+}
+
 function scrollWhenReady(id, { attempts = 60, gap = 100 } = {}) {
   let tries = 0
 
@@ -40,9 +56,10 @@ function scrollWhenReady(id, { attempts = 60, gap = 100 } = {}) {
     el.scrollIntoView({ behavior: round === 0 ? 'smooth' : 'auto', block: 'start' })
     if (round >= 3) return
     setTimeout(() => {
-      const top = el.getBoundingClientRect().top
-      // Anything more than a header's worth of drift means the layout moved.
-      if (Math.abs(top) > 90) settle(el, round + 1)
+      const drift = el.getBoundingClientRect().top - restingTop()
+      // Anything more than a heading's worth of drift means the layout moved
+      // underneath us — lazy images above the target finishing, usually.
+      if (Math.abs(drift) > 24) settle(el, round + 1)
     }, round === 0 ? 700 : 450)
   }
 
