@@ -12,8 +12,37 @@ import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 import { ensureClips } from './playback.routes.js'
 import { storeImage, removeImage } from '../services/uploads.js'
+import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 
 const router = Router()
+
+/**
+ * What may be written into `videos.category`.
+ *
+ * This used to be any string up to 60 characters, which is how the table ended
+ * up holding "Documentary" alongside "Documentaries" and showing the client
+ * both. Storing the canonical spelling means the filters cannot disagree with
+ * each other later, whatever a client sends.
+ */
+const categoryField = z
+  .string()
+  .trim()
+  .max(60)
+  .refine(isKnownCategory, 'Choose one of the listed categories')
+  .transform((v) => normalizeCategory(v))
+  .optional()
+
+/**
+ * The same normalisation when filtering, but forgiving: an old link carrying
+ * `?category=Documentary` should still find the documentaries rather than 400.
+ * An unrecognised value is left alone and simply matches nothing.
+ */
+const categoryFilter = z
+  .string()
+  .trim()
+  .max(60)
+  .optional()
+  .transform((v) => (v ? normalizeCategory(v) || v : undefined))
 
 // Covers are small images passing through on their way to storage; a
 // serverless host has no disk worth writing them to.
@@ -43,7 +72,7 @@ const withCreatorName = (row) =>
 
 const listQuery = z.object({
   q: z.string().trim().max(120).optional(),
-  category: z.string().trim().max(60).optional(),
+  category: categoryFilter,
   access: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
   creatorId: z.string().uuid().optional(),
   sort: z.enum(['newest', 'trending', 'popular', 'price_low', 'price_high']).default('newest'),
@@ -158,7 +187,7 @@ router.get(
 const createSchema = z.object({
   title: z.string().trim().min(3, 'Give the video a title').max(160),
   description: z.string().trim().max(4000).optional(),
-  category: z.string().trim().max(60).optional(),
+  category: categoryField,
   maxDurationSeconds: z.coerce.number().int().min(10).max(21600).optional(),
 })
 
@@ -215,7 +244,7 @@ const updateSchema = z
   .object({
     title: z.string().trim().min(3).max(160).optional(),
     description: z.string().trim().max(4000).optional(),
-    category: z.string().trim().max(60).optional(),
+    category: categoryField,
     accessType: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
     priceTzs: z.coerce.number().int().min(0).max(10_000_000).optional(),
     // Any length at all: a 45-second teaser, twelve minutes, or an hour of a

@@ -636,18 +636,39 @@ async function seed() {
           [buyer.id, video.id, video.price_tzs, `DEMO-${Math.random().toString(36).slice(2, 10).toUpperCase()}`]
         )
 
-        await client.query(
+        const { rows: purchase } = await client.query(
           `insert into purchases (user_id, video_id, payment_id, amount_tzs, creator_amount_tzs,
                                   platform_amount_tzs, split_percent, status, purchased_at)
-           values ($1,$2,$3,$4,$5,$6,$7,'active', now() - interval '2 days')`,
+           values ($1,$2,$3,$4,$5,$6,$7,'active', now() - interval '2 days')
+           returning id`,
           [buyer.id, video.id, pay[0].id, video.price_tzs, split.creator, split.platform, percent]
         )
 
+        /**
+         * The earnings row has to name the purchase it came from.
+         *
+         * It did not, and the two symptoms that produced looked like separate
+         * faults: purchases that appeared never to have credited their creator,
+         * and earnings that appeared to have been conjured from nothing. They
+         * were the same transaction, never joined. Worse, the teardown below
+         * deletes demo earnings *through* `purchase_id`, so unlinked rows
+         * survived it — every seed/teardown cycle left another one behind, and
+         * creator balances (and therefore withdrawable amounts) are summed
+         * straight off this table.
+         */
         await client.query(
-          `insert into earnings (creator_id, video_id, source, gross_tzs, creator_tzs,
+          `insert into earnings (creator_id, video_id, purchase_id, source, gross_tzs, creator_tzs,
                                  platform_tzs, split_percent, created_at)
-           values ($1,$2,'sale',$3,$4,$5,$6, now() - interval '2 days')`,
-          [video.creator_id, video.id, video.price_tzs, split.creator, split.platform, percent]
+           values ($1,$2,$3,'sale',$4,$5,$6,$7, now() - interval '2 days')`,
+          [
+            video.creator_id,
+            video.id,
+            purchase[0].id,
+            video.price_tzs,
+            split.creator,
+            split.platform,
+            percent,
+          ]
         )
 
         // `paid_unlocks` is recounted from `purchases` by a trigger (006).
@@ -831,8 +852,21 @@ async function clear() {
   /* Demo purchases are demo content and go with it. Payments and earnings first,
      so nothing is left pointing at a row that no longer exists. */
   const demoBuyers = `select id from profiles where email like 'demo.%@mtonyo.demo'`
+  const demoCreators = `select id from profiles where email like 'demo.%@mtonyo.demo'`
+
+  /**
+   * Earnings are removed two ways on purpose.
+   *
+   * Going through `purchase_id` alone is what this used to do, and it silently
+   * missed any row that had never been linked to one — which, until the insert
+   * above was fixed, was all of them. Those rows outlived every teardown and
+   * kept counting towards a creator's withdrawable balance, since that balance
+   * is `sum(creator_tzs)` off this table. The second delete is scoped to demo
+   * creators, so a real creator's ledger is never touched by a demo teardown.
+   */
   await query(`delete from earnings where purchase_id in (
                  select id from purchases where user_id in (${demoBuyers}))`)
+  await query(`delete from earnings where creator_id in (${demoCreators})`)
   await query(`delete from purchases where user_id in (${demoBuyers})`)
   await query(`delete from payments  where user_id in (${demoBuyers})`)
 

@@ -135,9 +135,16 @@ export const ACCESS_OPTIONS = [
  * database that is not on this list, so content uploaded before the list
  * existed stays reachable instead of disappearing from the filters.
  */
+/**
+ * The category taxonomy. Mirrors server/src/lib/categories.js, which is what
+ * actually enforces it — the API normalises on write and rejects anything not
+ * on this list, so the two cannot drift the way "Documentaries"/"Documentary"
+ * did. Add to both, or not at all.
+ */
 export const CATEGORIES = [
   'Films', 'Series', 'Music', 'Concerts', 'Comedy',
   'Documentaries', 'Sports', 'Podcasts', 'Courses', 'Behind the Scenes',
+  'Food',
 ]
 
 /** The same list, under the name the landing page has always called it. */
