@@ -2261,7 +2261,12 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    ========================================================================= */
 .section-journey{background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)}
 .journey{list-style:none;margin:0;padding:0;position:relative;max-width:1080px;margin-inline:auto}
-.jstep{display:grid;grid-template-columns:1fr 78px 1fr;align-items:center;gap:0;min-height:150px}
+/* 150px was a floor, not a measurement: a step's heading and two lines of
+   copy come to about 100px, so each of the four reserved roughly 50px it did
+   not use — and because the steps alternate sides, that empty space showed up
+   as a column of nothing beside every one of them. The rail still needs room
+   to read as a spine, which is what is left. */
+.jstep{display:grid;grid-template-columns:1fr 78px 1fr;align-items:center;gap:0;min-height:116px}
 /* Odd steps sit left of the rail, even steps right. */
 .jstep .jstep-body{grid-column:1;text-align:right;padding-right:34px}
 .jstep:nth-child(even) .jstep-body{grid-column:3;text-align:left;padding-right:0;padding-left:34px}
