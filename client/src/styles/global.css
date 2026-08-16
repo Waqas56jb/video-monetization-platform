@@ -2260,7 +2260,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    alternate across it so the page stops repeating the same rhythm.
    ========================================================================= */
 .section-journey{background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)}
-.journey{list-style:none;margin:0;padding:0;position:relative;max-width:1080px;margin-inline:auto}
+/* 1080px pushed the two halves out to the edges of a 1366px screen, so each
+   step sat alone against a wide empty middle and the section read as four
+   stranded captions rather than one timeline. Narrower pulls them either side
+   of the rail, close enough to be read as connected. */
+.journey{list-style:none;margin:0;padding:0;position:relative;max-width:840px;margin-inline:auto}
 /* 150px was a floor, not a measurement: a step's heading and two lines of
    copy come to about 100px, so each of the four reserved roughly 50px it did
    not use — and because the steps alternate sides, that empty space showed up
