@@ -468,7 +468,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .socials a:hover{background:var(--purple);color:#fff;border-color:var(--purple);transform:translateY(-4px);box-shadow:var(--glow)}
 .socials svg{width:18px;height:18px}
 .foot-col h4{font-size:14px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted2);margin-bottom:22px}
-.foot-col a{display:block;color:var(--muted);font-size:14.5px;margin-bottom:14px;transition:.3s}
+/* Footer links were 17px tall on a phone — full width, but only as tall as
+   the text, which is a hard thing to hit with a thumb. The space between them
+   is now inside the link rather than beside it, so the whole row is the tap
+   target and the rhythm is unchanged. */
+.foot-col a{display:block;color:var(--muted);font-size:14.5px;padding:7px 0;transition:.3s}
 .foot-col a:hover{color:var(--gold);transform:translateX(5px)}
 .foot-bottom{border-top:1px solid var(--border2);padding-top:30px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--muted2);font-size:13px}
 .pay-badges{display:flex;gap:10px;flex-wrap:wrap}
@@ -733,7 +737,22 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 #toast svg{width:18px;height:18px;color:var(--green);flex-shrink:0}
 
 /* ---------- RESPONSIVE ---------- */
-.auth-mobile-brand{display:none;flex-direction:column;align-items:flex-start;gap:14px;margin-bottom:28px}
+/**
+ * The wordmark on the sign-in and sign-up pages.
+ *
+ * This was mobile-only — `display:none`, switched on below 900px — because on
+ * a wide screen the picture panel beside the form carries the branding. But
+ * that panel holds an image and a sentence, not a link, so on a desktop
+ * browser these pages were the only ones on the site with no way back to the
+ * homepage at all. The client's rule is that the logo always goes home, so it
+ * is always there. On wide screens the badge beside it is dropped, since the
+ * panel is already saying that.
+ */
+.auth-mobile-brand{display:flex;flex-direction:column;align-items:flex-start;gap:14px;margin-bottom:28px}
+@media(min-width:901px){
+  .auth-mobile-brand{margin-bottom:22px}
+  .auth-mobile-brand .badge{display:none}
+}
 .pill-short,.pb-free-short{display:none}
 .dash-top-l{display:flex;align-items:center;gap:14px;min-width:0}
 .dash-titles{min-width:0}
@@ -769,7 +788,6 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .earn-grid{grid-template-columns:1fr;gap:44px}
   .auth-wrap{grid-template-columns:1fr}
   .auth-side{display:none}
-  .auth-mobile-brand{display:flex}
   .dash{grid-template-columns:1fr}
   .sidebar{position:fixed;left:-290px;width:min(272px,86vw);z-index:250;transition:.4s;height:100vh;height:100dvh}
   .sidebar.open{left:0;box-shadow:60px 0 100px rgba(0,0,0,.6)}
