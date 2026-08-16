@@ -471,8 +471,13 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* Footer links were 17px tall on a phone — full width, but only as tall as
    the text, which is a hard thing to hit with a thumb. The space between them
    is now inside the link rather than beside it, so the whole row is the tap
-   target and the rhythm is unchanged. */
-.foot-col a{display:block;color:var(--muted);font-size:14.5px;padding:7px 0;transition:.3s}
+   target and the rhythm is unchanged. On a phone they get a real 44px, which
+   is the size a thumb actually needs and this audience is on phones. */
+.foot-col a{display:flex;align-items:center;color:var(--muted);font-size:14.5px;
+  min-height:34px;padding:6px 0;transition:.3s}
+@media(max-width:600px){
+  .foot-col a{min-height:44px;padding:4px 0}
+}
 .foot-col a:hover{color:var(--gold);transform:translateX(5px)}
 .foot-bottom{border-top:1px solid var(--border2);padding-top:30px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--muted2);font-size:13px}
 .pay-badges{display:flex;gap:10px;flex-wrap:wrap}
