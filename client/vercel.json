@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/watch/:slug",
+      "destination": "/api/watch?slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
