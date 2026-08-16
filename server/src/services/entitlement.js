@@ -44,7 +44,22 @@ export async function resolveAccess({ video, userId, userRole = null }) {
     requiresPayment: !free && !owned && !isOwner && !isStaff,
     freePreviewSeconds: free ? null : video.free_preview_seconds,
     priceTzs: free ? 0 : video.price_tzs,
-    showsAds: free && video.ads_enabled,
+    /**
+     * Adverts are for people who did not pay.
+     *
+     * This was `free && ads_enabled`, which is true of every viewer once a
+     * Paid Premiere reaches the end of its window and converts — including the
+     * person who paid full price during it. They bought an ad-free copy and
+     * the platform started interrupting it. The homepage states the rule
+     * outright, "Everyone who paid keeps it ad-free", so the claim was false
+     * as well as unfair.
+     *
+     * A natively free video has no purchases to hold, so this only ever
+     * changes the outcome for a converted premiere — which is exactly the case
+     * it exists for. The creator does not get advertised at on their own work
+     * either.
+     */
+    showsAds: free && video.ads_enabled && !owned && !isOwner,
     purchasedAt: purchase?.purchased_at ?? null,
   }
 }

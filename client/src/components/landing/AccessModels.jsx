@@ -91,13 +91,10 @@ const DIAGRAMS = {
           { label: 'The whole video', note: 'No paywall', tone: 'is-free', grow: 5 },
         ]}
       />
-      {/* Where the adverts actually sit. The platform serves all three, and a
-          creator deciding on this model should know that before choosing it. */}
-      <ul className="mv-slots">
-        <li>Pre-roll</li>
-        <li>Mid-roll</li>
-        <li>Post-roll</li>
-      </ul>
+      {/* Where the adverts sit — pre-roll, mid-roll, post-roll — used to be
+          listed here. It is a setting a creator meets in the upload form, not
+          something a visitor needs in order to understand the model, and the
+          client asked for the technical detail to live in the creator area. */}
       <div className="mv-foot is-good">
         <PlayCircle size={14} />
         You earn a share of every advert shown
@@ -135,7 +132,12 @@ export default function AccessModels() {
                   <Icon name={o.icon} />
                 </span>
                 <h3>{o.label}</h3>
-                <b className="model-tagline">{o.tagline}</b>
+                {/* The same model as a viewer meets it. Without this, a creator
+                    reads "Sell it" here and then sees "PAY ONCE" on every card
+                    and has to work out that they are the same choice. */}
+                {o.viewerTag !== o.label && (
+                  <b className="model-tagline">Shows to viewers as “{o.viewerTag}”</b>
+                )}
                 <p>{o.text}</p>
               </div>
               <div className="model-viz">{DIAGRAMS[o.key]}</div>

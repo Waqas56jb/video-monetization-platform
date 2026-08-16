@@ -57,26 +57,36 @@ export const MARQUEE_ITEMS = [
 ]
 
 /** How buying a video works, for someone who has never done it. */
+/**
+ * The four steps, in the client's own words: Upload → Share → People Watch →
+ * You Earn.
+ *
+ * The middle two used to be "Choose how people watch" and "Your audience pays
+ * their way", which described the platform's mechanics rather than the
+ * creator's day. Sharing was missing entirely, and it is the step that actually
+ * matters here — almost nobody finds a video by browsing this site, they arrive
+ * on a link somebody sent them.
+ */
 export const STEPS = [
-  { icon: 'upload', title: 'Upload your content', text: 'Upload your videos safely and easily.' },
+  { icon: 'upload', title: 'Upload', text: 'Add your video and set your price.' },
   {
-    icon: 'sliders-horizontal',
-    title: 'Choose how people watch',
-    text: 'Pick how you want your audience to access your content.',
+    icon: 'share-2',
+    title: 'Share',
+    text: 'Send your link on WhatsApp, Instagram or TikTok.',
     tone: 'gold',
     delay: 1,
   },
   {
-    icon: 'wallet',
-    title: 'Your audience pays their way',
-    text: 'They pay using their preferred available payment method.',
+    icon: 'play-circle',
+    title: 'People watch',
+    text: 'They see a free preview, then pay to keep watching.',
     tone: 'gold',
     delay: 2,
   },
   {
     icon: 'bar-chart-3',
     title: 'You earn',
-    text: 'Track sales, views and earnings from your dashboard.',
+    text: 'Your money lands in your dashboard, ready to withdraw.',
     tone: 'green',
     delay: 3,
   },
@@ -89,31 +99,45 @@ export const STEPS = [
  * "Pay Once" says what you do, where "PPV Forever" was jargon that also implied
  * the platform keeps the video locked up on the creator's behalf.
  */
+/**
+ * The three ways to release something, in the client's own words.
+ *
+ * These carried a label, a tagline and a paragraph each — three lines of
+ * reading before you knew which one you wanted. The client's note was that an
+ * average viewer should understand this in seconds, and gave the wording: a
+ * verb for what the creator does, and one sentence for what happens.
+ *
+ * `label` is the creator's action and heads the section. `viewerTag` is the
+ * same model named from the other side of the screen — it is what a video card
+ * says, and the two must stay recognisable as the same thing, which is why the
+ * card wording lives here beside it rather than being invented separately.
+ * Anything more technical than this belongs in the upload form and help pages,
+ * not the public site.
+ */
 export const ACCESS_OPTIONS = [
   {
     key: 'ppv_forever',
     icon: 'lock',
-    label: 'Pay Once',
-    tagline: 'One payment. Full access.',
-    text: 'Viewers pay once and the video stays in their library.',
+    label: 'Sell it',
+    viewerTag: 'Pay Once',
+    text: 'Fans watch a free preview, then pay to continue.',
   },
   {
     key: 'paid_premiere',
     icon: 'calendar-clock',
     tone: 'gold',
-    label: 'Paid Premiere',
-    tagline: 'Start paid. Choose when it becomes free.',
+    label: 'Premiere it',
+    viewerTag: 'Paid Premiere',
     text:
-      'Set your price and choose your paid period. When that period ends, the video becomes ' +
-      'Free + Ads automatically.',
+      'Sell it first, then it automatically becomes Free + Ads after the period you choose.',
   },
   {
     key: 'free_with_ads',
     icon: 'megaphone',
     tone: 'green',
     label: 'Free + Ads',
-    tagline: 'Free to watch. Creators earn from advertising.',
-    text: 'Anyone can watch without paying while the creator earns from ads.',
+    viewerTag: 'Free + Ads',
+    text: 'Everyone watches free and you earn from advertising.',
   },
 ]
 

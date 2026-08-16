@@ -27,7 +27,9 @@ export default function HowItWorks() {
           <h2>
             How <span className="grad-text">MTONYO+</span> Works
           </h2>
-          <p>Four steps, from your upload to money in your dashboard.</p>
+          {/* The whole journey in one line, so it is understood before any of
+              the four steps below have been read. */}
+          <p className="journey-line">Upload → Share → People watch → You earn</p>
         </div>
 
         {/* An ordered list because it is genuinely ordered — a screen reader

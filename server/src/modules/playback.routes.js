@@ -67,11 +67,22 @@ router.get(
     if (!video) throw notFound('Video not found')
 
     const isOwnerOrAdmin = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
-    if (!(video.is_published && video.review_status === 'approved') && !isOwnerOrAdmin) {
+    const access = await resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role })
+
+    /**
+     * Somebody who paid keeps what they paid for, published or not.
+     *
+     * The gate admitted the creator and administrators only, so a creator
+     * unpublishing a video revoked it from every buyer — the library still
+     * listed it and this endpoint answered "Video not found". Entitlement is
+     * resolved first now and a held purchase passes.
+     *
+     * `deleted_at is null` on the row above still applies, so a real takedown
+     * still stops everybody.
+     */
+    if (!(video.is_published && video.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
       throw notFound('Video not found')
     }
-
-    const access = await resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role })
     const settings = await getSettings()
 
     const payload = {

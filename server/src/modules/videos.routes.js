@@ -650,11 +650,26 @@ router.get(
     if (!row) throw notFound('Video not found')
 
     const isOwnerOrAdmin = req.user && (req.user.id === row.creator_id || req.user.role === 'admin')
-    if (!(row.is_published && row.review_status === 'approved') && !isOwnerOrAdmin) {
+    const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })
+
+    /**
+     * A purchase outlives publication.
+     *
+     * This gate let through the creator and administrators only, so
+     * unpublishing a video took it away from everybody who had paid for it —
+     * it stayed listed in their library, because that query has never filtered
+     * on publication, and then answered "Video not found" when they pressed
+     * play. Somebody who bought it keeps it: that is the whole promise of Pay
+     * Once, and the client asked for it explicitly.
+     *
+     * Deletion is different and still blocks everyone: the row above already
+     * requires `deleted_at is null`. Videos are never hard-deleted, and an
+     * administrator taking something down for a rights claim has to be able to
+     * take it down for real.
+     */
+    if (!(row.is_published && row.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
       throw notFound('Video not found')
     }
-
-    const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })
     res.json({
       video: publicVideo(withCreatorName(row), access),
       shareUrl: `${env.publicWebUrl}/watch/${row.slug || row.id}`,

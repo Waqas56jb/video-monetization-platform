@@ -2260,6 +2260,10 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    alternate across it so the page stops repeating the same rhythm.
    ========================================================================= */
 .section-journey{background:linear-gradient(180deg,transparent,rgba(124,58,237,.05),transparent)}
+/* The journey stated once, above the four steps that then show it. Arrows want
+   a little air around them or the line reads as one long word. */
+.journey-line{font-family:'Sora',sans-serif;font-weight:700;letter-spacing:.01em;color:#fff;
+  font-size:clamp(15px,1.9vw,20px);word-spacing:.18em}
 /* 1080px pushed the two halves out to the edges of a 1366px screen, so each
    step sat alone against a wide empty middle and the section read as four
    stranded captions rather than one timeline. Narrower pulls them either side
