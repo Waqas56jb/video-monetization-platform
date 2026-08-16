@@ -196,12 +196,18 @@ export const PREMIERE_WINDOWS = [
 /** The principle the client wants running through the whole site. */
 export const CREATOR_CONTROL = {
   heading: 'Your Content. Your Rules.',
+  /**
+   * Two lines, not four.
+   *
+   * Three of the four said the same thing the release models say directly
+   * above this section — how it is released, the paid period, whether it goes
+   * free — so a visitor read the three options and then read them again as
+   * bullet points. The client asked for less repetition on the homepage; this
+   * is the clearest case of it.
+   */
   points: [
     'You choose the price.',
-    'You choose how it’s released.',
-    'You choose your paid period.',
-    /* "when" implied every video eventually goes free. Only a Paid Premiere does. */
-    'You choose if and when it becomes free.',
+    'You choose how and when it is released.',
   ],
   footnote: 'MTONYO+ provides the platform. You control the release.',
 }

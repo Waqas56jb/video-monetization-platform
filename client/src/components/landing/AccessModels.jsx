@@ -108,14 +108,18 @@ export default function AccessModels() {
     <section className="section section-models" id="models">
       <div className="container">
         <div className="section-head">
+          {/* "Your content. Your rules." was here as well as being the For
+              Creators heading further down — the same sentence twice on one
+              page, which is a good part of why it read as repetitive. This
+              badge now says what the section is. */}
           <span className="badge">
             <Sparkles style={{ width: 14, height: 14 }} />
-            YOUR CONTENT. YOUR RULES.
+            THREE WAYS TO RELEASE
           </span>
           <h2>
             You Choose How Your <span className="grad-text">Audience Watches</span>
           </h2>
-          <p>Three options, chosen per video — not once for your whole channel.</p>
+          <p>Chosen per video — not once for your whole channel.</p>
         </div>
 
         <div className="models">
