@@ -64,7 +64,18 @@ router.get(
     const encoded = encodeURIComponent(`${text} ${deepLink}`)
 
     res.json({
-      video: { id: video.id, slug: video.slug, title, thumbnailUrl: thumbnailFor(video) },
+      // `creator` and `description` are here for the link-preview renderer
+      // (client/api/watch.js), which builds the Open Graph card a shared link
+      // produces. The name was already being read for `text` below and simply
+      // never returned, so preview cards could not say whose video it was.
+      video: {
+        id: video.id,
+        slug: video.slug,
+        title,
+        description: video.description || null,
+        creator: video.creator_name ? { name: video.creator_name } : null,
+        thumbnailUrl: thumbnailFor(video),
+      },
       deepLink,
       title,
       text,

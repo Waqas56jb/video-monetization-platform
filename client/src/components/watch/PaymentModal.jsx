@@ -46,6 +46,42 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
 
   useLockBodyScroll(open)
 
+  /**
+   * The handover is held in a ref rather than depended on directly.
+   *
+   * `onUnlocked` is a useCallback on the watch page whose dependencies include
+   * two useApi results, so its identity changes whenever either reloads. An
+   * effect that listed it would be torn down mid-timer — cancelling the pending
+   * handover — and re-created, and any guard against firing twice would then
+   * stop the replacement being scheduled at all. Keying only on `step` means
+   * the timer is created once, when payment settles, and survives.
+   */
+  const unlockRef = useRef(onUnlocked)
+  useEffect(() => {
+    unlockRef.current = onUnlocked
+  }, [onUnlocked])
+
+  /**
+   * Paying is the decision. Watching should not need a second one.
+   *
+   * This screen used to stop on "Unlocked" and wait for a "Watch it now" tap
+   * before doing anything, so the viewer confirmed a purchase they had already
+   * made. The handover happens on its own now: the success state is shown long
+   * enough to read, then the page reloads its playback and carries on from
+   * where the preview stopped.
+   *
+   * The buttons stay. They are the fallback for the case this cannot control —
+   * a browser that will not start media without a fresh gesture, several
+   * seconds having passed while the provider settled. In that case the player
+   * is already unlocked and showing its own play control, which is a smaller
+   * ask than sending somebody back through a modal.
+   */
+  useEffect(() => {
+    if (step !== 'done') return
+    const t = setTimeout(() => unlockRef.current?.(), 1200)
+    return () => clearTimeout(t)
+  }, [step])
+
   useEffect(() => {
     if (open) return
     // Reset once it has closed, so reopening starts clean.
@@ -258,6 +294,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             <p className="pay-sub">
               <b>{video.title}</b> stays in your library, on any device you sign in to.
             </p>
+            <p className="pay-sub">Starting where the preview stopped…</p>
             <button className="btn btn-gold btn-block" onClick={onUnlocked}>
               <Play />
               Watch it now

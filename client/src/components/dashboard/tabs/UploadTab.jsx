@@ -15,7 +15,7 @@ import {
 import Panel from '../Panel'
 import Field, { SelectField } from '@/components/ui/Field'
 import Icon from '@/components/ui/Icon'
-import { CATEGORIES } from '@/data/copy'
+import { CATEGORIES, PREMIERE_WINDOWS } from '@/data/copy'
 import api, { mediaUrl } from '@/lib/api'
 import {
   ACCEPTED,
@@ -488,14 +488,12 @@ export default function UploadTab({ onSubmitted }) {
                 onChange={set('priceTzs')}
               />
               {form.accessType === 'paid_premiere' && (
-                <Field
+                <SelectField
                   id="up-window"
-                  label="Paid for (days)"
+                  label="Paid for"
                   icon="hourglass"
-                  type="number"
-                  min={1}
-                  max={3650}
-                  value={form.premiereDays}
+                  options={PREMIERE_WINDOWS}
+                  value={String(form.premiereDays)}
                   onChange={set('premiereDays')}
                 />
               )}

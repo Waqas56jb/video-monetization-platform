@@ -150,6 +150,25 @@ export const CATEGORIES = [
 /** The same list, under the name the landing page has always called it. */
 export const CONTENT_KINDS = CATEGORIES
 
+/**
+ * How long a Paid Premiere stays paid.
+ *
+ * These were free number inputs accepting anything from 1 to 3650, which is
+ * how a 45-day window reached the database. The client's specification names
+ * three windows and its acceptance tests check exactly those three, so the
+ * choice is now between them rather than an open field with three sensible
+ * answers hidden in it.
+ *
+ * The API still accepts other values: it has to, because a video already
+ * carrying a window outside this list must keep working, and the expiry job
+ * reads `premiere_ends_at` rather than the number of days anyway.
+ */
+export const PREMIERE_WINDOWS = [
+  { value: '30', label: '30 days' },
+  { value: '60', label: '60 days' },
+  { value: '90', label: '90 days' },
+]
+
 /** The principle the client wants running through the whole site. */
 export const CREATOR_CONTROL = {
   heading: 'Your Content. Your Rules.',

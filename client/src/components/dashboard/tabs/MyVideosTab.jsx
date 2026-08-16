@@ -8,7 +8,7 @@ import Field, { SelectField } from '@/components/ui/Field'
 import PreviewDuration, { splitSeconds, toSeconds } from '@/components/dashboard/PreviewDuration'
 import useApi, { tzs, compact, ACCESS_SHORT } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
-import { CATEGORIES } from '@/data/copy'
+import { CATEGORIES, PREMIERE_WINDOWS } from '@/data/copy'
 import api from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import VideoPreview from '@/components/dashboard/VideoPreview'
@@ -304,14 +304,12 @@ export default function MyVideosTab({ onNewUpload }) {
                     onChange={setField('priceTzs')}
                   />
                   {form.accessType === 'paid_premiere' && (
-                    <Field
+                    <SelectField
                       id="ev-days"
-                      label="Paid for (days)"
+                      label="Paid for"
                       icon="hourglass"
-                      type="number"
-                      min={1}
-                      max={3650}
-                      value={form.premiereDays}
+                      options={PREMIERE_WINDOWS}
+                      value={String(form.premiereDays)}
                       onChange={setField('premiereDays')}
                     />
                   )}
