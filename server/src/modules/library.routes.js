@@ -27,7 +27,10 @@ router.get(
               -- showing empty cards: that column holds Cloudflare's raw
               -- address, and these videos require a signed one, so the browser
               -- was asking for something that answers 401.
-              v.thumbnail_url, v.custom_thumbnail_url, v.cloudflare_uid,
+              -- preview_uid because the poster is signed against the preview
+              -- asset, not the film; without it these cards fall back to the
+              -- slower redirect route.
+              v.thumbnail_url, v.custom_thumbnail_url, v.cloudflare_uid, v.preview_uid,
               v.is_published, v.review_status, v.deleted_at,
               v.duration_seconds, v.access_type, v.price_tzs, v.views,
               coalesce(cp.display_name, p.full_name) as creator_name,

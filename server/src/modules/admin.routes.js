@@ -698,7 +698,8 @@ router.get(
       // removal request is exactly the case where the video may not be public.
       `select r.*, v.title, v.slug,
               v.id as video_id, v.thumbnail_url, v.custom_thumbnail_url,
-              v.cloudflare_uid, v.is_published, v.review_status, v.deleted_at,
+              v.cloudflare_uid, v.preview_uid, v.access_type,
+              v.is_published, v.review_status, v.deleted_at,
               coalesce(cp.display_name, p.full_name) as creator_name,
               (select count(*)::int from purchases pu where pu.video_id = r.video_id and pu.status='active') as buyers
          from video_deletion_requests r

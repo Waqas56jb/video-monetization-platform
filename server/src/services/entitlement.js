@@ -157,10 +157,37 @@ export function thumbnailFor(v) {
    */
   if (isPublic) {
     if (!capabilities.signedPlayback) return path
+
+    /**
+     * Sign against the preview, never the film.
+     *
+     * This signed `cloudflare_uid` — the full paid asset — and that was a
+     * paywall bypass, not a detail. A Cloudflare Stream token authorises a
+     * video, not a path: the same token that fetches
+     * `/<token>/thumbnails/thumbnail.jpg` also fetches
+     * `/<token>/manifest/video.m3u8`. Verified against production before this
+     * change — an unauthenticated request for a TZS 5,000 video's poster came
+     * back with a token that returned the full HLS master manifest, HTTP 200,
+     * valid for 24 hours. Anybody who could see a card could watch the film.
+     *
+     * The preview is a separate Cloudflare asset that this viewer is entitled
+     * to regardless, so a token for it grants nothing they did not already
+     * have, and its poster frame is the same picture.
+     *
+     * A paid video with no preview asset yet — the window between upload and
+     * `ensureClips` — falls back to this API's own route rather than reaching
+     * for the full asset. That is slower for a handful of cards and cannot
+     * leak. Free videos have no paywall to bypass, so their own asset is fine
+     * when there is no preview to use.
+     */
+    const free = v.access_type === 'free_with_ads'
+    const posterUid = v.preview_uid || (free ? v.cloudflare_uid : null)
+    if (!posterUid) return path
+
     try {
       /* 400px tall: these are cards, not posters. 720 was four times the size
          any of them is ever displayed at. */
-      return signedThumbnailUrl(v.cloudflare_uid, { height: 400 })
+      return signedThumbnailUrl(posterUid, { height: 400 })
     } catch {
       return path // signing unavailable — the redirect still works
     }
