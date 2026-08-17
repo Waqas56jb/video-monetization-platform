@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertTriangle, Camera, Check, Save, Trash2, User } from 'lucide-react'
 import Panel from '../Panel'
 import Field, { PasswordField } from '@/components/ui/Field'
@@ -23,7 +23,6 @@ export default function ProfileTab() {
   const { reload: reloadAuth, isCreator } = useAuth()
   const { data, loading, error, reload } = useApi(() => api.account.get(), [])
 
-  const fileRef = useRef(null)
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
@@ -139,14 +138,14 @@ export default function ProfileTab() {
               ) : (
                 <span className="avatar-initials">{initialsOf(u.fullName || u.email)}</span>
               )}
-              <button
+              <label
                 className="avatar-cam"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
+                htmlFor="profile-photo-file"
                 aria-label="Change your photo"
+                aria-disabled={uploading}
               >
                 <Camera size={16} />
-              </button>
+              </label>
             </div>
 
             <div className="avatar-text">
@@ -155,14 +154,14 @@ export default function ProfileTab() {
               <small>Joined {shortDate(u.createdAt)}</small>
 
               <div className="avatar-actions">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
+                <label
+                  htmlFor="profile-photo-file"
+                  className={`btn btn-ghost btn-sm ${uploading ? 'is-disabled' : ''}`.trim()}
+                  aria-disabled={uploading}
                 >
                   <Camera size={14} />
                   {uploading ? 'Uploading…' : avatar ? 'Change photo' : 'Add a photo'}
-                </button>
+                </label>
                 {avatar && (
                   <button className="btn btn-ghost btn-sm" onClick={removePhoto} disabled={uploading}>
                     <Trash2 size={14} />
@@ -177,10 +176,11 @@ export default function ProfileTab() {
           </div>
 
           <input
-            ref={fileRef}
+            id="profile-photo-file"
+            className="sr-file"
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            style={{ display: 'none' }}
+            accept="image/*"
+            disabled={uploading}
             onChange={pickPhoto}
           />
         </Panel>

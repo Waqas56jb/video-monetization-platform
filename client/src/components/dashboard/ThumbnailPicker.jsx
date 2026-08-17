@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Image as ImageIcon, RotateCcw, Sparkles, Upload } from 'lucide-react'
 import api, { mediaUrl } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
@@ -18,7 +18,6 @@ const MAX_BYTES = 5 * 1024 * 1024
 
 export default function ThumbnailPicker({ video, onChange, disabled = false }) {
   const showToast = useToast()
-  const fileRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [preview, setPreview] = useState(null)
 
@@ -100,15 +99,22 @@ export default function ThumbnailPicker({ video, onChange, disabled = false }) {
         </p>
 
         <div className="tp-actions">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => fileRef.current?.click()}
+          <input
+            id="video-cover-file"
+            className="sr-file"
+            type="file"
+            accept="image/*"
             disabled={busy || disabled}
+            onChange={pick}
+          />
+          <label
+            htmlFor="video-cover-file"
+            className={`btn btn-ghost btn-sm ${busy || disabled ? 'is-disabled' : ''}`.trim()}
+            aria-disabled={busy || disabled}
           >
             <Upload size={14} />
             {busy ? 'Uploading…' : custom ? 'Replace' : 'Upload your own'}
-          </button>
+          </label>
           {custom && (
             <button
               type="button"
@@ -126,14 +132,6 @@ export default function ThumbnailPicker({ video, onChange, disabled = false }) {
           JPEG, PNG or WebP, up to 5 MB. Landscape 16:9 looks right everywhere.
         </small>
       </div>
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        style={{ display: 'none' }}
-        onChange={pick}
-      />
     </div>
   )
 }

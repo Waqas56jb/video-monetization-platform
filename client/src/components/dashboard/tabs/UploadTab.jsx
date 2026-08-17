@@ -18,7 +18,6 @@ import Icon from '@/components/ui/Icon'
 import { CATEGORIES, PREMIERE_WINDOWS } from '@/data/copy'
 import api, { mediaUrl } from '@/lib/api'
 import {
-  ACCEPTED,
   fileSize,
   uploadToCloudflare,
   validateFile,
@@ -72,7 +71,6 @@ const STEP = {
 
 export default function UploadTab({ onSubmitted }) {
   const showToast = useToast()
-  const inputRef = useRef(null)
   const uploadRef = useRef(null)
   const watchRef = useRef(null)
 
@@ -294,19 +292,22 @@ export default function UploadTab({ onSubmitted }) {
       <div>
         <Panel title="1 · Upload Your Video">
           <input
-            ref={inputRef}
+            id="creator-upload-file"
+            className="sr-file"
             type="file"
-            accept={ACCEPTED}
-            style={{ display: 'none' }}
-            onChange={(e) => e.target.files?.[0] && start(e.target.files[0])}
+            accept="video/*,.mp4,.mov,.m4v,.mkv,.webm,.avi"
+            onChange={(e) => {
+              const chosen = e.target.files?.[0]
+              e.target.value = ''
+              if (chosen) start(chosen)
+            }}
           />
 
           {step === 'idle' || step === 'failed' ? (
             <>
-              <button
-                type="button"
+              <label
+                htmlFor="creator-upload-file"
                 className={`upload-zone ${dragging ? 'is-drag' : ''}`.trim()}
-                onClick={() => inputRef.current?.click()}
                 onDragOver={(e) => {
                   e.preventDefault()
                   setDragging(true)
@@ -317,12 +318,12 @@ export default function UploadTab({ onSubmitted }) {
                 <span className="uz-ic">
                   <UploadCloud />
                 </span>
-                <h4>Drag &amp; drop your video here</h4>
+                <h4>Choose a video from this device</h4>
                 <p>
-                  or <b>browse files</b> — MP4, MOV, MKV up to 4 GB · uploads go straight to secure
-                  streaming servers, never through our site
+                  Tap to browse, or drop a file here — MP4, MOV, MKV up to 4 GB. Uploads go
+                  straight to secure streaming servers, never through our site.
                 </p>
-              </button>
+              </label>
               {error && (
                 <div className="form-error" role="alert" style={{ marginTop: 14 }}>
                   <AlertTriangle size={16} style={{ flexShrink: 0 }} />

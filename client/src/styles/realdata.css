@@ -845,6 +845,7 @@
   display: grid; place-items: center;
   background: var(--gold); color: #14110a; border: 3px solid var(--bg);
 }
+.avatar-cam[aria-disabled='true']{opacity:.5;pointer-events:none}
 .avatar-text { display: grid; gap: 3px; min-width: 0; flex: 1; }
 .avatar-text b { font-family: Sora, sans-serif; font-size: 16px; }
 .avatar-text small { font-size: 12.5px; color: var(--muted); }

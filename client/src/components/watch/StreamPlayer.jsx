@@ -195,7 +195,7 @@ export default function StreamPlayer({
         className={`stream-frame ${ready ? 'is-playing' : ''}`.trim()}
         src={iframeSrc}
         title={title}
-        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
         onLoad={() => {
           // SDK events can be late; drop the poster shortly after the frame loads.

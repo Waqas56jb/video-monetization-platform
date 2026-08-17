@@ -242,6 +242,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
                 setPhone(e.target.value)
                 setError(null)
               }}
+              onFocus={(e) => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' })}
               required
             />
 
