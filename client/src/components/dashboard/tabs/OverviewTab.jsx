@@ -47,13 +47,13 @@ export default function OverviewTab() {
         <Panel title="Revenue Overview" action={<span className="link">Last 30 days</span>}>
           {earnings.loading ? (
             <Skeleton rows={3} />
-          ) : e?.daily?.length > 1 ? (
+          ) : e?.daily?.some((d) => d.amountTzs > 0) ? (
             <RevenueChart series={e.daily} />
           ) : (
             <EmptyState
               icon={Coins}
               title="No earnings yet"
-              message="This chart fills in as soon as somebody buys one of your videos."
+              message="This chart fills in as soon as somebody buys one of your videos, or an advert plays on a Free + Ads title."
             />
           )}
         </Panel>
@@ -85,7 +85,7 @@ export default function OverviewTab() {
           <EmptyState
             icon={Receipt}
             title="No transactions yet"
-            message="Every sale appears here the moment it clears, with your share of it."
+            message="Every sale and every completed advert appears here the moment it clears, with your share of it."
           />
         ) : (
           <TableScroll>

@@ -9,6 +9,38 @@ import { recordAudit, clientIp } from '../services/audit.js'
 
 const router = Router()
 
+/**
+ * Last N calendar days, including zeros.
+ *
+ * The query only returns days that had a row, so a creator whose advertising
+ * all landed on one day got a one-point series the chart refused to draw —
+ * and the overview then said they had no earnings, next to a non-zero balance.
+ * Filling the gaps makes a single day's ads visible as a spike.
+ */
+function fillDaily(rows, days = 30) {
+  const by = new Map()
+  for (const r of rows) {
+    const key = new Date(r.day).toISOString().slice(0, 10)
+    by.set(key, r)
+  }
+  const out = []
+  const origin = new Date()
+  origin.setUTCHours(12, 0, 0, 0)
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(origin)
+    d.setUTCDate(d.getUTCDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    const r = by.get(key)
+    out.push({
+      day: key,
+      amountTzs: Number(r?.amount || 0),
+      salesTzs: Number(r?.sales || 0),
+      adsTzs: Number(r?.ads || 0),
+    })
+  }
+  return out
+}
+
 /** Money a creator has earned, is owed, and has already been paid. */
 async function balanceFor(creatorId) {
   const totals = await one(
@@ -96,12 +128,7 @@ router.get(
         videosCarryingAds: adStats.videos_carrying_ads,
         earnedTzs: balance.fromAdsTzs,
       },
-      daily: daily.map((d) => ({
-        day: d.day,
-        amountTzs: d.amount,
-        salesTzs: d.sales,
-        adsTzs: d.ads,
-      })),
+      daily: fillDaily(daily),
     })
   })
 )

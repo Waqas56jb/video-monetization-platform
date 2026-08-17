@@ -54,7 +54,7 @@ export default function RevenueChart({ series = [] }) {
     return (
       <div className="chart-wrap" style={{ display: 'grid', placeItems: 'center', minHeight: 150 }}>
         <p style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center', margin: 0 }}>
-          Not enough activity to plot yet — this fills in as sales come through.
+          Not enough activity to plot yet — this fills in as sales and advertising come through.
         </p>
       </div>
     )

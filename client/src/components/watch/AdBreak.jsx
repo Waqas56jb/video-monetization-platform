@@ -68,7 +68,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         campaignId: ad.campaignId,
         placement: ad.placement,
         playId,
-        secondsWatched: Math.round(watched.current),
+        secondsWatched: Math.round(Math.max(watched.current, elapsed)),
         completed,
       })
       .catch(() => {
