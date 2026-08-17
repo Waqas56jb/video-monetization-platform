@@ -612,70 +612,80 @@ async function seed() {
     log.info('demo viewer already exists (password reset to demo default)')
   }
 
-  // Two purchases, so earnings, receipts, the revenue split and the admin's
-  // finance screens all have something real to show.
-  const paid = made.filter((v) => v.price_tzs > 0).slice(0, 2)
-  for (const video of paid) {
+  // Two purchases so earnings, receipts and the split have something real to
+  // show — plus the premiere that has already expired, so a signed-in buyer
+  // and a new viewer can be shown the same film with different ads.
+  const titlesThatExpire = new Set(
+    VIDEOS.filter(
+      (s) =>
+        s.accessType === 'paid_premiere' &&
+        Number(s.startedDaysAgo || 0) >= Number(s.premiereDays || 0)
+    ).map((s) => s.title)
+  )
+
+  const buyVideo = async (video, { daysAgo = 2, amountTzs } = {}) => {
+    const amount = Number(amountTzs ?? video.price_tzs ?? 0)
+    if (!video || amount <= 0) return false
+
     const existing = await one(
       `select id from purchases where user_id = $1 and video_id = $2 and status = 'active'`,
       [buyer.id, video.id]
     )
-    if (existing) continue
+    if (existing) return false
 
     const percent = await splitPercentFor(video.creator_id)
-    const split = applySplit(video.price_tzs, percent)
+    const split = applySplit(amount, percent)
+    const age = `${Math.max(1, Number(daysAgo) || 2)} days`
 
     await transaction(
       async (client) => {
         const { rows: pay } = await client.query(
           `insert into payments (user_id, video_id, provider, amount_tzs, method, phone,
                                  status, provider_ref, completed_at, created_at)
-           values ($1,$2,'sandbox',$3,'mpesa','0712345678','success',$4, now() - interval '2 days',
-                   now() - interval '2 days')
+           values ($1,$2,'sandbox',$3,'mpesa','0712345678','success',$4,
+                   now() - ($5)::interval, now() - ($5)::interval)
            returning *`,
-          [buyer.id, video.id, video.price_tzs, `DEMO-${Math.random().toString(36).slice(2, 10).toUpperCase()}`]
+          [buyer.id, video.id, amount, `DEMO-${Math.random().toString(36).slice(2, 10).toUpperCase()}`, age]
         )
 
         const { rows: purchase } = await client.query(
           `insert into purchases (user_id, video_id, payment_id, amount_tzs, creator_amount_tzs,
                                   platform_amount_tzs, split_percent, status, purchased_at)
-           values ($1,$2,$3,$4,$5,$6,$7,'active', now() - interval '2 days')
+           values ($1,$2,$3,$4,$5,$6,$7,'active', now() - ($8)::interval)
            returning id`,
-          [buyer.id, video.id, pay[0].id, video.price_tzs, split.creator, split.platform, percent]
+          [buyer.id, video.id, pay[0].id, amount, split.creator, split.platform, percent, age]
         )
 
-        /**
-         * The earnings row has to name the purchase it came from.
-         *
-         * It did not, and the two symptoms that produced looked like separate
-         * faults: purchases that appeared never to have credited their creator,
-         * and earnings that appeared to have been conjured from nothing. They
-         * were the same transaction, never joined. Worse, the teardown below
-         * deletes demo earnings *through* `purchase_id`, so unlinked rows
-         * survived it — every seed/teardown cycle left another one behind, and
-         * creator balances (and therefore withdrawable amounts) are summed
-         * straight off this table.
-         */
         await client.query(
           `insert into earnings (creator_id, video_id, purchase_id, source, gross_tzs, creator_tzs,
                                  platform_tzs, split_percent, created_at)
-           values ($1,$2,$3,'sale',$4,$5,$6,$7, now() - interval '2 days')`,
+           values ($1,$2,$3,'sale',$4,$5,$6,$7, now() - ($8)::interval)`,
           [
             video.creator_id,
             video.id,
             purchase[0].id,
-            video.price_tzs,
+            amount,
             split.creator,
             split.platform,
             percent,
+            age,
           ]
         )
-
-        // `paid_unlocks` is recounted from `purchases` by a trigger (006).
       },
       { actorRole: 'admin', actorId: admin.id }
     )
     log.ok(`demo purchase of "${video.title}"`)
+    return true
+  }
+
+  const paid = made.filter((v) => Number(v.price_tzs) > 0 && !titlesThatExpire.has(v.title)).slice(0, 2)
+  for (const video of paid) await buyVideo(video, { daysAgo: 2 })
+
+  for (const spec of VIDEOS) {
+    if (!titlesThatExpire.has(spec.title)) continue
+    const video = made.find((v) => v.title === spec.title)
+    const daysAgo = Math.max(2, Number(spec.startedDaysAgo || 10) - 5)
+    await buyVideo(video, { daysAgo, amountTzs: spec.priceTzs })
   }
 
   /* ------------------------------------------------- views that add up ---- */

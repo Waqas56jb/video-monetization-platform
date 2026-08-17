@@ -362,6 +362,15 @@ export default function Watch() {
   }
 
   const premiereDays = daysUntil(v.premiereEndsAt)
+  /**
+   * A converted premiere still has a purchase. The access type is Free + Ads
+   * for everyone else, but the person who paid during the window keeps the
+   * copy they bought — that is the claim on the homepage, and it has to be
+   * visible on this page after the job has flipped the video.
+   */
+  const boughtDuringPremiere =
+    Boolean(p?.access?.owned && p?.access?.purchasedAt) &&
+    (v.accessType === 'paid_premiere' || v.accessType === 'free_with_ads')
 
   /**
    * Where playback actually begins.
@@ -630,25 +639,36 @@ export default function Watch() {
            * easily misread: the window ending does not take anything from them.
            * Only shown to somebody who actually holds the entitlement.
            */}
-          {p?.access?.owned && v.accessType === 'paid_premiere' && (
+          {boughtDuringPremiere && (
             <div className="watch-assure">
               <BadgeCheck size={15} />
               <span>
-                Purchased during the premiere — <b>your access stays ad-free</b>, including after
-                this becomes Free + Ads for everyone else.
+                {v.accessType === 'free_with_ads' ? (
+                  <>
+                    You paid during the premiere — this is Free + Ads for everyone else, but{' '}
+                    <b>your copy stays ad-free</b>.
+                  </>
+                ) : (
+                  <>
+                    Purchased during the premiere — <b>your access stays ad-free</b>, including after
+                    this becomes Free + Ads for everyone else.
+                  </>
+                )}
               </span>
             </div>
           )}
 
           <div className="watch-terms">
             <b>{ACCESS_LABEL[v.accessType]}</b>{' '}
-            {v.accessType === 'paid_premiere'
-              ? premiereDays != null
-                ? `— pay ${tzs(v.priceTzs)} to watch now. After ${premiereDays} more day${premiereDays === 1 ? '' : 's'} this becomes Free + Ads, and anyone who paid keeps it in their library.`
-                : `— pay ${tzs(v.priceTzs)} to watch now. When your paid period ends it becomes Free + Ads, and anyone who paid keeps it in their library.`
-              : v.accessType === 'free_with_ads'
-                ? '— free to watch. The creator earns from the advertising shown before it.'
-                : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
+            {boughtDuringPremiere && v.accessType === 'free_with_ads'
+              ? '— you already paid. New viewers see ads; you do not.'
+              : v.accessType === 'paid_premiere'
+                ? premiereDays != null
+                  ? `— pay ${tzs(v.priceTzs)} to watch now. After ${premiereDays} more day${premiereDays === 1 ? '' : 's'} this becomes Free + Ads, and anyone who paid keeps it in their library.`
+                  : `— pay ${tzs(v.priceTzs)} to watch now. When your paid period ends it becomes Free + Ads, and anyone who paid keeps it in their library.`
+                : v.accessType === 'free_with_ads'
+                  ? '— free to watch. The creator earns from the advertising shown before it.'
+                  : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
           </div>
         </div>
       </div>
