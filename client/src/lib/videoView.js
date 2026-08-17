@@ -22,7 +22,9 @@ export function toCard(v, { owned = false } = {}) {
     avatar: v.creator?.avatarUrl || null,
 
     tag: owned
-      ? { cls: 'tag-owned', label: 'OWNED' }
+      ? v.isPublished === false
+        ? { cls: 'tag-owned', label: 'STILL YOURS' }
+        : { cls: 'tag-owned', label: 'OWNED' }
       : v.accessType === 'free_with_ads'
         ? { cls: 'tag-free', label: 'FREE + ADS' }
         : v.accessType === 'paid_premiere'
@@ -31,7 +33,9 @@ export function toCard(v, { owned = false } = {}) {
 
     price: owned ? 'Owned' : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
     priceNote: owned
-      ? 'in your library'
+      ? v.isPublished === false
+        ? 'no longer listed — still yours'
+        : 'in your library'
       : v.accessType === 'free_with_ads'
         ? 'ad supported'
         : v.accessType === 'paid_premiere'

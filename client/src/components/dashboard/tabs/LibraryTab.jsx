@@ -29,7 +29,8 @@ export default function LibraryTab() {
           <div>
             <b style={{ fontFamily: 'Sora' }}>What you buy stays in your library.</b>
             <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 3 }}>
-              Every video below stays unlocked on any device you log into — even after logout.
+              Every video below stays unlocked on any device you log into — even after logout,
+              and even if it is later taken off the public site.
             </p>
           </div>
         </div>

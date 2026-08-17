@@ -688,6 +688,24 @@ async function seed() {
     await buyVideo(video, { daysAgo, amountTzs: spec.priceTzs })
   }
 
+  /**
+   * Pay Once, then unpublish — the client's access test.
+   *
+   * "The Fishermen of Kilwa" is bought by the demo viewer and taken off the
+   * public site. Explore and a signed-out watch URL must hide it; the library
+   * and a signed-in watch must not. Leaving it unpublished is the demo, not a
+   * leftover.
+   */
+  const fishermen = made.find((v) => /fishermen of kilwa/i.test(v.title))
+  if (fishermen) {
+    const spec = VIDEOS.find((s) => s.title === fishermen.title)
+    await buyVideo(fishermen, { daysAgo: 4, amountTzs: spec?.priceTzs || 1500 })
+    await query('update videos set is_published = false where id = $1 and deleted_at is null', [
+      fishermen.id,
+    ])
+    log.info('unpublished "The Fishermen of Kilwa" — demo.viewer keeps access')
+  }
+
   /* ------------------------------------------------- views that add up ---- */
   /**
    * Real view rows rather than an invented counter.

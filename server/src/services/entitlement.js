@@ -96,6 +96,7 @@ export function publicVideo(v, access = null) {
     views: v.views,
     paidUnlocks: v.paid_unlocks,
     publishedAt: v.published_at,
+    isPublished: v.is_published,
     creator: v.creator_id
       ? { id: v.creator_id, name: v.creator_name ?? null, avatarUrl: v.creator_avatar ?? null }
       : null,

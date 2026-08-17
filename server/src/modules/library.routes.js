@@ -65,6 +65,7 @@ router.get(
           reference: r.provider_ref,
         },
         watchUrl: `${env.publicWebUrl}/watch/${r.slug || r.id}`,
+        isPublished: r.is_published,
       })),
     })
   })

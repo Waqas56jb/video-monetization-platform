@@ -639,6 +639,16 @@ export default function Watch() {
            * easily misread: the window ending does not take anything from them.
            * Only shown to somebody who actually holds the entitlement.
            */}
+          {p?.access?.owned && v.isPublished === false && (
+            <div className="watch-assure">
+              <BadgeCheck size={15} />
+              <span>
+                This title is no longer listed for new viewers.{' '}
+                <b>You already paid — it stays in your library.</b>
+              </span>
+            </div>
+          )}
+
           {boughtDuringPremiere && (
             <div className="watch-assure">
               <BadgeCheck size={15} />
