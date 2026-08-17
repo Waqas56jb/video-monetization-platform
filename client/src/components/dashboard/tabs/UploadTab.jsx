@@ -249,7 +249,7 @@ export default function UploadTab({ onSubmitted }) {
         ...(form.accessType === 'paid_premiere' ? { premiereDays: Number(form.premiereDays) } : {}),
       })
 
-      const res = await api.videos.submit(video.id)
+      const res = await api.videos.submit(video.id, { confirmRights: rightsOk })
       setSubmitted(true)
       showToast(res.message || 'Submitted for review')
       loadMine()

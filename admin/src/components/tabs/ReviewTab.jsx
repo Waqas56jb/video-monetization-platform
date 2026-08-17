@@ -184,6 +184,11 @@ export default function ReviewTab() {
                   {v.freePreviewSeconds > 0 && (
                     <span className="pill info">{Math.round(v.freePreviewSeconds / 60)} min free</span>
                   )}
+                  {v.rightsConfirmedAt ? (
+                    <span className="pill ok">Rights confirmed</span>
+                  ) : (
+                    <span className="pill bad">Rights not confirmed</span>
+                  )}
                 </div>
                 <small className="rv-time">Submitted {timeAgo(v.submittedAt || v.createdAt)}</small>
               </div>

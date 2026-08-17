@@ -774,6 +774,34 @@ async function seed() {
     console.log('done')
   }
 
+  const RIGHTS =
+    'I made this content, or I hold every right needed to sell it on MTONYO+ — ' +
+    'including the rights of anyone appearing in it and of any music used.'
+  await query(
+    `update videos
+        set rights_confirmed_at = coalesce(rights_confirmed_at, submitted_at, now()),
+            rights_statement = coalesce(rights_statement, $2)
+      where title = $1`,
+    [pendingTitle, RIGHTS]
+  )
+
+  const reportOn = made.find((v) => /live at arusha/i.test(v.title))
+  if (reportOn) {
+    const open = await one(
+      `select id from content_reports where video_id = $1 and status = 'open'`,
+      [reportOn.id]
+    )
+    if (!open) {
+      await query(
+        `insert into content_reports (video_id, reporter_email, reason, detail)
+         values ($1, 'rights.holder@example.tz', 'copyright',
+                 'mtonyo-demo: this uses my recording without a licence.')`,
+        [reportOn.id]
+      )
+      log.ok('open copyright report on Live at Arusha')
+    }
+  }
+
   // Flip any premiere whose window already ended, so free-with-ads is visible
   // without waiting for the nightly cron.
   try {

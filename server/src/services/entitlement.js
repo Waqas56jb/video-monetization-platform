@@ -127,6 +127,8 @@ export function studioVideo(v) {
     customThumbnailUrl: v.custom_thumbnail_url || null,
     deletedAt: v.deleted_at,
     createdAt: v.created_at,
+    rightsConfirmedAt: v.rights_confirmed_at || null,
+    rightsStatement: v.rights_statement || null,
   }
 }
 

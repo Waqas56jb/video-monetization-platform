@@ -47,7 +47,7 @@ export default function AdminShell({ onLogout }) {
       setCounts({
         review: res.queues?.pendingReview ?? 0,
         withdrawals: res.queues?.pendingWithdrawals ?? 0,
-        moderation: res.queues?.pendingDeletions ?? 0,
+        moderation: (res.queues?.openReports ?? 0) + (res.queues?.pendingDeletions ?? 0),
       })
     } catch {
       setCounts({}) // a failed count simply shows no badge

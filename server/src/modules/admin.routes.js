@@ -105,7 +105,8 @@ router.get(
                   coalesce(sum(platform_tzs),0)::int as platform
              from earnings`),
       one(`select count(*) filter (where status = 'pending')::int as withdrawals,
-                  (select count(*)::int from video_deletion_requests where status = 'pending') as deletions
+                  (select count(*)::int from video_deletion_requests where status = 'pending') as deletions,
+                  (select count(*)::int from content_reports where status = 'open') as reports
              from withdrawals`),
     ])
 
@@ -121,6 +122,7 @@ router.get(
         pendingReview: videos.pending_review,
         pendingWithdrawals: pending.withdrawals,
         pendingDeletions: pending.deletions,
+        openReports: pending.reports,
       },
     })
   })

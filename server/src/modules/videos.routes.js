@@ -747,8 +747,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const video = await one(
       `select id, title, creator_id from videos
-        where (id::text = $1 or slug = $1) and deleted_at is null`,
-      [req.params.id]
+        where deleted_at is null and (id::text = $1 or slug = any($2::text[]))`,
+      [req.params.id, slugFallbacks(req.params.id)]
     )
     if (!video) throw notFound('Video not found')
 
