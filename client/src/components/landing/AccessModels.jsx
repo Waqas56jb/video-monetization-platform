@@ -117,7 +117,7 @@ export default function AccessModels() {
             THREE WAYS TO RELEASE
           </span>
           <h2>
-            You Choose How Your <span className="grad-text">Audience Watches</span>
+            You Choose How You <span className="grad-text">Earn</span>
           </h2>
           <p>Chosen per video — not once for your whole channel.</p>
         </div>

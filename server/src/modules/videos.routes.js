@@ -48,13 +48,26 @@ const categoryFilter = z
 // serverless host has no disk worth writing them to.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 * 1024 * 1024, files: 1 } })
 
-/** URL-safe slug, with a short suffix so titles can repeat. */
-const slugify = (title) =>
-  `${title
+/** URL-safe slug. Random suffix only when the title is already taken. */
+const slugBase = (title) =>
+  title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, 60)}-${Math.random().toString(36).slice(2, 7)}`
+    .slice(0, 60) || 'video'
+
+const slugify = (title) => `${slugBase(title)}-${Math.random().toString(36).slice(2, 7)}`
+
+async function uniqueSlug(title) {
+  const base = slugBase(title)
+  let slug = base
+  for (let n = 2; n < 80; n++) {
+    const taken = await one('select 1 as ok from videos where slug = $1', [slug])
+    if (!taken) return slug
+    slug = `${base.slice(0, 54)}-${n}`
+  }
+  return slugify(title)
+}
 
 const SELECT_PUBLIC = `
   select v.*, p.full_name as creator_name, p.avatar_url as creator_avatar,
@@ -222,7 +235,7 @@ router.post(
        returning *`,
       [
         req.user.id,
-        slugify(title),
+        await uniqueSlug(title),
         title,
         description || null,
         category || null,

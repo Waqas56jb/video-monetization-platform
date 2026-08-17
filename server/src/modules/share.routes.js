@@ -18,9 +18,10 @@ const router = Router()
  *
  * Each network allows something different, so we return the best available
  * method for each and let the app pick:
- *   - WhatsApp / Instagram / TikTok: the OS share sheet, ideally carrying the
- *     actual clip file (Web Share Level 2). Only the device can post to
- *     Instagram and TikTok — neither has a public web publishing API.
+ *   - WhatsApp: the watch URL. Open Graph on that page is what draws the card
+ *     (poster, title, creator). Do not attach the clip file — WhatsApp then
+ *     sends a raw video instead of fetching the preview.
+ *   - Instagram / TikTok: the OS share sheet; neither has a public web API.
  *   - Facebook / X: a link-share URL, which reads the page's Open Graph tags.
  */
 router.get(
@@ -43,9 +44,13 @@ router.get(
     }
 
     // The deep link: opens this exact video's watch & purchase page.
-    const deepLink = `${env.publicWebUrl}/watch/${video.slug || video.id}`
+    const pathKey = video.slug || video.id
+    const deepLink = `${env.publicWebUrl}/watch/${pathKey}`
     const title = video.title
-    const text = `Watch "${title}" by ${video.creator_name} on MTONYO+`
+    const text = video.creator_name
+      ? `${title} by ${video.creator_name}. Watch the free preview on MTONYO+.`
+      : `Watch the free preview of "${title}" on MTONYO+.`
+    const cardUrl = `/api/share/${encodeURIComponent(pathKey)}/card`
 
     // The 60s promo clip, public so social platforms can fetch it.
     let clip = null
@@ -76,6 +81,7 @@ router.get(
         creator: video.creator_name ? { name: video.creator_name } : null,
         thumbnailUrl: thumbnailFor(video),
       },
+      cardUrl,
       deepLink,
       title,
       text,
@@ -107,13 +113,70 @@ router.get(
       // Consumed by the app (or an edge function) to render link previews.
       openGraph: {
         'og:title': title,
-        'og:description': video.description?.slice(0, 200) || text,
-        'og:image': video.thumbnail_url || clip?.thumbnailUrl || '',
+        'og:description': text,
+        'og:image': cardUrl,
         'og:url': deepLink,
-        'og:type': 'video.other',
-        ...(clip ? { 'og:video': clip.downloadUrl, 'og:video:type': 'video/mp4' } : {}),
+        'og:type': 'website',
       },
     })
+  })
+)
+
+/**
+ * A short, public poster URL for WhatsApp / Facebook / X.
+ *
+ * Link previews fail when `og:image` is a Cloudflare signed token — those
+ * JWTs are hundreds of characters, WhatsApp truncates them, and the card
+ * renders as a bare URL. This path stays short, returns a real JPEG, and
+ * signs Cloudflare on the server so the crawler never has to.
+ */
+router.get(
+  '/:id/card',
+  asyncHandler(async (req, res) => {
+    const video = await one(
+      `select id, slug, cloudflare_uid, preview_uid, custom_thumbnail_url, thumbnail_url,
+              is_published, review_status, deleted_at
+         from videos
+        where (id::text = $1 or slug = $1) and deleted_at is null`,
+      [req.params.id]
+    )
+    if (!video) throw notFound('Video not found')
+    if (!(video.is_published && video.review_status === 'approved')) {
+      throw notFound('Video not found')
+    }
+
+    const sendFrom = async (url) => {
+      const img = await fetch(url, { redirect: 'follow' })
+      if (!img.ok) return false
+      const type = (img.headers.get('content-type') || '').split(';')[0]
+      if (!/^image\//i.test(type) && type !== 'application/octet-stream') return false
+      const buf = Buffer.from(await img.arrayBuffer())
+      if (!buf.length) return false
+      res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
+      res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+      res.send(buf)
+      return true
+    }
+
+    if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
+      if (await sendFrom(video.custom_thumbnail_url).catch(() => false)) return
+    }
+
+    const posterUid = video.preview_uid || video.cloudflare_uid
+    if (posterUid && capabilities.signedPlayback) {
+      const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
+      const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
+      if (await sendFrom(src).catch(() => false)) return
+    }
+
+    if (video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
+      if (await sendFrom(video.thumbnail_url).catch(() => false)) return
+    }
+
+    const brand = `${env.publicWebUrl}/icons/icon-512.png`
+    if (await sendFrom(brand).catch(() => false)) return
+
+    throw notFound('No poster available')
   })
 )
 

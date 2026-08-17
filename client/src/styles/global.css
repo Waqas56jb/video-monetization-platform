@@ -2240,6 +2240,9 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .pw-link{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 13px;border:1px solid var(--border2);border-radius:11px;background:rgba(255,255,255,.03);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
 .pw-link svg{color:var(--purple2);flex-shrink:0}
 .pw-link b{color:#fff}
+.pw-share-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--muted)}
+.pw-share-head svg{color:var(--purple2);flex-shrink:0}
+.pw-journey{margin:0;font-family:'Sora',sans-serif;font-size:clamp(13px,1.5vw,15.5px);font-weight:700;line-height:1.45;letter-spacing:.01em;color:#fff;word-spacing:.12em}
 .pw-cards{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px}
 .pw-card{height:52px;border-radius:11px;background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(255,255,255,.03));border:1px solid var(--border2);display:grid;place-items:center;color:var(--purple2)}
 .pw-card.is-lead{background:linear-gradient(135deg,rgba(124,58,237,.34),rgba(124,58,237,.1));border-color:rgba(124,58,237,.4)}

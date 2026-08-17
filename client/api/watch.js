@@ -51,8 +51,6 @@ export default async function handler(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'https'
   const origin = `${proto}://${host}`
 
-  // The slug arrives from the rewrite; fall back to parsing the path so the
-  // function still behaves if it is ever hit directly.
   const slug =
     (req.query && (req.query.slug || req.query.videoId)) ||
     String(req.url || '')
@@ -66,23 +64,22 @@ export default async function handler(req, res) {
     if (!r.ok) throw new Error(`shell ${r.status}`)
     shell = await r.text()
   } catch {
-    // Without the shell there is nothing to serve; let the platform's own
-    // rewrite handle it rather than returning a broken page.
     res.status(302).setHeader('Location', '/index.html')
     return res.end()
   }
 
   let video = null
+  let cardUrl = null
   if (slug) {
     try {
       const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`)
       if (r.ok) {
         const body = await r.json()
         video = body?.video || null
+        cardUrl = body?.cardUrl ? `${API}${body.cardUrl}` : `${API}/api/share/${encodeURIComponent(slug)}/card`
       }
     } catch {
-      // A preview is a nicety. If the API is unreachable the page still works,
-      // it just falls back to the platform-level card.
+      /* Preview is a nicety; the page still boots. */
     }
   }
 
@@ -91,44 +88,46 @@ export default async function handler(req, res) {
 
   if (video) {
     const creator = video.creator?.name || video.creatorName
-    const title = creator ? `${video.title} — ${creator}` : video.title
-    const description =
-      video.description?.trim() ||
-      (creator
-        ? `${creator} on MTONYO+. Watch the free preview, then pay with M-Pesa or Airtel Money.`
-        : 'Watch the free preview on MTONYO+, then pay with M-Pesa or Airtel Money.')
+    const title = video.title
+    const description = creator
+      ? `${creator} on MTONYO+. Watch the free preview, then pay to continue.`
+      : 'Watch the free preview on MTONYO+, then pay to continue.'
 
     html = html.replace(
       /<title>[\s\S]*?<\/title>/i,
       `<title>${escapeAttr(title)} — MTONYO+</title>`
     )
     html = setMeta(html, 'name', 'description', description)
+    html = setMeta(html, 'property', 'og:site_name', 'MTONYO+')
+    html = setMeta(html, 'property', 'og:type', 'website')
     html = setMeta(html, 'property', 'og:title', title)
     html = setMeta(html, 'property', 'og:description', description)
     html = setMeta(html, 'property', 'og:url', canonical)
-    html = setMeta(html, 'property', 'og:type', 'video.other')
+    html = setMeta(html, 'name', 'twitter:card', 'summary_large_image')
     html = setMeta(html, 'name', 'twitter:title', title)
     html = setMeta(html, 'name', 'twitter:description', description)
 
-    // The thumbnail is already an absolute, signed CDN URL from the API.
-    if (video.thumbnailUrl && /^https?:\/\//i.test(video.thumbnailUrl)) {
-      html = setMeta(html, 'property', 'og:image', video.thumbnailUrl)
-      html = setMeta(html, 'name', 'twitter:image', video.thumbnailUrl)
-      html = setMeta(html, 'property', 'og:image:alt', video.title)
+    if (cardUrl) {
+      html = setMeta(html, 'property', 'og:image', cardUrl)
+      html = setMeta(html, 'property', 'og:image:secure_url', cardUrl)
+      html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
+      html = setMeta(html, 'property', 'og:image:width', '1200')
+      html = setMeta(html, 'property', 'og:image:height', '630')
+      html = setMeta(html, 'property', 'og:image:alt', title)
+      html = setMeta(html, 'name', 'twitter:image', cardUrl)
     }
   } else {
     html = setMeta(html, 'property', 'og:url', canonical)
+    html = setMeta(html, 'property', 'og:type', 'website')
   }
 
-  // Whatever happened above, the platform-level image must be absolute — a
-  // root-relative og:image is silently dropped by every crawler.
   html = html.replace(
     /(<meta[^>]*property=["']og:image["'][^>]*content=["'])(\/[^"']*)(["'])/i,
     `$1${origin}$2$3`
   )
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=86400')
+  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=86400')
   res.status(200)
   return res.end(html)
 }

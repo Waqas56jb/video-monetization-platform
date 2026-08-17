@@ -1,4 +1,4 @@
-import { Check, Gem, Link2, Play, TrendingUp } from 'lucide-react'
+import { Check, Gem, Play, Share2, TrendingUp } from 'lucide-react'
 import Reveal from '@/components/ui/Reveal'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 
@@ -24,11 +24,11 @@ import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 const VISUALS = {
   discover: (
     <div className="pw-viz pw-viz-discover">
-      <div className="pw-link">
-        <Link2 size={13} />
-        <span>mtonyo.co.tz/watch/</span>
-        <b>live-at-arusha</b>
+      <div className="pw-share-head">
+        <Share2 size={14} />
+        <span>On WhatsApp and social</span>
       </div>
+      <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
       <div className="pw-cards" aria-hidden="true">
         <span className="pw-card is-lead">
           <Play size={13} />
@@ -36,7 +36,7 @@ const VISUALS = {
         <span className="pw-card" />
         <span className="pw-card" />
       </div>
-      <small>Opens that exact video, on any phone</small>
+      <small>Opens that exact video — free preview, then pay to continue</small>
     </div>
   ),
 

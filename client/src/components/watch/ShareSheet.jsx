@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Copy, Film, Loader2, Share2, X } from 'lucide-react'
-import api, { mediaUrl } from '@/lib/api'
+import { mediaUrl } from '@/lib/api'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 
 /**
@@ -13,10 +13,9 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
  * the whole feedback a person got for the platform's main growth loop.
  *
  * This shows what is actually being shared before sending it: the poster, the
- * title, and the exact link the recipient will open. The behaviour underneath
- * is unchanged — the same deep link, the same 60-second clip attached through
- * Web Share Level 2 where the browser supports files, the same fallback to the
- * clipboard where it does not.
+ * title, and the exact link the recipient will open. WhatsApp then reads the
+ * page's Open Graph tags and draws the card — attaching a clip file would
+ * skip that and send an ugly URL or a raw video instead.
  */
 export default function ShareSheet({ open, video, onClose }) {
   const [copied, setCopied] = useState(false)
@@ -28,7 +27,11 @@ export default function ShareSheet({ open, video, onClose }) {
   useLockBodyScroll(open)
 
   const url = video ? `${window.location.origin}/watch/${video.slug || video.id}` : ''
-  const text = video ? `Watch "${video.title}" on MTONYO+` : ''
+  const text = video
+    ? video.creator?.name
+      ? `${video.title} by ${video.creator.name}. Watch the free preview on MTONYO+.`
+      : `Watch the free preview of "${video.title}" on MTONYO+.`
+    : ''
 
   /* Move focus into the dialog so a keyboard is not left behind the overlay. */
   useEffect(() => {
@@ -58,39 +61,20 @@ export default function ShareSheet({ open, video, onClose }) {
   }
 
   /**
-   * The OS share sheet, carrying the clip itself where the browser allows it.
-   * Instagram and TikTok have no web publishing API, so a real file handed to
-   * the device is the only route to them that exists.
+   * Share the link, not the clip file.
+   *
+   * Attaching the 60-second MP4 made WhatsApp send a raw file (or an ugly
+   * URL) instead of fetching Open Graph tags. The recipient must see the
+   * poster + title card, tap it, and land on this video.
    */
   const shareNative = async () => {
     if (busy) return
     setBusy(true)
     setProblem(null)
     try {
-      let file = null
-      try {
-        const payload = await api.share.payload(video.slug || video.id)
-        const clipUrl = payload?.clip?.downloadUrl
-        if (clipUrl && navigator.canShare) {
-          const res = await fetch(clipUrl)
-          if (res.ok) {
-            const blob = await res.blob()
-            const candidate = new File([blob], `${(video.slug || 'mtonyo').slice(0, 40)}.mp4`, {
-              type: blob.type || 'video/mp4',
-            })
-            if (navigator.canShare({ files: [candidate] })) file = candidate
-          }
-        }
-      } catch {
-        /* The clip is the bonus. The link is the guarantee. */
-      }
-
-      await navigator.share(
-        file ? { files: [file], title: video.title, text, url } : { title: video.title, text, url }
-      )
+      await navigator.share({ title: video.title, text, url })
       onClose()
     } catch (err) {
-      // Dismissing the OS sheet is a choice, not a failure.
       if (err?.name !== 'AbortError') {
         setProblem('Sharing was not available just now — the link below still works.')
       }
@@ -142,7 +126,7 @@ export default function ShareSheet({ open, video, onClose }) {
         {canNative && (
           <button className="btn btn-gold btn-block" onClick={shareNative} disabled={busy}>
             {busy ? <Loader2 className="spin" /> : <Share2 />}
-            {busy ? 'Preparing the clip…' : 'Share'}
+            {busy ? 'Opening share…' : 'Share'}
           </button>
         )}
 

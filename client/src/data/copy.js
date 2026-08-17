@@ -120,7 +120,8 @@ export const ACCESS_OPTIONS = [
     icon: 'lock',
     label: 'Sell it',
     viewerTag: 'Pay Once',
-    text: 'Fans watch a free preview, then pay to continue.',
+    text:
+      'Get paid directly by your viewers. They watch a free preview, then pay once to continue watching.',
   },
   {
     key: 'paid_premiere',
@@ -129,7 +130,7 @@ export const ACCESS_OPTIONS = [
     label: 'Premiere it',
     viewerTag: 'Paid Premiere',
     text:
-      'Sell it first, then it automatically becomes Free + Ads after the period you choose.',
+      'Earn from sales first, then advertising. Choose 30, 60 or 90 days. Viewers pay during that period. Afterward, the video automatically becomes Free + Ads.',
   },
   {
     key: 'free_with_ads',
@@ -137,7 +138,7 @@ export const ACCESS_OPTIONS = [
     tone: 'green',
     label: 'Free + Ads',
     viewerTag: 'Free + Ads',
-    text: 'Everyone watches free and you earn from advertising.',
+    text: 'Let everyone watch for free. Your video is free from day one and you earn from advertising.',
   },
 ]
 
@@ -266,11 +267,11 @@ export const FEATURES = [
 export const PLATFORM_POWERS = [
   {
     key: 'discover',
-    kicker: 'Discover',
-    title: 'One link. The exact video.',
+    kicker: 'Share',
+    title: 'Share your video. Let people watch. Earn.',
     text:
-      'Every release gets its own address and its own 60-second clip, so a share on WhatsApp opens the film itself — not a homepage somebody has to search from.',
-    points: ['Smart Deep Links', 'Auto Social Previews', 'Secure Streaming Protection'],
+      'When you share your MTONYO+ video on WhatsApp or social media, people can watch the free preview and pay to continue.',
+    points: ['Share', 'Watch free preview', 'Pay', 'Keep watching'],
   },
   {
     key: 'monetize',
