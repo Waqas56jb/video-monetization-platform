@@ -28,6 +28,7 @@ export default function Login() {
    * finishing it should put them back there, not on the dashboard.
    */
   const next = nextFrom(location)
+  const expired = new URLSearchParams(location.search || '').get('reason') === 'expired'
 
   // Already signed in? Don't make them log in twice — and don't lose their
   // destination on the way past, which is how a viewer trying to unlock a video
@@ -82,6 +83,11 @@ export default function Login() {
       subtitle="Enter your details to continue watching & earning."
     >
       <form onSubmit={onSubmit} noValidate>
+        {expired && (
+          <div className="form-error" role="status">
+            Your session ended. Sign in again to continue.
+          </div>
+        )}
         {error && (
           <div className="form-error" role="alert">
             {error}

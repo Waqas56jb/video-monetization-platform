@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api, { saveSession, clearSession, getAccessToken, onSessionExpired } from '@/lib/api'
+import { useToast } from '@/context/ToastContext'
+import { authUrl } from '@/lib/nextPath'
 
 /**
  * The real signed-in user, from the backend.
@@ -42,6 +45,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [creator, setCreator] = useState(null)
   const [loading, setLoading] = useState(Boolean(getAccessToken()))
+  const navigate = useNavigate()
+  const showToast = useToast()
 
   /** Re-read the profile from the server. */
   const reload = useCallback(async () => {
@@ -87,8 +92,12 @@ export function AuthProvider({ children }) {
       onSessionExpired(() => {
         setUser(null)
         setCreator(null)
+        const here = `${window.location.pathname}${window.location.search}`
+        if (here.startsWith('/login') || here.startsWith('/signup')) return
+        showToast('Your session ended. Sign in again to continue.')
+        navigate(authUrl('login', here, { reason: 'expired' }))
       }),
-    []
+    [navigate, showToast]
   )
 
   const signIn = useCallback(async ({ email, password }) => {

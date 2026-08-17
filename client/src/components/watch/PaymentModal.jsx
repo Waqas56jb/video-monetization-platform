@@ -43,6 +43,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
   const [error, setError] = useState(null)
   const [payment, setPayment] = useState(null)
   const [needGesture, setNeedGesture] = useState(false)
+  const [simulateAs, setSimulateAs] = useState('success')
   const polling = useRef(null)
 
   useLockBodyScroll(open)
@@ -99,6 +100,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
     setError(null)
     setPayment(null)
     setNeedGesture(false)
+    setSimulateAs('success')
     clearInterval(polling.current)
   }, [open])
 
@@ -156,7 +158,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
     setTimeout(tick, 2500)
   }
 
-  const pay = async (e) => {
+  const pay = async (e, outcome = 'success') => {
     e.preventDefault()
     setError(null)
 
@@ -164,14 +166,17 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
       return setError('Enter the mobile money number to charge')
     }
 
+    setSimulateAs(outcome)
     setStep('waiting')
     try {
       const res = await api.payments.initiate({
         videoId: video.id,
         method,
         phone: phone.trim(),
-        // Milestone 2 sandbox: always succeed after ~3s. Real AirPay in M3.
-        ...(isSandbox ? { simulate: 'success' } : {}),
+        // Milestone 2 sandbox: the gold button succeeds; the test links below
+        // force declined / cancelled so the failure screen can be demoed.
+        // Real AirPay in Milestone 3 ignores `simulate`.
+        ...(isSandbox ? { simulate: outcome } : {}),
       })
       setPayment(res.payment)
       watch(res.payment.id)
@@ -261,9 +266,17 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
                 <div>
                   <b>Test mode — no real money moves.</b>
                   <span>
-                    After about 3 seconds this will show payment successful and unlock the video.
-                    The real M-Pesa / Airtel gateway comes in Milestone 3.
+                    Pay succeeds after about 3 seconds. To see the failure screen, use the
+                    buttons below — the real M-Pesa / Airtel gateway comes in Milestone 3.
                   </span>
+                  <div className="sandbox-outcomes">
+                    <button type="button" onClick={(e) => pay(e, 'failed')}>
+                      Test declined
+                    </button>
+                    <button type="button" onClick={(e) => pay(e, 'cancelled')}>
+                      Test cancelled
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -276,13 +289,28 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             <span className="pay-ic pulse">
               <Smartphone />
             </span>
-            <h3>{isSandbox ? 'Confirming test payment…' : 'Check your phone'}</h3>
+            <h3>
+              {isSandbox
+                ? simulateAs === 'cancelled'
+                  ? 'Simulating a cancelled prompt…'
+                  : simulateAs === 'failed'
+                    ? 'Simulating a declined prompt…'
+                    : 'Confirming test payment…'
+                : 'Check your phone'}
+            </h3>
             <p className="pay-sub">
               {isSandbox ? (
-                <>
-                  Simulating a mobile-money approval for <b>{tzs(video.priceTzs)}</b> to{' '}
-                  <b>{phone}</b>. This unlocks in a few seconds.
-                </>
+                simulateAs === 'success' ? (
+                  <>
+                    Simulating a mobile-money approval for <b>{tzs(video.priceTzs)}</b> to{' '}
+                    <b>{phone}</b>. This unlocks in a few seconds.
+                  </>
+                ) : (
+                  <>
+                    Simulating the phone {simulateAs === 'cancelled' ? 'cancelling' : 'declining'} a
+                    request for <b>{tzs(video.priceTzs)}</b>. Nothing will be charged.
+                  </>
+                )
               ) : (
                 <>
                   We sent a request for <b>{tzs(video.priceTzs)}</b> to <b>{phone}</b>. Enter your
@@ -339,9 +367,15 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             <span className="pay-ic bad">
               <AlertTriangle />
             </span>
-            <h3>Payment not completed</h3>
+            <h3>
+              {payment?.status === 'cancelled'
+                ? 'Payment cancelled'
+                : payment?.status === 'expired'
+                  ? 'Payment timed out'
+                  : 'Payment not completed'}
+            </h3>
             <p className="pay-sub">{error || 'Something went wrong.'}</p>
-            {payment?.status && <small className="pay-note">Status: {payment.status}</small>}
+            <p className="pay-sub">Nothing was charged. You can try again with the same number.</p>
             <button className="btn btn-gold btn-block" onClick={() => setStep('form')}>
               Try again
             </button>

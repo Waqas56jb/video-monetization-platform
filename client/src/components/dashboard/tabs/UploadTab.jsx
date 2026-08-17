@@ -327,7 +327,16 @@ export default function UploadTab({ onSubmitted }) {
               {error && (
                 <div className="form-error" role="alert" style={{ marginTop: 14 }}>
                   <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-                  <span>{error}</span>
+                  <div>
+                    <span>{error}</span>
+                    <button
+                      type="button"
+                      className="form-error-retry"
+                      onClick={() => document.getElementById('creator-upload-file')?.click()}
+                    >
+                      Try again
+                    </button>
+                  </div>
                 </div>
               )}
             </>

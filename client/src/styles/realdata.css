@@ -968,6 +968,19 @@
 .sandbox-note b { display: block; font-size: 12.5px; color: #93c5fd; }
 .sandbox-note span { display: block; margin-top: 3px; font-size: 12px; line-height: 1.6; color: var(--muted); }
 .sandbox-note em { font-style: normal; font-weight: 700; color: #93c5fd; }
+.sandbox-outcomes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sandbox-outcomes button {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(96, 165, 250, .35);
+  color: #93c5fd;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.sandbox-outcomes button:hover { border-color: #93c5fd; color: #fff; }
 
 /* The recovery offer on the crash screen. Deliberately quiet — most people
    never need it, and the ones who do are already having a bad time. */
