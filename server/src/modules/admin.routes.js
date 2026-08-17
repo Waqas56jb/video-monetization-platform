@@ -1083,7 +1083,10 @@ router.post(
     })
     await notify({
       userId: w.creator_id, kind: 'account',
-      title: `Your withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()} was ${req.body.decision}d`,
+      title:
+        req.body.decision === 'paid'
+          ? `Your withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()} was paid`
+          : `Your withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()} was declined`,
       actor: req.user, action: 'withdrawal', entityType: 'withdrawal', entityId: w.id,
     })
     res.json({ withdrawal: updated })

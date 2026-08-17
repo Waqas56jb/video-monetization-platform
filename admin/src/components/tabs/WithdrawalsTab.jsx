@@ -38,8 +38,8 @@ export default function WithdrawalsTab() {
     try {
       await api.admin.decideWithdrawal(w.id, { decision })
       showToast(
-        decision === 'approve'
-          ? `${tzs(w.amount_tzs)} approved — sending via ${w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}`
+        decision === 'paid'
+          ? `${tzs(w.amount_tzs)} marked paid — sending via ${w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}`
           : 'Withdrawal rejected'
       )
       reload({ quiet: true })
@@ -52,7 +52,7 @@ export default function WithdrawalsTab() {
     confirm({
       title: 'Reject this withdrawal?',
       text: `${tzs(w.amount_tzs)} goes back into ${w.creator_name || 'the creator'}'s balance and they are told it was declined.`,
-      onConfirm: () => decide(w, 'reject'),
+      onConfirm: () => decide(w, 'rejected'),
     })
 
   return (
@@ -66,7 +66,7 @@ export default function WithdrawalsTab() {
             <FilterSelect
               value={filter}
               onChange={setFilter}
-              options={['Pending', 'Approved', 'Paid', 'Rejected']}
+              options={['Pending', 'Paid', 'Rejected']}
               allLabel="All Requests"
             />
           </FilterRow>
@@ -109,7 +109,7 @@ export default function WithdrawalsTab() {
                   </td>
                   <td className="money">{tzs(w.amount_tzs)}</td>
                   <td>{w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}</td>
-                  <td>{w.payout_phone || '—'}</td>
+                  <td>{w.phone || w.payout_phone || '—'}</td>
                   <td className="money">{tzs(w.lifetime_tzs)}</td>
                   <td>{dateTime(w.requested_at)}</td>
                   <td>
@@ -119,8 +119,8 @@ export default function WithdrawalsTab() {
                     <div className="actions">
                       {w.status === 'pending' ? (
                         <>
-                          <button className="btn btn-green btn-sm" onClick={() => decide(w, 'approve')}>
-                            Approve
+                          <button className="btn btn-green btn-sm" onClick={() => decide(w, 'paid')}>
+                            Mark paid
                           </button>
                           <button className="btn btn-red btn-sm" onClick={() => reject(w)}>
                             Reject

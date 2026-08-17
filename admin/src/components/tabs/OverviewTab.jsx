@@ -58,8 +58,8 @@ export default function OverviewTab() {
       try {
         await api.admin.decideWithdrawal(w.id, { decision })
         showToast(
-          decision === 'approve'
-            ? `Withdrawal of ${tzs(w.amount_tzs)} approved`
+          decision === 'paid'
+            ? `Withdrawal of ${tzs(w.amount_tzs)} marked paid`
             : 'Withdrawal rejected'
         )
         withdrawals.reload({ quiet: true })
@@ -75,7 +75,7 @@ export default function OverviewTab() {
     confirm({
       title: 'Reject this withdrawal?',
       text: `${tzs(w.amount_tzs)} will stay in ${w.creator_name || 'the creator'}'s balance and they will be told it was declined.`,
-      onConfirm: () => decide(w, 'reject'),
+      onConfirm: () => decide(w, 'rejected'),
     })
 
   return (
@@ -169,11 +169,11 @@ export default function OverviewTab() {
                     </td>
                     <td className="money">{tzs(w.amount_tzs)}</td>
                     <td>{w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}</td>
-                    <td>{shortDate(w.created_at)}</td>
+                    <td>{shortDate(w.requested_at || w.created_at)}</td>
                     <td>
                       <div className="actions">
-                        <button className="btn btn-green btn-sm" onClick={() => decide(w, 'approve')}>
-                          Approve
+                        <button className="btn btn-green btn-sm" onClick={() => decide(w, 'paid')}>
+                          Mark paid
                         </button>
                         <button
                           className="ibtn danger"

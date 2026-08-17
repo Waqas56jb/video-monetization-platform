@@ -242,7 +242,7 @@ export default function EarningsTab() {
                   <td>{shortDate(w.requested_at)}</td>
                   <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{tzs(w.amount_tzs)}</td>
                   <td>{w.method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}</td>
-                  <td>{w.payout_phone || '—'}</td>
+                  <td>{w.phone || w.payout_phone || '—'}</td>
                   <td>
                     <span className={`pill ${PILL[w.status] ?? ''}`}>
                       {STATUS_LABEL[w.status] || w.status}

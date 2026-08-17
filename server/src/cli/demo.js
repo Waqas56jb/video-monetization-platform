@@ -767,6 +767,49 @@ async function seed() {
     log.warn(`premiere job skipped: ${err.message}`)
   }
 
+  /**
+   * A payout sitting in the admin queue.
+   *
+   * Demo balances are hundreds or thousands of shillings; the platform default
+   * minimum is 50,000. Without lowering that for the catalogue, the creator
+   * form refuses every request and the admin withdrawals tab is empty — the
+   * journey the client asked to be shown cannot start.
+   */
+  const payoutSettings = await getSettings({ fresh: true })
+  if (Number(payoutSettings.min_withdrawal_tzs) >= 50_000) {
+    await query('update platform_settings set min_withdrawal_tzs = $1 where id = 1', [1000])
+    log.info('minimum withdrawal TZS 1,000 so demo balances can request a payout')
+  }
+  const rich = await one(
+    `select p.id, p.full_name,
+            coalesce((select sum(creator_tzs) from earnings e where e.creator_id = p.id), 0)::int as lifetime,
+            coalesce((select sum(amount_tzs) from withdrawals w
+                       where w.creator_id = p.id and w.status in ('paid','pending')), 0)::int as taken
+       from profiles p
+      where p.email like 'demo.%@mtonyo.demo' and p.role = 'creator'
+      order by 3 desc
+      limit 1`
+  )
+  const available = Number(rich?.lifetime || 0) - Number(rich?.taken || 0)
+  const minNow = Number((await getSettings({ fresh: true })).min_withdrawal_tzs || 1000)
+  if (rich && available >= minNow) {
+    const queued = await one(
+      `select id from withdrawals where creator_id = $1 and status = 'pending'`,
+      [rich.id]
+    )
+    if (!queued) {
+      const amount = Math.min(available, Math.max(minNow, 1000))
+      await query(
+        `insert into withdrawals (creator_id, amount_tzs, method, phone, note)
+         values ($1,$2,'mpesa','0712345678','mtonyo-demo pending payout')`,
+        [rich.id, amount]
+      )
+      log.ok(`pending withdrawal TZS ${amount.toLocaleString()} for ${rich.full_name}`)
+    }
+  } else if (rich) {
+    log.warn(`no pending withdrawal seeded — ${rich.full_name} has TZS ${available.toLocaleString()} available`)
+  }
+
   await status()
   console.log('')
   console.log('  sign in with any of these (same password for all demo accounts):')
