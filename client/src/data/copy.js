@@ -169,7 +169,6 @@ export const ACCESS_OPTIONS = [
 export const CATEGORIES = [
   'Films', 'Series', 'Music', 'Concerts', 'Comedy',
   'Documentaries', 'Sports', 'Podcasts', 'Courses', 'Behind the Scenes',
-  'Food',
 ]
 
 /** The same list, under the name the landing page has always called it. */

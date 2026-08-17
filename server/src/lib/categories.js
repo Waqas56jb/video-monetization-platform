@@ -3,17 +3,17 @@
  * category.
  *
  * The client reported seeing both "Documentaries" and "Documentary" in the
- * filters. The dropdowns were never the problem — every one of them is built
- * from a single list in the front end. The problem was that nothing stopped
- * other values reaching the database: the API validated `category` as any
- * string up to 60 characters, so whatever was written stayed written, and
- * Explore appends any unrecognised value it finds so that content categorised
- * before the fixed list existed does not silently vanish. Two spellings in the
- * table became two chips on the screen.
+ * filters, then an eleventh "Food" chip that was never on their ten-item list.
+ * The dropdowns were never the problem — every one of them is built from a
+ * single list in the front end. The problem was that nothing stopped other
+ * values reaching the database: the API validated `category` as any string up
+ * to 60 characters, so whatever was written stayed written, and Explore used
+ * to append any unrecognised value it found. Two spellings in the table became
+ * two chips on the screen.
  *
  * Constraining it here closes the door the values came through. Anything not on
  * the list is mapped if we recognise it and rejected if we do not, so the
- * database cannot drift again.
+ * database cannot drift again. Cooking how-tos map to Courses.
  */
 
 export const CATEGORIES = [
@@ -27,7 +27,6 @@ export const CATEGORIES = [
   'Podcasts',
   'Courses',
   'Behind the Scenes',
-  'Food',
 ]
 
 /**
@@ -56,9 +55,10 @@ const ALIASES = {
   tutorial: 'Courses',
   tutorials: 'Courses',
   bts: 'Behind the Scenes',
-  cooking: 'Food',
-  recipe: 'Food',
-  recipes: 'Food',
+  food: 'Courses',
+  cooking: 'Courses',
+  recipe: 'Courses',
+  recipes: 'Courses',
 }
 
 const BY_SQUASHED = new Map(CATEGORIES.map((c) => [squash(c), c]))

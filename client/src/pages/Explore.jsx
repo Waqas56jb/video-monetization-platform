@@ -46,9 +46,6 @@ export default function Explore() {
 
   const debounced = useDebounced(query, 300)
 
-  // Categories come from what is actually published, so a filter never offers
-  // something that would return nothing.
-  const categories = useApi(() => api.videos.categories(), [])
   const results = useApi(
     () => api.videos.list({ q: debounced, category, access, sort, limit: 48 }),
     [debounced, category, access, sort]
@@ -59,19 +56,15 @@ export default function Explore() {
   const filtered = Boolean(query || category || access)
 
   /**
-   * The ten canonical categories always show, in the same order as the
-   * homepage. This list used to be built purely from whatever strings existed
-   * in the database, which is why the two screens never agreed.
+   * The ten canonical categories, in the same order as the homepage.
    *
-   * Anything already in the database that is not canonical is appended rather
-   * than dropped — content categorised before the fixed list existed stays
-   * reachable instead of quietly disappearing from the filters.
+   * This list used to be built from whatever strings existed in the database,
+   * which is why Documentaries and Documentary both appeared, and why Food
+   * showed up as an eleventh chip the client never asked for. Extras are not
+   * appended: unknown values stay reachable under All, but they cannot mint
+   * a new pill.
    */
-  const categoryChips = useMemo(() => {
-    const fromDb = (categories.data?.categories || []).map((c) => c.category).filter(Boolean)
-    const extras = fromDb.filter((c) => !CATEGORIES.includes(c))
-    return ['', ...CATEGORIES, ...extras]
-  }, [categories.data])
+  const categoryChips = useMemo(() => ['', ...CATEGORIES], [])
 
   const reset = () => {
     setQuery('')
