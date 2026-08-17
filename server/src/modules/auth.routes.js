@@ -241,6 +241,11 @@ router.post(
   requireAuth(),
   asyncHandler(async (req, res) => {
     if (req.user.role === 'admin') throw badRequest('Admins already have full access')
+    if (req.user.role === 'sub_admin') {
+      throw forbidden(
+        'A sub-admin cannot become a creator — that would remove staff access. Use a viewer account.'
+      )
+    }
     if (req.user.role === 'creator') return res.json(shape(req.user, null))
 
     const profile = await transaction(

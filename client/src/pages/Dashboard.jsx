@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { Home, Menu } from 'lucide-react'
+import { Home, Menu, ShieldAlert } from 'lucide-react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
 import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
@@ -16,7 +16,7 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { DASH_TITLES } from '@/data/copy'
 import NotificationBell from '@/components/dashboard/NotificationBell'
 import { useAuth } from '@/context/AuthContext'
-import { Skeleton } from '@/components/ui/States'
+import { Skeleton, EmptyState } from '@/components/ui/States'
 
 /** Which tabs each role is allowed to open. */
 const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
@@ -91,6 +91,7 @@ export default function Dashboard() {
   const allowed = TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer
   const home = HOME_TAB[safeRole] || 'library'
   const requested = params.get('tab')
+  const denied = Boolean(requested) && !allowed.includes(requested)
   const tab = allowed.includes(requested) ? requested : home
 
   // Greet the person who is actually signed in, not a name from a data file.
@@ -188,6 +189,19 @@ export default function Dashboard() {
           </div>
 
           <div className="dash-body">
+            {denied ? (
+              <EmptyState
+                icon={ShieldAlert}
+                title="You don't have access to this"
+                message="That screen is for a different kind of account. Typing the address does not open it — the API refuses the same request."
+                action={
+                  <button className="btn btn-gold" type="button" onClick={() => selectTab(home)}>
+                    Go to your dashboard
+                  </button>
+                }
+              />
+            ) : (
+              <>
             {tab === 'overview' && <OverviewTab />}
             {tab === 'library' && <LibraryTab />}
             {tab === 'purchases' && <PurchasesTab />}
@@ -198,6 +212,8 @@ export default function Dashboard() {
             {tab === 'analytics' && <AnalyticsTab />}
             {tab === 'profile' && <ProfileTab />}
             {tab === 'settings' && <SettingsTab />}
+              </>
+            )}
           </div>
         </main>
       </div>

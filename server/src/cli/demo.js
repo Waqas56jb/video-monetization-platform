@@ -424,6 +424,61 @@ async function demoAdmin() {
   return admin
 }
 
+/**
+ * A sub-admin who can review and moderate, and nothing else.
+ *
+ * Without this account the role matrix cannot be shown: every tester is either
+ * the administrator (who can open everything) or a creator/viewer (who cannot
+ * sign into the control centre). Rehema holds review, moderation and videos so
+ * typing /users or /withdrawals is a real 403, not a missing login.
+ */
+const MODERATOR_MODULES = ['review', 'moderation', 'videos']
+
+async function seedModerator(admin) {
+  const email = DEMO_EMAIL('moderator')
+  const name = 'Rehema Mushi'
+  let profile = await one('select * from profiles where lower(email) = $1', [email])
+
+  if (!profile) {
+    profile = await transaction(
+      async (client) => {
+        const authUser = await createAuthUser(
+          { email, password: DEMO_PASSWORD, fullName: name },
+          client
+        )
+        const { rows } = await client.query(
+          `insert into profiles (id, email, full_name, role)
+           values ($1,$2,$3,'sub_admin') returning *`,
+          [authUser.id, email, name]
+        )
+        return rows[0]
+      },
+      { actorRole: 'admin', actorId: admin.id }
+    )
+    log.ok(`sub-admin ${name}`)
+  } else {
+    await setAuthPassword(profile.id, DEMO_PASSWORD).catch(() => {})
+    if (profile.role !== 'sub_admin') {
+      await query(`update profiles set role = 'sub_admin' where id = $1`, [profile.id])
+    }
+    log.info(`sub-admin ${name} already exists (password reset to demo default)`)
+  }
+
+  await transaction(
+    async (client) => {
+      await client.query('delete from staff_permissions where user_id = $1', [profile.id])
+      for (const module of MODERATOR_MODULES) {
+        await client.query(
+          `insert into staff_permissions (user_id, module, granted_by)
+           values ($1, $2::staff_module, $3)`,
+          [profile.id, module, admin.id]
+        )
+      }
+    },
+    { actorRole: 'admin', actorId: admin.id }
+  )
+}
+
 /* ======================================================================
    SEED
    ====================================================================== */
@@ -476,6 +531,9 @@ async function seed() {
     creators[c.slug] = profile
     log.ok(`creator ${c.name}`)
   }
+
+  /* ------------------------------------------ a limited sub-admin -------- */
+  await seedModerator(admin)
 
   /* ------------------------------------------------------- the videos ---- */
   const made = []
@@ -862,6 +920,7 @@ async function seed() {
   console.log(`    password:  ${DEMO_PASSWORD}`)
   for (const c of CREATORS) console.log(`    creator:   ${DEMO_EMAIL(c.slug)}`)
   console.log(`    viewer:    ${DEMO_EMAIL('viewer')}`)
+  console.log(`    sub-admin: ${DEMO_EMAIL('moderator')}  (review + moderation + videos only)`)
   console.log('')
   log.ok('demo content is live — it went through the same flow as real content')
   log.info('remove it any time with: npm run demo:clear')

@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate, Link } from 'react-router-dom'
+import { AlertTriangle } from 'lucide-react'
 import { ToastProvider, useToast } from '@/context/ToastContext'
 import { ConfirmProvider } from '@/context/ConfirmContext'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
@@ -25,24 +26,50 @@ import AdsTab from '@/components/tabs/AdsTab'
 import AuditTab from '@/components/tabs/AuditTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
 
-/** Routes only an administrator may open; a sub-admin is sent back to safety. */
+/** Routes only an administrator may open; a sub-admin is sent a refusal, not the screen. */
 function AdminOnly({ children }) {
   const { isAdmin } = useAuth()
-  return isAdmin ? children : <Navigate to="/dashboard" replace />
+  return isAdmin ? (
+    children
+  ) : (
+    <Forbidden
+      title="Administrators only"
+      message="Sub-admins cannot view or change accounts. The API answers 403 to the same request."
+    />
+  )
 }
 
 /**
  * A route a sub-admin only opens if they hold the module.
  *
  * The sidebar already hides these, but a bookmark, a back button or a typed URL
- * reaches the route directly — and landing on a screen where every request is
- * refused looks like the platform is broken rather than like a permission they
- * were not given. The server refuses those requests either way; this is about
- * where the person ends up.
+ * reaches the route directly. Landing on a screen where every request is
+ * refused looks like the platform is broken. Show the same refusal the API
+ * would — 403 — rather than silently bouncing them to the dashboard.
  */
 function Needs({ module, children }) {
   const { can } = useAuth()
-  return can(module) ? children : <Navigate to="/dashboard" replace />
+  return can(module) ? (
+    children
+  ) : (
+    <Forbidden
+      title="You cannot open this"
+      message={`You do not have the "${module}" permission. Ask an administrator to grant it. The API answers 403 to the same request.`}
+    />
+  )
+}
+
+function Forbidden({ title, message }) {
+  return (
+    <div className="state-block bad" role="alert">
+      <AlertTriangle size={26} />
+      <b>{title}</b>
+      <p>{message}</p>
+      <Link className="btn btn-ghost btn-sm" to="/dashboard">
+        Back to dashboard
+      </Link>
+    </div>
+  )
 }
 
 function Router() {
