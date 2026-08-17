@@ -76,7 +76,8 @@ export default async function handler(req, res) {
       if (r.ok) {
         const body = await r.json()
         video = body?.video || null
-        cardUrl = body?.cardUrl ? `${API}${body.cardUrl}` : `${API}/api/share/${encodeURIComponent(slug)}/card`
+        const slugKey = video?.slug || slug
+        cardUrl = `${origin}/og/${encodeURIComponent(slugKey)}.jpg`
       }
     } catch {
       /* Preview is a nicety; the page still boots. */
@@ -89,6 +90,7 @@ export default async function handler(req, res) {
   if (video) {
     const creator = video.creator?.name || video.creatorName
     const title = video.title
+    const ogTitle = `Watch "${title}" on MTONYO+`
     const description = creator
       ? `${creator} on MTONYO+. Watch the free preview, then pay to continue.`
       : 'Watch the free preview on MTONYO+, then pay to continue.'
@@ -100,21 +102,25 @@ export default async function handler(req, res) {
     html = setMeta(html, 'name', 'description', description)
     html = setMeta(html, 'property', 'og:site_name', 'MTONYO+')
     html = setMeta(html, 'property', 'og:type', 'website')
-    html = setMeta(html, 'property', 'og:title', title)
+    html = setMeta(html, 'property', 'og:title', ogTitle)
     html = setMeta(html, 'property', 'og:description', description)
     html = setMeta(html, 'property', 'og:url', canonical)
     html = setMeta(html, 'name', 'twitter:card', 'summary_large_image')
-    html = setMeta(html, 'name', 'twitter:title', title)
+    html = setMeta(html, 'name', 'twitter:title', ogTitle)
     html = setMeta(html, 'name', 'twitter:description', description)
 
     if (cardUrl) {
       html = setMeta(html, 'property', 'og:image', cardUrl)
+      html = setMeta(html, 'property', 'og:image:url', cardUrl)
       html = setMeta(html, 'property', 'og:image:secure_url', cardUrl)
       html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
       html = setMeta(html, 'property', 'og:image:width', '1200')
       html = setMeta(html, 'property', 'og:image:height', '630')
       html = setMeta(html, 'property', 'og:image:alt', title)
       html = setMeta(html, 'name', 'twitter:image', cardUrl)
+      if (!/rel=["']image_src["']/.test(html)) {
+        html = html.replace('</head>', `<link rel="image_src" href="${escapeAttr(cardUrl)}">\n</head>`)
+      }
     }
   } else {
     html = setMeta(html, 'property', 'og:url', canonical)

@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/og/:slug.jpg",
+      "destination": "/api/og?slug=:slug.jpg"
+    },
+    {
+      "source": "/og/:slug",
+      "destination": "/api/og?slug=:slug"
+    },
+    {
       "source": "/watch/:slug",
       "destination": "/api/watch?slug=:slug"
     },

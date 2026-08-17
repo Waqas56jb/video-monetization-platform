@@ -7,7 +7,22 @@ import { thumbnailFor } from '../services/entitlement.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 
+import { slugFallbacks } from '../lib/videoKey.js'
+
 const router = Router()
+
+async function videoByKey(key) {
+  const keys = slugFallbacks(key)
+  return one(
+    `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
+       from videos v
+       join profiles p on p.id = v.creator_id
+       left join creator_profiles cp on cp.user_id = v.creator_id
+      where v.deleted_at is null
+        and (v.id::text = $1 or v.slug = any($2::text[]))`,
+    [key, keys]
+  )
+}
 
 /**
  * Everything a creator needs to promote one video.
@@ -28,14 +43,7 @@ router.get(
   '/:id',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await one(
-      `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
-         from videos v
-         join profiles p on p.id = v.creator_id
-         left join creator_profiles cp on cp.user_id = v.creator_id
-        where (v.id::text = $1 or v.slug = $1) and v.deleted_at is null`,
-      [req.params.id]
-    )
+    const video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
 
     const isOwner = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
@@ -50,7 +58,7 @@ router.get(
     const text = video.creator_name
       ? `${title} by ${video.creator_name}. Watch the free preview on MTONYO+.`
       : `Watch the free preview of "${title}" on MTONYO+.`
-    const cardUrl = `/api/share/${encodeURIComponent(pathKey)}/card`
+    const cardUrl = `/api/share/${encodeURIComponent(pathKey)}/card.jpg`
 
     // The 60s promo clip, public so social platforms can fetch it.
     let clip = null
@@ -129,56 +137,54 @@ router.get(
  * JWTs are hundreds of characters, WhatsApp truncates them, and the card
  * renders as a bare URL. This path stays short, returns a real JPEG, and
  * signs Cloudflare on the server so the crawler never has to.
+ *
+ * `.jpg` on the path matters: WhatsApp often ignores an image URL that
+ * looks like an API route.
  */
-router.get(
-  '/:id/card',
-  asyncHandler(async (req, res) => {
-    const video = await one(
-      `select id, slug, cloudflare_uid, preview_uid, custom_thumbnail_url, thumbnail_url,
-              is_published, review_status, deleted_at
-         from videos
-        where (id::text = $1 or slug = $1) and deleted_at is null`,
-      [req.params.id]
-    )
-    if (!video) throw notFound('Video not found')
-    if (!(video.is_published && video.review_status === 'approved')) {
-      throw notFound('Video not found')
-    }
+async function sendShareCard(req, res) {
+  const video = await videoByKey(String(req.params.id || '').replace(/\.jpe?g$/i, ''))
+  if (!video) throw notFound('Video not found')
+  if (!(video.is_published && video.review_status === 'approved')) {
+    throw notFound('Video not found')
+  }
 
-    const sendFrom = async (url) => {
-      const img = await fetch(url, { redirect: 'follow' })
-      if (!img.ok) return false
-      const type = (img.headers.get('content-type') || '').split(';')[0]
-      if (!/^image\//i.test(type) && type !== 'application/octet-stream') return false
-      const buf = Buffer.from(await img.arrayBuffer())
-      if (!buf.length) return false
-      res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
-      res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
-      res.send(buf)
-      return true
-    }
+  const sendFrom = async (url) => {
+    const img = await fetch(url, { redirect: 'follow' })
+    if (!img.ok) return false
+    const type = (img.headers.get('content-type') || '').split(';')[0]
+    if (!/^image\//i.test(type) && type !== 'application/octet-stream') return false
+    const buf = Buffer.from(await img.arrayBuffer())
+    if (!buf.length) return false
+    res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
+    res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+    res.set('Content-Disposition', 'inline; filename="poster.jpg"')
+    res.send(buf)
+    return true
+  }
 
-    if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
-      if (await sendFrom(video.custom_thumbnail_url).catch(() => false)) return
-    }
+  if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
+    if (await sendFrom(video.custom_thumbnail_url).catch(() => false)) return
+  }
 
-    const posterUid = video.preview_uid || video.cloudflare_uid
-    if (posterUid && capabilities.signedPlayback) {
-      const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
-      const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
-      if (await sendFrom(src).catch(() => false)) return
-    }
+  const posterUid = video.preview_uid || video.cloudflare_uid
+  if (posterUid && capabilities.signedPlayback) {
+    const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
+    const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
+    if (await sendFrom(src).catch(() => false)) return
+  }
 
-    if (video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
-      if (await sendFrom(video.thumbnail_url).catch(() => false)) return
-    }
+  if (video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
+    if (await sendFrom(video.thumbnail_url).catch(() => false)) return
+  }
 
-    const brand = `${env.publicWebUrl}/icons/icon-512.png`
-    if (await sendFrom(brand).catch(() => false)) return
+  const brand = `${env.publicWebUrl}/icons/icon-512.png`
+  if (await sendFrom(brand).catch(() => false)) return
 
-    throw notFound('No poster available')
-  })
-)
+  throw notFound('No poster available')
+}
+
+router.get('/:id/card.jpg', asyncHandler(sendShareCard))
+router.get('/:id/card', asyncHandler(sendShareCard))
 
 /** Force the preview and promo clips to be generated (or regenerated). */
 router.post(

@@ -7,6 +7,14 @@ import { getSettings } from '../services/settings.js'
 import * as cf from '../lib/cloudflare.js'
 import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { capabilities } from '../config/env.js'
+import { slugFallbacks } from '../lib/videoKey.js'
+
+async function videoByKey(key) {
+  return one(
+    `select * from videos where (id::text = $1 or slug = any($2::text[])) and deleted_at is null`,
+    [key, slugFallbacks(key)]
+  )
+}
 
 const router = Router()
 
@@ -60,10 +68,7 @@ router.get(
   '/:id/playback',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await one(
-      `select * from videos where (id::text = $1 or slug = $1) and deleted_at is null`,
-      [req.params.id]
-    )
+    const video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
 
     const isOwnerOrAdmin = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
@@ -190,11 +195,7 @@ router.put(
     if (!req.user) return res.status(202).json({ saved: false, reason: 'not signed in' })
 
     const seconds = Math.max(0, Math.floor(Number(req.body?.seconds) || 0))
-    const video = await one(
-      `select id, duration_seconds from videos
-        where (id::text = $1 or slug = $1) and deleted_at is null`,
-      [req.params.id]
-    )
+    const video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
 
     // Cap at the running time; a player occasionally reports a position slightly
@@ -231,11 +232,7 @@ router.get(
   '/:id/thumbnail',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await one(
-      `select id, cloudflare_uid, thumbnail_url, creator_id, is_published, review_status, deleted_at
-         from videos where id::text = $1 or slug = $1`,
-      [req.params.id]
-    )
+    const video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
 
     // An unpublished video's poster is as private as the video itself.

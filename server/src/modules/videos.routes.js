@@ -13,6 +13,7 @@ import { env, capabilities } from '../config/env.js'
 import { ensureClips } from './playback.routes.js'
 import { storeImage, removeImage } from '../services/uploads.js'
 import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
+import { slugFallbacks } from '../lib/videoKey.js'
 
 const router = Router()
 
@@ -655,10 +656,13 @@ router.get(
   asyncHandler(async (req, res) => {
     const key = req.params.idOrSlug
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)
+    const keys = slugFallbacks(key)
 
     const row = await one(
-      `${SELECT_PUBLIC} where ${isUuid ? 'v.id = $1' : 'v.slug = $1'} and v.deleted_at is null`,
-      [key]
+      `${SELECT_PUBLIC} where v.deleted_at is null and (${
+        isUuid ? 'v.id = $1' : 'v.id::text = $1 or v.slug = any($2::text[])'
+      })`,
+      isUuid ? [key] : [key, keys]
     )
     if (!row) throw notFound('Video not found')
 
