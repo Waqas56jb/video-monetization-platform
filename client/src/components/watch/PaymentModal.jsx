@@ -42,6 +42,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
   const [phone, setPhone] = useState('')
   const [error, setError] = useState(null)
   const [payment, setPayment] = useState(null)
+  const [needGesture, setNeedGesture] = useState(false)
   const polling = useRef(null)
 
   useLockBodyScroll(open)
@@ -57,29 +58,38 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
    * the timer is created once, when payment settles, and survives.
    */
   const unlockRef = useRef(onUnlocked)
+  const handedOff = useRef(false)
   useEffect(() => {
     unlockRef.current = onUnlocked
   }, [onUnlocked])
 
+  const handOff = () => {
+    if (handedOff.current) return
+    handedOff.current = true
+    unlockRef.current?.()
+  }
+
   /**
    * Paying is the decision. Watching should not need a second one.
    *
-   * This screen used to stop on "Unlocked" and wait for a "Watch it now" tap
-   * before doing anything, so the viewer confirmed a purchase they had already
-   * made. The handover happens on its own now: the success state is shown long
-   * enough to read, then the page reloads its playback and carries on from
-   * where the preview stopped.
-   *
-   * The buttons stay. They are the fallback for the case this cannot control —
-   * a browser that will not start media without a fresh gesture, several
-   * seconds having passed while the provider settled. In that case the player
-   * is already unlocked and showing its own play control, which is a smaller
-   * ask than sending somebody back through a modal.
+   * Success used to sit on "Watch it now" even after the page already unlocked
+   * itself, so the viewer confirmed a purchase they had already made. The
+   * handover now runs on its own after a beat long enough to read "Unlocked".
+   * The gold button is only a fallback if that handover did not close the
+   * modal — some browsers will not start media without a fresh tap.
    */
   useEffect(() => {
-    if (step !== 'done') return
-    const t = setTimeout(() => unlockRef.current?.(), 1200)
-    return () => clearTimeout(t)
+    if (step !== 'done') {
+      setNeedGesture(false)
+      handedOff.current = false
+      return
+    }
+    const go = setTimeout(handOff, 900)
+    const fallback = setTimeout(() => setNeedGesture(true), 3500)
+    return () => {
+      clearTimeout(go)
+      clearTimeout(fallback)
+    }
   }, [step])
 
   useEffect(() => {
@@ -88,6 +98,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
     setStep('form')
     setError(null)
     setPayment(null)
+    setNeedGesture(false)
     clearInterval(polling.current)
   }, [open])
 
@@ -97,10 +108,15 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
   // waiting on a prompt, where closing would look like the payment vanished.
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && step !== 'waiting' && onClose()
+    const onKey = (e) => e.key === 'Escape' && step !== 'waiting' && (step === 'done' ? handOff() : onClose())
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, step, onClose])
+
+  const dismiss = () => {
+    if (step === 'done') handOff()
+    else onClose()
+  }
 
   const watch = (paymentId) => {
     clearInterval(polling.current)
@@ -171,10 +187,10 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
   // Android / iOS / desktop (fixed + ancestor transform = wrong box).
   return createPortal(
     <div className="modal open pay-modal" role="dialog" aria-modal="true" aria-label="Unlock this video">
-      <div className="modal-bg" onClick={() => step !== 'waiting' && onClose()} />
+      <div className="modal-bg" onClick={() => step !== 'waiting' && dismiss()} />
       <div className="modal-card pay-card">
         {step !== 'waiting' && (
-          <button className="modal-x" onClick={onClose} aria-label="Close">
+          <button className="modal-x" onClick={dismiss} aria-label="Close">
             <X />
           </button>
         )}
@@ -295,14 +311,24 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
               <b>{video.title}</b> stays in your library, on any device you sign in to.
             </p>
             <p className="pay-sub">Starting where the preview stopped…</p>
-            <button className="btn btn-gold btn-block" onClick={onUnlocked}>
-              <Play />
-              Watch it now
-            </button>
-            <button className="btn btn-ghost btn-block" onClick={onGoToLibrary}>
-              <Library />
-              Go to my library
-            </button>
+            {needGesture ? (
+              <>
+                <button className="btn btn-gold btn-block" onClick={handOff}>
+                  <Play />
+                  Watch it now
+                </button>
+                <button className="btn btn-ghost btn-block" onClick={onGoToLibrary}>
+                  <Library />
+                  Go to my library
+                </button>
+              </>
+            ) : (
+              <div className="pay-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
           </div>
         )}
 
