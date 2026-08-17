@@ -8,14 +8,12 @@ import {
   Clock,
   Eye,
   Flag,
-  LayoutDashboard,
-  Library,
   Lock,
   Share2,
   Timer,
   Zap,
 } from 'lucide-react'
-import Logo from '@/components/ui/Logo'
+import Header from '@/components/layout/Header'
 import StreamPlayer from '@/components/watch/StreamPlayer'
 import AdBreak from '@/components/watch/AdBreak'
 import LockGate from '@/components/watch/LockGate'
@@ -707,24 +705,9 @@ export default function Watch() {
 }
 
 function Shell({ children }) {
-  const navigate = useNavigate()
   return (
     <div className="page">
-      <header className="scrolled watch-header">
-        <div className="container nav">
-          <Logo />
-          <div className="nav-cta watch-cta">
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard')}>
-              <Library />
-              <span className="btn-label">My Library</span>
-            </button>
-            <button className="btn btn-gold btn-sm" onClick={() => navigate('/dashboard')}>
-              <LayoutDashboard />
-              <span className="btn-label">Dashboard</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header solid />
       {children}
     </div>
   )

@@ -650,7 +650,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 
 /* ---------- WATCH / PAYWALL ---------- */
 /* Medium theatre by default — fullscreen is the player's own control. */
-.watch-wrap{width:min(840px,100%);max-width:840px;margin:0 auto;padding:96px 20px 64px}
+.watch-wrap{width:min(840px,100%);max-width:840px;margin:0 auto;padding:calc(var(--header-h) + 24px) 20px 64px}
 .player{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border2);box-shadow:var(--shadow);background:#000}
 .player>img{width:100%;height:min(56vw,560px);object-fit:cover;opacity:.85}
 .player-top{position:absolute;top:0;left:0;right:0;padding:20px 24px;background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);display:flex;justify-content:space-between;align-items:center;z-index:3;gap:12px}
@@ -779,10 +779,14 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .testi-grid{grid-template-columns:1fr 1fr}
   .foot-grid{grid-template-columns:1fr 1fr}
 }
-@media(max-width:900px){
+/* Six section links wrap below ~1200px and the sticky bar grows over the
+   heading the click was meant to reveal. Fold them into the hamburger first. */
+@media(max-width:1200px){
   .nav-links{display:none}
-  .nav-cta-login{display:none}
   .hamburger{display:inline-flex}
+}
+@media(max-width:900px){
+  .nav-cta-login{display:none}
   .hero-grid{grid-template-columns:1fr;gap:48px;text-align:center}
   .hero-sub{margin-inline:auto}
   .hero-actions{justify-content:center;margin-inline:auto;flex-direction:column;align-items:stretch;max-width:420px}
@@ -954,7 +958,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .hero h1{letter-spacing:-1px}
   .hero-sub{font-size:17px}
   .cta-wrap{border-radius:24px}
-  .watch-wrap{padding:92px 16px 60px}
+  .watch-wrap{padding:calc(var(--header-h) + 22px) 16px 60px}
   .panel{padding:22px}
   .feat{padding:28px 24px}
   .testi{padding:26px}
@@ -1289,7 +1293,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* watch page */
 .watch-header .nav{padding-block:12px}
 @media(max-width:768px){
-  .watch-wrap{padding-top:calc(84px + env(safe-area-inset-top))}
+  .watch-wrap{padding-top:calc(var(--header-h) + 18px + env(safe-area-inset-top))}
   .watch-actions{width:100%}
   .watch-actions .btn{flex:1}
   .creator-row{padding:14px 16px}
@@ -1350,7 +1354,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .player-top{padding:10px 14px}
   .player-bar{padding:10px 14px 12px}
   .watch-header .nav{padding-block:8px}
-  .watch-wrap{padding-top:70px;padding-bottom:40px}
+  .watch-wrap{padding-top:calc(var(--header-h) + 16px);padding-bottom:40px}
 }
 
 /* =========================================================================

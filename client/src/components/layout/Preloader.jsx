@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
+/** After the first route has painted, in-app clicks must not flash a black screen. */
+let appBooted = false
+
 /**
  * Short brand splash for non-landing routes.
  * Landing mounts immediately with its own brief overlay — never waits on assets.
@@ -8,11 +11,12 @@ import { useLocation } from 'react-router-dom'
 export default function Preloader() {
   const { pathname } = useLocation()
   const [hide, setHide] = useState(false)
-  const [gone, setGone] = useState(false)
-  const skip = pathname === '/'
+  const [gone, setGone] = useState(() => pathname === '/' || appBooted)
+  const skip = pathname === '/' || appBooted
 
   useEffect(() => {
     if (skip) {
+      appBooted = true
       setGone(true)
       return
     }
@@ -42,6 +46,7 @@ export default function Preloader() {
 
   useEffect(() => {
     if (!hide) return
+    appBooted = true
     const t = setTimeout(() => setGone(true), 380)
     return () => clearTimeout(t)
   }, [hide])

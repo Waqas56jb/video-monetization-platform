@@ -1,10 +1,14 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { scrollWhenReady } from '@/hooks/useSectionLink'
 
 /**
- * Jump to the top on route changes. Hash links (#trending) scroll to the
- * section with a short smooth scroll — without forcing smooth on every wheel
- * tick via `html { scroll-behavior }`, which makes the whole site stutter.
+ * Jump to the top on route changes. Hash links (#trending) wait for that
+ * section to exist, then park it below the sticky header.
+ *
+ * If the hash is set but the section is not on this page yet (homepage still
+ * mounting), do not fall back to scrollTop 0 — that is the black hero flash
+ * the client saw after tapping Trending from Explore or Watch.
  */
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -12,11 +16,8 @@ export default function ScrollToTop() {
   useEffect(() => {
     if (hash) {
       const id = hash.replace('#', '')
-      const el = id ? document.getElementById(id) : null
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        return
-      }
+      if (id) scrollWhenReady(id)
+      return
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [pathname, hash])

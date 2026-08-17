@@ -13,19 +13,24 @@ import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
 
+/** First paint of `/` this session — later visits must not flash a black overlay. */
+let homeBooted = false
+
 /**
  * Marketing homepage — mounts immediately so mobile never spins on
  * remote fonts/images. A short splash sits on top and always clears.
  */
 export default function Landing() {
-  const [splash, setSplash] = useState(true)
   const { hash } = useLocation()
+  const [splash, setSplash] = useState(() => !homeBooted && !hash)
 
   useEffect(() => {
+    homeBooted = true
+    if (!splash) return
     // Always clear — never gate on Unsplash / fonts (slow or blocked on mobile).
     const t = setTimeout(() => setSplash(false), 380)
     return () => clearTimeout(t)
-  }, [])
+  }, [splash])
 
   /**
    * Arriving at /#features — from another page, or from a shared link — has to

@@ -318,6 +318,7 @@ export const FOOTER_LINKS = {
     { label: 'How It Works', hash: '#how' },
     { label: 'Features', hash: '#features' },
     { label: 'For Creators', hash: '#creators' },
+    { label: 'Stories', hash: '#stories' },
   ],
   account: [
     { label: 'Sign Up Free', to: '/signup' },

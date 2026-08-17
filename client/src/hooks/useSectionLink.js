@@ -81,10 +81,12 @@ export default function useSectionLink() {
       const onLanding = pathname === '/'
 
       if (!onLanding) {
-        // Carry the section in the URL so a shared link lands in the right place
-        // too, then let the landing page's own handler take it from there.
+        // Carry the section in the URL so a shared link lands in the right
+        // place too. Do not scroll here — this page has no such section, and
+        // polling on Watch/Explore while the homepage is still mounting is
+        // what left people on a black hero. Landing + ScrollToTop wait until
+        // the heading exists, then park it below the sticky header.
         navigate(`/#${id}`)
-        scrollWhenReady(id)
         return
       }
 

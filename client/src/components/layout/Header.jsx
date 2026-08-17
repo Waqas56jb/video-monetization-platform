@@ -16,8 +16,8 @@ const NAV_LINKS = [
   { section: 'stories', label: 'Stories' },
 ]
 
-/** Landing-page header: transparent at top, frosted glass once scrolled. */
-export default function Header() {
+/** Public header: transparent at top of the homepage, frosted once scrolled. */
+export default function Header({ solid = false }) {
   const scrolled = useScrolled(40)
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -26,7 +26,7 @@ export default function Header() {
 
   return (
     <>
-      <header className={scrolled ? 'scrolled' : ''}>
+      <header className={solid || scrolled ? 'scrolled' : ''}>
         <div className="container nav">
           <Logo />
           <nav className="nav-links">
