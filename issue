@@ -16,17 +16,17 @@
 16: Full mobile testing — Done
 17: Duplicate categories removed — DONE
 18: Errors and retry — Done
-19: Roles server-side 403 — VERIFY
-20: Admin-only verified badge — VERIFY
+19: Roles server-side 403 — Done
+20: Admin-only verified badge — Done
 21: Homepage repetition kept — DONE
 22: Point-by-point report — DONE
-23: More Like This row — REFIX
-24: Share must sell content — REFIX
-25: Website claims must work — VERIFY
+23: More Like This row — Done
+24: Share must sell content — DONE
+25: Website claims must work — DONE
 
 Short count
-DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 21, 22
-REFIX: 23, 24
-VERIFY: 19, 20, 25
+DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
+REFIX:
+VERIFY:
 Later: 11
 
