@@ -61,14 +61,17 @@ router.get(
       : `Watch the free preview of "${title}" on MTONYO+.`
     const cardUrl = `/api/share/${encodeURIComponent(pathKey)}/card.jpg`
 
-    // The 60s promo clip, public so social platforms can fetch it.
+    // The 60s promo clip, public so Instagram / TikTok can be handed a file.
+    // WhatsApp still gets the watch URL only — attaching this MP4 there
+    // replaces the Open Graph card with a raw video.
     let clip = null
     if (video.social_clip_uid && capabilities.cloudflareStream) {
       const urls = cf.playbackUrls(video.social_clip_uid)
+      const mp4 = await cf.ensureMp4Download(video.social_clip_uid).catch(() => null)
       clip = {
         uid: video.social_clip_uid,
-        // A real MP4 the app can download and hand to the share sheet as a file
-        downloadUrl: `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
+        downloadUrl: mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
+        downloadReady: mp4?.status === 'ready',
         hls: urls.hls,
         thumbnailUrl: urls.thumbnail,
         durationSeconds: Math.min(60, video.duration_seconds || 60),

@@ -174,6 +174,37 @@ export async function createClip({ uid, startSeconds, endSeconds, requireSignedU
   })
 }
 
+/**
+ * Cloudflare does not publish `/downloads/default.mp4` until this is turned
+ * on for that uid. Without it the 60-second promo exists as a stream and
+ * 404s as a file — which is exactly the Auto Social Preview claim failing.
+ */
+export async function ensureMp4Download(uid) {
+  if (!uid) return null
+  const read = async () => {
+    try {
+      return await cf(`/stream/${uid}/downloads`)
+    } catch {
+      return null
+    }
+  }
+  let info = await read()
+  if (!info?.default) {
+    try {
+      info = await cf(`/stream/${uid}/downloads`, { method: 'POST' })
+    } catch (err) {
+      log.warn('mp4 download enable failed:', err.message)
+      info = await read()
+    }
+  }
+  const def = info?.default || info
+  if (!def) return null
+  return {
+    status: def.status || null,
+    url: def.url || `https://videodelivery.net/${uid}/downloads/default.mp4`,
+  }
+}
+
 /** Create a signing key. Run once; store the id + PEM in .env. */
 export async function createSigningKey() {
   const result = await cf('/stream/keys', { method: 'POST' })

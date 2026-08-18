@@ -348,7 +348,10 @@ export async function ensureClips(videoId) {
       name: `${video.title} — 60s promo`,
     })
     results.social = clip?.uid
-    if (clip?.uid) await query('update videos set social_clip_uid = $2 where id = $1', [video.id, clip.uid])
+    if (clip?.uid) {
+      await query('update videos set social_clip_uid = $2 where id = $1', [video.id, clip.uid])
+      await cf.ensureMp4Download(clip.uid).catch(() => {})
+    }
   }
 
   return results

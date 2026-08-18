@@ -24,7 +24,7 @@ const PERKS = [
   {
     icon: 'clapperboard',
     title: 'Auto social previews',
-    text: 'Every upload gets a 60-second clip to share on Instagram, TikTok and WhatsApp.',
+    text: 'Every upload gets a 60-second clip you can save for Instagram and TikTok.',
   },
 ]
 

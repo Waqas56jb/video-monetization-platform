@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Copy, Facebook, Film, Loader2, MessageCircle, Share2, X } from 'lucide-react'
+import { Check, Copy, Download, Facebook, Film, Loader2, MessageCircle, Share2, X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import api from '@/lib/api'
 
 /**
  * Share the watch URL so WhatsApp / Facebook / X can draw the Open Graph card.
@@ -19,6 +20,7 @@ export default function ShareSheet({ open, video, onClose }) {
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState(null)
+  const [clip, setClip] = useState(null)
   const closeRef = useRef(null)
   const copyTimer = useRef(null)
 
@@ -38,6 +40,26 @@ export default function ShareSheet({ open, video, onClose }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  useEffect(() => {
+    if (!open || !slug) return
+    let stop = false
+    const load = () =>
+      api.share
+        .payload(slug)
+        .then((body) => {
+          if (!stop) setClip(body?.clip || null)
+        })
+        .catch(() => {
+          if (!stop) setClip(null)
+        })
+    load()
+    const retry = setTimeout(load, 4000)
+    return () => {
+      stop = true
+      clearTimeout(retry)
+    }
+  }, [open, slug])
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
@@ -163,9 +185,21 @@ export default function ShareSheet({ open, video, onClose }) {
           </button>
         )}
 
+        {clip?.downloadUrl && (
+          <a
+            className="btn btn-ghost btn-block"
+            href={clip.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Download />
+            {clip.downloadReady ? 'Save 60s clip' : 'Prepare 60s clip'}
+          </a>
+        )}
+
         <p className="share-note">
-          This is the video&apos;s permanent address. Copy it or send it — it opens this exact
-          video on phone and desktop.
+          WhatsApp, Facebook and X get the card above. The 60-second clip is for Instagram
+          and TikTok — save it, then post it there.
         </p>
       </div>
     </div>,

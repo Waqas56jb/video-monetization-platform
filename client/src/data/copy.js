@@ -230,13 +230,13 @@ export const FEATURES = [
     icon: 'smartphone-nfc',
     tone: 'green',
     title: 'Fast, Secure & Flexible Payments',
-    text: "Mobile money, cards and digital payments. Verified in seconds, and the video unlocks instantly — tied to the customer's own account.",
+    text: "Mobile money. Verified in seconds, and the video unlocks instantly — tied to the customer's own account.",
     delay: 2,
   },
   {
     icon: 'clapperboard',
     title: 'Auto Social Previews',
-    text: 'Every upload automatically generates a 60-second promotional clip, ready to share to Instagram, TikTok, Facebook and WhatsApp with one tap.',
+    text: 'Every upload automatically generates a 60-second promotional clip you can save for Instagram and TikTok. WhatsApp and Facebook get the video card from the link.',
   },
   {
     icon: 'link-2',
@@ -279,7 +279,7 @@ export const PLATFORM_POWERS = [
     text:
       'You set the price, the free preview and the paid period — per video, not once for your whole channel. Viewers pay with the money already on their phone.',
     tone: 'gold',
-    points: ['Pay Once & Paid Premiere', 'You Set the Free Preview', 'Mobile Money, Cards & Digital'],
+    points: ['Pay Once & Paid Premiere', 'You Set the Free Preview', 'M-Pesa and Airtel Money'],
   },
   {
     key: 'grow',

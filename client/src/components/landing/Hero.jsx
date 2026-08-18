@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { CreditCard, PlayCircle, Rocket, Smartphone, Wallet } from 'lucide-react'
+import { PlayCircle, Rocket, Smartphone, Wallet } from 'lucide-react'
 import CountUp from '@/components/ui/CountUp'
 import Icon from '@/components/ui/Icon'
 import PhoneMockup from './PhoneMockup'
@@ -117,7 +117,7 @@ export default function Hero() {
       tone: 'is-green',
       icon: 'shield-check',
       title: 'Instant Unlock',
-      body: 'Mobile Money • Cards • Digital Payments',
+      body: 'M-Pesa • Airtel Money',
     },
     {
       cls: 'fc2',
@@ -197,28 +197,22 @@ export default function Hero() {
           </div>
 
           {/**
-           * Payments, described by what the viewer can do rather than by which
-           * companies we happen to have connected.
+           * What a viewer can actually pay with on this build.
            *
-           * The old line named M-Pesa and Airtel Money specifically, which reads
-           * as a limit — and dates the page the moment a third method is added.
+           * Cards and a live AirPay gateway are Milestone 3. Naming them here
+           * advertised a method the pay sheet does not offer.
            */}
           <div className="hero-pay">
             <b>Fast, Secure &amp; Flexible Payments</b>
             <div className="hero-pay-methods">
               <span>
                 <Smartphone size={15} />
-                Mobile Money
-              </span>
-              <i aria-hidden="true">•</i>
-              <span>
-                <CreditCard size={15} />
-                Cards
+                M-Pesa
               </span>
               <i aria-hidden="true">•</i>
               <span>
                 <Wallet size={15} />
-                Digital Payments
+                Airtel Money
               </span>
             </div>
           </div>
