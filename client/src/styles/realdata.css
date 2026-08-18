@@ -606,6 +606,20 @@
   .pay-method { padding: 11px 10px; }
   .pay-method b { font-size: 12.5px; }
 }
+/* Phone: bottom sheet so the number field and Pay stay above the keyboard. */
+@media (max-width: 720px) {
+  .pay-modal.modal.open {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .pay-modal .pay-card {
+    width: 100%;
+    max-width: none;
+    border-radius: 22px 22px 0 0;
+    max-height: min(92dvh, 100%);
+    padding: 22px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}
 @media (max-height: 560px) and (orientation: landscape) {
   .pay-modal.modal.open {
     align-items: flex-start;

@@ -329,13 +329,23 @@ export default function UploadTab({ onSubmitted }) {
                   <AlertTriangle size={16} style={{ flexShrink: 0 }} />
                   <div>
                     <span>{error}</span>
-                    <button
-                      type="button"
-                      className="form-error-retry"
-                      onClick={() => document.getElementById('creator-upload-file')?.click()}
-                    >
-                      Try again
-                    </button>
+                    {/* iOS ignores programmatic .click() on a visually hidden
+                        file input. Retry the same file when we still have it;
+                        otherwise the label opens Camera Roll the same way the
+                        drop zone does. */}
+                    {file ? (
+                      <button
+                        type="button"
+                        className="form-error-retry"
+                        onClick={() => start(file)}
+                      >
+                        Try again
+                      </button>
+                    ) : (
+                      <label htmlFor="creator-upload-file" className="form-error-retry">
+                        Try again
+                      </label>
+                    )}
                   </div>
                 </div>
               )}
