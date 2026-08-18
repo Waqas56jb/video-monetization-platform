@@ -1,30 +1,21 @@
 /**
  * Per-video link previews for /watch/:slug.
  *
- * The site advertises "Auto Social Previews", and until now that claim was not
- * true. This is a Vite single-page app: every route is served the same static
- * `index.html`, and the per-video `document.title` in Watch.jsx is written by
- * React after the bundle has run. WhatsApp, Facebook and X do not run the
- * bundle. They read the HTML they are handed, so every shared video produced
- * the same generic card — platform title, platform description, and an
- * `og:image` of `/icons/icon-512.png` that was a root-relative path where the
- * Open Graph spec requires an absolute URL, so the card had no picture either.
+ * WhatsApp / Facebook / X do not run JavaScript. They read the HTML we return.
+ * The SPA shell is noisy (comments that mention og:image, default platform
+ * tags, fonts). WhatsApp Desktop then often gives up and shows only the domain.
  *
- * The fix is to serve the same shell with the right tags already in it. This
- * function takes the deployed `index.html`, asks the API what the video is, and
- * rewrites the handful of meta tags that a preview card reads. Nothing about
- * the app changes — the same bundle boots on the same markup.
- *
- * Both crawlers and people get the identical response, so there is no cloaking
- * to go stale or get penalised. The cost of the extra hop is paid once per
- * video: the response is cacheable at the edge by URL, and the URL already
- * contains the slug.
+ * Crawlers get a tiny document with only the video's Open Graph tags — same
+ * title, description and poster a person would see. Browsers still get the app.
  */
 
 const API =
   process.env.VITE_API_URL ||
   process.env.API_URL ||
   'https://video-monetization-platform-backend.vercel.app'
+
+const CRAWLER =
+  /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot/i
 
 const escapeAttr = (s) =>
   String(s == null ? '' : s)
@@ -33,11 +24,6 @@ const escapeAttr = (s) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
 
-/**
- * Replace a meta tag's content, or add the tag when the shell does not carry
- * one. Matching on the whole tag rather than just the value keeps this working
- * if the attribute order in index.html ever changes.
- */
 function setMeta(html, attr, key, value) {
   if (!value) return html
   const tag = `<meta ${attr}="${key}" content="${escapeAttr(value)}">`
@@ -46,17 +32,103 @@ function setMeta(html, attr, key, value) {
   return html.replace('</head>', `${tag}\n</head>`)
 }
 
-export default async function handler(req, res) {
-  const host = req.headers['x-forwarded-host'] || req.headers.host
-  const proto = req.headers['x-forwarded-proto'] || 'https'
-  const origin = `${proto}://${host}`
-
-  const slug =
+function slugFrom(req) {
+  return (
     (req.query && (req.query.slug || req.query.videoId)) ||
     String(req.url || '')
       .split('?')[0]
       .replace(/^\/watch\//, '')
       .replace(/\/$/, '')
+  )
+}
+
+async function loadVideo(slug) {
+  if (!slug) return null
+  try {
+    const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(2500),
+    })
+    if (!r.ok) return null
+    const body = await r.json()
+    return body?.video || null
+  } catch {
+    return null
+  }
+}
+
+function cardFor(origin, video, slug) {
+  const key = video?.slug || slug
+  return key ? `${origin}/og/${encodeURIComponent(key)}.jpg` : null
+}
+
+function previewCopy(video) {
+  const title = video?.title || 'MTONYO+'
+  const creator = video?.creator?.name || video?.creatorName
+  const description = creator
+    ? `Watch the free preview - ${creator} - MTONYO+`
+    : 'Watch the free preview on MTONYO+'
+  return { title, description }
+}
+
+function crawlerDocument({ origin, canonical, title, description, image }) {
+  const img = image
+    ? `<meta property="og:image" content="${escapeAttr(image)}">
+<meta property="og:image:url" content="${escapeAttr(image)}">
+<meta property="og:image:secure_url" content="${escapeAttr(image)}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${escapeAttr(`${title} - Watch free preview on MTONYO+`)}">
+<meta name="twitter:image" content="${escapeAttr(image)}">
+<link rel="image_src" href="${escapeAttr(image)}">`
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${escapeAttr(title)} - MTONYO+</title>
+<meta name="description" content="${escapeAttr(description)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MTONYO+">
+<meta property="og:title" content="${escapeAttr(title)}">
+<meta property="og:description" content="${escapeAttr(description)}">
+<meta property="og:url" content="${escapeAttr(canonical)}">
+${img}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeAttr(title)}">
+<meta name="twitter:description" content="${escapeAttr(description)}">
+<link rel="canonical" href="${escapeAttr(canonical)}">
+</head>
+<body>
+<h1>${escapeAttr(title)}</h1>
+<p>${escapeAttr(description)}</p>
+<p><a href="${escapeAttr(canonical)}">Watch the free preview on MTONYO+</a></p>
+</body>
+</html>`
+}
+
+export default async function handler(req, res) {
+  const host = req.headers['x-forwarded-host'] || req.headers.host
+  const proto = req.headers['x-forwarded-proto'] || 'https'
+  const origin = `${proto}://${host}`
+  const slug = slugFrom(req)
+  const canonical = `${origin}/watch/${slug}`
+  const ua = req.headers['user-agent'] || ''
+  const video = await loadVideo(slug)
+  const { title, description } = previewCopy(video)
+  const image = cardFor(origin, video, slug)
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8')
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
+
+  if (CRAWLER.test(ua)) {
+    res.status(200)
+    return res.end(
+      crawlerDocument({ origin, canonical, title, description, image })
+    )
+  }
 
   let shell
   try {
@@ -68,70 +140,38 @@ export default async function handler(req, res) {
     return res.end()
   }
 
-  let video = null
-  let cardUrl = null
-  if (slug) {
-    try {
-      const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`)
-      if (r.ok) {
-        const body = await r.json()
-        video = body?.video || null
-        const slugKey = video?.slug || slug
-        cardUrl = `${origin}/og/${encodeURIComponent(slugKey)}.jpg`
-      }
-    } catch {
-      /* Preview is a nicety; the page still boots. */
-    }
+  // Comments in the shell mention og:image; some preview parsers trip on that.
+  let html = shell.replace(/<!--[\s\S]*?-->/g, '')
+  html = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    `<title>${escapeAttr(title)} - MTONYO+</title>`
+  )
+  html = setMeta(html, 'name', 'description', description)
+  html = setMeta(html, 'property', 'og:site_name', 'MTONYO+')
+  html = setMeta(html, 'property', 'og:type', 'website')
+  html = setMeta(html, 'property', 'og:title', title)
+  html = setMeta(html, 'property', 'og:description', description)
+  html = setMeta(html, 'property', 'og:url', canonical)
+  html = setMeta(html, 'name', 'twitter:card', 'summary_large_image')
+  html = setMeta(html, 'name', 'twitter:title', title)
+  html = setMeta(html, 'name', 'twitter:description', description)
+
+  if (image) {
+    html = setMeta(html, 'property', 'og:image', image)
+    html = setMeta(html, 'property', 'og:image:url', image)
+    html = setMeta(html, 'property', 'og:image:secure_url', image)
+    html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
+    html = setMeta(html, 'property', 'og:image:width', '1200')
+    html = setMeta(html, 'property', 'og:image:height', '630')
+    html = setMeta(html, 'property', 'og:image:alt', `${title} - Watch free preview on MTONYO+`)
+    html = setMeta(html, 'name', 'twitter:image', image)
   }
 
-  let html = shell
-  const canonical = `${origin}/watch/${slug}`
-
-  if (video) {
-    const creator = video.creator?.name || video.creatorName
-    const title = video.title
-    const ogTitle = title
-    const description = creator
-      ? `Watch the free preview · ${creator} · MTONYO+`
-      : 'Watch the free preview on MTONYO+'
-
+  if (!/rel=["']canonical["']/.test(html)) {
     html = html.replace(
-      /<title>[\s\S]*?<\/title>/i,
-      `<title>${escapeAttr(title)} — MTONYO+</title>`
+      '</head>',
+      `<link rel="canonical" href="${escapeAttr(canonical)}">\n</head>`
     )
-    html = setMeta(html, 'name', 'description', description)
-    html = setMeta(html, 'property', 'og:site_name', 'MTONYO+')
-    html = setMeta(html, 'property', 'og:type', 'website')
-    html = setMeta(html, 'property', 'og:title', ogTitle)
-    html = setMeta(html, 'property', 'og:description', description)
-    html = setMeta(html, 'property', 'og:url', canonical)
-    if (!/rel=["']canonical["']/.test(html)) {
-      html = html.replace(
-        '</head>',
-        `<link rel="canonical" href="${escapeAttr(canonical)}">\n</head>`
-      )
-    }
-    html = setMeta(html, 'name', 'twitter:card', 'summary_large_image')
-    html = setMeta(html, 'name', 'twitter:title', ogTitle)
-    html = setMeta(html, 'name', 'twitter:description', description)
-
-    if (cardUrl) {
-      html = setMeta(html, 'property', 'og:image', cardUrl)
-      html = setMeta(html, 'property', 'og:image:url', cardUrl)
-      html = setMeta(html, 'property', 'og:image:secure_url', cardUrl)
-      html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
-      html = setMeta(html, 'property', 'og:image:width', '1200')
-      html = setMeta(html, 'property', 'og:image:height', '630')
-      html = setMeta(html, 'property', 'og:image:alt', `${title} — Watch free preview on MTONYO+`)
-      html = setMeta(html, 'itemprop', 'image', cardUrl)
-      html = setMeta(html, 'name', 'twitter:image', cardUrl)
-      if (!/rel=["']image_src["']/.test(html)) {
-        html = html.replace('</head>', `<link rel="image_src" href="${escapeAttr(cardUrl)}">\n</head>`)
-      }
-    }
-  } else {
-    html = setMeta(html, 'property', 'og:url', canonical)
-    html = setMeta(html, 'property', 'og:type', 'website')
   }
 
   html = html.replace(
@@ -139,8 +179,6 @@ export default async function handler(req, res) {
     `$1${origin}$2$3`
   )
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=86400')
   res.status(200)
   return res.end(html)
 }
