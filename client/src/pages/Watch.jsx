@@ -68,6 +68,7 @@ export default function Watch() {
   const lastReported = useRef(0)
   const watchedTo = useRef(0)
   const [resumeHint, setResumeHint] = useState(0)
+  const [justPaid, setJustPaid] = useState(false)
 
   /**
    * Advertising on a Free + Ads video.
@@ -100,8 +101,8 @@ export default function Watch() {
    */
   const accessReady = Boolean(p) && !playback.loading
   const locked = accessReady ? !p.access?.canWatchFull : false
-  const owned = accessReady && !locked
-  const needsPayment = locked && Number(v?.priceTzs || 0) > 0
+  const owned = justPaid || (accessReady && !locked)
+  const needsPayment = locked && Number(v?.priceTzs || 0) > 0 && !justPaid
   const signedIn = Boolean(getAccessToken())
 
   // A shared link should preview sensibly, and the tab should say what it is.
@@ -129,6 +130,7 @@ export default function Watch() {
   useEffect(() => {
     setPreviewOver(false)
     setPayOpen(false)
+    setJustPaid(false)
     setResumeHint(0)
     lastReported.current = 0
     watchedTo.current = 0
@@ -285,18 +287,10 @@ export default function Watch() {
   }, [v?.id])
 
   const onUnlocked = useCallback(async () => {
+    setJustPaid(true)
     setPayOpen(false)
     setPreviewOver(false)
 
-    /**
-     * Carry on from where the preview stopped rather than restarting the film.
-     *
-     * `stopsAtSeconds` is the floor: even if the player never reported a time, the
-     * preview cannot have run past the point the server cut it at. This is
-     * written to the server BEFORE reloading playback, so the reload comes back
-     * already knowing where to resume — and so a refresh, or the same account on
-     * another device, resumes there too.
-     */
     const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
     const from = Math.max(watchedTo.current, stopsAt)
     setResumeHint(from)
@@ -307,8 +301,8 @@ export default function Watch() {
 
     showToast(
       from > 5
-        ? `Unlocked — picking up from ${duration(Math.floor(from))}`
-        : 'Unlocked — it is in your library now'
+        ? `Unlocked — continuing from ${duration(Math.floor(from))}`
+        : 'Unlocked — continuing the video'
     )
     playback.reload()
     video.reload({ quiet: true })
@@ -462,7 +456,8 @@ export default function Watch() {
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
                 startAt={resumeAt}
-                playOnReady={owned && resumeAt > 0}
+                autoplay={justPaid}
+                playOnReady={justPaid}
                 onEnded={() => {
                   if (needsPayment) {
                     setPreviewOver(true)
@@ -692,10 +687,6 @@ export default function Watch() {
         video={v}
         onClose={() => setPayOpen(false)}
         onUnlocked={onUnlocked}
-        onGoToLibrary={() => {
-          setPayOpen(false)
-          navigate('/dashboard')
-        }}
       />
     </Shell>
   )

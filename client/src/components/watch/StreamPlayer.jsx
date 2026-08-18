@@ -79,8 +79,8 @@ export default function StreamPlayer({
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   const iframeSrc = useMemo(
-    () => (src ? buildSrc(src, poster, autoplay, startAt, controls) : null),
-    [src, poster, autoplay, startAt, controls]
+    () => (src ? buildSrc(src, poster, autoplay || playOnReady, startAt, controls) : null),
+    [src, poster, autoplay, playOnReady, startAt, controls]
   )
 
   const markReady = () => setReady(true)
@@ -103,6 +103,7 @@ export default function StreamPlayer({
     if (!iframeSrc) return
     let player = null
     let alive = true
+    let kickTimer = null
 
     loadSdk().then((Stream) => {
       if (!alive || !Stream || !frame.current) return
@@ -140,12 +141,26 @@ export default function StreamPlayer({
 
         if (playOnReady) {
           let tried = false
-          player.addEventListener('canplay', () => {
-            if (tried) return
+          const kick = () => {
+            if (!alive || tried) return
             tried = true
-            // Autoplay may be refused; that is fine, the position is already right.
-            Promise.resolve(player.play?.()).catch(() => {})
-          })
+            Promise.resolve(player.play?.())
+              .then(() => {
+                try {
+                  if ('muted' in player) player.muted = false
+                } catch {
+                  /* some embeds ignore unmute */
+                }
+              })
+              .catch(() => {})
+          }
+          player.addEventListener('canplay', kick)
+          player.addEventListener('loadeddata', kick)
+          // Play click is already several seconds old by the time payment
+          // settles; muted autoplay in the iframe URL is what actually starts
+          // it. This kick covers the case where Stream was ready before we
+          // attached the listeners.
+          kickTimer = setTimeout(kick, 400)
         }
       } catch {
         /* iframe still plays */
@@ -155,6 +170,7 @@ export default function StreamPlayer({
     return () => {
       alive = false
       player = null
+      if (kickTimer) clearTimeout(kickTimer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iframeSrc])

@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
-  BadgeCheck,
   FlaskConical,
-  Library,
-  Play,
   Smartphone,
   X,
   Zap,
@@ -32,17 +29,16 @@ const METHODS = [
   { value: 'airtel', label: 'Airtel Money', hint: 'Airtel' },
 ]
 
-export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToLibrary }) {
+export default function PaymentModal({ open, video, onClose, onUnlocked }) {
   // Only ask while the dialog is open; there is no reason to poll otherwise.
   const { data: platform } = useApi(() => api.stats.platform(), [open], { skip: !open })
   const isSandbox = platform?.paymentProvider === 'sandbox'
 
-  const [step, setStep] = useState('form') // form | waiting | done | failed
+  const [step, setStep] = useState('form') // form | waiting | failed
   const [method, setMethod] = useState('mpesa')
   const [phone, setPhone] = useState('')
   const [error, setError] = useState(null)
   const [payment, setPayment] = useState(null)
-  const [needGesture, setNeedGesture] = useState(false)
   const [simulateAs, setSimulateAs] = useState('success')
   const polling = useRef(null)
 
@@ -64,43 +60,26 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
     unlockRef.current = onUnlocked
   }, [onUnlocked])
 
+  /**
+   * Paying is the decision. Watching must not need a second one.
+   *
+   * The client rejected an Unlocked / Watch it now screen after success. As
+   * soon as the provider confirms, close this sheet and continue the same
+   * video from the preview stop. No extra tap.
+   */
   const handOff = () => {
     if (handedOff.current) return
     handedOff.current = true
     unlockRef.current?.()
   }
 
-  /**
-   * Paying is the decision. Watching should not need a second one.
-   *
-   * Success used to sit on "Watch it now" even after the page already unlocked
-   * itself, so the viewer confirmed a purchase they had already made. The
-   * handover now runs on its own after a beat long enough to read "Unlocked".
-   * The gold button is only a fallback if that handover did not close the
-   * modal — some browsers will not start media without a fresh tap.
-   */
-  useEffect(() => {
-    if (step !== 'done') {
-      setNeedGesture(false)
-      handedOff.current = false
-      return
-    }
-    const go = setTimeout(handOff, 900)
-    const fallback = setTimeout(() => setNeedGesture(true), 3500)
-    return () => {
-      clearTimeout(go)
-      clearTimeout(fallback)
-    }
-  }, [step])
-
   useEffect(() => {
     if (open) return
-    // Reset once it has closed, so reopening starts clean.
     setStep('form')
     setError(null)
     setPayment(null)
-    setNeedGesture(false)
     setSimulateAs('success')
+    handedOff.current = false
     clearInterval(polling.current)
   }, [open])
 
@@ -110,14 +89,13 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
   // waiting on a prompt, where closing would look like the payment vanished.
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && step !== 'waiting' && (step === 'done' ? handOff() : onClose())
+    const onKey = (e) => e.key === 'Escape' && step !== 'waiting' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, step, onClose])
 
   const dismiss = () => {
-    if (step === 'done') handOff()
-    else onClose()
+    onClose()
   }
 
   const watch = (paymentId) => {
@@ -132,7 +110,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
 
         if (res.unlocked || res.payment?.status === 'success') {
           clearInterval(polling.current)
-          setStep('done')
+          handOff()
           return
         }
         if (['failed', 'cancelled', 'expired'].includes(res.payment?.status)) {
@@ -326,38 +304,6 @@ export default function PaymentModal({ open, video, onClose, onUnlocked, onGoToL
             <small className="pay-note">
               Keep this page open — it unlocks the moment the payment clears.
             </small>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------- done */}
-        {step === 'done' && (
-          <div className="pay-done">
-            <span className="pay-ic good">
-              <BadgeCheck />
-            </span>
-            <h3>Unlocked</h3>
-            <p className="pay-sub">
-              <b>{video.title}</b> stays in your library, on any device you sign in to.
-            </p>
-            <p className="pay-sub">Starting where the preview stopped…</p>
-            {needGesture ? (
-              <>
-                <button className="btn btn-gold btn-block" onClick={handOff}>
-                  <Play />
-                  Watch it now
-                </button>
-                <button className="btn btn-ghost btn-block" onClick={onGoToLibrary}>
-                  <Library />
-                  Go to my library
-                </button>
-              </>
-            ) : (
-              <div className="pay-dots" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
           </div>
         )}
 
