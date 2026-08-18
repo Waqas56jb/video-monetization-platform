@@ -26,7 +26,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
-  const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.jpg` : ''
+  const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.png` : ''
   const creator = video?.creator?.name
 
   useEffect(() => {

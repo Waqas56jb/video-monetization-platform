@@ -153,17 +153,25 @@ async function sendShareCard(req, res) {
   }
 
   const sendFrom = async (url) => {
-    const img = await fetch(url, { redirect: 'follow' })
-    if (!img.ok) return false
-    const type = (img.headers.get('content-type') || '').split(';')[0]
-    if (!/^image\//i.test(type) && type !== 'application/octet-stream') return false
-    const buf = Buffer.from(await img.arrayBuffer())
-    if (!buf.length) return false
-    res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
-    res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
-    res.set('Content-Disposition', 'inline; filename="poster.jpg"')
-    res.send(buf)
-    return true
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const img = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000) })
+        if (!img.ok) continue
+        const type = (img.headers.get('content-type') || '').split(';')[0]
+        if (!/^image\//i.test(type) && type !== 'application/octet-stream') continue
+        const buf = Buffer.from(await img.arrayBuffer())
+        if (!buf.length) continue
+        if (/png/i.test(type) && buf.length < 80_000) continue
+        res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
+        res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+        res.set('Content-Disposition', 'inline; filename="poster.jpg"')
+        res.send(buf)
+        return true
+      } catch {
+        /* try again */
+      }
+    }
+    return false
   }
 
   if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
@@ -180,9 +188,6 @@ async function sendShareCard(req, res) {
   if (video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
     if (await sendFrom(video.thumbnail_url).catch(() => false)) return
   }
-
-  const brand = `${env.publicWebUrl}/icons/icon-512.png`
-  if (await sendFrom(brand).catch(() => false)) return
 
   throw notFound('No poster available')
 }
