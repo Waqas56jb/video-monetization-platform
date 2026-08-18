@@ -15,7 +15,7 @@
 15: Logo and menu scroll — DONE
 16: Full mobile testing — Done
 17: Duplicate categories removed — DONE
-18: Errors and retry — VERIFY
+18: Errors and retry — Done
 19: Roles server-side 403 — VERIFY
 20: Admin-only verified badge — VERIFY
 21: Homepage repetition kept — DONE
@@ -25,8 +25,8 @@
 25: Website claims must work — VERIFY
 
 Short count
-DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 21, 22
+DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 21, 22
 REFIX: 23, 24
-VERIFY: 18, 19, 20, 25
+VERIFY: 19, 20, 25
 Later: 11
 
