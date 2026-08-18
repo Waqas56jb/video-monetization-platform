@@ -24,7 +24,7 @@ export function toCard(v, { owned = false } = {}) {
     tag: owned
       ? v.isPublished === false
         ? { cls: 'tag-owned', label: 'STILL YOURS' }
-        : { cls: 'tag-owned', label: 'OWNED' }
+        : { cls: 'tag-owned', label: 'IN LIBRARY' }
       : v.accessType === 'free_with_ads'
         ? { cls: 'tag-free', label: 'FREE + ADS' }
         : v.accessType === 'paid_premiere'
@@ -34,7 +34,7 @@ export function toCard(v, { owned = false } = {}) {
     price: owned
       ? v.isPublished === false
         ? 'Still yours'
-        : 'Owned'
+        : 'In library'
       : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
     priceNote: owned
       ? v.isPublished === false

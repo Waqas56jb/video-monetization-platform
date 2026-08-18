@@ -389,13 +389,13 @@ export default function Watch() {
   /** Why this video is playing in full — see the badge below. */
   const accessReason = (() => {
     const a = p?.access
-    if (a?.owned) return { full: 'In your library', short: 'Owned', tone: '' }
+    if (a?.owned) return { full: 'In your library', short: 'Library', tone: '' }
     if (a?.isOwner) return { full: 'Your own video', short: 'Yours', tone: 'is-note' }
     if (a?.isStaff) {
       return { full: 'Open to you as staff — not a purchase', short: 'Staff', tone: 'is-note' }
     }
     if (v?.accessType === 'free_with_ads') return { full: 'Free + Ads', short: 'Free', tone: 'is-note' }
-    return { full: 'In your library', short: 'Owned', tone: '' }
+    return { full: 'In your library', short: 'Library', tone: '' }
   })()
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(

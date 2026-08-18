@@ -147,12 +147,12 @@ export default function AnalyticsTab() {
 
       {/* ------------------------ what I have watched ------------------------ */}
       <div className="stat-grid">
-        <StatCard stat={{ icon: 'library', label: 'Videos you own', value: String(v.videosOwned) }} />
+        <StatCard stat={{ icon: 'library', label: 'In your library', value: String(v.videosOwned) }} />
         <StatCard stat={{ icon: 'coins', tone: 'gold', label: 'Total spent', value: tzs(v.spentTzs) }} />
         <StatCard
           stat={{
             icon: 'timer',
-            label: 'Watch time you own',
+            label: 'Watch time in your library',
             value: v.ownedSeconds ? duration(v.ownedSeconds) : '0:00',
           }}
         />

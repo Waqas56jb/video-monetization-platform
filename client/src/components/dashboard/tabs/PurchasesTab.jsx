@@ -17,7 +17,7 @@ export default function PurchasesTab() {
 
   const rows = data?.purchases || []
   const stats = [
-    { icon: 'library', label: 'Videos owned', value: String(data?.stats?.videosOwned ?? 0) },
+    { icon: 'library', label: 'In your library', value: String(data?.stats?.videosOwned ?? 0) },
     { icon: 'coins', tone: 'gold', label: 'Total spent', value: tzs(data?.stats?.totalSpentTzs) },
   ]
 
@@ -84,7 +84,7 @@ export default function PurchasesTab() {
                   <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{tzs(p.amountTzs)}</td>
                   <td>
                     <span className={`pill ${PILL[p.status] ?? ''}`}>
-                      {p.status === 'active' ? 'Owned' : p.status}
+                      {p.status === 'active' ? 'In library' : p.status}
                     </span>
                   </td>
                 </tr>

@@ -47,7 +47,7 @@ export default function Player({
           <span className="pill-full">
             {unlocked ? '✓ UNLOCKED · IN YOUR LIBRARY' : 'FREE PREVIEW'}
           </span>
-          <span className="pill-short">{unlocked ? '✓ OWNED' : 'PREVIEW'}</span>
+          <span className="pill-short">{unlocked ? '✓ LIBRARY' : 'PREVIEW'}</span>
         </span>
       </div>
 

@@ -359,7 +359,7 @@ export const DASH_TITLES = {
     name ? `Karibu, ${name} 👋` : 'Karibu 👋',
     "Here's how your content is performing today.",
   ],
-  library: () => ['My Library', 'Every video you own — yours to watch any time.'],
+  library: () => ['My Library', 'Every video in your library — yours to watch any time.'],
   upload: () => ['Upload New Video', 'Upload, price and submit for review — we approve within hours.'],
   videos: () => ['My Videos', 'Manage your published content and premieres.'],
   earnings: () => ['Earnings', 'Your money, transparent and withdrawable anytime.'],
