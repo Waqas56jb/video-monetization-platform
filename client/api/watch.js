@@ -77,7 +77,7 @@ export default async function handler(req, res) {
         const body = await r.json()
         video = body?.video || null
         const slugKey = video?.slug || slug
-        cardUrl = `${origin}/og/${encodeURIComponent(slugKey)}.png`
+        cardUrl = `${origin}/og/${encodeURIComponent(slugKey)}.jpg`
       }
     } catch {
       /* Preview is a nicety; the page still boots. */
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
       html = setMeta(html, 'property', 'og:image', cardUrl)
       html = setMeta(html, 'property', 'og:image:url', cardUrl)
       html = setMeta(html, 'property', 'og:image:secure_url', cardUrl)
-      html = setMeta(html, 'property', 'og:image:type', 'image/png')
+      html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
       html = setMeta(html, 'property', 'og:image:width', '1200')
       html = setMeta(html, 'property', 'og:image:height', '630')
       html = setMeta(html, 'property', 'og:image:alt', `${title} — Watch free preview on MTONYO+`)

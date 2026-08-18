@@ -26,7 +26,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
-  const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.png` : ''
+  const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.jpg` : ''
   const creator = video?.creator?.name
 
   useEffect(() => {
@@ -165,8 +165,8 @@ export default function ShareSheet({ open, video, onClose }) {
         )}
 
         <p className="share-note">
-          WhatsApp, Facebook and X draw the poster from this page. Send the link — not a caption —
-          so they get the large video card, not a tiny website icon.
+          Use WhatsApp here, or Copy link and paste it as the whole message. Extra words around
+          the link stop WhatsApp drawing the poster card.
         </p>
       </div>
     </div>,
