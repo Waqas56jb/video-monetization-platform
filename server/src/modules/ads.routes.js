@@ -7,6 +7,7 @@ import { optionalAuth } from '../middleware/auth.js'
 import { adBreaksFor, adEligibility, pickCampaign, adPayload, recordImpression } from '../services/ads.js'
 import { getSettings } from '../services/settings.js'
 import { slugFallbacks } from '../lib/videoKey.js'
+import { expireIfDue } from '../jobs/premiere.js'
 
 const router = Router()
 
@@ -20,7 +21,8 @@ const router = Router()
  */
 const videoForAds = (idOrSlug) =>
   one(
-    `select id, creator_id, category, access_type, ads_enabled, is_published, duration_seconds
+    `select id, title, creator_id, category, access_type, ads_enabled, is_published,
+            duration_seconds, premiere_ends_at
        from videos where (id::text = $1 or slug = any($2::text[])) and deleted_at is null`,
     [idOrSlug, slugFallbacks(idOrSlug)]
   )
@@ -35,8 +37,10 @@ router.get(
   '/breaks/:videoId',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await videoForAds(req.params.videoId)
+    let video = await videoForAds(req.params.videoId)
     if (!video) throw notFound('Video not found')
+
+    video = await expireIfDue(video)
 
     const { ads, reason } = await adBreaksFor({ video, userId: req.user?.id })
     res.json({ ads, reason })
@@ -53,8 +57,10 @@ router.get(
   '/preroll/:videoId',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await videoForAds(req.params.videoId)
+    let video = await videoForAds(req.params.videoId)
     if (!video) throw notFound('Video not found')
+
+    video = await expireIfDue(video)
 
     const check = await adEligibility({ video, userId: req.user?.id })
     if (!check.eligible) return res.json({ ad: null, reason: check.reason })

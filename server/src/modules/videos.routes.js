@@ -14,6 +14,7 @@ import { ensureClips } from './playback.routes.js'
 import { storeImage, removeImage } from '../services/uploads.js'
 import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 import { slugFallbacks } from '../lib/videoKey.js'
+import { expireIfDue } from '../jobs/premiere.js'
 
 const router = Router()
 
@@ -658,13 +659,15 @@ router.get(
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)
     const keys = slugFallbacks(key)
 
-    const row = await one(
+    let row = await one(
       `${SELECT_PUBLIC} where v.deleted_at is null and (${
         isUuid ? 'v.id = $1' : 'v.id::text = $1 or v.slug = any($2::text[])'
       })`,
       isUuid ? [key] : [key, keys]
     )
     if (!row) throw notFound('Video not found')
+
+    row = await expireIfDue(row)
 
     const isOwnerOrAdmin = req.user && (req.user.id === row.creator_id || req.user.role === 'admin')
     const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })

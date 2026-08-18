@@ -360,6 +360,12 @@ export default function Watch() {
   const boughtDuringPremiere =
     Boolean(p?.access?.owned && p?.access?.purchasedAt) &&
     (v.accessType === 'paid_premiere' || v.accessType === 'free_with_ads')
+  /**
+   * Native Free + Ads titles never sold. A Free + Ads film that still has
+   * unlocks is one whose 30/60/90 window closed — the conversion the homepage
+   * promises, visible without signing in.
+   */
+  const wasPremiere = v.accessType === 'free_with_ads' && Number(v.paidUnlocks || 0) > 0
 
   /**
    * Where playback actually begins.
@@ -654,6 +660,17 @@ export default function Watch() {
                     this becomes Free + Ads for everyone else.
                   </>
                 )}
+              </span>
+            </div>
+          )}
+
+          {!boughtDuringPremiere && wasPremiere && (
+            <div className="watch-assure">
+              <BadgeCheck size={15} />
+              <span>
+                This was a Paid Premiere. The window has ended — it is now <b>Free + Ads</b>. Anyone
+                can watch, the creator earns from advertising, and everyone who paid during the
+                premiere keeps it ad-free.
               </span>
             </div>
           )}

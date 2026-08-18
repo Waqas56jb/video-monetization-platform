@@ -8,6 +8,7 @@ import * as cf from '../lib/cloudflare.js'
 import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
+import { expireIfDue } from '../jobs/premiere.js'
 
 async function videoByKey(key) {
   return one(
@@ -68,8 +69,10 @@ router.get(
   '/:id/playback',
   optionalAuth(),
   asyncHandler(async (req, res) => {
-    const video = await videoByKey(req.params.id)
+    let video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
+
+    video = await expireIfDue(video)
 
     const isOwnerOrAdmin = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
     const access = await resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role })
