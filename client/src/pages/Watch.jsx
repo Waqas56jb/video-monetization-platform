@@ -632,7 +632,12 @@ export default function Watch() {
                 <span className="creator-initials">{initials(v.creator.name)}</span>
               )}
               <div>
-                <b>{v.creator.name}</b>
+                <b>
+                  {v.creator.name}
+                  {v.creator.verified && (
+                    <BadgeCheck className="verified-tick" aria-label="Verified creator" />
+                  )}
+                </b>
                 <small>{v.category || 'Creator on MTONYO+'}</small>
               </div>
             </div>

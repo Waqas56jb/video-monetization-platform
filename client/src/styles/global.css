@@ -698,7 +698,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .watch-actions{display:flex;gap:12px;flex-wrap:wrap}
 .creator-row{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border2);padding:18px 22px;border-radius:18px;margin-bottom:26px;flex-wrap:wrap}
 .creator-row img{width:54px;height:54px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)}
-.creator-row b{display:block;font-family:'Sora';font-size:16px}
+.creator-row b{display:flex;align-items:center;gap:6px;font-family:'Sora';font-size:16px}
 .creator-row small{color:var(--muted2);font-size:12.5px}
 .creator-row .btn{margin-left:auto}
 .watch-desc{color:var(--muted);font-size:14.8px;line-height:1.85;background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:24px}
@@ -2047,6 +2047,10 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* Explains a limit the creator did not choose — e.g. the preview ceiling
    that only becomes knowable once Cloudflare reports the running time. */
 .field-hint { margin: -6px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--muted2); }
+.verified-note{
+  display:flex;align-items:center;gap:8px;margin:0 0 16px;
+  font-size:13px;line-height:1.5;color:var(--gold);font-weight:600;
+}
 
 /* =========================================================================
    POLICIES — terms, privacy, creator agreement, copyright, refunds

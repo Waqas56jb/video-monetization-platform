@@ -98,7 +98,12 @@ export function publicVideo(v, access = null) {
     publishedAt: v.published_at,
     isPublished: v.is_published,
     creator: v.creator_id
-      ? { id: v.creator_id, name: v.creator_name ?? null, avatarUrl: v.creator_avatar ?? null }
+      ? {
+          id: v.creator_id,
+          name: v.creator_name ?? null,
+          avatarUrl: v.creator_avatar ?? null,
+          verified: Boolean(v.creator_verified),
+        }
       : null,
     ...(access ? { access } : {}),
   }

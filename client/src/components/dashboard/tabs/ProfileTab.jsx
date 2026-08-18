@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Camera, Check, Save, Trash2, User } from 'lucide-react'
+import { AlertTriangle, BadgeCheck, Camera, Check, Save, Trash2, User } from 'lucide-react'
 import Panel from '../Panel'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { ErrorState, Skeleton } from '@/components/ui/States'
@@ -220,6 +220,18 @@ export default function ProfileTab() {
                 <p className="field-hint">
                   Leave it empty and your full name is used. This is what viewers see.
                 </p>
+                {data?.creator?.verified ? (
+                  <p className="verified-note">
+                    <BadgeCheck size={15} aria-hidden="true" />
+                    Verified creator — granted by MTONYO+ staff. You cannot add or remove this
+                    yourself.
+                  </p>
+                ) : (
+                  <p className="field-hint">
+                    A verified tick on your videos is granted by MTONYO+ staff. It does not appear
+                    on this form.
+                  </p>
+                )}
               </>
             )}
 

@@ -73,7 +73,7 @@ async function uniqueSlug(title) {
 
 const SELECT_PUBLIC = `
   select v.*, p.full_name as creator_name, p.avatar_url as creator_avatar,
-         cp.display_name as creator_display
+         cp.display_name as creator_display, coalesce(cp.verified, false) as creator_verified
     from videos v
     join profiles p on p.id = v.creator_id
     left join creator_profiles cp on cp.user_id = v.creator_id`
