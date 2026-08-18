@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.js'
 import { requireAuth, requireCreator } from '../middleware/auth.js'
 import { getSettings, splitPercentFor } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
+import { notify } from '../services/notify.js'
 
 const router = Router()
 
@@ -77,6 +78,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const balance = await balanceFor(req.user.id)
     const splitPercent = await splitPercentFor(req.user.id)
+    const settings = await getSettings()
 
     const stats = await one(
       `select coalesce(sum(v.views),0)::int as total_views,
@@ -116,6 +118,7 @@ router.get(
     res.json({
       balance,
       splitPercent,
+      minWithdrawalTzs: settings.min_withdrawal_tzs,
       stats: {
         totalViews: stats.total_views,
         paidUnlocks: stats.paid_unlocks,
@@ -245,6 +248,17 @@ router.post(
       entityId: withdrawal.id,
       detail: { amountTzs, method },
       ip: clientIp(req),
+    })
+
+    await notify({
+      userId: req.user.id,
+      kind: 'account',
+      title: `Withdrawal of TZS ${Number(amountTzs).toLocaleString()} requested`,
+      body: 'An administrator will review it. You can cancel it from Earnings until it is decided.',
+      actor: req.user,
+      action: 'withdrawal',
+      entityType: 'withdrawal',
+      entityId: withdrawal.id,
     })
 
     res.status(201).json({

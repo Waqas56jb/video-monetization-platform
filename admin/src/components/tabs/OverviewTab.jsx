@@ -162,7 +162,7 @@ export default function OverviewTab() {
                   <tr key={w.id}>
                     <td>
                       <UserCell
-                        avatar={w.creator_avatar}
+                        avatar={w.avatar_url || w.creator_avatar}
                         name={w.creator_name || w.creator_email}
                         sub={w.creator_email}
                       />

@@ -10,7 +10,12 @@ import api from '@/lib/api'
 import { useConfirm } from '@/context/ConfirmContext'
 import { useToast } from '@/context/ToastContext'
 
-const PILL = { pending: 'pend', approved: 'ok', paid: 'ok', rejected: 'bad', cancelled: '' }
+const PILL = { pending: 'pend', paid: 'ok', rejected: 'bad' }
+const STATUS_LABEL = {
+  pending: 'Awaiting review',
+  paid: 'Paid out',
+  rejected: 'Declined',
+}
 
 /** Creator payout requests, and the decision on each. */
 export default function WithdrawalsTab() {
@@ -113,7 +118,9 @@ export default function WithdrawalsTab() {
                   <td className="money">{tzs(w.lifetime_tzs)}</td>
                   <td>{dateTime(w.requested_at)}</td>
                   <td>
-                    <span className={`pill ${PILL[w.status] ?? ''}`}>{w.status}</span>
+                    <span className={`pill ${PILL[w.status] ?? ''}`}>
+                      {STATUS_LABEL[w.status] || w.status}
+                    </span>
                   </td>
                   <td>
                     <div className="actions">

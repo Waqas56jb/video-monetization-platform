@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Banknote, Send, X } from 'lucide-react'
 import Panel from '../Panel'
 import StatCard from '../StatCard'
@@ -37,6 +37,7 @@ export default function EarningsTab() {
 
   const summary = useApi(() => api.earnings.summary(), [])
   const withdrawals = useApi(() => api.earnings.withdrawals(), [])
+  const account = useApi(() => api.account.get(), [])
 
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('mpesa')
@@ -47,6 +48,16 @@ export default function EarningsTab() {
   const balance = summary.data?.balance
   const ads = summary.data?.ads
   const rows = withdrawals.data?.withdrawals || []
+  const minWithdrawal = Number(summary.data?.minWithdrawalTzs || 0)
+  const available = Number(balance?.availableTzs || 0)
+  const canRequest = available >= Math.max(minWithdrawal, 1)
+
+  useEffect(() => {
+    const creator = account.data?.creator
+    if (!creator) return
+    if (creator.payoutPhone) setPhone((was) => was || creator.payoutPhone)
+    if (creator.payoutMethod) setMethod(creator.payoutMethod)
+  }, [account.data])
 
   const stats = [
     { icon: 'wallet', tone: 'gold', label: 'Available to withdraw', value: tzs(balance?.availableTzs) },
@@ -152,11 +163,18 @@ export default function EarningsTab() {
 
       <Panel title="Request a withdrawal">
         <form onSubmit={request} noValidate>
-          {error && (
-            <div className="form-error" role="alert">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className="form-error" role="alert">
+                {error}
+              </div>
+            )}
+
+            <p className="field-note">
+              Minimum {tzs(minWithdrawal)}. You have {tzs(available)} available.
+              {balance?.pendingWithdrawalTzs
+                ? ` ${tzs(balance.pendingWithdrawalTzs)} is already awaiting an administrator.`
+                : ''}
+            </p>
 
           <div className="form-grid">
             <Field
@@ -205,8 +223,14 @@ export default function EarningsTab() {
           <button
             className="btn btn-gold"
             type="submit"
-            disabled={busy || !balance?.availableTzs}
-            title={balance?.availableTzs ? '' : 'You have nothing to withdraw yet'}
+            disabled={busy || !canRequest}
+            title={
+              canRequest
+                ? ''
+                : available
+                  ? `The minimum withdrawal is ${tzs(minWithdrawal)}`
+                  : 'You have nothing to withdraw yet'
+            }
           >
             <Send />
             {busy ? 'Requesting…' : 'Request withdrawal'}

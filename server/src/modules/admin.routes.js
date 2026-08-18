@@ -1080,7 +1080,7 @@ router.post(
     await recordStaffAction(req, {
       action: `WITHDRAWAL_${req.body.decision.toUpperCase()}`,
       entityType: 'withdrawal', entityId: w.id,
-      summary: `${who(req)} ${req.body.decision}d a withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()}`,
+      summary: `${who(req)} ${req.body.decision === 'paid' ? 'marked paid' : 'declined'} a withdrawal of TZS ${Number(w.amount_tzs).toLocaleString()}`,
       detail: { amountTzs: w.amount_tzs },
     })
     await notify({
