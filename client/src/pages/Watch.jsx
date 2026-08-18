@@ -317,12 +317,8 @@ export default function Watch() {
   /**
    * Sharing moved into its own sheet.
    *
-   * Calling `navigator.share` straight from this button worked on a phone and
-   * did almost nothing visible on a desktop, where there is no OS share sheet:
-   * the link went to the clipboard and a toast mentioned it. That is thin
-   * feedback for the platform's main growth loop. The behaviour underneath is
-   * unchanged — same deep link, same 60-second clip attached where the browser
-   * supports files — but it is now something the person can see before sending.
+   * The sheet shares the watch URL only. A caption or a clip file made WhatsApp
+   * send a paragraph plus a tiny website icon instead of the video poster card.
    */
 
   /* ------------------------------------------------------------ shells */

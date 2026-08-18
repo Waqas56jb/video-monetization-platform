@@ -90,10 +90,10 @@ export default async function handler(req, res) {
   if (video) {
     const creator = video.creator?.name || video.creatorName
     const title = video.title
-    const ogTitle = `Watch "${title}" on MTONYO+`
+    const ogTitle = title
     const description = creator
-      ? `${creator} on MTONYO+. Watch the free preview, then pay to continue.`
-      : 'Watch the free preview on MTONYO+, then pay to continue.'
+      ? `Watch the free preview · ${creator} · MTONYO+`
+      : 'Watch the free preview on MTONYO+'
 
     html = html.replace(
       /<title>[\s\S]*?<\/title>/i,
@@ -105,6 +105,12 @@ export default async function handler(req, res) {
     html = setMeta(html, 'property', 'og:title', ogTitle)
     html = setMeta(html, 'property', 'og:description', description)
     html = setMeta(html, 'property', 'og:url', canonical)
+    if (!/rel=["']canonical["']/.test(html)) {
+      html = html.replace(
+        '</head>',
+        `<link rel="canonical" href="${escapeAttr(canonical)}">\n</head>`
+      )
+    }
     html = setMeta(html, 'name', 'twitter:card', 'summary_large_image')
     html = setMeta(html, 'name', 'twitter:title', ogTitle)
     html = setMeta(html, 'name', 'twitter:description', description)
@@ -116,7 +122,7 @@ export default async function handler(req, res) {
       html = setMeta(html, 'property', 'og:image:type', 'image/jpeg')
       html = setMeta(html, 'property', 'og:image:width', '1200')
       html = setMeta(html, 'property', 'og:image:height', '630')
-      html = setMeta(html, 'property', 'og:image:alt', title)
+      html = setMeta(html, 'property', 'og:image:alt', `${title} — Watch free preview on MTONYO+`)
       html = setMeta(html, 'name', 'twitter:image', cardUrl)
       if (!/rel=["']image_src["']/.test(html)) {
         html = html.replace('</head>', `<link rel="image_src" href="${escapeAttr(cardUrl)}">\n</head>`)

@@ -29,12 +29,16 @@ const VISUALS = {
         <span>On WhatsApp and social</span>
       </div>
       <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
-      <div className="pw-cards" aria-hidden="true">
-        <span className="pw-card is-lead">
-          <Play size={13} />
+      <div className="pw-og" aria-hidden="true">
+        <span className="pw-og-poster">
+          <Play size={18} />
         </span>
-        <span className="pw-card" />
-        <span className="pw-card" />
+        <span className="pw-og-body">
+          <span className="pw-og-brand">MTONYO+</span>
+          <b>Video title</b>
+          <small>Creator name</small>
+          <em>WATCH FREE PREVIEW</em>
+        </span>
       </div>
       <small>Opens that exact video — free preview, then pay to continue</small>
     </div>

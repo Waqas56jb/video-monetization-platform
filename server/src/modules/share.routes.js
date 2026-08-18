@@ -74,7 +74,9 @@ router.get(
       }
     }
 
-    const encoded = encodeURIComponent(`${text} ${deepLink}`)
+    // URL alone. Extra caption text makes WhatsApp send a paragraph plus a
+    // tiny webpage icon instead of fetching the Open Graph poster card.
+    const encoded = encodeURIComponent(deepLink)
 
     res.json({
       // `creator` and `description` are here for the link-preview renderer
@@ -99,15 +101,15 @@ router.get(
         native: {
           method: 'web-share',
           supportsFiles: Boolean(clip?.downloadUrl),
-          payload: { title, text, url: deepLink },
-          note: 'Use navigator.share; attach the clip file when the browser supports files',
+          payload: { url: deepLink },
+          note: 'Share the URL only so WhatsApp/Facebook/X fetch the Open Graph card',
         },
         whatsapp: { method: 'url', url: `https://wa.me/?text=${encoded}` },
         facebook: {
           method: 'url',
           url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(deepLink)}`,
         },
-        x: { method: 'url', url: `https://twitter.com/intent/tweet?text=${encoded}` },
+        x: { method: 'url', url: `https://twitter.com/intent/tweet?url=${encoded}` },
         instagram: {
           method: 'native-only',
           note: 'Instagram has no web publishing API — share the clip through the OS sheet',
@@ -121,7 +123,9 @@ router.get(
       // Consumed by the app (or an edge function) to render link previews.
       openGraph: {
         'og:title': title,
-        'og:description': text,
+        'og:description': video.creator_name
+          ? `Watch the free preview · ${video.creator_name} · MTONYO+`
+          : 'Watch the free preview on MTONYO+',
         'og:image': cardUrl,
         'og:url': deepLink,
         'og:type': 'website',
