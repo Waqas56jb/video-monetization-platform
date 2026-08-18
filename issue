@@ -11,7 +11,7 @@
 11: Homepage sponsor ads — NOT THIS MILESTONE
 12: Withdrawal full journey — Done
 13: Buyer access after unpublish — Done
-14: Remove Owned wording — REFIX
+14: Remove Owned wording — Done
 15: Logo and menu scroll — DONE
 16: Full mobile testing — VERIFY
 17: Duplicate categories removed — DONE
@@ -25,8 +25,8 @@
 25: Website claims must work — VERIFY
 
 Short count
-DONE: 1, 2, 3, 4, 15, 17, 21, 22
-REFIX: 5, 6, 8, 14, 23, 24
-VERIFY: 7, 9, 10, 12, 13, 16, 18, 19, 20, 25
+DONE: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 17, 21, 22
+REFIX: 23, 24
+VERIFY: 16, 18, 19, 20, 25
 Later: 11
 
