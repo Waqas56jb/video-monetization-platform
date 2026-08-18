@@ -33,6 +33,7 @@ export default function App() {
         {/* deep link: a shared URL opens that exact video's watch & buy page */}
         <Route path="/watch" element={<Watch />} />
         <Route path="/watch/:videoId" element={<Watch />} />
+        <Route path="/s/:videoId" element={<Watch />} />
 
         {/* Terms, privacy, the creator agreement, copyright and refunds. */}
         <Route path="/legal" element={<Navigate to="/legal/terms" replace />} />

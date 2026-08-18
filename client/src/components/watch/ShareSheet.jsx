@@ -25,7 +25,7 @@ export default function ShareSheet({ open, video, onClose }) {
   useLockBodyScroll(open)
 
   const slug = video?.slug || video?.id || ''
-  const url = video ? `${window.location.origin}/watch/${slug}` : ''
+  const url = video ? `${window.location.origin}/s/${slug}` : ''
   const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.jpg` : ''
   const creator = video?.creator?.name
 

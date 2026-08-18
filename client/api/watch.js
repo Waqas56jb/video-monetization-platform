@@ -33,13 +33,18 @@ function setMeta(html, attr, key, value) {
 }
 
 function slugFrom(req) {
-  return (
-    (req.query && (req.query.slug || req.query.videoId)) ||
-    String(req.url || '')
-      .split('?')[0]
-      .replace(/^\/watch\//, '')
-      .replace(/\/$/, '')
-  )
+  const q = req.query || {}
+  if (q.slug || q.videoId) return q.slug || q.videoId
+  return String(req.url || '')
+    .split('?')[0]
+    .replace(/^\/s\//, '')
+    .replace(/^\/watch\//, '')
+    .replace(/\/$/, '')
+}
+
+function publicPath(req, slug) {
+  const share = String((req.query && req.query.share) || '') === '1'
+  return `${share ? '/s' : '/watch'}/${slug}`
 }
 
 async function loadVideo(slug) {
@@ -114,7 +119,7 @@ export default async function handler(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'https'
   const origin = `${proto}://${host}`
   const slug = slugFrom(req)
-  const canonical = `${origin}/watch/${slug}`
+  const canonical = `${origin}${publicPath(req, slug)}`
   const ua = req.headers['user-agent'] || ''
   const video = await loadVideo(slug)
   const { title, description } = previewCopy(video)

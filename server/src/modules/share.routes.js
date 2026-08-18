@@ -53,7 +53,7 @@ router.get(
 
     // The deep link: opens this exact video's watch & purchase page.
     const pathKey = video.slug || video.id
-    const deepLink = `${env.publicWebUrl}/watch/${pathKey}`
+    const deepLink = `${env.publicWebUrl}/s/${pathKey}`
     const title = video.title
     const text = video.creator_name
       ? `${title} by ${video.creator_name}. Watch the free preview on MTONYO+.`

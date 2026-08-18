@@ -13,6 +13,10 @@
       "destination": "/api/og?slug=:slug"
     },
     {
+      "source": "/s/:slug",
+      "destination": "/api/watch?slug=:slug&share=1"
+    },
+    {
       "source": "/watch/:slug",
       "destination": "/api/watch?slug=:slug"
     },
