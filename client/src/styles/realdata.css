@@ -293,6 +293,7 @@
 }
 .stream-fallback svg { color: var(--gold); }
 .stream-fallback p { margin: 0; max-width: 360px; font-size: 13.5px; line-height: 1.55; }
+.stream-fallback .btn { pointer-events: auto; }
 .stream-fallback-overlay {
   position: absolute;
   inset: 0;
@@ -306,9 +307,10 @@
   display: grid; place-items: center; gap: 8px; text-align: center;
   aspect-ratio: 16 / 9; padding: 24px; background: #0b0b12; color: var(--muted);
 }
-.player-empty svg { width: 28px; height: 28px; color: var(--gold); }
+.player-empty > svg { width: 28px; height: 28px; color: var(--gold); }
 .player-empty b { color: var(--text); font-size: 15px; }
 .player-empty p { margin: 0; font-size: 13px; }
+.player-empty .btn { margin-top: 8px; }
 
 .skeleton-player { width: 100%; aspect-ratio: 16 / 9; border-radius: 0; }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 /**
  * Cloudflare Stream iframe player.
@@ -74,16 +74,28 @@ export default function StreamPlayer({
   playOnReady = false,
   controls = true,
   title = 'Video player',
+  onRetry,
 }) {
   const frame = useRef(null)
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
+  const [boot, setBoot] = useState(0)
   const iframeSrc = useMemo(
     () => (src ? buildSrc(src, poster, autoplay || playOnReady, startAt, controls) : null),
     [src, poster, autoplay, playOnReady, startAt, controls]
   )
 
   const markReady = () => setReady(true)
+  const retry = () => {
+    if (onRetry && (!src || !iframeSrc)) {
+      onRetry()
+      return
+    }
+    setReady(false)
+    setTimedOut(false)
+    setBoot((n) => n + 1)
+  }
 
   useEffect(() => {
     setReady(false)
@@ -97,7 +109,7 @@ export default function StreamPlayer({
       })
     }, 10000)
     return () => clearTimeout(timer)
-  }, [iframeSrc])
+  }, [iframeSrc, boot])
 
   useEffect(() => {
     if (!iframeSrc) return
@@ -173,13 +185,19 @@ export default function StreamPlayer({
       if (kickTimer) clearTimeout(kickTimer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [iframeSrc])
+  }, [iframeSrc, boot])
 
   if (!src) {
     return (
       <div className="stream-fallback" role="status">
         <AlertTriangle size={22} />
         <p>Playback is not available for this video yet.</p>
+        {onRetry && (
+          <button className="btn btn-ghost btn-sm" type="button" onClick={retry}>
+            <RefreshCw size={14} />
+            Try again
+          </button>
+        )}
       </div>
     )
   }
@@ -188,7 +206,11 @@ export default function StreamPlayer({
     return (
       <div className="stream-fallback" role="alert">
         <AlertTriangle size={22} />
-        <p>This video could not be opened. Please refresh and try again.</p>
+        <p>This video could not be opened. Check your connection and try again.</p>
+        <button className="btn btn-ghost btn-sm" type="button" onClick={retry}>
+          <RefreshCw size={14} />
+          Try again
+        </button>
       </div>
     )
   }
@@ -207,6 +229,7 @@ export default function StreamPlayer({
       {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
 
       <iframe
+        key={boot}
         ref={frame}
         className={`stream-frame ${ready ? 'is-playing' : ''}`.trim()}
         src={iframeSrc}
@@ -223,9 +246,12 @@ export default function StreamPlayer({
         <div className="stream-fallback stream-fallback-overlay" role="status">
           <AlertTriangle size={22} />
           <p>
-            The player is taking longer than usual. Check your connection, or try again in a
-            moment.
+            The player is taking longer than usual. Check your connection, then try again.
           </p>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={retry}>
+            <RefreshCw size={14} />
+            Try again
+          </button>
         </div>
       )}
     </div>

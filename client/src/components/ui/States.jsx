@@ -50,7 +50,7 @@ export function EmptyState({ icon: Icon = Inbox, title, message, action }) {
  * came from a library, a driver or a stack is not, and showing it helps nobody
  * — it only worries them. Those are replaced with something true and useful.
  */
-const TECHNICAL = /(fetch failed|networkerror|econn|etimedout|enotfound|unexpected token|<!doctype|json\.parse|500|502|503|undefined is not|cannot read propert)/i
+const TECHNICAL = /(fetch failed|networkerror|econn|etimedout|enotfound|unexpected token|<!doctype|json\.parse|500|502|503|undefined is not|cannot read propert|cannot reach the api|failed to fetch)/i
 
 function readable(raw) {
   if (!raw || typeof raw !== 'string') return 'Something went wrong. Please try again.'

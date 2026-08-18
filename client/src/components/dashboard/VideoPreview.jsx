@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, RefreshCw, X } from 'lucide-react'
 import StreamPlayer from '@/components/watch/StreamPlayer'
 import api, { mediaUrl } from '@/lib/api'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
@@ -14,6 +14,7 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
  */
 export default function VideoPreview({ video, open, onClose }) {
   const [state, setState] = useState({ status: 'loading' })
+  const [attempt, setAttempt] = useState(0)
 
   useLockBodyScroll(open)
 
@@ -37,7 +38,7 @@ export default function VideoPreview({ video, open, onClose }) {
     return () => {
       alive = false
     }
-  }, [open, video?.id])
+  }, [open, video?.id, attempt])
 
   useEffect(() => {
     if (!open) return
@@ -81,6 +82,10 @@ export default function VideoPreview({ video, open, onClose }) {
             <AlertTriangle />
             <b>{state.status === 'error' ? 'Could not load it' : 'Not ready yet'}</b>
             <p>{state.note}</p>
+            <button className="btn btn-ghost" type="button" onClick={() => setAttempt((n) => n + 1)}>
+              <RefreshCw size={14} />
+              Try again
+            </button>
           </div>
         )}
       </div>

@@ -47,6 +47,27 @@ export const onSessionExpired = (fn) => {
 }
 const announceExpiry = () => listeners.forEach((fn) => fn())
 
+/**
+ * Fetch failed before an HTTP status existed. Say that plainly — a host URL
+ * and CORS lecture is how a dropped 4G connection used to look like a broken
+ * product.
+ */
+function unreachable(err) {
+  if (err?.name === 'AbortError') return err
+
+  const local = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(BASE)
+  const onLocalhost =
+    typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+
+  return new ApiError(
+    local && !onLocalhost
+      ? `This site is trying to reach the API at ${BASE}, which only exists on a ` +
+        `developer machine. Set VITE_API_URL to the deployed API address and rebuild.`
+      : 'We could not reach the server just now. Check your connection and try again.',
+    { code: 'NETWORK' }
+  )
+}
+
 /* ------------------------------------------------------------- request */
 
 let refreshing = null
@@ -114,29 +135,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch (err) {
-    if (err.name === 'AbortError') throw err
-
-    /**
-     * A failed fetch tells us nothing about why, so say what we tried.
-     *
-     * The unhelpful version of this message cost real time: a deployed site
-     * was pointed at http://localhost:4000 because VITE_API_URL was never set
-     * on the host, and every screen simply said "check your connection" — which
-     * sent everyone looking at their wifi instead of at the build.
-     */
-    const local = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(BASE)
-    const onLocalhost =
-      typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
-
-    throw new ApiError(
-      local && !onLocalhost
-        ? `This site is trying to reach the API at ${BASE}, which only exists on a ` +
-          `developer machine. Set VITE_API_URL to the deployed API address and rebuild.`
-        : `Cannot reach the API at ${BASE}. Either it is not running, or it is ` +
-          `refusing requests from ${typeof window !== 'undefined' ? window.location.origin : 'this page'} ` +
-          `— a blocked origin looks exactly like an offline server from in here.`,
-      { code: 'NETWORK' }
-    )
+    throw unreachable(err)
   }
 
   if (res.status === 401 && auth && retry && getRefreshToken()) {
@@ -189,8 +188,8 @@ async function sendFile(path, file, { field = 'image', method = 'POST' } = {}) {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body,
     })
-  } catch {
-    throw new ApiError(`Cannot reach the API at ${BASE}.`, { code: 'NETWORK' })
+  } catch (err) {
+    throw unreachable(err)
   }
 
   const payload = await res.json().catch(() => null)

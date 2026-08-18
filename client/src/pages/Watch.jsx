@@ -441,7 +441,7 @@ export default function Watch() {
             <ArrowLeft />
           </button>
 
-          {playback.loading || !accessReady ? (
+          {playback.loading && !p?.playback?.iframe ? (
             <div className="stream-shell is-booting">
               {v.thumbnailUrl ? (
                 <img
@@ -453,6 +453,15 @@ export default function Watch() {
               ) : (
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
               )}
+            </div>
+          ) : playback.error && !p?.playback?.iframe ? (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>This video could not start</b>
+              <p>Check your connection and try again. Nothing was charged.</p>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
+                Try again
+              </button>
             </div>
           ) : activeAd ? (
             <AdBreak ad={activeAd} videoId={v.id} playId={playId} onFinished={adFinished} />
@@ -468,6 +477,7 @@ export default function Watch() {
                 startAt={resumeAt}
                 autoplay={justPaid}
                 playOnReady={justPaid}
+                onRetry={() => playback.reload()}
                 onEnded={() => {
                   if (needsPayment) {
                     setPreviewOver(true)
@@ -509,7 +519,10 @@ export default function Watch() {
             <div className="player-empty">
               <AlertTriangle />
               <b>{p?.note || 'This video is not ready to play yet'}</b>
-              <p>Try again in a few minutes.</p>
+              <p>Check your connection, or try again in a moment.</p>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
+                Try again
+              </button>
             </div>
           )}
 
