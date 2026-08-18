@@ -25,7 +25,7 @@ export default function ShareSheet({ open, video, onClose }) {
   useLockBodyScroll(open)
 
   const slug = video?.slug || video?.id || ''
-  const url = video ? `${window.location.origin}/s/${slug}` : ''
+  const url = video ? `${window.location.origin}/watch/${slug}` : ''
   const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.jpg` : ''
   const creator = video?.creator?.name
 
@@ -165,8 +165,8 @@ export default function ShareSheet({ open, video, onClose }) {
         )}
 
         <p className="share-note">
-          Use WhatsApp here, or Copy link and paste it as the whole message. Extra words around
-          the link stop WhatsApp drawing the poster card.
+          This is the video&apos;s permanent address. Copy it or send it — it opens this exact
+          video on phone and desktop.
         </p>
       </div>
     </div>,

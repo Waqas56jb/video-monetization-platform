@@ -114,16 +114,17 @@ export default function Watch() {
   }, [v?.title])
 
   /**
-   * Address bar should carry the slug, not the UUID.
+   * One clean permanent address per video: /watch/video-title
    *
-   * Shared links that still use the id look like a database key. Once the
-   * video has loaded we swap to the human slug so Copy / Share / WhatsApp
-   * all send the same clean path.
+   * Shared /s/ links and old UUID links still open this page, then the bar
+   * is replaced with the slug so Copy, Share and the address bar all agree.
    */
   useEffect(() => {
-    if (!v?.slug || videoId === v.slug) return
+    if (!v?.slug) return
+    const shareAlias = location.pathname.startsWith('/s/')
+    if (!shareAlias && videoId === v.slug) return
     navigate(`/watch/${v.slug}${location.search || ''}`, { replace: true })
-  }, [v?.slug, videoId, location.search, navigate])
+  }, [v?.slug, videoId, location.pathname, location.search, navigate])
 
   useEffect(() => {
     setPreviewOver(false)
