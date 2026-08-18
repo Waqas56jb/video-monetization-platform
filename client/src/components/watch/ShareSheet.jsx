@@ -26,7 +26,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
-  const poster = video ? `${window.location.origin}/og/${encodeURIComponent(slug)}.jpg` : ''
+  const poster = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
   const creator = video?.creator?.name
 
   useEffect(() => {
@@ -82,7 +82,9 @@ export default function ShareSheet({ open, video, onClose }) {
         </button>
 
         <h3 id="share-title">Share this video</h3>
-        <p className="share-sub">This is the card they will see. Tap it and they land on this video.</p>
+        <p className="share-sub">
+          This is the card they will see. They tap it, watch the free preview, then pay to continue.
+        </p>
 
         <div className="share-og">
           <div className="share-og-poster">
@@ -93,9 +95,6 @@ export default function ShareSheet({ open, video, onClose }) {
                 <Film size={28} />
               </span>
             )}
-            <span className="share-og-play" aria-hidden="true">
-              <Film size={18} />
-            </span>
           </div>
           <div className="share-og-body">
             <span className="share-og-brand">MTONYO+</span>

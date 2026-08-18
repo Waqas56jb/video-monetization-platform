@@ -64,15 +64,15 @@ async function loadVideo(slug) {
 
 function cardFor(origin, video, slug) {
   const key = video?.slug || (video ? slug : null)
-  return key ? `${origin}/og/${encodeURIComponent(key)}.jpg` : null
+  return key ? `${origin}/og/card/${encodeURIComponent(key)}.jpg` : null
 }
 
 function previewCopy(video) {
   const title = video?.title || 'MTONYO+'
   const creator = video?.creator?.name || video?.creatorName
   const description = creator
-    ? `Watch the free preview - ${creator} - MTONYO+`
-    : 'Watch the free preview on MTONYO+'
+    ? `WATCH FREE PREVIEW · ${creator} · MTONYO+`
+    : 'WATCH FREE PREVIEW · MTONYO+'
   return { title, description }
 }
 

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MTONYO+ backend \u2014 Supabase (Postgres) + Cloudflare Stream + mobile-money payments",
+  "description": "MTONYO+ backend — Supabase (Postgres) + Cloudflare Stream + mobile-money payments",
   "engines": {
     "node": ">=20"
   },
@@ -43,7 +43,9 @@
     "morgan": "^1.10.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
+    "opentype.js": "^2.0.0",
     "pg": "^8.13.1",
+    "sharp": "^0.35.3",
     "zod": "^3.23.8"
   }
 }

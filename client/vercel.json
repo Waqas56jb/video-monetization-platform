@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/og/card/:slug.jpg",
+      "destination": "/api/og?slug=:slug.jpg"
+    },
+    {
       "source": "/og/:slug.jpg",
       "destination": "/api/og?slug=:slug.jpg"
     },

@@ -3,13 +3,12 @@
  *
  * WhatsApp drops `og:image` when it is a tokenised Cloudflare URL, when it
  * lives on another host, or when the path has no `.jpg`. This route sits on
- * the public site as `/og/<slug>.jpg`, fetches the API poster, and returns
- * the bytes so the crawler never has to leave this origin.
+ * the public site as `/og/card/<slug>.jpg`, fetches the API poster, and
+ * returns the bytes so the crawler never has to leave this origin.
  *
- * Do not fall back to the 512×512 app icon. WhatsApp treats that square as a
- * tiny webpage thumbnail, and a slow/huge PNG (branded card) times out on
- * copy-paste so the preview never appears at all. A 1200×630 JPEG under 100KB
- * is what actually produces the large poster card.
+ * The API burns title, creator, WATCH FREE PREVIEW and MTONYO+ onto a
+ * 1200×630 JPEG. Keep that file small — WhatsApp drops a slow/huge PNG
+ * and shows a tiny webpage icon instead.
  */
 
 const API =
@@ -25,7 +24,7 @@ async function fetchPoster(slug) {
   for (const url of urls) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const r = await fetch(url, { signal: AbortSignal.timeout(8000) })
+        const r = await fetch(url, { signal: AbortSignal.timeout(12000) })
         if (!r.ok) continue
         const type = (r.headers.get('content-type') || '').split(';')[0]
         if (!/^image\/(jpeg|jpg|webp)/i.test(type) && type !== 'application/octet-stream') continue

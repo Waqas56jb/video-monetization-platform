@@ -8,6 +8,7 @@ import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
+import { brandShareCard } from '../lib/shareCard.js'
 
 const router = Router()
 
@@ -124,8 +125,8 @@ router.get(
       openGraph: {
         'og:title': title,
         'og:description': video.creator_name
-          ? `Watch the free preview · ${video.creator_name} · MTONYO+`
-          : 'Watch the free preview on MTONYO+',
+          ? `WATCH FREE PREVIEW · ${video.creator_name} · MTONYO+`
+          : 'WATCH FREE PREVIEW · MTONYO+',
         'og:image': cardUrl,
         'og:url': deepLink,
         'og:type': 'website',
@@ -145,6 +146,23 @@ router.get(
  * `.jpg` on the path matters: WhatsApp often ignores an image URL that
  * looks like an API route.
  */
+async function fetchPosterBytes(url) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const img = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000) })
+      if (!img.ok) continue
+      const type = (img.headers.get('content-type') || '').split(';')[0]
+      if (!/^image\//i.test(type) && type !== 'application/octet-stream') continue
+      const buf = Buffer.from(await img.arrayBuffer())
+      if (buf.length < 1000) continue
+      return buf
+    } catch {
+      /* try again */
+    }
+  }
+  return null
+}
+
 async function sendShareCard(req, res) {
   const video = await videoByKey(String(req.params.id || '').replace(/\.jpe?g$/i, ''))
   if (!video) throw notFound('Video not found')
@@ -152,44 +170,32 @@ async function sendShareCard(req, res) {
     throw notFound('Video not found')
   }
 
-  const sendFrom = async (url) => {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const img = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000) })
-        if (!img.ok) continue
-        const type = (img.headers.get('content-type') || '').split(';')[0]
-        if (!/^image\//i.test(type) && type !== 'application/octet-stream') continue
-        const buf = Buffer.from(await img.arrayBuffer())
-        if (!buf.length) continue
-        if (/png/i.test(type) && buf.length < 80_000) continue
-        res.set('Content-Type', type.startsWith('image/') ? type : 'image/jpeg')
-        res.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
-        res.set('Content-Disposition', 'inline; filename="poster.jpg"')
-        res.send(buf)
-        return true
-      } catch {
-        /* try again */
-      }
-    }
-    return false
-  }
-
+  let poster = null
   if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
-    if (await sendFrom(video.custom_thumbnail_url).catch(() => false)) return
+    poster = await fetchPosterBytes(video.custom_thumbnail_url)
   }
-
-  const posterUid = video.preview_uid || video.cloudflare_uid
-  if (posterUid && capabilities.signedPlayback) {
-    const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
-    const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
-    if (await sendFrom(src).catch(() => false)) return
+  if (!poster) {
+    const posterUid = video.preview_uid || video.cloudflare_uid
+    if (posterUid && capabilities.signedPlayback) {
+      const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
+      const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
+      poster = await fetchPosterBytes(src)
+    }
   }
-
-  if (video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
-    if (await sendFrom(video.thumbnail_url).catch(() => false)) return
+  if (!poster && video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
+    poster = await fetchPosterBytes(video.thumbnail_url)
   }
+  if (!poster) throw notFound('No poster available')
 
-  throw notFound('No poster available')
+  const card = await brandShareCard(poster, {
+    title: video.title,
+    creator: video.creator_name,
+  })
+
+  res.set('Content-Type', 'image/jpeg')
+  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=604800')
+  res.set('Content-Disposition', 'inline; filename="poster.jpg"')
+  res.send(card)
 }
 
 router.get('/:id/card.jpg', asyncHandler(sendShareCard))
