@@ -227,6 +227,44 @@
   border-radius: 12px;
   font-size: 12.5px;
 }
+
+/* Netflix-style discovery under the film — posters you can tap and buy. */
+.more-like { margin-top: 36px; padding-top: 8px; }
+.more-like h2 {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+.more-like-sub { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.more-like-row,
+.more-like .vid-grid {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.more-like-row .vid-card,
+.more-like .skeleton-card {
+  flex: 0 0 min(252px, 78vw);
+  width: min(252px, 78vw);
+  max-width: min(252px, 78vw);
+  scroll-snap-align: start;
+}
+.more-like-row .vid-thumb { height: 142px; }
+@media (max-width: 480px) {
+  .more-like { margin-top: 28px; }
+  .more-like-row .vid-card,
+  .more-like .skeleton-card { flex-basis: min(220px, 82vw); width: min(220px, 82vw); max-width: min(220px, 82vw); }
+  .more-like-row .vid-thumb { height: 124px; }
+}
 @media (max-width: 640px) {
   .watch-wrap {
     padding-inline: 12px;

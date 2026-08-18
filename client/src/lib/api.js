@@ -281,6 +281,8 @@ export const api = {
     list: (params) => get(`/api/videos${qs(params)}`, { auth: Boolean(getAccessToken()) }),
     categories: () => get('/api/videos/categories', { auth: false }),
     one: (idOrSlug) => get(`/api/videos/${idOrSlug}`, { auth: Boolean(getAccessToken()) }),
+    related: (idOrSlug) =>
+      get(`/api/videos/${encodeURIComponent(idOrSlug)}/related`, { auth: Boolean(getAccessToken()) }),
     mine: () => get('/api/videos/mine'),
     create: (body) => post('/api/videos', body),
     update: (id, body) => patch(`/api/videos/${id}`, body),

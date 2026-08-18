@@ -20,6 +20,7 @@ import LockGate from '@/components/watch/LockGate'
 import PaymentModal from '@/components/watch/PaymentModal'
 import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
+import MoreLikeThis from '@/components/watch/MoreLikeThis'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
@@ -709,6 +710,8 @@ export default function Watch() {
                   ? '— free to watch. The creator earns from the advertising shown before it.'
                   : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
           </div>
+
+          <MoreLikeThis videoId={v.slug || v.id} />
         </div>
       </div>
 

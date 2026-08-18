@@ -698,6 +698,59 @@ router.get(
   })
 )
 
+/**
+ * Other titles worth opening after this one.
+ *
+ * Same category first, then more from the same creator, then the rest of the
+ * public catalogue — never this video, never unpublished work. The Watch page
+ * uses this for the More Like This row; without it a paid title was a dead end.
+ */
+router.get(
+  '/:idOrSlug/related',
+  optionalAuth(),
+  asyncHandler(async (req, res) => {
+    const key = req.params.idOrSlug
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)
+    const keys = slugFallbacks(key)
+
+    const row = await one(
+      `${SELECT_PUBLIC} where v.deleted_at is null and (${
+        isUuid ? 'v.id = $1' : 'v.id::text = $1 or v.slug = any($2::text[])'
+      })`,
+      isUuid ? [key] : [key, keys]
+    )
+    if (!row) throw notFound('Video not found')
+
+    const isOwnerOrAdmin = req.user && (req.user.id === row.creator_id || req.user.role === 'admin')
+    const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })
+    if (!(row.is_published && row.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
+      throw notFound('Video not found')
+    }
+
+    const related = await many(
+      `${SELECT_PUBLIC}
+        where v.is_published = true
+          and v.review_status = 'approved'
+          and v.deleted_at is null
+          and v.id <> $1
+        order by
+          case
+            when $2::text is not null and v.category = $2 and v.creator_id = $3 then 0
+            when $2::text is not null and v.category = $2 then 1
+            when v.creator_id = $3 then 2
+            else 3
+          end,
+          v.featured desc,
+          v.views desc,
+          v.published_at desc nulls last
+        limit 8`,
+      [row.id, row.category || null, row.creator_id]
+    )
+
+    res.json({ videos: related.map((r) => publicVideo(withCreatorName(r))) })
+  })
+)
+
 /** Record a view; used for the "reached the paywall" conversion metric. */
 router.post(
   '/:id/view',
