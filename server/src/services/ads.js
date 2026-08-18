@@ -29,7 +29,7 @@ export const microToTzs = (micro) => Math.round(Number(micro || 0) / MICRO)
  * off for this video" look identical from the outside and are diagnosed very
  * differently.
  */
-export async function adEligibility({ video, userId }) {
+export async function adEligibility({ video, userId, userRole = null }) {
   const settings = await getSettings()
 
   if (!video.is_published) return { eligible: false, reason: 'This video is not published' }
@@ -37,6 +37,14 @@ export async function adEligibility({ video, userId }) {
     return { eligible: false, reason: 'Only free-with-ads videos carry advertising' }
   }
   if (!video.ads_enabled) return { eligible: false, reason: 'Advertising is off for this video' }
+
+  if (userId && video.creator_id === userId) {
+    return { eligible: false, reason: 'This is your video — you are not advertised at on your own work' }
+  }
+
+  if (userRole === 'admin' || userRole === 'sub_admin') {
+    return { eligible: false, reason: 'Staff do not generate advertising revenue' }
+  }
 
   if (userId) {
     const owned = await one(
@@ -135,8 +143,8 @@ export function adPayload(campaign, { placement, skipAfterSeconds }) {
  * before it reaches the middle, and asking mid-playback would stall the video
  * at the worst possible moment.
  */
-export async function adBreaksFor({ video, userId }) {
-  const check = await adEligibility({ video, userId })
+export async function adBreaksFor({ video, userId, userRole = null }) {
+  const check = await adEligibility({ video, userId, userRole })
   if (!check.eligible) return { ads: [], reason: check.reason }
 
   const s = check.settings

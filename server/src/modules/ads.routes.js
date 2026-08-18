@@ -42,7 +42,11 @@ router.get(
 
     video = await expireIfDue(video)
 
-    const { ads, reason } = await adBreaksFor({ video, userId: req.user?.id })
+    const { ads, reason } = await adBreaksFor({
+      video,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+    })
     res.json({ ads, reason })
   })
 )
@@ -62,7 +66,11 @@ router.get(
 
     video = await expireIfDue(video)
 
-    const check = await adEligibility({ video, userId: req.user?.id })
+    const check = await adEligibility({
+      video,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+    })
     if (!check.eligible) return res.json({ ad: null, reason: check.reason })
     if (!check.settings.preroll_enabled) {
       return res.json({ ad: null, reason: 'Pre-roll advertising is switched off' })
@@ -106,7 +114,11 @@ router.post(
     const video = await videoForAds(req.body.videoId)
     if (!video) throw notFound('Video not found')
 
-    const check = await adEligibility({ video, userId: req.user?.id })
+    const check = await adEligibility({
+      video,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+    })
     if (!check.eligible) throw badRequest(check.reason)
 
     const result = await recordImpression({

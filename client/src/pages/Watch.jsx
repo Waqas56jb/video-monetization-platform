@@ -83,7 +83,9 @@ export default function Watch() {
   const playedBreaks = useRef(new Set())
   const mainProgress = useRef(0)
   const [playId] = useState(() =>
-    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `00000000-0000-4000-8000-${String(Date.now()).padStart(12, '0').slice(-12)}`
   )
 
   const video = useApi(() => api.videos.one(videoId), [videoId])
@@ -234,13 +236,14 @@ export default function Watch() {
    * advertiser repeatedly for one delivery.
    */
   const runBreak = useCallback((placement) => {
+    if (!p?.access?.showsAds) return false
     if (playedBreaks.current.has(placement)) return false
     const ad = ads.find((a) => a.placement === placement)
     if (!ad?.iframe) return false
     playedBreaks.current.add(placement)
     setActiveAd(ad)
     return true
-  }, [ads])
+  }, [ads, p?.access?.showsAds])
 
   const adFinished = useCallback(() => {
     // Coming back from a mid-roll, pick the film up where it was interrupted.
@@ -252,11 +255,12 @@ export default function Watch() {
 
   // The pre-roll goes before anything else, once we know the video plays freely.
   useEffect(() => {
+    if (!p?.access?.showsAds) return
     if (!ads.length || activeAd) return
     if (!accessReady || !p?.playback?.iframe) return
     runBreak('pre_roll')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ads.length, accessReady, p?.playback?.iframe])
+  }, [ads.length, accessReady, p?.playback?.iframe, p?.access?.showsAds])
 
   // Owned / free videos must never keep a leftover "preview over" lock state.
   useEffect(() => {

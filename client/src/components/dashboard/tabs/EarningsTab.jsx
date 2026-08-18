@@ -75,7 +75,7 @@ export default function EarningsTab() {
       label: 'From advertising',
       value: tzs(balance?.fromAdsTzs),
       note: ads?.impressions
-        ? `${Number(ads.impressions).toLocaleString()} ad view${ads.impressions === 1 ? '' : 's'} across ${ads.videosWithImpressions} video${ads.videosWithImpressions === 1 ? '' : 's'}`
+        ? `${Number(ads.impressions).toLocaleString()} impression${ads.impressions === 1 ? '' : 's'}, ${Number(ads.completed || 0).toLocaleString()} completed — your share is credited when the advert finishes`
         : ads?.videosCarryingAds
           ? `${ads.videosCarryingAds} video${ads.videosCarryingAds === 1 ? '' : 's'} carrying ads — no views yet`
           : 'Starts when a premiere expires and turns Free + Ads',
@@ -142,8 +142,9 @@ export default function EarningsTab() {
               ))}
             </div>
             <p className="field-note">
-              You keep {summary.data?.splitPercent ?? 70}% of both. Advertising revenue is
-              credited as adverts are watched on your Free + Ads videos.
+              You keep {summary.data?.splitPercent ?? 70}% of both. An impression is counted when
+              the advert is shown. Money is credited when it finishes — skipping it still counts
+              the view, but does not pay.
             </p>
           </Panel>
         </>
