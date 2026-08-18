@@ -1,0 +1,123 @@
+Yeh last client messages + 4 screenshots se remaining list hai. Jo already theek hai woh alag mark hai — sirf ABHI KARNA HAI wale ek-ek karke fix karo.
+
+Live home: https://video-monetization-platform-chi.vercel.app/
+
+Issue 1: Heading galat hai
+Link: https://video-monetization-platform-chi.vercel.app/#models
+Jaga: homepage, “THREE WAYS TO RELEASE” ke neeche heading “You Choose How Your Audience Watches” (screenshot 3/4)
+Status: ABHI KARNA HAI → client chahta hai “YOU CHOOSE HOW YOU EARN”
+
+Issue 2: Sell it wording
+Link: same #models
+Jaga: pehla box Sell it — ab likha hai “Fans watch a free preview, then pay to continue.”
+Status: ABHI KARNA HAI →
+“Get paid directly by your viewers. They watch a free preview, then pay once to continue watching.”
+
+Issue 3: Premiere it wording
+Link: same #models
+Jaga: doosra box Premiere it
+Status: ABHI KARNA HAI →
+“Earn from sales first, then advertising. Choose 30, 60 or 90 days. Viewers pay during that period. Afterward, the video automatically becomes Free + Ads.”
+Green line “Everyone who paid keeps it ad-free” rehne dena — woh already theek hai.
+
+Issue 4: Free + Ads wording
+Link: same #models
+Jaga: teesra box Free + Ads (screenshot 1 + 4)
+Status: ABHI KARNA HAI →
+“Let everyone watch for free. Your video is free from day one and you earn from advertising.”
+
+Issue 5: Sharing section copy
+Link: https://video-monetization-platform-chi.vercel.app/#features
+Jaga: PLATFORM POWER → card “One link. The exact video.” — Smart Deep Links / Auto Social Previews (screenshot 1)
+Status: ABHI KARNA HAI → client chahta hai:
+SHARE YOUR VIDEO. LET PEOPLE WATCH. EARN.
+line: “When you share your MTONYO+ video on WhatsApp or social media, people can watch the free preview and pay to continue.”
+visual: SHARE → WATCH FREE PREVIEW → PAY → KEEP WATCHING
+
+Issue 6: WhatsApp preview card
+Link: koi bhi video, e.g. https://video-monetization-platform-chi.vercel.app/explore → Watch → Share
+Jaga: WhatsApp pe jo recipient dekhta hai (ugly URL / numbers), homepage mockup nahi
+Status: ABHI KARNA HAI — yeh #1 priority. Code mein OG hai, client ne live fail bola. Real WhatsApp screenshot chahiye: poster + title + creator, tap pe usi video pe preview → paywall.
+
+Issue 7: Clean video URL
+Link: Watch page URL bar
+Jaga: ab ...vercel.app/watch/<id-or-slug-with-numbers>
+Status: PARTIAL — slug hai, custom domain mtonyo.co.tz/watch/video-title nahi. Domain Milestone 3 / DNS. Abhi slug clean karna possible (kam numbers).
+
+Issue 8: Extra Watch Now click
+Link: paid video Watch page → Unlock → sandbox pay
+Jaga: payment success screen pe “Watch it now” button
+Status: DONE — success pe auto continue; Watch it now sirf fallback agar handover atak jaye.
+
+Issue 9: Premiere auto Free+Ads
+Link: Admin nahi — public Watch. Demo: Ugali & Samaki — Sunday Cooking (expired seed)
+Jaga: video badge Free + Ads; buyer vs new viewer
+Status: LIVE DEMO READY — Ugali already Free + Ads (cron/job). Demo viewer ko premiere ke dauran purchase diya; naya viewer ads dekhe, buyer ad-free + banner.
+
+Issue 10: Ads impression + split
+Link: koi Free + Ads video (e.g. How To Cook Pilau Properly) signed-out / non-buyer
+Phir admin: https://video-monetization-platform-admin.vercel.app/ads
+Creator dashboard → Earnings
+Jaga: player pe ad, phir Ads numbers + creator ad earnings
+Status: LIVE DEMO READY — Pilau pe Vodacom ad; impression skip/complete dono pe likhta hai; admin Ads + Neema Earnings pe split numbers hain. Chart 30 din fill karta hai taake ek din ki ads bhi dikhein.
+
+Issue 11: Homepage sponsor ads
+Link: homepage (banners / sponsored rows)
+Jaga: site ke apne ads, video pre/mid/post alag
+Status: ABHI NAHI BANAYA — client ne “future” kaha. Is milestone mein skip, report mein NOT DONE — later likhna.
+
+Issue 12: Withdrawal full journey
+Link: Creator dashboard ?tab=earnings → Admin withdrawals
+Jaga: request → admin paid/reject → creator history
+Status: FIX PUSH — admin Approve `approve` bhej raha tha, API `paid` maangti hai (journey toot rahi thi). Phone column + Paid filter + notification grammar. Demo min TZS 1,000 + pending queue.
+
+Issue 13: Unpublish ke baad buyer access
+Link: buyer Library + Watch; admin Videos → Unpublish
+Jaga: Pay Once buy ke baad video unpublish
+Status: LIVE DEMO READY — Fishermen of Kilwa unpublished; demo.viewer Library + Watch pe rehta hai; signed-out 404. Banner "still yours".
+
+Issue 14: Rights confirm + report
+Link: Creator Upload tab; Watch page Report
+Admin: moderation
+Jaga: submit pe rights checkbox; watch pe report dialog
+Status: LIVE DEMO READY — submit checkbox server pe confirmRights; Watch Report; admin Moderation pe copyright report (Live at Arusha). Review queue pe Rights confirmed.
+
+Issue 15: Logo + menu scroll
+Link: har public page pe MTONYO+ logo; menu: Trending / How it Works / Features / For Creators / Stories
+Jaga: sticky header ke neeche section heading; koi blank black screen nahi
+Status: LIVE DEMO READY — Watch pe bhi same Header/menu. Hash click splash nahi, heading header ke neeche. Hamburger 1200px pe taake links wrap na hon.
+
+Issue 16: Mobile journeys
+Link: same site, real phone
+Jaga: share, preview, pay, login, player, upload
+Status: LIVE DEMO READY — iOS pe display:none file picker + lambi MIME list upload tootti thi. Label + video/*; pay keyboard field dikhe; player fullscreen allow. Phone pe test: share → preview → pay → login return; upload tap.
+
+Issue 17: Duplicate categories
+Link: #features neeche pills — Films… Documentaries… Food (screenshot 2)
+Explore filters bhi
+Status: LIVE DEMO READY — client ki 10 list (Food nahi). Documentary merge pehle se. DB Food → Courses (Pilau/Ugali). Homepage + Explore sirf 10 pills.
+
+Issue 18: Failure messages
+Link: Watch pay (sandbox fail/cancel); upload fail; logout session
+Jaga: error text + Try again / next step
+Status: LIVE DEMO READY — sandbox pe Test declined / Test cancelled; fail screen + Try again. Upload fail pe Try again. Session expire pe login + “session ended”. AirPay real fail = M3.
+
+Issue 19: Roles server-side
+Link: Admin vs sub-admin vs creator vs viewer
+Jaga: URL type karke hidden screens; API 403
+Status: LIVE DEMO READY — sub-admin Rehema (review/moderation/videos). /users /withdrawals pe 403 screen. Viewer ?tab=upload blocked. become-creator staff pe 403. API bhi 403.
+
+Issue 20: Verified kya karta hai
+Link: Admin creators
+Jaga: Verify button = badge only
+Status: THEEK HAI — CODE CHANGE NAHI — client ko report mein explain: sirf tick/badge, upload/withdraw/visibility nahi rokta.
+
+Issue 21: Homepage repetition
+Link: #models phir #features Monetize card (screenshot 2) — Pay Once / Premiere dobara
+Jaga: teen models pehle, Features mein dubara
+Status: OPTIONAL — client ne design rakhne ko kaha; 10:01 PM pe wording simplify kaafi hai. Extra redesign mat karo jab tak woh na bole.
+
+Issue 22: 16-point written report
+Link: Fiverr chat (site nahi)
+Jaga: client ko point-by-point reply
+Status: DRAFT READY — Fiverr pe paste karo. Sharing (#2) DONE mat likhna jab tak WhatsApp recipient screenshot na ho. Homepage ads (#5 future) NOT THIS MILESTONE. AirPay + mtonyo.co.tz = M3.
