@@ -63,7 +63,7 @@ async function loadVideo(slug) {
 }
 
 function cardFor(origin, video, slug) {
-  const key = video?.slug || slug
+  const key = video?.slug || (video ? slug : null)
   return key ? `${origin}/og/${encodeURIComponent(key)}.jpg` : null
 }
 

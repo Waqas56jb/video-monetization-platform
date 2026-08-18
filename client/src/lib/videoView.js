@@ -31,7 +31,11 @@ export function toCard(v, { owned = false } = {}) {
           ? { cls: 'tag-prem', label: premiereDays != null ? `${premiereDays} DAYS LEFT` : 'PAID PREMIERE' }
           : { cls: 'tag-ppv', label: 'PAY ONCE' },
 
-    price: owned ? 'Owned' : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
+    price: owned
+      ? v.isPublished === false
+        ? 'Still yours'
+        : 'Owned'
+      : v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs),
     priceNote: owned
       ? v.isPublished === false
         ? 'no longer listed — still yours'

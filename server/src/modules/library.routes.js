@@ -41,6 +41,7 @@ router.get(
          left join creator_profiles cp on cp.user_id = v.creator_id
          left join payments pay on pay.id = pu.payment_id
         where pu.user_id = $1 and pu.status = 'active'
+          and v.deleted_at is null
         order by pu.purchased_at desc`,
       [req.user.id]
     )
@@ -77,7 +78,7 @@ router.get(
   requireAuth(),
   asyncHandler(async (req, res) => {
     const rows = await many(
-      `select pu.*, v.title as video_title, v.slug,
+      `select pu.*, v.title as video_title, v.slug, v.is_published,
               coalesce(cp.display_name, p.full_name) as creator_name,
               pay.method, pay.status as payment_status
          from purchases pu
@@ -104,6 +105,7 @@ router.get(
         videoId: r.video_id,
         videoTitle: r.video_title,
         videoSlug: r.slug,
+        isPublished: r.is_published,
         creatorName: r.creator_name,
         amountTzs: r.amount_tzs,
         method: r.method,

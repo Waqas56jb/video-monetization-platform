@@ -6,7 +6,7 @@ import { validate, validateQuery } from '../middleware/validate.js'
 import { requireAuth, requireStaff, requireAdmin, requirePermission } from '../middleware/auth.js'
 import { getSettings, updateSettings, applySplit, splitPercentFor } from '../services/settings.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
-import { notify } from '../services/notify.js'
+import { notify, notifyMany } from '../services/notify.js'
 import { studioVideo, thumbnailFor } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
@@ -502,6 +502,22 @@ router.post(
       body: 'Anyone who already bought it keeps their access.',
       actor: req.user, action: 'unpublish', entityType: 'video', entityId: updated.id,
     })
+    const buyers = await many(
+      `select user_id from purchases where video_id = $1 and status = 'active'`,
+      [updated.id]
+    )
+    await notifyMany(
+      buyers.map((b) => b.user_id),
+      {
+        kind: 'account',
+        title: `"${updated.title}" is no longer listed publicly`,
+        body: 'You already paid — it stays in your library.',
+        actor: req.user,
+        action: 'unpublish',
+        entityType: 'video',
+        entityId: updated.id,
+      }
+    )
     res.json({ video: studioVideo(updated), message: 'Unpublished — buyers keep their access' })
   })
 )

@@ -74,6 +74,9 @@ export default function PurchasesTab() {
                       onClick={() => navigate(`/watch/${p.videoSlug || p.videoId}`)}
                     >
                       {p.videoTitle}
+                      {p.isPublished === false && (
+                        <div className="cell-sub">No longer listed — still in your library</div>
+                      )}
                     </button>
                   </td>
                   <td>{p.creatorName || '—'}</td>
