@@ -2,6 +2,7 @@ import { one } from '../db/pool.js'
 import { mintThumbnailKey } from '../lib/mediaToken.js'
 import { signedThumbnailUrl } from '../lib/cloudflare.js'
 import { capabilities } from '../config/env.js'
+import { clampFreePreviewSeconds } from '../lib/preview.js'
 
 /**
  * What may this viewer actually watch of this video?
@@ -42,7 +43,9 @@ export async function resolveAccess({ video, userId, userRole = null }) {
     isOwner: Boolean(isOwner),
     isStaff,
     requiresPayment: !free && !owned && !isOwner && !isStaff,
-    freePreviewSeconds: free ? null : video.free_preview_seconds,
+    freePreviewSeconds: free
+      ? null
+      : clampFreePreviewSeconds(video.free_preview_seconds, video.duration_seconds),
     priceTzs: free ? 0 : video.price_tzs,
     /**
      * Adverts are for people who did not pay.
@@ -87,7 +90,7 @@ export function publicVideo(v, access = null) {
     durationSeconds: v.duration_seconds,
     accessType: v.access_type,
     priceTzs: v.price_tzs,
-    freePreviewSeconds: v.free_preview_seconds,
+    freePreviewSeconds: clampFreePreviewSeconds(v.free_preview_seconds, v.duration_seconds),
     premiereDays: v.premiere_days,
     premiereEndsAt: v.premiere_ends_at,
     adsEnabled: v.ads_enabled,

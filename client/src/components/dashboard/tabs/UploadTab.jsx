@@ -25,7 +25,7 @@ import {
 } from '@/lib/upload'
 import { useToast } from '@/context/ToastContext'
 import VideoPreview from '@/components/dashboard/VideoPreview'
-import PreviewDuration, { splitSeconds, toSeconds } from '@/components/dashboard/PreviewDuration'
+import PreviewDuration, { splitSeconds, toSeconds, maxFreePreviewSeconds } from '@/components/dashboard/PreviewDuration'
 import ThumbnailPicker from '@/components/dashboard/ThumbnailPicker'
 
 /**
@@ -190,7 +190,7 @@ export default function UploadTab({ onSubmitted }) {
       // five-minute preview of a two-minute clip only fails later, at save.
       const seconds = Number(done.video?.durationSeconds) || 0
       if (seconds > 0) {
-        const most = Math.max(0, seconds - 1)
+        const most = maxFreePreviewSeconds(seconds) ?? 0
         setForm((f) => {
           if (toSeconds(f.previewValue, f.previewUnit) <= most) return f
           // Land on whichever unit reads most naturally for what is left.
@@ -232,6 +232,13 @@ export default function UploadTab({ onSubmitted }) {
     if (form.title.trim().length < 3) return setError('Give the video a title')
     if (!rightsOk) {
       return setError('Confirm you hold the rights to this content before submitting')
+    }
+    const previewSecs = toSeconds(form.previewValue, form.previewUnit)
+    const mostPreview = maxFreePreviewSeconds(durationSeconds)
+    if (mostPreview != null && previewSecs > mostPreview) {
+      return setError(
+        `A free preview cannot be most of the video. The most you can give away is half (${mostPreview}s).`
+      )
     }
 
     setSubmitting(true)

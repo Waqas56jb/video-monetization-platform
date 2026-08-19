@@ -9,15 +9,21 @@ import { duration } from '@/hooks/useApi'
  * the first half-hour of a two-hour film, are both perfectly ordinary and
  * neither fits a dropdown of preset minutes.
  *
- * The only real ceiling is the video itself — you cannot preview more than
- * exists — so once the running time is known it is enforced here and said out
- * loud, rather than being discovered when saving fails.
+ * The ceiling is half the running time. A preview of duration-minus-one second
+ * (53s free of a 54s video) is the whole film for nothing, not a preview.
  */
 const UNITS = [
   { key: 'seconds', label: 'seconds', factor: 1 },
   { key: 'minutes', label: 'minutes', factor: 60 },
   { key: 'hours', label: 'hours', factor: 3600 },
 ]
+
+/** Longest free preview allowed once the running time is known. Must match the server. */
+export function maxFreePreviewSeconds(durationSeconds) {
+  const duration = Math.max(0, Math.round(Number(durationSeconds) || 0))
+  if (!duration) return null
+  return Math.floor(duration / 2)
+}
 
 /** Show a number of seconds in whichever unit reads most naturally. */
 export function splitSeconds(totalSeconds) {
@@ -40,9 +46,7 @@ export default function PreviewDuration({
 }) {
   const seconds = toSeconds(value, unit)
 
-  // One less than the running time: a preview that reaches the end is not a
-  // preview, it is the whole video for nothing.
-  const maxSeconds = videoSeconds > 0 ? Math.max(0, videoSeconds - 1) : null
+  const maxSeconds = maxFreePreviewSeconds(videoSeconds)
   const overLimit = maxSeconds !== null && seconds > maxSeconds
 
   const maxInThisUnit = useMemo(() => {
@@ -98,8 +102,9 @@ export default function PreviewDuration({
           'No free preview — viewers see the paywall straight away.'
         ) : overLimit ? (
           <>
-            That is longer than the video ({duration(videoSeconds)}). The most you can give away is{' '}
-            {duration(maxSeconds)}.
+            A free preview cannot be most of the video. The most you can give away is{' '}
+            {duration(maxSeconds)} of {duration(videoSeconds)} — half, so there is something left
+            to pay for.
           </>
         ) : (
           <>

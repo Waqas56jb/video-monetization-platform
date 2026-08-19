@@ -15,6 +15,7 @@ import { storeImage, removeImage } from '../services/uploads.js'
 import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
+import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 
 const router = Router()
 
@@ -262,9 +263,9 @@ const updateSchema = z
     category: categoryField,
     accessType: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
     priceTzs: z.coerce.number().int().min(0).max(10_000_000).optional(),
-    // Any length at all: a 45-second teaser, twelve minutes, or an hour of a
-    // three-hour set. The only real ceiling is the video itself, and that is
-    // applied below once its duration is known.
+    // Any length that still leaves half the video to pay for. 45 seconds of a
+    // 3-minute song is fine; 53 seconds of a 54-second clip is not. The half
+    // cap is applied below once duration is known.
     freePreviewSeconds: z.coerce.number().int().min(0).max(86400).optional(),
     // Per video, never a platform-wide number: 30 / 60 / 90 / anything.
     premiereDays: z.coerce.number().int().min(1).max(3650).optional(),
@@ -316,19 +317,22 @@ router.patch(
       }
     }
     /**
-     * A preview cannot be longer than the video it previews.
+     * A preview cannot be most of the video.
      *
      * This used to reject the whole request, which meant a creator who uploaded
      * a two-minute clip while the platform default preview was five minutes
      * lost their price, access type and premiere window along with it — every
      * field in the same PATCH was discarded over one they never chose. Clamp it
      * instead and tell them what happened.
+     *
+     * The ceiling is half the running time, not duration-minus-one. 53s free of
+     * a 54s video left nothing to pay for.
      */
     let previewSeconds = b.freePreviewSeconds
     let previewClamped = null
     if (previewSeconds != null && video.duration_seconds) {
-      const most = Math.max(0, video.duration_seconds - 1)
-      if (previewSeconds > most) {
+      const most = clampFreePreviewSeconds(previewSeconds, video.duration_seconds)
+      if (most !== previewSeconds) {
         previewClamped = { asked: previewSeconds, applied: most }
         previewSeconds = most
       }
@@ -363,8 +367,9 @@ router.patch(
       ...(previewClamped
         ? {
             notice:
-              `This video is only ${video.duration_seconds}s long, so the free preview was ` +
-              `shortened from ${previewClamped.asked}s to ${previewClamped.applied}s.`,
+              `A free preview cannot be more than half of the video ` +
+              `(${video.duration_seconds}s), so it was shortened from ` +
+              `${previewClamped.asked}s to ${previewClamped.applied}s.`,
           }
         : {}),
     })
@@ -431,7 +436,8 @@ router.post(
               rights_confirmed_at = coalesce(rights_confirmed_at, now()),
               rights_statement    = coalesce(rights_statement, $3),
               premiere_days = case when access_type = 'paid_premiere'
-                                   then coalesce(premiere_days, $2) else null end
+                                   then coalesce(premiere_days, $2) else null end,
+              free_preview_seconds = ${clampPreviewSql('duration_seconds')}
         where id = $1 returning *`,
       [video.id, settings.default_premiere_days, RIGHTS_STATEMENT]
     )
@@ -578,10 +584,7 @@ router.get(
             set state = 'ready',
                 duration_seconds = coalesce($2, duration_seconds),
                 thumbnail_url    = coalesce($3, thumbnail_url),
-                free_preview_seconds = least(
-                  free_preview_seconds,
-                  greatest(coalesce($2, duration_seconds, 0) - 1, 0)
-                )
+                free_preview_seconds = ${clampPreviewSql('coalesce($2, duration_seconds)')}
           where id = $1 returning *`,
         [video.id, Math.floor(remote.duration || 0) || null, remote.thumbnail || null]
       )

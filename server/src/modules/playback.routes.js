@@ -9,6 +9,7 @@ import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
+import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 
 async function videoByKey(key) {
   return one(
@@ -152,11 +153,23 @@ router.get(
       ? cf.signPlaybackToken(previewUid, { expiresInSeconds: PREVIEW_TOKEN_TTL })
       : previewUid
 
+    const previewSeconds = clampFreePreviewSeconds(
+      video.free_preview_seconds,
+      video.duration_seconds
+    )
+
+    if (previewSeconds !== Number(video.free_preview_seconds || 0) && video.duration_seconds) {
+      query('update videos set free_preview_seconds = $2 where id = $1', [
+        video.id,
+        previewSeconds,
+      ]).catch(() => {})
+    }
+
     const resumeFromSeconds = await resumePointFor({
       videoId: video.id,
       userId: req.user?.id,
-      durationSeconds: video.free_preview_seconds,
-      capAt: video.free_preview_seconds,
+      durationSeconds: previewSeconds,
+      capAt: previewSeconds,
     })
 
     res.json({
@@ -164,7 +177,7 @@ router.get(
       playback: {
         kind: 'preview',
         expiresInSeconds: PREVIEW_TOKEN_TTL,
-        stopsAtSeconds: video.free_preview_seconds,
+        stopsAtSeconds: previewSeconds,
         resumeFromSeconds,
         ...cf.playbackUrls(token),
       },
@@ -300,7 +313,8 @@ router.post(
 
     await query(
       `update videos set state = 'ready', duration_seconds = coalesce($2, duration_seconds),
-                         thumbnail_url = coalesce($3, thumbnail_url)
+                         thumbnail_url = coalesce($3, thumbnail_url),
+                         free_preview_seconds = ${clampPreviewSql('coalesce($2, duration_seconds)')}
         where id = $1`,
       [video.id, duration, thumbnail]
     )
@@ -326,16 +340,18 @@ export async function ensureClips(videoId) {
   const results = {}
 
   if (!video.preview_uid && duration > 0) {
-    const end = Math.min(video.free_preview_seconds || 300, Math.max(1, duration - 1))
-    const clip = await cf.createClip({
-      uid: video.cloudflare_uid,
-      startSeconds: 0,
-      endSeconds: end,
-      requireSignedURLs: true,
-      name: `${video.title} — free preview`,
-    })
-    results.preview = clip?.uid
-    if (clip?.uid) await query('update videos set preview_uid = $2 where id = $1', [video.id, clip.uid])
+    const end = clampFreePreviewSeconds(video.free_preview_seconds || 300, duration)
+    if (end > 0) {
+      const clip = await cf.createClip({
+        uid: video.cloudflare_uid,
+        startSeconds: 0,
+        endSeconds: end,
+        requireSignedURLs: true,
+        name: `${video.title} — free preview`,
+      })
+      results.preview = clip?.uid
+      if (clip?.uid) await query('update videos set preview_uid = $2 where id = $1', [video.id, clip.uid])
+    }
   }
 
   if (!video.social_clip_uid && duration > 0) {

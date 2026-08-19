@@ -5,7 +5,7 @@ import Panel from '../Panel'
 import TableScroll from '@/components/ui/TableScroll'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import Field, { SelectField } from '@/components/ui/Field'
-import PreviewDuration, { splitSeconds, toSeconds } from '@/components/dashboard/PreviewDuration'
+import PreviewDuration, { splitSeconds, toSeconds, maxFreePreviewSeconds } from '@/components/dashboard/PreviewDuration'
 import useApi, { tzs, compact, ACCESS_SHORT } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { CATEGORIES, PREMIERE_WINDOWS } from '@/data/copy'
@@ -87,6 +87,13 @@ export default function MyVideosTab({ onNewUpload }) {
   const save = async ({ thenSubmit }) => {
     if (!editing || !form) return
     if (form.title.trim().length < 3) return showToast('Give the video a title')
+    const previewSecs = toSeconds(form.previewValue, form.previewUnit)
+    const mostPreview = maxFreePreviewSeconds(editing.durationSeconds)
+    if (mostPreview != null && previewSecs > mostPreview) {
+      return showToast(
+        `A free preview cannot be most of the video. The most you can give away is half (${mostPreview}s).`
+      )
+    }
     setSaving(true)
     try {
       await api.videos.update(editing.id, {

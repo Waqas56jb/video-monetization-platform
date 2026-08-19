@@ -14,6 +14,7 @@ import { campaignPerformance, microToTzs } from '../services/ads.js'
 import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails } from '../lib/cloudflare.js'
 import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
 import { capabilities, env } from '../config/env.js'
+import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 
 const router = Router()
 
@@ -222,7 +223,8 @@ router.post(
            is_published         = true,
            published_at         = coalesce(published_at, now()),
            premiere_started_at  = case when access_type = 'paid_premiere'
-                                       then coalesce(premiere_started_at, now()) else null end
+                                       then coalesce(premiere_started_at, now()) else null end,
+           free_preview_seconds = ${clampPreviewSql('duration_seconds')}
          where id = $1 returning *`,
         [video.id, req.user.id]
       )
@@ -439,6 +441,10 @@ router.patch(
     const video = await one('select * from videos where id = $1', [req.params.id])
     if (!video) throw notFound('Video not found')
     const b = req.body
+    const previewSeconds =
+      b.freePreviewSeconds == null
+        ? null
+        : clampFreePreviewSeconds(b.freePreviewSeconds, video.duration_seconds)
 
     const updated = await transaction(
       async (client) => {
@@ -457,7 +463,7 @@ router.patch(
             video.id,
             b.accessType ?? null,
             b.priceTzs ?? null,
-            b.freePreviewSeconds ?? null,
+            previewSeconds,
             b.premiereDays ?? null,
             b.adsEnabled ?? null,
             b.featured ?? null,
