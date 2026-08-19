@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Check, Copy, Download, Facebook, Film, Loader2, MessageCircle, Share2, X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api from '@/lib/api'
-import { whatsappShare } from '@/lib/whatsappShare'
+import { openWhatsApp } from '@/lib/whatsappShare'
 
 /**
  * Share the watch URL so WhatsApp / Facebook / X can draw the Open Graph card.
@@ -95,7 +95,6 @@ export default function ShareSheet({ open, video, onClose }) {
   if (!open || !video) return null
 
   const canNative = typeof navigator !== 'undefined' && Boolean(navigator.share)
-  const wa = whatsappShare(url)
 
   return createPortal(
     <div className="modal open share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
@@ -145,15 +144,14 @@ export default function ShareSheet({ open, video, onClose }) {
           </p>
         )}
 
-        <a
+        <button
           className="btn btn-block share-wa"
-          href={wa.href}
-          target={wa.target}
-          rel="noopener noreferrer"
+          type="button"
+          onClick={() => openWhatsApp(url)}
         >
           <MessageCircle />
           WhatsApp
-        </a>
+        </button>
 
         <div className="share-targets">
           <a
