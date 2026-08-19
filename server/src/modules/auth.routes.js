@@ -36,7 +36,7 @@ const registerSchema = z.object({
 })
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address'),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   password: z.string().min(1, 'Enter your password'),
 })
 
@@ -136,7 +136,8 @@ router.post(
   '/login',
   validate(loginSchema),
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body
+    const email = req.body.email.trim().toLowerCase()
+    const { password } = req.body
     const { session, user } = await signInWithPassword({ email, password })
 
     let profile = await one('select * from profiles where id = $1', [user.id])

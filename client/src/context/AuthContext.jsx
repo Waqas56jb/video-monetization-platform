@@ -63,16 +63,11 @@ export function AuthProvider({ children }) {
       return data.user
     } catch (err) {
       /**
-       * Only a 401 means "these credentials are no good". Anything else — the
-       * network, a dropped connection, the page being navigated away from
-       * mid-request — says nothing about the session, and throwing it away
-       * over that logged people out for clicking a link at the wrong moment.
-       *
-       * The API client has already cleared the tokens if it really was a 401,
-       * so this only has to mirror that in the interface.
+       * Only a 401 that actually cleared the current token means the session
+       * is dead. A late 401 from a request that started before this login
+       * must not wipe a user we just set — that was the first-attempt failure.
        */
-      if (err?.status === 401) {
-        clearSession()
+      if (err?.status === 401 && !getAccessToken()) {
         setUser(null)
         setCreator(null)
       }
@@ -101,11 +96,23 @@ export function AuthProvider({ children }) {
   )
 
   const signIn = useCallback(async ({ email, password }) => {
-    const data = await api.auth.login({ email, password })
-    saveSession(data.session)
-    setUser(data.user)
-    await reload()
-    return data.user
+    setLoading(true)
+    try {
+      const data = await api.auth.login({
+        email: String(email || '').trim().toLowerCase(),
+        password,
+      })
+      saveSession(data.session)
+      setUser(data.user)
+      try {
+        await reload()
+      } catch {
+        /* Session is already saved. A profile reload can wait. */
+      }
+      return data.user
+    } finally {
+      setLoading(false)
+    }
   }, [reload])
 
   const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {

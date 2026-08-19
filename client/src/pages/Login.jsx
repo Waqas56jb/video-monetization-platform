@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, Sparkles } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
@@ -16,9 +16,6 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  const timer = useRef(null)
-
-  useEffect(() => () => clearTimeout(timer.current), [])
 
   /**
    * Where this person was going before they were asked to sign in.
@@ -44,12 +41,29 @@ export default function Login() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+    if (busy) return
+    /**
+     * Read the fields from the form, not only React state.
+     *
+     * Safari and Chrome autofill often paint the email and password without
+     * firing onChange, so the first tap submitted empty credentials, failed,
+     * and the second tap — after state had caught up — worked. That is the
+     * "login never works first time" report.
+     */
+    const posted = new FormData(e.currentTarget)
+    const email = String(posted.get('email') || form.email || '').trim().toLowerCase()
+    const password = String(posted.get('password') || form.password || '')
+    if (!email || !password) {
+      setError('Enter your email and password')
+      return
+    }
+
     setBusy(true)
     setError(null)
     try {
-      const user = await signIn(form)
+      const user = await signIn({ email, password })
       showToast(`Karibu tena, ${user.fullName || user.email}!`)
-      timer.current = setTimeout(() => navigate(next || '/dashboard', { replace: true }), 400)
+      navigate(next || '/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -99,6 +113,7 @@ export default function Login() {
           label="Email"
           icon="mail"
           type="email"
+          name="email"
           placeholder="you@email.com"
           autoComplete="username"
           value={form.email}
@@ -108,6 +123,7 @@ export default function Login() {
         <PasswordField
           id="login-pass"
           label="Password"
+          name="password"
           placeholder="••••••••"
           autoComplete="current-password"
           value={form.password}

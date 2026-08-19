@@ -26,10 +26,19 @@ export default function Login({ onLogin }) {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+    if (busy) return
+    const posted = new FormData(e.currentTarget)
+    const email = String(posted.get('email') || form.email || '').trim().toLowerCase()
+    const password = String(posted.get('password') || form.password || '')
+    if (!email || !password) {
+      setError('Enter your email and password')
+      return
+    }
+
     setBusy(true)
     setError(null)
     try {
-      const user = await login({ email: form.email.trim(), password: form.password })
+      const user = await login({ email, password })
       onLogin(user)
     } catch (err) {
       setError(err.message)
@@ -66,6 +75,7 @@ export default function Login({ onLogin }) {
               label="Email"
               icon="mail"
               type="email"
+              name="email"
               placeholder="admin@mtonyo.tz"
               autoComplete="username"
               value={form.email}
@@ -77,6 +87,7 @@ export default function Login({ onLogin }) {
               label="Password"
               icon="lock"
               type="password"
+              name="password"
               placeholder="••••••••••"
               autoComplete="current-password"
               value={form.password}

@@ -58,8 +58,7 @@ export function AuthProvider({ children }) {
          * session, and signing a moderator out over it — mid-review queue —
          * is both wrong and infuriating.
          */
-        if (err?.status === 401) {
-          clearSession()
+        if (err?.status === 401 && !getAccessToken()) {
           if (alive) setUser(null)
         }
       })
@@ -74,12 +73,12 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async ({ email, password }) => {
     setError(null)
-    const res = await api.auth.login({ email, password })
+    const res = await api.auth.login({
+      email: String(email || '').trim().toLowerCase(),
+      password,
+    })
 
     if (!STAFF.includes(res?.user?.role)) {
-      // Their credentials were right, but this is not their door. Say so
-      // plainly rather than showing a puzzling "wrong password".
-      clearSession()
       const err = new Error('This account does not have access to the control centre.')
       err.status = 403
       throw err
@@ -87,7 +86,6 @@ export function AuthProvider({ children }) {
 
     saveSession(res.session)
     setUser(res.user)
-    // Login answers with the profile; the permission set comes from /me.
     try {
       const me = await api.auth.me()
       setPermissions(me.permissions || [])

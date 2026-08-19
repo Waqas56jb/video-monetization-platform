@@ -25,16 +25,31 @@ export class ApiError extends Error {
 
 /* ------------------------------------------------------------- session */
 
-export const getAccessToken = () => getItem(ACCESS_KEY)
-export const getRefreshToken = () => getItem(REFRESH_KEY)
+/**
+ * Keep the live tokens in memory as well as storage.
+ *
+ * Safari Private Browsing and "Block All Cookies" can reject localStorage
+ * writes. If memory is not the source of truth, the first login looks like it
+ * worked, `/me` then runs with no token, a 401 lands, and the second attempt
+ * "mysteriously" succeeds. Memory lasts for this tab even when storage cannot.
+ */
+let accessMem = getItem(ACCESS_KEY)
+let refreshMem = getItem(REFRESH_KEY)
+
+export const getAccessToken = () => accessMem || getItem(ACCESS_KEY)
+export const getRefreshToken = () => refreshMem || getItem(REFRESH_KEY)
 
 export function saveSession(session) {
   if (!session?.accessToken) return
+  accessMem = session.accessToken
+  if (session.refreshToken) refreshMem = session.refreshToken
   setItem(ACCESS_KEY, session.accessToken)
   if (session.refreshToken) setItem(REFRESH_KEY, session.refreshToken)
 }
 
 export function clearSession() {
+  accessMem = null
+  refreshMem = null
   removeItem(ACCESS_KEY)
   removeItem(REFRESH_KEY)
 }
@@ -138,9 +153,24 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
     throw unreachable(err)
   }
 
-  if (res.status === 401 && auth && retry && getRefreshToken()) {
-    const fresh = await refreshAccessToken()
-    if (fresh) return request(path, { method, body, auth, retry: false, signal })
+  /**
+   * A 401 is only fatal for the token THAT request used.
+   *
+   * First login used to fail because an older `/me` (stale leftover session)
+   * came back 401 after the new tokens were already saved — and this block
+   * wiped the fresh session. The second attempt then "worked". If a newer
+   * login has replaced the token, retry with that instead of logging them out.
+   */
+  const tokenStillCurrent = !token || getAccessToken() === token
+
+  if (res.status === 401 && auth && retry) {
+    if (!tokenStillCurrent) {
+      return request(path, { method, body, auth, retry: false, signal })
+    }
+    if (getRefreshToken()) {
+      const fresh = await refreshAccessToken()
+      if (fresh) return request(path, { method, body, auth, retry: false, signal })
+    }
   }
 
   if (res.status === 204) return null
@@ -154,7 +184,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
 
   if (!res.ok) {
     const e = payload?.error || {}
-    if (res.status === 401) {
+    if (res.status === 401 && auth && tokenStillCurrent) {
       clearSession()
       announceExpiry()
     }

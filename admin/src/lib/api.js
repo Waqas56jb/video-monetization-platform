@@ -55,16 +55,27 @@ export class ApiError extends Error {
 
 /* ------------------------------------------------------------- session */
 
-export const getAccessToken = () => store.get(ACCESS_KEY)
-export const getRefreshToken = () => store.get(REFRESH_KEY)
+/**
+ * Memory is the live session; localStorage is a backup.
+ * A rejected storage write used to make the first login look like it failed.
+ */
+let accessMem = store.get(ACCESS_KEY)
+let refreshMem = store.get(REFRESH_KEY)
+
+export const getAccessToken = () => accessMem || store.get(ACCESS_KEY)
+export const getRefreshToken = () => refreshMem || store.get(REFRESH_KEY)
 
 export function saveSession(session) {
   if (!session?.accessToken) return
+  accessMem = session.accessToken
+  if (session.refreshToken) refreshMem = session.refreshToken
   store.set(ACCESS_KEY, session.accessToken)
   if (session.refreshToken) store.set(REFRESH_KEY, session.refreshToken)
 }
 
 export function clearSession() {
+  accessMem = null
+  refreshMem = null
   store.remove(ACCESS_KEY)
   store.remove(REFRESH_KEY)
 }
@@ -168,9 +179,16 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
     )
   }
 
-  if (res.status === 401 && auth && retry && getRefreshToken()) {
-    const fresh = await refreshAccessToken()
-    if (fresh) return request(path, { method, body, auth, retry: false, signal })
+  const tokenStillCurrent = !token || getAccessToken() === token
+
+  if (res.status === 401 && auth && retry) {
+    if (!tokenStillCurrent) {
+      return request(path, { method, body, auth, retry: false, signal })
+    }
+    if (getRefreshToken()) {
+      const fresh = await refreshAccessToken()
+      if (fresh) return request(path, { method, body, auth, retry: false, signal })
+    }
   }
 
   if (res.status === 204) return null
@@ -184,7 +202,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
 
   if (!res.ok) {
     const e = payload?.error || {}
-    if (res.status === 401) {
+    if (res.status === 401 && auth && tokenStillCurrent) {
       clearSession()
       announceExpiry()
     }
