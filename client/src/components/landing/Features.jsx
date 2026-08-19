@@ -1,25 +1,13 @@
-import { Check, Gem, Play, Share2, TrendingUp } from 'lucide-react'
+import { Check, Gem, Share2, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Reveal from '@/components/ui/Reveal'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 
-/**
- * What the platform actually does for a creator.
- *
- * This was a 3×2 grid of icon cards — six equal tiles, directly beneath two
- * other grids. It is the single biggest contributor to "a PDF made of boxes",
- * and six equal tiles also flatten the difference between "you can set a
- * preview length" and "nobody can steal your film".
- *
- * Three stories now, in an asymmetric layout: one wide band, then two columns
- * beneath it. Deliberately NOT the alternating pattern the release models use
- * — repeating that shape twice in a row would recreate the same problem one
- * level up. Variety between sections is the point.
- *
- * The visuals are composed from the design system rather than photographed.
- * Three more hero-sized images would cost every visitor on mobile data real
- * seconds, and a diagram of the thing beats a stock photo near the thing.
- */
+const SHARE_DEMO = {
+  slug: 'behind-the-fame-a-coast-documentary',
+  title: 'Behind The Fame — A Coast Documentary',
+  creator: 'Asha Mwinyi',
+}
 
 /** A small, honest picture of each capability. No images, no weight. */
 const VISUALS = {
@@ -30,21 +18,30 @@ const VISUALS = {
         <span>On WhatsApp and social</span>
       </div>
       <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
-      <div className="pw-og" aria-hidden="true">
+      <Link
+        className="pw-og"
+        to={`/watch/${SHARE_DEMO.slug}`}
+        aria-label={`${SHARE_DEMO.title} — watch the free preview`}
+      >
         <span className="pw-og-poster">
-          <Play size={18} />
+          <img
+            src={`/og/card/${SHARE_DEMO.slug}.jpg`}
+            alt=""
+            width={1200}
+            height={630}
+          />
         </span>
         <span className="pw-og-body">
           <span className="pw-og-brand">MTONYO+</span>
-          <b>Video title</b>
-          <small>Creator name</small>
+          <b>{SHARE_DEMO.title}</b>
+          <small>{SHARE_DEMO.creator}</small>
           <em>WATCH FREE PREVIEW</em>
         </span>
-      </div>
+      </Link>
       <small>
-        Opens that exact video — free preview, then pay to continue.{' '}
-        <Link className="pw-try" to="/watch/behind-the-fame-a-coast-documentary">
-          Try it on a video
+        This is a real share card. Tap it — that video, free preview, then pay.{' '}
+        <Link className="pw-try" to={`/watch/${SHARE_DEMO.slug}?share=1`}>
+          Open Share
         </Link>
       </small>
     </div>

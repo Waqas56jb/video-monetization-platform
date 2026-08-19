@@ -2331,11 +2331,14 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .pw-card{height:52px;border-radius:11px;background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(255,255,255,.03));border:1px solid var(--border2);display:grid;place-items:center;color:var(--purple2)}
 .pw-card.is-lead{background:linear-gradient(135deg,rgba(124,58,237,.34),rgba(124,58,237,.1));border-color:rgba(124,58,237,.4)}
 .pw-og{border:1px solid var(--border2);border-radius:14px;overflow:hidden;background:rgba(8,8,14,.7);min-width:0}
+a.pw-og{display:block;text-decoration:none;color:inherit}
+a.pw-og:hover{border-color:rgba(245,197,24,.45)}
 .pw-og-poster{
-  display:grid;place-items:center;aspect-ratio:16/9;
+  position:relative;display:block;aspect-ratio:1200/630;
   background:linear-gradient(135deg,rgba(124,58,237,.4),rgba(6,6,10,.9));
   color:#fff;
 }
+.pw-og-poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .pw-og-body{padding:11px 13px 13px}
 .pw-og-brand{display:block;font-family:'Sora',sans-serif;font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--gold);margin-bottom:5px}
 .pw-og-body b{display:block;font-size:14px;line-height:1.3}

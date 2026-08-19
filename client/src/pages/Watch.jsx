@@ -131,6 +131,16 @@ export default function Watch() {
   }, [v?.slug, videoId, location.pathname, location.search, navigate])
 
   useEffect(() => {
+    if (!v?.slug) return
+    const params = new URLSearchParams(location.search)
+    if (params.get('share') !== '1') return
+    setSharing(true)
+    params.delete('share')
+    const q = params.toString()
+    navigate(`${location.pathname}${q ? `?${q}` : ''}`, { replace: true })
+  }, [v?.slug, location.search, location.pathname, navigate])
+
+  useEffect(() => {
     setPreviewOver(false)
     setPayOpen(false)
     setJustPaid(false)
