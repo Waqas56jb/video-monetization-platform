@@ -75,15 +75,30 @@ export default function StreamPlayer({
   controls = true,
   title = 'Video player',
   onRetry,
+  onPlaying,
 }) {
   const frame = useRef(null)
+  const onPlayingRef = useRef(onPlaying)
+  onPlayingRef.current = onPlaying
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
   const [boot, setBoot] = useState(0)
+  /**
+   * Pin startTime to the moment this source first loads.
+   *
+   * After payment, resumeHint and the server resume point can disagree by a
+   * second. Putting startAt in the iframe URL meant every tiny change remounted
+   * Stream — a new big play button each time. Seek still happens via the SDK.
+   */
+  const pin = useRef({ src: null, startAt: 0 })
+  if (src !== pin.current.src) {
+    pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
+  }
+  const resumeAt = pin.current.startAt
   const iframeSrc = useMemo(
-    () => (src ? buildSrc(src, poster, autoplay || playOnReady, startAt, controls) : null),
-    [src, poster, autoplay, playOnReady, startAt, controls]
+    () => (src ? buildSrc(src, poster, autoplay || playOnReady, resumeAt, controls) : null),
+    [src, poster, autoplay, playOnReady, resumeAt, controls]
   )
 
   const markReady = () => setReady(true)
@@ -125,23 +140,33 @@ export default function StreamPlayer({
         player.addEventListener('timeupdate', () =>
           onTimeUpdate?.(player.currentTime, player.duration)
         )
-        player.addEventListener('loadeddata', markReady)
-        player.addEventListener('play', markReady)
-        player.addEventListener('canplay', markReady)
+        const shown = () => {
+          markReady()
+          onPlayingRef.current?.()
+        }
+        // After a purchase, keep the poster up until play actually starts.
+        // loadeddata / iframe onLoad used to drop it early and leave Stream's
+        // giant play button — the extra "Watch Now" after paying.
+        if (!playOnReady) {
+          player.addEventListener('loadeddata', markReady)
+          player.addEventListener('canplay', markReady)
+        }
+        player.addEventListener('play', shown)
+        player.addEventListener('playing', shown)
 
         // Seek once, and only if the URL parameter did not already land us
         // there. Seeking again on every metadata event would fight the viewer
         // every time they tried to scrub backwards.
-        if (startAt > 0) {
+        if (resumeAt > 0) {
           let seeked = false
           const seek = () => {
             if (seeked) return
-            if (player.currentTime >= startAt - 1.5) {
+            if (player.currentTime >= resumeAt - 1.5) {
               seeked = true // Stream honoured startTime; leave it alone.
               return
             }
             try {
-              player.currentTime = startAt
+              player.currentTime = resumeAt
               seeked = true
             } catch {
               /* not seekable yet — the next event will try again */
@@ -152,27 +177,41 @@ export default function StreamPlayer({
         }
 
         if (playOnReady) {
-          let tried = false
+          let tries = 0
+          let started = false
+          let running = false
           const kick = () => {
-            if (!alive || tried) return
-            tried = true
-            Promise.resolve(player.play?.())
-              .then(() => {
+            if (!alive || started || running) return
+            running = true
+            tries += 1
+            const go = async () => {
+              try {
+                if ('muted' in player) player.muted = true
+                await Promise.resolve(player.play?.())
+                started = true
+                shown()
                 try {
                   if ('muted' in player) player.muted = false
                 } catch {
                   /* some embeds ignore unmute */
                 }
-              })
-              .catch(() => {})
+                if (player.paused) {
+                  if ('muted' in player) player.muted = true
+                  await Promise.resolve(player.play?.())
+                }
+              } catch {
+                running = false
+                if (alive && !started && tries < 8) kickTimer = setTimeout(kick, 280)
+              }
+            }
+            go()
           }
           player.addEventListener('canplay', kick)
           player.addEventListener('loadeddata', kick)
-          // Play click is already several seconds old by the time payment
-          // settles; muted autoplay in the iframe URL is what actually starts
-          // it. This kick covers the case where Stream was ready before we
-          // attached the listeners.
-          kickTimer = setTimeout(kick, 400)
+          // Pay is several seconds old by the time sandbox settles. Muted
+          // autoplay on the iframe is what actually starts it; this kick
+          // covers Stream being ready before the listeners attached.
+          kickTimer = setTimeout(kick, 350)
         }
       } catch {
         /* iframe still plays */
@@ -237,7 +276,9 @@ export default function StreamPlayer({
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
         onLoad={() => {
-          // SDK events can be late; drop the poster shortly after the frame loads.
+          // After pay, do not uncover Stream's play button before playback
+          // starts. Otherwise the viewer pays, then taps Watch, then taps again.
+          if (playOnReady) return
           setTimeout(markReady, 450)
         }}
       />

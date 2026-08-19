@@ -315,6 +315,22 @@
 .stream-poster-fallback {
   background: radial-gradient(ellipse at 50% 40%, #1a1228 0%, #000 70%);
 }
+.continue-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 24px;
+  background: rgba(6, 6, 10, 0.72);
+  color: #fff;
+  text-align: center;
+}
+.continue-veil .pay-dots { margin: 0 0 10px }
+.continue-veil b { font-size: 16px; letter-spacing: .01em }
+.continue-veil small { color: rgba(255,255,255,.78); font-size: 13px; line-height: 1.45; max-width: 280px }
 .stream-frame {
   position: relative;
   z-index: 1;

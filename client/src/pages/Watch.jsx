@@ -70,6 +70,8 @@ export default function Watch() {
   const watchedTo = useRef(0)
   const [resumeHint, setResumeHint] = useState(0)
   const [justPaid, setJustPaid] = useState(false)
+  /* Full video has actually started after purchase — overlay can drop. */
+  const [continueReady, setContinueReady] = useState(false)
 
   /**
    * Advertising on a Free + Ads video.
@@ -144,6 +146,7 @@ export default function Watch() {
     setPreviewOver(false)
     setPayOpen(false)
     setJustPaid(false)
+    setContinueReady(false)
     setResumeHint(0)
     lastReported.current = 0
     watchedTo.current = 0
@@ -301,8 +304,9 @@ export default function Watch() {
     return () => clearTimeout(t)
   }, [v?.id])
 
-  const onUnlocked = useCallback(async () => {
+  const onUnlocked = useCallback(() => {
     setJustPaid(true)
+    setContinueReady(false)
     setPayOpen(false)
     setPreviewOver(false)
 
@@ -311,7 +315,7 @@ export default function Watch() {
     setResumeHint(from)
 
     if (from > 0 && v?.id) {
-      await api.saveProgress(v.id, Math.floor(from)).catch(() => {})
+      api.saveProgress(v.id, Math.floor(from)).catch(() => {})
     }
 
     showToast(
@@ -319,10 +323,25 @@ export default function Watch() {
         ? `Unlocked — continuing from ${duration(Math.floor(from))}`
         : 'Unlocked — continuing the video'
     )
-    playback.reload()
+    /* Quiet: a loading flash remounts the preview player and paints Stream's
+       play button — the extra Watch Now after a purchase. */
+    playback.reload({ quiet: true })
     video.reload({ quiet: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id])
+
+  /**
+   * Paying is the decision. Do not leave a veil up if autoplay is blocked —
+   * uncover the player so one tap can start it, never two screens of Watch Now.
+   */
+  useEffect(() => {
+    if (!justPaid || continueReady) return
+    const t = setTimeout(() => setContinueReady(true), 3500)
+    return () => clearTimeout(t)
+  }, [justPaid, continueReady])
+
+  /** Autoplay the full film only — never remount the preview clip after Pay. */
+  const autoContinue = justPaid && p?.playback?.kind === 'full'
 
   /**
    * Sharing moved into its own sheet.
@@ -486,8 +505,9 @@ export default function Watch() {
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
                 startAt={resumeAt}
-                autoplay={justPaid}
-                playOnReady={justPaid}
+                autoplay={autoContinue}
+                playOnReady={autoContinue}
+                onPlaying={() => setContinueReady(true)}
                 onRetry={() => playback.reload()}
                 onEnded={() => {
                   if (needsPayment) {
@@ -534,6 +554,18 @@ export default function Watch() {
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
                 Try again
               </button>
+            </div>
+          )}
+
+          {justPaid && !continueReady && (
+            <div className="continue-veil" aria-live="polite">
+              <span className="pay-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <b>Unlocked</b>
+              <small>Continuing from where the preview stopped…</small>
             </div>
           )}
 
