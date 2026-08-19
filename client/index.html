@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  /* First tap must fire the action. iPad often claims it can hover, so
+     :hover lifts run on the first finger press and the click misses. */
+  (function () {
+    try {
+      var coarse = window.matchMedia('(hover: none), (pointer: coarse)').matches
+      if (coarse || navigator.maxTouchPoints > 1) {
+        document.documentElement.classList.add('is-touch')
+      }
+    } catch (e) {}
+  })()
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>MTONYO+ — Tanzania's Premium Creator Video Platform</title>

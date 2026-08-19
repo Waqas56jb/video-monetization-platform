@@ -479,7 +479,6 @@
   color: #cfcfdd;
   letter-spacing: .02em;
 }
-.lock-gate:hover .lg-lock,
 .lock-gate:focus-visible .lg-lock {
   transform: scale(1.04);
   border-color: var(--gold);
