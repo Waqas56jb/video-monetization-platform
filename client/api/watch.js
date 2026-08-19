@@ -14,8 +14,24 @@ const API =
   process.env.API_URL ||
   'https://video-monetization-platform-backend.vercel.app'
 
-const CRAWLER =
+const PREVIEW_BOT =
   /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot/i
+
+/**
+ * Only the link-preview *bot* should get the tiny OG document.
+ *
+ * WhatsApp's in-app browser (the person who tapped the card) still has
+ * "WhatsApp" in its User-Agent, plus Mozilla/AppleWebKit. Treating that as a
+ * crawler is why tapping the share opened a blank page of title + description
+ * instead of Watch.
+ */
+function isLinkPreviewBot(ua) {
+  if (!PREVIEW_BOT.test(ua || '')) return false
+  if (/Mozilla\//i.test(ua) && /AppleWebKit|Chrome|CriOS|Firefox|Safari|Mobile/i.test(ua)) {
+    return false
+  }
+  return true
+}
 
 const escapeAttr = (s) =>
   String(s == null ? '' : s)
@@ -126,14 +142,17 @@ export default async function handler(req, res) {
   const image = cardFor(origin, video, slug)
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
+  res.setHeader('Vary', 'User-Agent')
 
-  if (CRAWLER.test(ua)) {
+  if (isLinkPreviewBot(ua)) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60')
     res.status(200)
     return res.end(
       crawlerDocument({ origin, canonical, title, description, image })
     )
   }
+
+  res.setHeader('Cache-Control', 'private, no-store, must-revalidate')
 
   let shell
   try {
