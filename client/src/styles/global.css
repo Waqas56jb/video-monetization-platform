@@ -2078,124 +2078,194 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 }
 
 /* =========================================================================
-   SHARE SHEET — the card the recipient should see, then where it goes
+   SHARE SHEET — client's mock: card, WhatsApp, 4-up brands, more, clip
    ========================================================================= */
 .share-modal{padding:20px;align-items:center}
 .share-card{
-  width:min(440px,100%);max-width:440px;max-height:min(88dvh,920px);overflow-y:auto;
-  text-align:left;padding-bottom:22px;
+  width:min(420px,100%);max-width:420px;max-height:min(88dvh,920px);overflow-y:auto;
+  text-align:center;padding:28px 22px 20px;
 }
-.share-card h3{margin:0 0 6px;font-size:20px;padding-right:42px;letter-spacing:.02em}
-.share-sub{margin:0 0 16px;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.share-card .share-xbtn{
+  width:36px;height:36px;border-radius:50%;top:14px;right:14px;
+  background:rgba(255,255,255,.06);
+}
+.share-card h3{
+  margin:0 0 8px;padding:0 36px;font-size:15px;font-weight:800;
+  letter-spacing:.16em;text-transform:uppercase;text-align:center;
+}
+.share-sub{margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--muted);text-align:center}
+.share-sub b{color:var(--text);font-weight:700}
 .share-kicker{
-  display:flex;align-items:center;gap:7px;margin:0 0 8px;
-  font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);
+  display:flex;align-items:center;justify-content:flex-start;gap:7px;margin:0 0 10px;
+  font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;
 }
 .share-kicker svg{flex-shrink:0}
 .share-og{
-  border:1px solid var(--border2);border-radius:16px;overflow:hidden;
-  background:rgba(255,255,255,.025);margin-bottom:16px;text-align:left;
+  border:1px solid var(--border2);border-radius:18px;overflow:hidden;
+  background:#0a0a12;margin-bottom:16px;text-align:left;
 }
-.share-og-poster{
-  position:relative;aspect-ratio:1200/630;background:var(--card2);
+.share-og-stage{
+  position:relative;aspect-ratio:16/10;background:var(--card2);min-height:180px;
 }
-.share-og-poster img,.share-og-poster .share-thumb-blank{
+.share-og-stage img,.share-og-stage .share-thumb-blank{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
 }
-.share-og-poster .share-thumb-blank{display:grid;place-items:center;color:var(--muted2)}
+.share-og-stage .share-thumb-blank{display:grid;place-items:center;color:var(--muted2)}
+.share-og-veil{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,6,12,.15) 20%,rgba(6,6,12,.82) 100%);
+  pointer-events:none;
+}
+.share-og-badge{
+  position:absolute;top:10px;left:10px;z-index:2;
+  font-family:'Sora',sans-serif;font-size:10px;font-weight:800;letter-spacing:.12em;
+  color:#fff;background:#7c3aed;padding:4px 8px;border-radius:8px;
+}
+.share-og-time{
+  position:absolute;top:10px;right:10px;z-index:2;
+  font-size:11px;font-weight:700;color:#fff;
+  background:rgba(0,0,0,.55);padding:4px 8px;border-radius:999px;
+}
 .share-og-play{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:46px;height:46px;border-radius:50%;
-  background:rgba(6,6,10,.72);border:1px solid rgba(255,255,255,.18);
+  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);z-index:2;
+  width:52px;height:52px;border-radius:50%;
+  background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.85);
   display:grid;place-items:center;color:#fff;pointer-events:none;
 }
-.share-og-body{padding:12px 14px 14px}
-.share-og-brand{
-  display:block;font-family:'Sora',sans-serif;font-size:10.5px;font-weight:800;
-  letter-spacing:.16em;color:var(--gold);margin-bottom:6px;
+.share-og-play svg{width:22px;height:22px;margin-left:2px}
+.share-og-meta{
+  position:absolute;left:12px;right:108px;bottom:12px;z-index:2;
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
 }
-.share-og-body b{
-  display:-webkit-box;font-size:15.5px;line-height:1.35;
-  overflow:hidden;text-overflow:ellipsis;
-  -webkit-line-clamp:2;-webkit-box-orient:vertical;
+.share-og-new{
+  font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:#fff;background:#7c3aed;padding:3px 7px;border-radius:6px;
 }
-.share-og-body small{display:block;margin-top:5px;font-size:12.5px;color:var(--muted)}
-.share-og-body em{
-  display:inline-block;margin-top:10px;font-style:normal;font-size:11px;font-weight:800;
-  letter-spacing:.08em;color:#06140c;background:var(--gold);padding:5px 9px;border-radius:999px;
+.share-og-meta b{
+  display:-webkit-box;font-size:16px;line-height:1.25;color:#fff;
+  overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.share-og-meta small{
+  display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:rgba(255,255,255,.82);
+}
+.share-og-meta small svg{color:#a78bfa}
+.share-og-meta em{
+  display:inline-block;margin-top:6px;font-style:normal;font-size:11px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:#06140c;background:var(--gold);
+  padding:6px 10px;border-radius:8px;
+}
+.share-og-stats{
+  position:absolute;right:10px;bottom:12px;z-index:2;
+  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+}
+.share-og-stats span{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10.5px;font-weight:700;color:#fff;
+  background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12);
+  padding:4px 8px;border-radius:999px;
 }
 .share-link-label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:7px}
 .share-link{
   width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:12px;
-  padding:12px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;margin-bottom:14px;
+  padding:12px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none;margin-bottom:14px;text-align:left;
 }
 .share-link:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15)}
-.share-problem{margin:-4px 0 12px;font-size:12.5px;line-height:1.55;color:#fca5a5}
-.share-hint{margin:0 0 12px;font-size:12.5px;line-height:1.55;color:#86efac}
+.share-problem{margin:0 0 10px;font-size:12.5px;line-height:1.55;color:#fca5a5;text-align:left}
+.share-hint{margin:0 0 12px;font-size:12.5px;line-height:1.55;color:#86efac;text-align:left}
 .share-wa{
-  background:#25d366;color:#06240f;border:0;margin-bottom:10px;
-  display:flex;align-items:center;justify-content:flex-start;gap:12px;
-  min-height:56px;padding:12px 16px;text-align:left;
+  display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;
+  min-height:58px;padding:12px 16px;margin:0 0 10px;border:0;border-radius:16px;
+  background:#25d366;color:#fff;font-family:inherit;cursor:pointer;text-align:left;
 }
 .share-wa:hover{filter:brightness(1.06)}
-.share-wa-copy{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.25}
-.share-wa-copy b{font-size:14.5px;font-weight:800}
-.share-wa-copy small{font-size:11.5px;font-weight:600;opacity:.72}
+.share-wa svg{flex-shrink:0;width:26px;height:26px}
+.share-wa-copy{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2}
+.share-wa-copy b{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.share-wa-copy small{font-size:11.5px;font-weight:500;opacity:.9;text-transform:none;letter-spacing:0}
 .share-targets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
 .share-target{
-  min-height:88px;padding:12px 6px 10px;border-radius:16px;border:1px solid var(--border2);
-  background:rgba(255,255,255,.03);color:var(--text);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  min-height:92px;padding:12px 4px 10px;border-radius:16px;border:0;
+  color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
   text-decoration:none;font-family:inherit;cursor:pointer;
 }
-.share-target b{font-size:11px;font-weight:800;line-height:1.2}
-.share-target small{font-size:9.5px;font-weight:600;line-height:1.2;opacity:.8;text-align:center}
+.share-target svg{width:22px;height:22px;flex-shrink:0}
+.share-target b{font-size:11px;font-weight:800;line-height:1.15}
+.share-target small{font-size:9px;font-weight:600;line-height:1.2;opacity:.88;text-align:center}
 .share-target:hover{filter:brightness(1.08)}
-.share-target.is-ig{background:linear-gradient(135deg,#f58529,#dd2a7b 52%,#8134af);border:0;color:#fff}
-.share-target.is-tt{background:#111;border-color:rgba(255,255,255,.14);color:#fff}
-.share-target.is-fb{background:#1877f2;border:0;color:#fff}
+.share-target.is-ig{background:linear-gradient(145deg,#f59e0b 0%,#e11d48 42%,#c026d3 100%)}
+.share-target.is-tt{background:#111;border:1px solid rgba(255,255,255,.12)}
+.share-target.is-fb{background:#1877f2}
+.share-target.is-copy{background:#1a1a24;border:1px solid rgba(255,255,255,.12)}
 .share-row{
   display:flex;align-items:center;gap:12px;width:100%;
-  min-height:54px;padding:11px 12px;margin-bottom:8px;
+  min-height:56px;padding:11px 12px;margin-bottom:8px;
   border-radius:14px;border:1px solid var(--border2);
   background:rgba(255,255,255,.03);color:var(--text);
   font-family:inherit;cursor:pointer;text-align:left;
 }
 .share-row:hover{border-color:rgba(124,58,237,.45);background:rgba(124,58,237,.08)}
-.share-row > svg:first-child{flex-shrink:0;color:var(--gold)}
+.share-row > svg,.share-row .share-clip-ic{flex-shrink:0;color:var(--gold)}
 .share-row span{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
-.share-row b{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.share-row b{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .share-row small{font-size:11.5px;color:var(--muted);font-weight:500}
 .share-row-go{flex-shrink:0;opacity:.45}
-.share-pill{
-  display:inline-block;font-style:normal;font-size:9px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;color:#fff;background:var(--purple);padding:3px 7px;border-radius:999px;
+.share-clip-ic{position:relative;display:grid;place-items:center;width:28px;height:28px;color:var(--gold)}
+.share-clip-ic em{
+  position:absolute;bottom:0;right:-2px;font-style:normal;font-size:7px;font-weight:800;
+  letter-spacing:.02em;color:#fff;background:#7c3aed;padding:1px 3px;border-radius:4px;line-height:1.2;
 }
-.share-x{font-family:'Sora',sans-serif;font-size:15px;font-weight:800;line-height:1}
-.share-note{margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--muted2)}
+.share-pill{
+  display:inline-block;font-style:normal;font-size:8.5px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:#fff;background:#7c3aed;padding:3px 7px;border-radius:999px;white-space:nowrap;
+}
+.share-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:10px;padding-top:12px;border-top:1px solid var(--border2);text-align:left;
+}
+.share-trust{display:flex;align-items:flex-start;gap:8px;margin:0;min-width:0;flex:1}
+.share-trust svg{flex-shrink:0;color:#a78bfa;margin-top:1px}
+.share-trust span{display:flex;flex-direction:column;gap:2px}
+.share-trust b{font-size:11.5px;font-weight:800}
+.share-trust small{font-size:10.5px;color:var(--muted);font-weight:500;line-height:1.35}
+.share-preview{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:6px;
+  padding:8px 12px;border-radius:10px;border:1.5px solid #7c3aed;
+  background:transparent;color:#c4b5fd;font-size:10.5px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;font-family:inherit;cursor:pointer;white-space:nowrap;
+}
+.share-preview:hover{background:rgba(124,58,237,.12)}
 .spin{animation:spin 1s linear infinite}
 
-/* Phone: bottom sheet so thumbs reach WhatsApp without covering the poster. */
 @media(max-width:720px){
   .share-modal{align-items:flex-end;padding:0}
   .share-card{
     width:100%;max-width:none;border-radius:22px 22px 0 0;
-    max-height:min(92dvh,100%);
-    padding:20px 18px calc(16px + env(safe-area-inset-bottom,0px));
+    max-height:min(94dvh,100%);
+    padding:18px 16px calc(14px + env(safe-area-inset-bottom,0px));
   }
-  .share-link{font-size:16px} /* iOS zooms inputs under 16px */
+  .share-link{font-size:16px}
   .share-wa{min-height:56px}
-  .share-target{min-height:82px}
+  .share-target{min-height:86px}
+  .share-og-stage{min-height:168px}
+  .share-og-meta b{font-size:15px}
+  .share-foot{flex-wrap:wrap}
+}
+@media(max-width:380px){
+  .share-target b{font-size:10px}
+  .share-target small{font-size:8px}
+  .share-og-stats{display:none}
+  .share-og-meta{right:12px}
+  .share-pill{display:none}
 }
 
-/* iPad / Android tablet: keep a centred card, larger poster, no cramped 84px thumb. */
 @media(min-width:721px) and (max-width:1024px){
-  .share-card{width:min(520px,92vw);max-width:520px;padding:28px 26px}
-  .share-og-body b{font-size:17px}
+  .share-card{width:min(480px,92vw);max-width:480px;padding:30px 26px 22px}
+  .share-og-stage{min-height:210px}
+  .share-og-meta b{font-size:18px}
 }
 
 @media(min-width:1025px){
-  .share-card{width:min(440px,92vw)}
+  .share-card{width:min(420px,92vw)}
 }
 
 /* --- reporting: findable, not shouted --- */
