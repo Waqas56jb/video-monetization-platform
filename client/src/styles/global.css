@@ -2341,6 +2341,8 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .pw-og-body b{display:block;font-size:14px;line-height:1.3}
 .pw-og-body small{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
 .pw-og-body em{display:inline-block;margin-top:8px;font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.08em;color:#06140c;background:var(--gold);padding:4px 8px;border-radius:999px}
+.pw-try{color:var(--gold);font-weight:800;text-decoration:none}
+.pw-try:hover{text-decoration:underline}
 .pw-bar{display:flex;gap:5px}
 .pw-seg{padding:11px 12px;border-radius:10px;font-size:11.5px;font-weight:700;border:1px solid var(--border2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pw-seg.is-free{flex:1;background:rgba(255,255,255,.045);color:var(--muted)}

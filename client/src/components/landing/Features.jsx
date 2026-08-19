@@ -1,4 +1,5 @@
 import { Check, Gem, Play, Share2, TrendingUp } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import Reveal from '@/components/ui/Reveal'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 
@@ -40,7 +41,12 @@ const VISUALS = {
           <em>WATCH FREE PREVIEW</em>
         </span>
       </div>
-      <small>Opens that exact video — free preview, then pay to continue</small>
+      <small>
+        Opens that exact video — free preview, then pay to continue.{' '}
+        <Link className="pw-try" to="/watch/behind-the-fame-a-coast-documentary">
+          Try it on a video
+        </Link>
+      </small>
     </div>
   ),
 
