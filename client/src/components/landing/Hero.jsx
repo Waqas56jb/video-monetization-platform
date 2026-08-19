@@ -152,7 +152,15 @@ export default function Hero() {
   return (
     <section className="hero">
       <div className="hero-bg">
-        <img src={IMG.concert} alt="" loading="eager" fetchPriority="high" decoding="async" />
+        <img
+          src={IMG.concert}
+          alt=""
+          width={960}
+          height={640}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
       </div>
 
       <div className="container hero-grid">

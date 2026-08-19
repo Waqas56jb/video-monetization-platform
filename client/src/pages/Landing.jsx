@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { scrollWhenReady } from '@/hooks/useSectionLink'
 import Header from '@/components/layout/Header'
@@ -13,24 +13,15 @@ import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
 
-/** First paint of `/` this session — later visits must not flash a black overlay. */
-let homeBooted = false
-
 /**
- * Marketing homepage — mounts immediately so mobile never spins on
- * remote fonts/images. A short splash sits on top and always clears.
+ * Marketing homepage.
+ *
+ * No boot splash. A black overlay that then reveals the page is the first-load
+ * jump the client reported — one layout, then another. The page paints as
+ * itself from the first frame.
  */
 export default function Landing() {
   const { hash } = useLocation()
-  const [splash, setSplash] = useState(() => !homeBooted && !hash)
-
-  useEffect(() => {
-    homeBooted = true
-    if (!splash) return
-    // Always clear — never gate on Unsplash / fonts (slow or blocked on mobile).
-    const t = setTimeout(() => setSplash(false), 380)
-    return () => clearTimeout(t)
-  }, [splash])
 
   /**
    * Arriving at /#features — from another page, or from a shared link — has to
@@ -47,31 +38,18 @@ export default function Landing() {
   }, [hash])
 
   return (
-    <>
-      {splash && (
-        <div className="landing-boot" aria-busy="true" aria-label="Loading MTONYO+">
-          <div className="loader-logo">
-            MTONYO<span className="logo-plus">+</span>
-          </div>
-          <div className="loader-bar">
-            <span />
-          </div>
-        </div>
-      )}
-
-      <div className={`page landing-page ${splash ? '' : 'is-ready'}`.trim()}>
-        <Header />
-        <Hero />
-        <Marquee />
-        <Trending />
-        <HowItWorks />
-        <AccessModels />
-        <Features />
-        <ForCreators />
-        <Testimonials />
-        <CallToAction />
-        <Footer />
-      </div>
-    </>
+    <div className="page landing-page is-ready">
+      <Header />
+      <Hero />
+      <Marquee />
+      <Trending />
+      <HowItWorks />
+      <AccessModels />
+      <Features />
+      <ForCreators />
+      <Testimonials />
+      <CallToAction />
+      <Footer />
+    </div>
   )
 }

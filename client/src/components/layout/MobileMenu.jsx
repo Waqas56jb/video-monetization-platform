@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
+import { getAccessToken } from '@/lib/api'
 
 const LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -20,7 +21,8 @@ const LINKS = [
 /** Full-screen mobile navigation overlay. */
 export default function MobileMenu({ open, onClose }) {
   const navigate = useNavigate()
-  const { authed } = useRole()
+  const { authed, loading } = useRole()
+  const signedIn = authed || (loading && Boolean(getAccessToken()))
   const goToSection = useSectionLink()
   useLockBodyScroll(open)
 
@@ -73,7 +75,7 @@ export default function MobileMenu({ open, onClose }) {
         )}
       </nav>
       <div className="mobile-menu-actions">
-        {authed ? (
+        {signedIn ? (
           <>
             <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('/dashboard')}>
               My Library

@@ -6,6 +6,7 @@ import MobileMenu from './MobileMenu'
 import useScrolled from '@/hooks/useScrolled'
 import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
+import { getAccessToken } from '@/lib/api'
 
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -21,7 +22,10 @@ export default function Header({ solid = false }) {
   const scrolled = useScrolled(40)
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
-  const { authed } = useRole()
+  const { authed, loading } = useRole()
+  /* Token in hand → show library chrome immediately. Waiting for /me used to
+     paint Log in, then swap to Dashboard — the header jump on first load. */
+  const signedIn = authed || (loading && Boolean(getAccessToken()))
   const goToSection = useSectionLink()
 
   return (
@@ -53,7 +57,7 @@ export default function Header({ solid = false }) {
             {/* A signed-in user must never be shown "Log in" with no route back
                 to their own dashboard — that is how they got stranded on
                 /explore after opening it from the creator menu. */}
-            {authed ? (
+            {signedIn ? (
               <>
                 <button
                   className="btn btn-ghost btn-sm nav-cta-login"
