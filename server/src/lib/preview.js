@@ -21,8 +21,13 @@
  *   2-hour film       →  5:00  (asked for 2-5 minutes, not an hour)
  *
  * The creator still chooses the number below that; this only says how far it
- * may go. Duration unknown (still encoding) → no ceiling yet, applied once the
- * length lands.
+ * may go.
+ *
+ * Duration unknown, which is every upload before it finishes encoding: the
+ * five-minute ceiling still applies, because it never depended on knowing the
+ * length. Only the proportional part waits. That matters — the upload form is
+ * where the number is first typed, and it used to accept anything at all
+ * there and correct it silently hours later.
  */
 
 /** Nothing may give away more than this, however long the video is. */
@@ -33,15 +38,13 @@ const SHARE_OF_RUNNING_TIME = 3
 
 export function maxFreePreviewSeconds(durationSeconds) {
   const duration = Math.max(0, Math.floor(Number(durationSeconds) || 0))
-  if (!duration) return null
+  if (!duration) return PLATFORM_MAX_PREVIEW_SECONDS
   return Math.min(PLATFORM_MAX_PREVIEW_SECONDS, Math.floor(duration / SHARE_OF_RUNNING_TIME))
 }
 
 export function clampFreePreviewSeconds(asked, durationSeconds) {
   const want = Math.max(0, Math.floor(Number(asked) || 0))
-  const most = maxFreePreviewSeconds(durationSeconds)
-  if (most == null) return want
-  return Math.min(want, most)
+  return Math.min(want, maxFreePreviewSeconds(durationSeconds))
 }
 
 /**
@@ -57,6 +60,6 @@ export function clampPreviewSql(durationExpr = 'duration_seconds') {
       ${PLATFORM_MAX_PREVIEW_SECONDS},
       coalesce(${durationExpr}, 0) / ${SHARE_OF_RUNNING_TIME}
     )
-    else free_preview_seconds
+    else least(free_preview_seconds, ${PLATFORM_MAX_PREVIEW_SECONDS})
   end`
 }

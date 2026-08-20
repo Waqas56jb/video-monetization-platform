@@ -32,7 +32,11 @@ export const PLATFORM_MAX_PREVIEW_SECONDS = 300
  */
 export function maxFreePreviewSeconds(durationSeconds) {
   const duration = Math.max(0, Math.round(Number(durationSeconds) || 0))
-  if (!duration) return null
+  // Before a video finishes encoding there is no running time to take a third
+  // of, but five minutes was never a share of anything and still holds. The
+  // upload form is exactly where this matters: it is where the number is first
+  // typed, and it used to take any value at all and correct it silently later.
+  if (!duration) return PLATFORM_MAX_PREVIEW_SECONDS
   return Math.min(PLATFORM_MAX_PREVIEW_SECONDS, Math.floor(duration / 3))
 }
 
@@ -120,8 +124,9 @@ export default function PreviewDuration({
         ) : (
           <>
             Viewers watch <b>{duration(seconds)}</b> free
-            {videoSeconds > 0 && <> of {duration(videoSeconds)}</>}, then the paywall appears.
-            {maxSeconds !== null && <> The most allowed here is {duration(maxSeconds)}.</>}
+            {videoSeconds > 0 && <> of {duration(videoSeconds)}</>}, then the paywall appears.{' '}
+            The most allowed {videoSeconds > 0 ? 'here' : 'for any video'} is{' '}
+            {duration(maxSeconds)}.
           </>
         )}
       </p>
