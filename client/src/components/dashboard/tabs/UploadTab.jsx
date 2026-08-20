@@ -237,7 +237,7 @@ export default function UploadTab({ onSubmitted }) {
     const mostPreview = maxFreePreviewSeconds(durationSeconds)
     if (mostPreview != null && previewSecs > mostPreview) {
       return setError(
-        `A free preview cannot be most of the video. The most you can give away is half (${mostPreview}s).`
+        `The longest free preview for this video is ${mostPreview} seconds. A preview never runs past five minutes, and on a short video never past a third of it.`
       )
     }
 

@@ -9,8 +9,10 @@ import { duration } from '@/hooks/useApi'
  * the first half-hour of a two-hour film, are both perfectly ordinary and
  * neither fits a dropdown of preset minutes.
  *
- * The ceiling is half the running time. A preview of duration-minus-one second
- * (53s free of a 54s video) is the whole film for nothing, not a preview.
+ * The ceiling is five minutes, or a third of the running time for anything
+ * short enough that a third is less than that. Half was tried and rejected —
+ * a two-hour film does not get a one-hour preview, and a song does not give
+ * away half the song.
  */
 const UNITS = [
   { key: 'seconds', label: 'seconds', factor: 1 },
@@ -18,11 +20,20 @@ const UNITS = [
   { key: 'hours', label: 'hours', factor: 3600 },
 ]
 
-/** Longest free preview allowed once the running time is known. Must match the server. */
+/** Nothing may give away more than this, however long the video is. */
+export const PLATFORM_MAX_PREVIEW_SECONDS = 300
+
+/**
+ * Longest free preview allowed once the running time is known.
+ *
+ * Must match server/src/lib/preview.js exactly — the server clamps whatever
+ * arrives, so a form that allowed more would only save a number and silently
+ * show a different one back.
+ */
 export function maxFreePreviewSeconds(durationSeconds) {
   const duration = Math.max(0, Math.round(Number(durationSeconds) || 0))
   if (!duration) return null
-  return Math.floor(duration / 2)
+  return Math.min(PLATFORM_MAX_PREVIEW_SECONDS, Math.floor(duration / 3))
 }
 
 /** Show a number of seconds in whichever unit reads most naturally. */
@@ -102,16 +113,15 @@ export default function PreviewDuration({
           'No free preview — viewers see the paywall straight away.'
         ) : overLimit ? (
           <>
-            A free preview cannot be most of the video. The most you can give away is{' '}
-            {duration(maxSeconds)} of {duration(videoSeconds)} — half, so there is something left
-            to pay for.
+            The most you can give away here is <b>{duration(maxSeconds)}</b> of{' '}
+            {duration(videoSeconds)}. A preview never runs past five minutes, and on a short
+            video never past a third of it.
           </>
         ) : (
           <>
             Viewers watch <b>{duration(seconds)}</b> free
-            {videoSeconds > 0 && <> of {duration(videoSeconds)}</>}
-            {videoSeconds > 0 && <> — {Math.round((seconds / videoSeconds) * 100)}% of it</>}, then
-            the paywall appears.
+            {videoSeconds > 0 && <> of {duration(videoSeconds)}</>}, then the paywall appears.
+            {maxSeconds !== null && <> The most allowed here is {duration(maxSeconds)}.</>}
           </>
         )}
       </p>
