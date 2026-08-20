@@ -1,62 +1,64 @@
 /**
- * Open WhatsApp with only the watch URL so the recipient gets the OG card.
+ * Hand the watch link to WhatsApp.
  *
- * `wa.me` / `api.whatsapp.com` is what failed on iPad Safari: Safari asked to
- * open another app, then “Something went wrong. The application couldn’t be
- * opened.” Phones use the WhatsApp app scheme (no api.whatsapp.com hop).
- * iPad and desktop use WhatsApp Web, where a chat can actually be chosen.
+ * The link goes over on its own, with no caption, so WhatsApp fetches our
+ * Open Graph card and the recipient sees the poster, the title and the
+ * creator rather than a bare URL.
+ *
+ * The hard part is not the URL, it is who performs the navigation. Assigning
+ * `window.location` to a custom scheme from a JavaScript handler is treated
+ * by iOS Safari as a navigation the page invented, and it is refused or
+ * answered with "the address is invalid" when the app is missing. A real
+ * anchor that the person taps is a navigation *they* performed, and iOS
+ * follows it. That single difference is why this is a href now and not a
+ * function that moves the location.
+ *
+ * `api.whatsapp.com` and `wa.me` are deliberately not used: they were what
+ * produced "Something went wrong. The application couldn't be opened."
  */
-function encodeText(watchUrl) {
-  return encodeURIComponent(watchUrl || '')
-}
-
-function device() {
-  if (typeof navigator === 'undefined') return 'web'
+function isPhone() {
+  if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent || ''
-  const iPad =
-    /iPad/i.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !/iPhone|iPod/i.test(ua))
-  if (iPad) return 'ipad'
-  if (/iPhone|iPod/i.test(ua)) return 'iphone'
-  if (/Android/i.test(ua)) return 'android'
-  return 'web'
+  if (/Android/i.test(ua)) return true
+  if (/iPhone|iPod/i.test(ua)) return true
+  // iPadOS reports itself as a Mac; the touch points give it away. It is
+  // treated as a desktop here on purpose — WhatsApp Web lets you pick a chat
+  // there, and the iPad app handoff is the thing that kept failing.
+  return false
 }
 
-export function whatsappShare(watchUrl) {
-  const text = encodeText(watchUrl)
-  const kind = device()
-  if (kind === 'iphone' || kind === 'android') {
-    return {
-      href: `whatsapp://send?text=${text}`,
-      target: '_self',
-      webFallback: `https://web.whatsapp.com/send?text=${text}`,
-    }
-  }
-  return {
-    href: `https://web.whatsapp.com/send?text=${text}`,
-    target: '_blank',
-    webFallback: null,
-  }
+/** Where the WhatsApp button should point on this device. */
+export function whatsappHref(watchUrl) {
+  const text = encodeURIComponent(watchUrl || '')
+  return isPhone()
+    ? `whatsapp://send?text=${text}`
+    : `https://web.whatsapp.com/send?text=${text}`
 }
 
-/** First tap opens the app, or WhatsApp Web if the app is not there. */
-export function openWhatsApp(watchUrl) {
-  const wa = whatsappShare(watchUrl)
-  if (!wa.webFallback) {
-    window.open(wa.href, wa.target === '_blank' ? '_blank' : '_self', 'noopener,noreferrer')
-    return
-  }
+/** Phones leave the page for the app; everything else opens a tab. */
+export function whatsappTarget() {
+  return isPhone() ? '_self' : '_blank'
+}
 
-  let openedApp = false
-  const onHide = () => {
-    if (document.visibilityState === 'hidden') openedApp = true
-  }
-  document.addEventListener('visibilitychange', onHide)
-  window.location.href = wa.href
-  window.setTimeout(() => {
-    document.removeEventListener('visibilitychange', onHide)
-    if (!openedApp && document.visibilityState === 'visible') {
-      window.open(wa.webFallback, '_blank', 'noopener,noreferrer')
+/**
+ * If the app never came to the front, send them to WhatsApp Web instead.
+ *
+ * Attached to the anchor rather than replacing it: the tap has already gone
+ * to the app scheme by the time this runs, so a device with WhatsApp
+ * installed never sees the fallback.
+ */
+export function whatsappFallback(watchUrl) {
+  if (!isPhone()) return () => {}
+  const web = `https://web.whatsapp.com/send?text=${encodeURIComponent(watchUrl || '')}`
+  return () => {
+    let left = false
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') left = true
     }
-  }, 1000)
+    document.addEventListener('visibilitychange', onHide)
+    window.setTimeout(() => {
+      document.removeEventListener('visibilitychange', onHide)
+      if (!left && document.visibilityState === 'visible') window.location.href = web
+    }, 1500)
+  }
 }

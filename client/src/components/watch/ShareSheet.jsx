@@ -15,7 +15,7 @@ import {
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
-import { openWhatsApp } from '@/lib/whatsappShare'
+import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 
 /**
  * Share sheet — layout, icons and type match the client's mock.
@@ -98,6 +98,8 @@ export default function ShareSheet({ open, video, onClose }) {
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
+  /** The promo clip, ready to hand to the OS the moment a button is tapped. */
+  const clipFile = useRef(null)
 
   useLockBodyScroll(open)
 
@@ -144,6 +146,33 @@ export default function ShareSheet({ open, video, onClose }) {
   }, [open, slug])
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
+
+  /**
+   * Fetch the promo clip up front, while the sheet is open and nobody is
+   * waiting.
+   *
+   * Instagram and TikTok have no web composer — there is no URL that posts to
+   * them. What they do accept is a video handed over by the operating system.
+   * `navigator.share` can do that, but only if it is called inside the tap
+   * itself: any await beforehand and iOS treats it as a share the page tried
+   * to start on its own and refuses. So the file has to already be in hand
+   * when the finger lands, which is what this does.
+   */
+  useEffect(() => {
+    if (!open || !clip?.downloadUrl) return
+    let stop = false
+    clipFile.current = null
+    fetch(clip.downloadUrl)
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((blob) => {
+        if (stop || !blob) return
+        clipFile.current = new File([blob], `${slug}-promo.mp4`, { type: 'video/mp4' })
+      })
+      .catch(() => {})
+    return () => {
+      stop = true
+    }
+  }, [open, clip?.downloadUrl, slug])
 
   const copy = async () => {
     setProblem(null)
@@ -196,6 +225,57 @@ export default function ShareSheet({ open, video, onClose }) {
     } finally {
       setSaving(null)
     }
+  }
+
+  /**
+   * Send this to Instagram or TikTok, for real.
+   *
+   * The old behaviour downloaded the clip and told the person to go and open
+   * the app themselves, which is what the client rejected. Neither app has a
+   * share URL, so the only handoff that genuinely launches them is the
+   * device's own share sheet — and on a phone that sheet lists Instagram and
+   * TikTok, and picking one opens it with the video already loaded.
+   *
+   * Everything below runs synchronously off the tap for that reason. The link
+   * is copied first so it is waiting in the clipboard for the caption, since
+   * neither app will take it any other way.
+   */
+  const openApp = (where) => {
+    setProblem(null)
+    setHint(null)
+    navigator.clipboard?.writeText(url).catch(() => {})
+
+    const file = clipFile.current
+    const canFiles =
+      typeof navigator !== 'undefined' &&
+      navigator.canShare &&
+      file &&
+      navigator.canShare({ files: [file] })
+
+    if (canFiles) {
+      navigator
+        .share({ files: [file] })
+        .then(() => setHint('Link copied — paste it in your caption.'))
+        .catch((err) => {
+          if (err?.name !== 'AbortError') saveClip(where)
+        })
+      return
+    }
+
+    // No file yet, but a share sheet exists: send the link and let them pick
+    // the app. Better than a download and an instruction.
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator
+        .share({ url })
+        .catch((err) => {
+          if (err?.name !== 'AbortError') saveClip(where)
+        })
+      return
+    }
+
+    // Desktop has no share sheet and these apps have no web composer, so the
+    // clip and the copied link are genuinely the best that can be offered.
+    saveClip(where)
   }
 
   const shareNative = async () => {
@@ -308,21 +388,29 @@ export default function ShareSheet({ open, video, onClose }) {
           </p>
         )}
 
-        <button className="share-wa" type="button" onClick={() => openWhatsApp(url)}>
+        {/* An anchor, not a button with a handler: iOS follows a link the
+            person tapped and refuses a location the script assigned. */}
+        <a
+          className="share-wa"
+          href={whatsappHref(url)}
+          target={whatsappTarget()}
+          rel="noopener noreferrer"
+          onClick={whatsappFallback(url)}
+        >
           <IconWhatsApp size={26} />
           <span className="share-wa-copy">
             <b>Share on WhatsApp</b>
             <small>Share privately or in groups</small>
           </span>
-        </button>
+        </a>
 
         <div className="share-targets">
-          <button className="share-target is-ig" type="button" onClick={() => saveClip('instagram')}>
+          <button className="share-target is-ig" type="button" onClick={() => openApp('instagram')}>
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
             <small>Feed, Reels, Story</small>
           </button>
-          <button className="share-target is-tt" type="button" onClick={() => saveClip('tiktok')}>
+          <button className="share-target is-tt" type="button" onClick={() => openApp('tiktok')}>
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
             <small>Share video</small>
