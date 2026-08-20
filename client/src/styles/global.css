@@ -2669,9 +2669,12 @@ html.is-touch .btn:active{transform:scale(.97)}
 .share-og-loading em{font-style:normal;font-size:12.5px;font-weight:600;letter-spacing:.02em}
 @keyframes shareShimmer{to{background-position:-200% 0}}
 
-/* Fade the poster in over the skeleton rather than swapping it. */
-.share-og-stage img{opacity:0;transition:opacity .35s ease}
-.share-og-stage img.is-on{opacity:1}
+/* Fade the poster in over the skeleton rather than swapping it.
+   Scoped to the sheet: the homepage card reuses .share-og-stage but has no
+   skeleton and never sets `is-on`, so an unscoped rule left its poster at
+   zero opacity — a black card with the text floating on nothing. */
+.share-og .share-og-stage img{opacity:0;transition:opacity .35s ease}
+.share-og .share-og-stage img.is-on{opacity:1}
 
 @media(prefers-reduced-motion:reduce){
   .share-og-loading{animation:none}
