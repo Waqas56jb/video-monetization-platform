@@ -144,19 +144,27 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Vary', 'User-Agent')
 
+  /**
+   * Readable from another origin, whichever document this turns out to be.
+   *
+   * This header used to sit inside the bot branch below, which looked right
+   * and was not. WhatsApp Web builds its preview inside the browser, and that
+   * fetch carries the browser's own User-Agent — Chrome, not WhatsApp — so it
+   * never took the bot branch and never saw the header. The browser refused
+   * the response and the preview came out as a bare domain, while the same
+   * link from a phone was fine because the phone app fetches server-side,
+   * where cross-origin rules do not apply at all.
+   *
+   * Proved by fetching this URL from a page on a different origin: the card
+   * image came back 200 and the document came back "Failed to fetch".
+   *
+   * Nothing here is private in either branch. The bot document is a title, a
+   * line of description and a poster; the other is the public application
+   * shell that anyone can request directly.
+   */
+  res.setHeader('Access-Control-Allow-Origin', '*')
+
   if (isLinkPreviewBot(ua)) {
-    /**
-     * WhatsApp Web builds its preview inside the browser, not on a server.
-     * That makes the fetch cross-origin, and without this header the browser
-     * refuses to hand it the response — which is why a link sent from a
-     * laptop arrived as the bare domain, or with no card at all, while the
-     * same link from a phone arrived with the full poster. The phone app
-     * fetches it server-side, where CORS never applies.
-     *
-     * There is nothing to protect here: this document is a title, a line of
-     * description and a poster for a video that is already public.
-     */
-    res.setHeader('Access-Control-Allow-Origin', '*')
     /**
      * And give it something to read without waiting.
      *
