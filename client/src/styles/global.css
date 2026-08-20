@@ -2637,3 +2637,22 @@ html.is-touch .btn:active{transform:scale(.97)}
 .stream-sound svg{width:15px;height:15px}
 @keyframes soundIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(max-width:600px){.stream-sound{left:10px;bottom:10px;padding:10px 15px;font-size:13.5px}}
+
+/* The share card is a picture fetched over the network. Until it arrives the
+   stage was empty, so tapping Share looked like nothing had happened. A moving
+   skeleton says the tap landed and something is on its way. */
+.share-og-loading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;color:var(--muted);
+  background:linear-gradient(100deg,var(--card2) 8%,rgba(124,58,237,.10) 20%,var(--card2) 34%);
+  background-size:200% 100%;animation:shareShimmer 1.15s linear infinite}
+.share-og-loading em{font-style:normal;font-size:12.5px;font-weight:600;letter-spacing:.02em}
+@keyframes shareShimmer{to{background-position:-200% 0}}
+
+/* Fade the poster in over the skeleton rather than swapping it. */
+.share-og-stage img{opacity:0;transition:opacity .35s ease}
+.share-og-stage img.is-on{opacity:1}
+
+@media(prefers-reduced-motion:reduce){
+  .share-og-loading{animation:none}
+  .share-og-stage img{transition:none}
+}

@@ -95,6 +95,14 @@ export default function ShareSheet({ open, video, onClose }) {
   const [problem, setProblem] = useState(null)
   const [hint, setHint] = useState(null)
   const [clip, setClip] = useState(null)
+  /**
+   * The card is a picture fetched over the network, and on Tanzanian mobile
+   * data that is not instant. Until it paints there was nothing in its place,
+   * so a tap on Share looked like a tap that had not registered.
+   */
+  const [posterOn, setPosterOn] = useState(false)
+  /** True while the promo clip is downloading, so those buttons look alive. */
+  const [clipLoading, setClipLoading] = useState(false)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
@@ -120,6 +128,7 @@ export default function ShareSheet({ open, video, onClose }) {
     setProblem(null)
     setHint(null)
     setSaving(null)
+    setPosterOn(false)
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -162,6 +171,7 @@ export default function ShareSheet({ open, video, onClose }) {
     if (!open || !clip?.downloadUrl) return
     let stop = false
     clipFile.current = null
+    setClipLoading(true)
     fetch(mediaUrl(clip.downloadUrl))
       .then((r) => (r.ok ? r.blob() : null))
       .then((blob) => {
@@ -169,8 +179,12 @@ export default function ShareSheet({ open, video, onClose }) {
         clipFile.current = new File([blob], `${slug}-promo.mp4`, { type: 'video/mp4' })
       })
       .catch(() => {})
+      .finally(() => {
+        if (!stop) setClipLoading(false)
+      })
     return () => {
       stop = true
+      setClipLoading(false)
     }
   }, [open, clip?.downloadUrl, slug])
 
@@ -326,7 +340,25 @@ export default function ShareSheet({ open, video, onClose }) {
         <div className="share-og" ref={cardRef}>
           <div className="share-og-stage">
             {still ? (
-              <img src={still} alt="" loading="lazy" decoding="async" />
+              <>
+                {!posterOn && (
+                  <span className="share-og-loading" role="status" aria-label="Loading preview">
+                    <Loader2 size={20} className="spin" />
+                    <em>Building your preview…</em>
+                  </span>
+                )}
+                <img
+                  src={still}
+                  alt=""
+                  /* Not lazy: this is the whole point of the sheet and it is
+                     already on screen. Lazy loading delayed the one image the
+                     person opened this to look at. */
+                  decoding="async"
+                  className={posterOn ? 'is-on' : ''}
+                  onLoad={() => setPosterOn(true)}
+                  onError={() => setPosterOn(true)}
+                />
+              </>
             ) : (
               <span className="share-thumb-blank" aria-hidden="true">
                 <Film size={28} />
@@ -406,14 +438,22 @@ export default function ShareSheet({ open, video, onClose }) {
 
         <div className="share-targets">
           <button className="share-target is-ig" type="button" onClick={() => openApp('instagram')}>
-            {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
+            {saving === 'instagram' || clipLoading ? (
+              <Loader2 size={22} className="spin" />
+            ) : (
+              <IconInstagram />
+            )}
             <b>Instagram</b>
-            <small>Feed, Reels, Story</small>
+            <small>{clipLoading ? 'Preparing clip…' : 'Feed, Reels, Story'}</small>
           </button>
           <button className="share-target is-tt" type="button" onClick={() => openApp('tiktok')}>
-            {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
+            {saving === 'tiktok' || clipLoading ? (
+              <Loader2 size={22} className="spin" />
+            ) : (
+              <IconTikTok />
+            )}
             <b>TikTok</b>
-            <small>Share video</small>
+            <small>{clipLoading ? 'Preparing clip…' : 'Share video'}</small>
           </button>
           <a
             className="share-target is-fb"
