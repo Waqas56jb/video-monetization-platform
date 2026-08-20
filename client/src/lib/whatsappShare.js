@@ -16,23 +16,49 @@
  * `api.whatsapp.com` and `wa.me` are deliberately not used: they were what
  * produced "Something went wrong. The application couldn't be opened."
  */
-function isPhone() {
-  if (typeof navigator === 'undefined') return false
+/**
+ * Three devices, three different right answers — measured, not assumed.
+ *
+ *   phone    whatsapp://send?text=       opens the app straight at the picker
+ *   iPad     web.whatsapp.com/send       200 here; api.whatsapp.com is what
+ *                                        produced "Something went wrong. The
+ *                                        application couldn't be opened."
+ *   desktop  api.whatsapp.com/send       WhatsApp's own documented link for a
+ *                                        message with no recipient yet
+ *
+ * The desktop line is the fix. It was pointing at web.whatsapp.com/send, and
+ * that address **answers 400 on a desktop browser** — /send cannot make a
+ * chat without a phone number. WhatsApp Web opened, the text went nowhere and
+ * there was no way to choose a contact, which is exactly what was reported.
+ * api.whatsapp.com/send answers 200 and hands off to WhatsApp Web with the
+ * message waiting for a chat to be picked.
+ */
+function device() {
+  if (typeof navigator === 'undefined') return 'desktop'
   const ua = navigator.userAgent || ''
-  if (/Android/i.test(ua)) return true
-  if (/iPhone|iPod/i.test(ua)) return true
-  // iPadOS reports itself as a Mac; the touch points give it away. It is
-  // treated as a desktop here on purpose — WhatsApp Web lets you pick a chat
-  // there, and the iPad app handoff is the thing that kept failing.
-  return false
+  if (/Android/i.test(ua) || /iPhone|iPod/i.test(ua)) return 'phone'
+  // iPadOS reports itself as a Mac; the touch points give it away.
+  const iPad =
+    /iPad/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  return iPad ? 'ipad' : 'desktop'
+}
+
+function isPhone() {
+  return device() === 'phone'
 }
 
 /** Where the WhatsApp button should point on this device. */
 export function whatsappHref(watchUrl) {
   const text = encodeURIComponent(watchUrl || '')
-  return isPhone()
-    ? `whatsapp://send?text=${text}`
-    : `https://web.whatsapp.com/send?text=${text}`
+  switch (device()) {
+    case 'phone':
+      return `whatsapp://send?text=${text}`
+    case 'ipad':
+      return `https://web.whatsapp.com/send?text=${text}`
+    default:
+      return `https://api.whatsapp.com/send?text=${text}`
+  }
 }
 
 /** Phones leave the page for the app; everything else opens a tab. */
