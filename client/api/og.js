@@ -55,6 +55,13 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Content-Type', poster.type)
+  /**
+   * WhatsApp Web reads these bytes from inside the browser to build its
+   * thumbnail, so the fetch is cross-origin and is refused without this. It
+   * is why a laptop share showed the title and description but no picture,
+   * while the same link from a phone showed the whole card.
+   */
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.setHeader('Content-Disposition', 'inline; filename="poster.jpg"')
   res.status(200)

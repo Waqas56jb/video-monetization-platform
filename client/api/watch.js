@@ -145,7 +145,27 @@ export default async function handler(req, res) {
   res.setHeader('Vary', 'User-Agent')
 
   if (isLinkPreviewBot(ua)) {
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60')
+    /**
+     * WhatsApp Web builds its preview inside the browser, not on a server.
+     * That makes the fetch cross-origin, and without this header the browser
+     * refuses to hand it the response — which is why a link sent from a
+     * laptop arrived as the bare domain, or with no card at all, while the
+     * same link from a phone arrived with the full poster. The phone app
+     * fetches it server-side, where CORS never applies.
+     *
+     * There is nothing to protect here: this document is a title, a line of
+     * description and a poster for a video that is already public.
+     */
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    /**
+     * And give it something to read without waiting.
+     *
+     * s-maxage was 60 seconds, so most previews arrived while the function
+     * was cold. Measured: 2.25s on a cold start against 0.35s warm, and a
+     * preview fetch that slow is one a client gives up on. Ten minutes at the
+     * edge, and a day of serving the old copy while a new one is fetched.
+     */
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400')
     res.status(200)
     return res.end(
       crawlerDocument({ origin, canonical, title, description, image })
