@@ -89,8 +89,12 @@ export default function UploadTab({ onSubmitted }) {
     accessType: 'paid_premiere',
     priceTzs: 1000,
     premiereDays: 30,
-    previewValue: 5,
-    previewUnit: 'minutes',
+    /* Five minutes is the ceiling for a feature film, which makes it the
+       worst possible default for a three-minute song, and most first
+       uploads are short. 45 seconds suits those; anything longer can be
+       raised to whatever that video's own ceiling turns out to be. */
+    previewValue: 45,
+    previewUnit: 'seconds',
   })
   const [previewing, setPreviewing] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -281,8 +285,12 @@ export default function UploadTab({ onSubmitted }) {
       accessType: 'paid_premiere',
       priceTzs: 1000,
       premiereDays: 30,
-      previewValue: 5,
-      previewUnit: 'minutes',
+      /* Five minutes is the ceiling for a feature film, which makes it the
+         worst possible default for a three-minute song, and most first
+         uploads are short. 45 seconds suits those; anything longer can be
+         raised to whatever that video's own ceiling turns out to be. */
+      previewValue: 45,
+      previewUnit: 'seconds',
     })
   }
 
