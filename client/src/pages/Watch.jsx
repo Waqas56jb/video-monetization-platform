@@ -310,8 +310,21 @@ export default function Watch() {
     setPayOpen(false)
     setPreviewOver(false)
 
-    const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
-    const from = Math.max(watchedTo.current, stopsAt)
+    /**
+     * Pick the film up where they actually were.
+     *
+     * This used to be `Math.max(watchedTo, stopsAt)` — the later of where the
+     * viewer had reached and the whole length of the free preview. That is
+     * only right for somebody who paid because the preview ran out. Anybody
+     * who decided sooner was thrown forward to the end of the preview
+     * instead: on a ten-minute set with a five-minute preview, paying at 0:33
+     * skipped them to 5:00 and silently took four and a half minutes of the
+     * film they had just bought.
+     *
+     * Where they were is the only honest answer. Somebody who paid before
+     * playing anything starts at the beginning, which is also what they want.
+     */
+    const from = Math.max(0, Number(watchedTo.current) || 0)
     setResumeHint(from)
 
     if (from > 0 && v?.id) {
@@ -408,13 +421,19 @@ export default function Watch() {
    * local hint fills the gap between paying and the reloaded playback arriving,
    * and a mid-roll returning the viewer to the middle of the film also lands here.
    */
-  const resumeAt = Math.max(
-    Number(p?.playback?.resumeFromSeconds || 0),
-    resumeHint,
-    /* Covers the visitor who watched the preview before signing in — the server
-       had nobody to record it against at the time. */
-    recallProgress(videoId)
-  )
+  const resumeAt = justPaid
+    ? /* The moment they pay, where they were in this tab is the truth. The
+         server's figure can still be a stale, larger number from an earlier
+         visit, and taking the larger of the two would throw them forward
+         past film they have not seen. */
+      resumeHint
+    : Math.max(
+        Number(p?.playback?.resumeFromSeconds || 0),
+        resumeHint,
+        /* Covers the visitor who watched the preview before signing in — the
+           server had nobody to record it against at the time. */
+        recallProgress(videoId)
+      )
 
   /** Why this video is playing in full — see the badge below. */
   const accessReason = (() => {

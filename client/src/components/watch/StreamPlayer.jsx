@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Volume2 } from 'lucide-react'
 
 /**
  * Cloudflare Stream iframe player.
@@ -77,6 +77,18 @@ export default function StreamPlayer({
   onRetry,
   onPlaying,
 }) {
+  /**
+   * Playing, but silent.
+   *
+   * Muted autoplay is the only kind a browser always permits, so after a
+   * purchase the film starts that way and sound is requested a moment later.
+   * When that request is refused there is nothing to be done from script — but
+   * the viewer is watching a film with no sound and deserves to be told, in a
+   * way that is one tap and is not a play button, because it is already
+   * playing.
+   */
+  const [silent, setSilent] = useState(false)
+  const playerRef = useRef(null)
   const frame = useRef(null)
   const onPlayingRef = useRef(onPlaying)
   onPlayingRef.current = onPlaying
@@ -137,6 +149,7 @@ export default function StreamPlayer({
       if (!alive || !Stream || !frame.current) return
       try {
         player = Stream(frame.current)
+        playerRef.current = player
         player.addEventListener('ended', () => onEnded?.())
         player.addEventListener('timeupdate', () =>
           onTimeUpdate?.(player.currentTime, player.duration)
@@ -232,6 +245,10 @@ export default function StreamPlayer({
               if ('muted' in player) {
                 player.muted = false
                 unmutedAt = Date.now()
+                // If it survives a second unmuted, sound is genuinely on.
+                setTimeout(() => {
+                  if (alive) setSilent(Boolean(player.muted))
+                }, 1200)
               }
             } catch {
               /* some embeds ignore unmute */
@@ -283,7 +300,10 @@ export default function StreamPlayer({
             }
             attempts += 1
             lastProgressAt = Date.now()
+            // Sound is worth one attempt. After that, playing silently beats
+            // sitting still, and the chip below offers it back in one tap.
             play(attempts > 1)
+            if (attempts > 1 && alive) setSilent(true)
           }, 1200)
         }
       } catch {
@@ -356,6 +376,26 @@ export default function StreamPlayer({
           setTimeout(markReady, 450)
         }}
       />
+
+      {silent && (
+        <button
+          type="button"
+          className="stream-sound"
+          onClick={() => {
+            const player = playerRef.current
+            try {
+              if (player && 'muted' in player) player.muted = false
+              player?.play?.()
+            } catch {
+              /* the player's own control is still there */
+            }
+            setSilent(false)
+          }}
+        >
+          <Volume2 size={15} />
+          Tap for sound
+        </button>
+      )}
 
       {timedOut && !ready && (
         <div className="stream-fallback stream-fallback-overlay" role="status">

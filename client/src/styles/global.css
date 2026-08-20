@@ -2627,3 +2627,13 @@ a.pw-og:hover{border-color:rgba(245,197,24,.45)}
 html.is-touch .vid-play{opacity:1}
 html.is-touch .btn:active{transform:scale(.97)}
 
+
+/* Playing, but the browser refused to let the sound on. One tap, sitting out
+   of the way at the corner of the picture — never a play button over the
+   middle of it, because the film is already running. */
+.stream-sound{position:absolute;left:12px;bottom:12px;z-index:4;display:inline-flex;align-items:center;
+  gap:7px;padding:9px 14px;border-radius:99px;font-size:13px;font-weight:700;color:#0b0b11;
+  background:var(--gold);box-shadow:0 10px 24px -8px rgba(0,0,0,.7);animation:soundIn .3s ease both}
+.stream-sound svg{width:15px;height:15px}
+@keyframes soundIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.stream-sound{left:10px;bottom:10px;padding:10px 15px;font-size:13.5px}}
