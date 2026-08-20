@@ -83,17 +83,36 @@ function textPaths(text, x, y, size, fill) {
   return parts.join('')
 }
 
+/**
+ * Sizes are set for how small this actually arrives.
+ *
+ * The canvas is 1200 wide, but WhatsApp renders the card at roughly a
+ * quarter of that on a phone. Everything here divides by four before anyone
+ * reads it, which is why the creator's name at 24 was reported as too hard to
+ * see: about six pixels tall by the time it reached the screen, in grey, over
+ * whatever the film frame happened to be doing behind it.
+ *
+ * So the name is larger than the old title was, it is white rather than
+ * muted, and the whole block sits on a scrim dark enough that a bright frame
+ * cannot swallow it.
+ */
+const TITLE_SIZE = 56
+const CREATOR_SIZE = 36
+const CTA_SIZE = 22
+const BRAND_SIZE = 34
+const LINE_STEP = 64
+
 function overlaySvg({ title, creator }) {
   const maxText = W - PAD * 2
-  const titleLines = wrapLines(title, 44, maxText, 2)
-  const creatorLine = creator ? fitEllipsis(creator, 24, maxText) : ''
-  const ctaW = Math.ceil(advanceOf(CTA, 18) + 36)
-  const ctaH = 42
+  const titleLines = wrapLines(title, TITLE_SIZE, maxText, 2)
+  const creatorLine = creator ? fitEllipsis(creator, CREATOR_SIZE, maxText) : ''
+  const ctaW = Math.ceil(advanceOf(CTA, CTA_SIZE) + 44)
+  const ctaH = 52
   const ctaY = H - PAD - ctaH
-  const ctaTextY = ctaY + 28
-  const creatorY = creatorLine ? ctaY - 22 : ctaY - 10
-  const titleBottom = creatorLine ? creatorY - 18 : creatorY
-  const titleStart = titleBottom - (titleLines.length - 1) * 52
+  const ctaTextY = ctaY + 34
+  const creatorY = creatorLine ? ctaY - 26 : ctaY - 12
+  const titleBottom = creatorLine ? creatorY - 26 : creatorY
+  const titleStart = titleBottom - (titleLines.length - 1) * LINE_STEP
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -101,21 +120,24 @@ function overlaySvg({ title, creator }) {
       <stop offset="0" stop-color="#05050a" stop-opacity="0.72"/>
       <stop offset="1" stop-color="#05050a" stop-opacity="0"/>
     </linearGradient>
+    <!-- Deeper and starting higher than before: the name used to land on a
+         bright part of the frame and disappear into it. -->
     <linearGradient id="botFade" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#05050a" stop-opacity="0"/>
-      <stop offset="0.35" stop-color="#05050a" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#05050a" stop-opacity="0.92"/>
+      <stop offset="0.30" stop-color="#05050a" stop-opacity="0.62"/>
+      <stop offset="0.62" stop-color="#05050a" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#05050a" stop-opacity="0.97"/>
     </linearGradient>
   </defs>
   <rect width="${W}" height="200" fill="url(#topFade)"/>
-  <rect y="300" width="${W}" height="330" fill="url(#botFade)"/>
+  <rect y="250" width="${W}" height="380" fill="url(#botFade)"/>
   <circle cx="600" cy="236" r="54" fill="rgba(5,5,10,0.55)" stroke="${GOLD}" stroke-width="3"/>
   <polygon points="586,212 586,260 628,236" fill="${WHITE}"/>
-  ${textPaths(BRAND, PAD, 78, 30, GOLD)}
-  ${titleLines.map((line, i) => textPaths(line, PAD, titleStart + i * 52, 44, WHITE)).join('')}
-  ${creatorLine ? textPaths(creatorLine, PAD, creatorY, 24, MUTED) : ''}
-  <rect x="${PAD}" y="${ctaY}" rx="9" ry="9" width="${ctaW}" height="${ctaH}" fill="${GOLD}"/>
-  ${textPaths(CTA, PAD + 18, ctaTextY, 18, DARK)}
+  ${textPaths(BRAND, PAD, 82, BRAND_SIZE, GOLD)}
+  ${titleLines.map((line, i) => textPaths(line, PAD, titleStart + i * LINE_STEP, TITLE_SIZE, WHITE)).join('')}
+  ${creatorLine ? textPaths(creatorLine, PAD, creatorY, CREATOR_SIZE, WHITE) : ''}
+  <rect x="${PAD}" y="${ctaY}" rx="11" ry="11" width="${ctaW}" height="${ctaH}" fill="${GOLD}"/>
+  ${textPaths(CTA, PAD + 22, ctaTextY, CTA_SIZE, DARK)}
 </svg>`
 }
 
