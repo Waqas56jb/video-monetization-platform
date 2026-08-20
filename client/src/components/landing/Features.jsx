@@ -1,51 +1,109 @@
-import { Check, Gem, Share2, TrendingUp } from 'lucide-react'
+import { BadgeCheck, Check, Eye, Film, Gem, Lock, Play, Share2, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Reveal from '@/components/ui/Reveal'
+import useApi, { compact, duration } from '@/hooks/useApi'
+import api, { mediaUrl } from '@/lib/api'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 
+/** Used only until the API answers, so the block is never empty on first paint. */
 const SHARE_DEMO = {
   slug: 'behind-the-fame-a-coast-documentary',
   title: 'Behind The Fame — A Coast Documentary',
-  creator: 'Asha Mwinyi',
+  creator: { name: 'Asha Mwinyi' },
 }
 
-/** A small, honest picture of each capability. No images, no weight. */
-const VISUALS = {
-  discover: (
+/**
+ * The share card, as the person receiving it sees it.
+ *
+ * It used to be the finished Open Graph JPEG with the title, the creator and
+ * WATCH FREE PREVIEW printed underneath it as well — so every one of them
+ * appeared twice, once burned into the picture and once in the markup below.
+ * The client asked for this to look like the card in the share sheet, which
+ * composes those over the poster instead, and it now shares that markup and
+ * those styles so the two cannot drift apart.
+ *
+ * The poster is the raw film frame rather than the branded JPEG, because the
+ * branding is drawn on top here. And the video is whatever is genuinely
+ * trending, which is what lets the line underneath say this is a real share
+ * card without it being a claim.
+ */
+function ShareCardDemo() {
+  const trending = useApi(() => api.videos.list({ sort: 'trending', limit: 1 }), [])
+  const v = trending.data?.videos?.[0] || SHARE_DEMO
+  const slug = v.slug || SHARE_DEMO.slug
+  const poster = mediaUrl(v.thumbnailUrl)
+  const creator = v.creator?.name || v.creatorName
+  const fresh =
+    v.publishedAt && Date.now() - new Date(v.publishedAt).getTime() < 1000 * 60 * 60 * 24 * 21
+
+  return (
     <div className="pw-viz pw-viz-discover">
       <div className="pw-share-head">
         <Share2 size={14} />
         <span>On WhatsApp and social</span>
       </div>
       <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
+
       <Link
-        className="pw-og"
-        to={`/watch/${SHARE_DEMO.slug}`}
-        aria-label={`${SHARE_DEMO.title} — watch the free preview`}
+        className="share-og-stage pw-og-stage"
+        to={`/watch/${slug}`}
+        aria-label={`${v.title} — watch the free preview`}
       >
-        <span className="pw-og-poster">
-          <img
-            src={`/og/card/${SHARE_DEMO.slug}.jpg`}
-            alt=""
-            width={1200}
-            height={630}
-          />
+        {poster ? (
+          <img src={poster} alt="" loading="lazy" decoding="async" />
+        ) : (
+          <span className="share-thumb-blank" aria-hidden="true">
+            <Film size={26} />
+          </span>
+        )}
+        <span className="share-og-veil" aria-hidden="true" />
+        <span className="share-og-badge">MTONYO+</span>
+        {v.durationSeconds > 0 && (
+          <span className="share-og-time">{duration(v.durationSeconds)}</span>
+        )}
+        <span className="share-og-play" aria-hidden="true">
+          <Play size={22} fill="currentColor" />
         </span>
-        <span className="pw-og-body">
-          <span className="pw-og-brand">MTONYO+</span>
-          <b>{SHARE_DEMO.title}</b>
-          <small>{SHARE_DEMO.creator}</small>
-          <em>WATCH FREE PREVIEW</em>
+        <span className="share-og-meta">
+          {fresh && <span className="share-og-new">New release</span>}
+          <b>{v.title}</b>
+          {creator && (
+            <small>
+              {creator}
+              {v.creator?.verified && <BadgeCheck size={13} />}
+            </small>
+          )}
+          <em>Watch free preview</em>
+        </span>
+        <span className="share-og-stats">
+          {v.views != null && (
+            <span>
+              <Eye size={12} />
+              {compact(v.views)} views
+            </span>
+          )}
+          {Number(v.priceTzs || 0) > 0 && (
+            <span>
+              <Lock size={12} />
+              Pay to continue
+            </span>
+          )}
         </span>
       </Link>
+
       <small>
         This is a real share card. Tap it — that video, free preview, then pay.{' '}
-        <Link className="pw-try" to={`/watch/${SHARE_DEMO.slug}?share=1`}>
+        <Link className="pw-try" to={`/watch/${slug}?share=1`}>
           Open Share
         </Link>
       </small>
     </div>
-  ),
+  )
+}
+
+/** A small, honest picture of each capability. No images, no weight. */
+const VISUALS = {
+  discover: <ShareCardDemo />,
 
   monetize: (
     <div className="pw-viz pw-viz-monetize">
