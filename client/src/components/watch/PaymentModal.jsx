@@ -36,6 +36,12 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
 
   const [step, setStep] = useState('form') // form | waiting | failed
   const [method, setMethod] = useState('mpesa')
+  /**
+   * In sandbox the number is not charged and no such subscriber exists — it
+   * only has to look like a number. Leaving the field empty made an empty
+   * field the most likely way to fail a test payment, so it starts filled
+   * with an obvious test number and can still be typed over.
+   */
   const [phone, setPhone] = useState('')
   const [error, setError] = useState(null)
   const [payment, setPayment] = useState(null)
@@ -43,6 +49,10 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
   const polling = useRef(null)
 
   useLockBodyScroll(open)
+
+  useEffect(() => {
+    if (open && isSandbox) setPhone((was) => was || '0712345678')
+  }, [open, isSandbox])
 
   /**
    * The handover is held in a ref rather than depended on directly.
