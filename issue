@@ -1,11 +1,4 @@
-5: Sharing section function — Done
-6: WhatsApp share handoff + recipient card — Done
-8: Auto continue after pay — Done
-24: Share must sell + client share mock — Done
-26: Login must work first time — Done
-27: Homepage first-load glitch — Done
-28: Buttons work on first click — Done
-29: Preview cannot equal almost the full video — Done
-
-Urgent: 5, 6, 8, 24
-Then: 26, 27, 28, 29
+8: Auto continue after pay — REFIX (full video does not start; extra Play)
+6: Share buttons open WhatsApp / Instagram / TikTok / Facebook — REFIX (real phone)
+24: Share card — title, creator, MTONYO+, WATCH FREE PREVIEW must be readable — REFIX
+29: Preview length — creator/admin chooses minutes/seconds, sensible cap (not 50%) — REFIX
