@@ -110,8 +110,18 @@ function overlaySvg({ title, creator }) {
   const ctaH = 52
   const ctaY = H - PAD - ctaH
   const ctaTextY = ctaY + 34
-  const creatorY = creatorLine ? ctaY - 26 : ctaY - 12
-  const titleBottom = creatorLine ? creatorY - 26 : creatorY
+  /**
+   * Baseline gaps, not eyeballed padding.
+   *
+   * These are baselines, so the space between two lines has to clear the
+   * descenders of the one above and the cap height of the one below. 26 did
+   * not: at the size a phone renders this, a two-line title had its second
+   * line touching the creator's name -- "…11.50.34 PM" sitting on top of
+   * "Yasmin Chali". Only visible once the card was viewed at 340px rather
+   * than full size, which is how it reaches anybody.
+   */
+  const creatorY = creatorLine ? ctaY - 30 : ctaY - 14
+  const titleBottom = creatorLine ? creatorY - 46 : creatorY
   const titleStart = titleBottom - (titleLines.length - 1) * LINE_STEP
 
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
