@@ -131,6 +131,7 @@ export default function StreamPlayer({
     let player = null
     let alive = true
     let kickTimer = null
+    let watchdog = null
 
     loadSdk().then((Stream) => {
       if (!alive || !Stream || !frame.current) return
@@ -177,41 +178,113 @@ export default function StreamPlayer({
         }
 
         if (playOnReady) {
-          let tries = 0
+          /**
+           * Keep it playing, whatever the browser decides.
+           *
+           * The sequence here used to start muted — which every browser
+           * allows — and then unmute a moment later. Chrome and Safari treat
+           * unmuting a video the page started by itself as a fresh request for
+           * permission, refuse it, and pause the element. The recovery read
+           * `player.paused` to notice, but that is the SDK's copy of a value
+           * carried by postMessage from another origin, so it still reported
+           * "playing" and nothing ever restarted it.
+           *
+           * The viewer was left looking at the full film, parked on exactly
+           * the right second, paused. That is the "I still have to press PLAY
+           * again" in the client's report: measured on a phone-sized Chrome,
+           * currentTime stopped dead at 8.0s with paused=true and no overlay
+           * to explain it.
+           *
+           * So nothing here trusts the mirrored flag, and nothing accepts a
+           * stall. Progress is read from timeupdate — the one signal that
+           * means frames are actually moving — and anything that stops gets
+           * muted and started again. Playing without sound is a poor result;
+           * paused after paying is a broken one.
+           */
           let started = false
-          let running = false
-          const kick = () => {
-            if (!alive || started || running) return
-            running = true
-            tries += 1
-            const go = async () => {
-              try {
-                if ('muted' in player) player.muted = true
-                await Promise.resolve(player.play?.())
-                started = true
-                shown()
-                try {
-                  if ('muted' in player) player.muted = false
-                } catch {
-                  /* some embeds ignore unmute */
-                }
-                if (player.paused) {
-                  if ('muted' in player) player.muted = true
-                  await Promise.resolve(player.play?.())
-                }
-              } catch {
-                running = false
-                if (alive && !started && tries < 8) kickTimer = setTimeout(kick, 280)
-              }
+          let unmutedAt = 0
+          let lastTime = -1
+          let lastProgressAt = Date.now()
+          let attempts = 0
+
+          const play = async (mute) => {
+            try {
+              if (mute && 'muted' in player) player.muted = true
+              await Promise.resolve(player.play?.())
+              return true
+            } catch {
+              return false
             }
-            go()
           }
-          player.addEventListener('canplay', kick)
-          player.addEventListener('loadeddata', kick)
-          // Pay is several seconds old by the time sandbox settles. Muted
-          // autoplay on the iframe is what actually starts it; this kick
-          // covers Stream being ready before the listeners attached.
-          kickTimer = setTimeout(kick, 350)
+
+          const start = async () => {
+            if (!alive || started) return
+            started = true
+            // Muted first: this is the one form of autoplay nothing blocks, so
+            // the film is already running before sound is even asked for.
+            if (!(await play(true))) {
+              started = false
+              return
+            }
+            shown()
+            // Then ask for sound, because they watched the preview with it.
+            try {
+              if ('muted' in player) {
+                player.muted = false
+                unmutedAt = Date.now()
+              }
+            } catch {
+              /* some embeds ignore unmute */
+            }
+          }
+
+          /**
+           * A pause within a moment of that unmute is the browser taking
+           * playback away, not the viewer reaching for the controls. Put the
+           * sound back and carry on. A pause any later is a person pressing
+           * pause, and they are left alone.
+           */
+          const onPause = () => {
+            if (!alive || !unmutedAt || Date.now() - unmutedAt > 2000) return
+            play(true)
+          }
+
+          const onTime = () => {
+            const t = Number(player.currentTime) || 0
+            if (t > lastTime + 0.15) {
+              lastTime = t
+              lastProgressAt = Date.now()
+            }
+          }
+
+          player.addEventListener('canplay', start)
+          player.addEventListener('loadeddata', start)
+          player.addEventListener('pause', onPause)
+          player.addEventListener('timeupdate', onTime)
+          kickTimer = setTimeout(start, 350)
+
+          /**
+           * The watchdog, which is what actually makes this reliable.
+           *
+           * It does not care why the video is not moving — a refused unmute, a
+           * stalled buffer, a policy this browser has and the last one did
+           * not. If no frame has advanced for a couple of seconds it mutes and
+           * plays again. Sound is worth one attempt; after that, playing
+           * silently beats sitting still.
+           */
+          watchdog = setInterval(() => {
+            if (!alive) return
+            if (Date.now() - lastProgressAt < 2500) return
+            if (attempts >= 6) {
+              clearInterval(watchdog)
+              watchdog = null
+              shown()
+              return
+            }
+            attempts += 1
+            lastProgressAt = Date.now()
+            play(attempts > 1)
+          }, 1200)
         }
       } catch {
         /* iframe still plays */
@@ -222,6 +295,7 @@ export default function StreamPlayer({
       alive = false
       player = null
       if (kickTimer) clearTimeout(kickTimer)
+      if (watchdog) clearInterval(watchdog)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iframeSrc, boot])
