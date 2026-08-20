@@ -2440,6 +2440,31 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 }
 .pw-og-stage:focus-visible{outline:2px solid var(--purple2);outline-offset:3px}
 
+/**
+ * The homepage card is narrower than the sheet's, so it runs out of room
+ * sooner.
+ *
+ * The sheet only drops its view counters below 380px of viewport, which is the
+ * right breakpoint for a modal that fills the screen. This card sits inside a
+ * column, so on a phone it is around 318px wide while the viewport is 390 —
+ * and at that width the play cue landed on the title and the gold button ran
+ * into the pay-to-continue chip. Measured on the deployed page, not guessed.
+ *
+ * Below the point where the homepage stacks to one column: the counters go,
+ * since they are decoration and the title is not, the play cue lifts clear of
+ * the text, and the stage gets the height the taller text block needs.
+ */
+@media(max-width:720px){
+  .pw-og-stage{min-height:212px}
+  .pw-og-stage .share-og-stats{display:none}
+  /* Nothing is beside the meta now, so it may use the full width. */
+  .pw-og-stage .share-og-meta{right:12px}
+  .pw-og-stage .share-og-play{top:32%;width:46px;height:46px}
+  .pw-og-stage .share-og-play svg{width:19px;height:19px}
+  .pw-og-stage .share-og-meta b{font-size:15px;-webkit-line-clamp:2}
+  .pw-og-stage .share-og-meta em{margin-top:5px;font-size:10.5px;padding:5px 9px}
+}
+
 .pw-og{border:1px solid var(--border2);border-radius:14px;overflow:hidden;background:rgba(8,8,14,.7);min-width:0}
 a.pw-og{display:block;text-decoration:none;color:inherit}
 a.pw-og:hover{border-color:rgba(245,197,24,.45)}
