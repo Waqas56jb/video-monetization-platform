@@ -111,6 +111,17 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useLockBodyScroll(open)
 
+  /**
+   * Whether this is a phone, for the wording on the "More apps" row only.
+   *
+   * On a phone the device sheet is the best thing here: it lists WhatsApp,
+   * Instagram and TikTok and genuinely launches them. On a laptop it is worth
+   * saying what it is good for, because WhatsApp Desktop is the one target
+   * that comes out worse through it — see the note on that row.
+   */
+  const onPhone =
+    typeof navigator !== 'undefined' && /Android|iPhone|iPod/i.test(navigator.userAgent || '')
+
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
   const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
@@ -476,7 +487,20 @@ export default function ShareSheet({ open, video, onClose }) {
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
           <span>
             <b>More apps</b>
-            <small>Share via other apps on your device</small>
+            {/**
+              * WhatsApp Desktop sends a shared link the instant it receives
+              * it, without the pause its compose box takes to fetch a
+              * preview — so the same URL that arrives with a full card when
+              * pasted, or sent from the button above, arrives as a bare link
+              * through here. It is the app's own behaviour and nothing the
+              * page can set. Rather than let someone find that out after
+              * sending, the row says what it is good for.
+              */}
+            <small>
+              {onPhone
+                ? 'Share via other apps on your device'
+                : 'Email, Teams and others — for WhatsApp use the green button, it sends the card'}
+            </small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>
