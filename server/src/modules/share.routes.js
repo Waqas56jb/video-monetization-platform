@@ -70,7 +70,21 @@ router.get(
       const mp4 = await cf.ensureMp4Download(video.social_clip_uid).catch(() => null)
       clip = {
         uid: video.social_clip_uid,
-        downloadUrl: mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
+        /**
+         * Served through this API rather than straight off Cloudflare.
+         *
+         * The direct download answers a 302 to a signed address, and a browser
+         * runs its cross-origin check against that redirect, which carries no
+         * allow-origin header. So `fetch` fails before it ever follows it, and
+         * the share sheet had no file to hand over. Measured in Chrome:
+         * "Access to fetch ... has been blocked by CORS policy", net::ERR_FAILED.
+         *
+         * The absolute Cloudflare address is still published as
+         * `directDownloadUrl` for anything that wants to download rather than
+         * read it.
+         */
+        downloadUrl: `/api/share/${encodeURIComponent(pathKey)}/clip.mp4`,
+        directDownloadUrl: mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
         downloadReady: mp4?.status === 'ready',
         hls: urls.hls,
         thumbnailUrl: urls.thumbnail,
@@ -229,6 +243,57 @@ router.post(
         ? 'Clips are being generated — they appear within a minute'
         : 'Nothing to generate yet (the video is still processing)',
     })
+  })
+)
+
+/**
+ * The 60-second promo clip, from this origin.
+ *
+ * Instagram and TikTok take a video, not a link, and the only way to hand
+ * them one from a web page is `navigator.share` with a File — which means the
+ * page has to be able to read the bytes. Cloudflare's own download address
+ * redirects, and the browser's cross-origin check is applied to the redirect,
+ * which carries no allow-origin header, so reading it from the page is
+ * impossible however long you wait.
+ *
+ * This streams the same file back under our own origin, where CORS is already
+ * configured, so the fetch succeeds and the share sheet has something real to
+ * pass to the app.
+ */
+router.get(
+  '/:id/clip.mp4',
+  asyncHandler(async (req, res) => {
+    const keys = slugFallbacks(req.params.id)
+    const video = await one(
+      `select social_clip_uid, is_published, review_status
+         from videos
+        where (id::text = any($1) or slug = any($1)) and deleted_at is null`,
+      [keys]
+    )
+    if (!video?.social_clip_uid) throw notFound('No clip for this video')
+    if (!(video.is_published && video.review_status === 'approved')) {
+      throw notFound('No clip for this video')
+    }
+
+    const mp4 = await cf.ensureMp4Download(video.social_clip_uid).catch(() => null)
+    const source =
+      mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`
+
+    const upstream = await fetch(source, { redirect: 'follow' })
+    if (!upstream.ok || !upstream.body) throw notFound('The clip is still being prepared')
+
+    res.setHeader('Content-Type', 'video/mp4')
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    const len = upstream.headers.get('content-length')
+    if (len) res.setHeader('Content-Length', len)
+
+    const reader = upstream.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      res.write(Buffer.from(value))
+    }
+    res.end()
   })
 )
 

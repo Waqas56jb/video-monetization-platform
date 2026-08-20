@@ -162,7 +162,7 @@ export default function ShareSheet({ open, video, onClose }) {
     if (!open || !clip?.downloadUrl) return
     let stop = false
     clipFile.current = null
-    fetch(clip.downloadUrl)
+    fetch(mediaUrl(clip.downloadUrl))
       .then((r) => (r.ok ? r.blob() : null))
       .then((blob) => {
         if (stop || !blob) return
@@ -205,7 +205,7 @@ export default function ShareSheet({ open, video, onClose }) {
     try {
       await navigator.clipboard.writeText(url).catch(() => {})
       const a = document.createElement('a')
-      a.href = clip.downloadUrl
+      a.href = mediaUrl(clip.downloadUrl)
       a.download = `${slug}-promo.mp4`
       a.target = '_blank'
       a.rel = 'noopener noreferrer'
