@@ -104,16 +104,12 @@ export function AuthProvider({ children }) {
       })
       saveSession(data.session)
       setUser(data.user)
-      try {
-        await reload()
-      } catch {
-        /* Session is already saved. A profile reload can wait. */
-      }
+      setCreator(data.creator || null)
       return data.user
     } finally {
       setLoading(false)
     }
-  }, [reload])
+  }, [])
 
   const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {
     const data = await api.auth.register({ email, password, fullName, phone, role })

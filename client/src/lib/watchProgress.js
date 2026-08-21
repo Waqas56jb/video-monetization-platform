@@ -18,11 +18,12 @@
 
 const KEY = (videoId) => `mtonyo:progress:${videoId}`
 
-/** Remember a position. Ignores nonsense and the first few seconds. */
-export function rememberProgress(videoId, seconds) {
+/** Remember a position. Ignores nonsense. `force` keeps even the first seconds. */
+export function rememberProgress(videoId, seconds, { force = false } = {}) {
   if (!videoId) return
   const s = Math.floor(Number(seconds) || 0)
-  if (s < 5) return
+  if (s < 1) return
+  if (!force && s < 5) return
   try {
     sessionStorage.setItem(KEY(videoId), String(s))
   } catch {

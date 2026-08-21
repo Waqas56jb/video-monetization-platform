@@ -65,14 +65,13 @@ router.post(
   validate(registerSchema),
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
-    const { password, fullName, phone, role } = req.body
+    const { password, fullName, phone } = req.body
 
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
-    // Nobody signs themselves up as staff. Those accounts are only ever made
-    // by an existing admin, and the database enforces it too.
-    if (!['viewer', 'creator'].includes(role)) throw forbidden('That role cannot be self-registered')
+    // Viewer only. "I want to create" is an application an admin approves.
+    // Signing up as creator used to skip that queue.
 
     /**
      * The account and its profile are created in one transaction: either both
@@ -86,15 +85,8 @@ router.post(
         const { rows } = await client.query(
           `insert into profiles (id, email, full_name, phone, role)
            values ($1,$2,$3,$4,$5) returning *`,
-          [authUser.id, email, fullName, phone || null, role]
+          [authUser.id, email, fullName, phone || null, 'viewer']
         )
-        if (role === 'creator') {
-          await client.query(
-            `insert into creator_profiles (user_id, display_name, payout_phone)
-             values ($1,$2,$3) on conflict (user_id) do nothing`,
-            [authUser.id, fullName, phone || null]
-          )
-        }
         return { profile: rows[0] }
       },
       { actorRole: 'system' }

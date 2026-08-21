@@ -51,8 +51,10 @@ export default function Login() {
      * "login never works first time" report.
      */
     const posted = new FormData(e.currentTarget)
-    const email = String(posted.get('email') || form.email || '').trim().toLowerCase()
-    const password = String(posted.get('password') || form.password || '')
+    const emailEl = e.currentTarget.querySelector('[name="email"], #login-id')
+    const passEl = e.currentTarget.querySelector('[name="password"], #login-pass')
+    const email = String(posted.get('email') || emailEl?.value || form.email || '').trim().toLowerCase()
+    const password = String(posted.get('password') || passEl?.value || form.password || '')
     if (!email || !password) {
       setError('Enter your email and password')
       return

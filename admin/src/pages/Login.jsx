@@ -28,8 +28,10 @@ export default function Login({ onLogin }) {
     e.preventDefault()
     if (busy) return
     const posted = new FormData(e.currentTarget)
-    const email = String(posted.get('email') || form.email || '').trim().toLowerCase()
-    const password = String(posted.get('password') || form.password || '')
+    const emailEl = e.currentTarget.querySelector('[name="email"]')
+    const passEl = e.currentTarget.querySelector('[name="password"]')
+    const email = String(posted.get('email') || emailEl?.value || form.email || '').trim().toLowerCase()
+    const password = String(posted.get('password') || passEl?.value || form.password || '')
     if (!email || !password) {
       setError('Enter your email and password')
       return

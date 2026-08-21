@@ -56,7 +56,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     if (!ad) return
     // The safety net: if the advert has not started in this long, treat it as
     // broken and let the countdown run regardless.
-    const STUCK_AFTER_MS = 4000
+    const STUCK_AFTER_MS = 8000
     const mounted = Date.now()
     let from = null
 
@@ -127,11 +127,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         onPlaying={() => setPlaying(true)}
         onTimeUpdate={(current) => {
           watched.current = Math.max(watched.current, current || 0)
-          // Frames are moving, so the advert is genuinely running whatever the
-          // player reported about starting.
           if (current > 0.2) setPlaying(true)
-          // Never let a reported position wind the countdown backwards.
-          setElapsed((was) => Math.max(was, current || 0))
         }}
       />
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -305,43 +305,45 @@ export default function Watch() {
   }, [v?.id])
 
   const onUnlocked = useCallback(() => {
+    const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
+    const previewHadEnded = previewOver
+    let from = Math.max(0, Number(watchedTo.current) || 0, recallProgress(videoId))
+    /**
+     * The preview clip often jumps currentTime back to 0 when it ends or is
+     * paused at the paywall. Paying then looked like a restart. If they had
+     * already used the preview (or the player reset), pick up at the stop.
+     */
+    if (from < 2 && stopsAt > 2 && previewHadEnded) from = stopsAt
+    if (from < 2 && stopsAt > 2 && watchedTo.current >= stopsAt - 1.5) from = stopsAt
+    watchedTo.current = from
+    rememberProgress(videoId, from, { force: true })
+
     setJustPaid(true)
     setContinueReady(false)
     setPayOpen(false)
     setPreviewOver(false)
-
-    /**
-     * Pick the film up where they actually were.
-     *
-     * This used to be `Math.max(watchedTo, stopsAt)` — the later of where the
-     * viewer had reached and the whole length of the free preview. That is
-     * only right for somebody who paid because the preview ran out. Anybody
-     * who decided sooner was thrown forward to the end of the preview
-     * instead: on a ten-minute set with a five-minute preview, paying at 0:33
-     * skipped them to 5:00 and silently took four and a half minutes of the
-     * film they had just bought.
-     *
-     * Where they were is the only honest answer. Somebody who paid before
-     * playing anything starts at the beginning, which is also what they want.
-     */
-    const from = Math.max(0, Number(watchedTo.current) || 0)
     setResumeHint(from)
-
-    if (from > 0 && v?.id) {
-      api.saveProgress(v.id, Math.floor(from)).catch(() => {})
-    }
 
     showToast(
       from > 5
         ? `Unlocked — continuing from ${duration(Math.floor(from))}`
         : 'Unlocked — continuing the video'
     )
-    /* Quiet: a loading flash remounts the preview player and paints Stream's
-       play button — the extra Watch Now after a purchase. */
-    playback.reload({ quiet: true })
-    video.reload({ quiet: true })
+
+    const saveThenReload = async () => {
+      if (from > 0 && v?.id) {
+        try {
+          await api.saveProgress(v.id, Math.floor(from))
+        } catch {
+          /* local hint still holds this tab */
+        }
+      }
+      playback.reload({ quiet: true })
+      video.reload({ quiet: true })
+    }
+    saveThenReload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id])
+  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id, previewOver, videoId])
 
   /**
    * Paying is the decision. Do not leave a veil up if autoplay is blocked —
@@ -414,6 +416,8 @@ export default function Watch() {
    */
   const wasPremiere = v.accessType === 'free_with_ads' && Number(v.paidUnlocks || 0) > 0
 
+  const previewSeconds = Number(p?.playback?.stopsAtSeconds || v.freePreviewSeconds || 0)
+
   /**
    * Where playback actually begins.
    *
@@ -447,10 +451,7 @@ export default function Watch() {
     return { full: 'In your library', short: 'Library', tone: '' }
   })()
   /** How much of the film is behind the paywall — the part worth paying for. */
-  const lockedRemainder = Math.max(
-    0,
-    Number(v.durationSeconds || 0) - Number(v.freePreviewSeconds || 0)
-  )
+  const lockedRemainder = Math.max(0, Number(v.durationSeconds || 0) - previewSeconds)
   /** After preview: cinematic lock on the player — payment sheet only on tap. */
   const showLockGate = needsPayment && (previewOver || (accessReady && !p?.playback?.iframe))
 
@@ -517,6 +518,7 @@ export default function Watch() {
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer
+                key={justPaid ? `paid-${p.playback.kind}-${Math.floor(resumeAt)}` : p.playback.kind}
                 src={p.playback.iframe}
                 poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
@@ -535,32 +537,38 @@ export default function Watch() {
                  * previews were five minutes long, so a video stating 3:37
                  * kept playing underneath the paywall until 5:00.
                  */
-                stopAt={needsPayment ? Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0) : 0}
+                stopAt={needsPayment ? previewSeconds : 0}
                 onStopReached={() => {
+                  watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                  rememberProgress(videoId, watchedTo.current, { force: true })
                   setPreviewOver(true)
-                  reportProgress(
-                    Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0),
-                    { force: true }
-                  )
+                  reportProgress(previewSeconds, { force: true })
                 }}
                 onPlaying={() => setContinueReady(true)}
                 onRetry={() => playback.reload()}
                 onEnded={() => {
                   if (needsPayment) {
+                    watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                    rememberProgress(videoId, watchedTo.current, { force: true })
                     setPreviewOver(true)
-                    reportProgress(p.playback?.stopsAtSeconds || v.freePreviewSeconds, { force: true })
+                    reportProgress(previewSeconds, { force: true })
                     return
                   }
                   runBreak('post_roll')
                 }}
                 onTimeUpdate={(current) => {
-                  watchedTo.current = current
-                  reportProgress(current)
+                  const prev = watchedTo.current
+                  if (current < 2 && prev > 8) {
+                    /* Preview clip reset to 0 after ending — keep the stop. */
+                  } else {
+                    watchedTo.current = Math.max(prev, current || 0)
+                  }
+                  reportProgress(watchedTo.current)
 
-                  const stopsAt = p.playback?.stopsAtSeconds || v.freePreviewSeconds
-                  if (needsPayment && stopsAt && current >= stopsAt - 0.4) {
+                  if (needsPayment && previewSeconds && current >= previewSeconds - 0.4) {
+                    watchedTo.current = Math.max(watchedTo.current, previewSeconds)
                     setPreviewOver(true)
-                    reportProgress(stopsAt, { force: true })
+                    reportProgress(previewSeconds, { force: true })
                   }
 
                   if (!needsPayment) {
@@ -577,7 +585,7 @@ export default function Watch() {
                 <div className="preview-flag">
                   <Lock size={13} />
                   Free preview
-                  {v.freePreviewSeconds ? ` · ${duration(v.freePreviewSeconds)}` : ''}
+                  {previewSeconds ? ` · ${duration(previewSeconds)}` : ''}
                   {v.durationSeconds ? ` of ${duration(v.durationSeconds)}` : ''}
                 </div>
               )}
@@ -631,7 +639,7 @@ export default function Watch() {
                 ) : (
                   <>
                     <b>{tzs(v.priceTzs)}</b> to watch all {duration(v.durationSeconds)}
-                    {v.freePreviewSeconds ? ` · ${duration(v.freePreviewSeconds)} free preview` : ''}
+                    {previewSeconds ? ` · ${duration(previewSeconds)} free preview` : ''}
                   </>
                 )}
               </span>
@@ -652,11 +660,11 @@ export default function Watch() {
                   <span>
                     <Timer />
                     {duration(v.durationSeconds)}
-                    {needsPayment && v.freePreviewSeconds > 0 && (
+                    {needsPayment && previewSeconds > 0 && (
                       <>
                         {' '}
                         <span className="meta-locked">
-                          · {duration(v.freePreviewSeconds)} free
+                          · {duration(previewSeconds)} free
                         </span>
                       </>
                     )}
@@ -704,9 +712,12 @@ export default function Watch() {
           </div>
 
           {v.creator && (
-            <div className="creator-row">
+            <Link
+              className="creator-row"
+              to={v.creator.id ? `/creator/${v.creator.id}` : '/explore'}
+            >
               {v.creator.avatarUrl ? (
-                <img src={v.creator.avatarUrl} alt="" />
+                <img src={mediaUrl(v.creator.avatarUrl)} alt="" />
               ) : (
                 <span className="creator-initials">{initials(v.creator.name)}</span>
               )}
@@ -717,9 +728,10 @@ export default function Watch() {
                     <BadgeCheck className="verified-tick" aria-label="Verified creator" />
                   )}
                 </b>
-                <small>{v.category || 'Creator on MTONYO+'}</small>
+                <small>View creator profile</small>
               </div>
-            </div>
+              <span className="btn btn-ghost btn-sm">Profile</span>
+            </Link>
           )}
 
           {v.description && <div className="watch-desc">{v.description}</div>}

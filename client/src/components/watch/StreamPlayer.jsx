@@ -128,6 +128,8 @@ export default function StreamPlayer({
   const pin = useRef({ src: null, startAt: 0 })
   if (src !== pin.current.src) {
     pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
+  } else if (playOnReady && Number(startAt) > (pin.current.startAt || 0) + 0.4) {
+    pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
   }
   const resumeAt = pin.current.startAt
   const iframeSrc = useMemo(

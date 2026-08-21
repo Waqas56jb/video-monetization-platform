@@ -10,7 +10,7 @@ import { authUrl, nextFrom } from '@/lib/nextPath'
 
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
-  { value: 'creator', label: "I'm a Creator", shortLabel: 'Create', icon: 'video' },
+  { value: 'apply', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
 ]
 
 export default function Signup() {
@@ -42,10 +42,22 @@ export default function Signup() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+    const posted = new FormData(e.currentTarget)
+    const fullName = String(posted.get('fullName') || e.currentTarget.querySelector('[name="fullName"]')?.value || form.fullName || '').trim()
+    const phone = String(posted.get('phone') || e.currentTarget.querySelector('[name="phone"]')?.value || form.phone || '').trim()
+    const email = String(posted.get('email') || e.currentTarget.querySelector('[name="email"]')?.value || form.email || '').trim().toLowerCase()
+    const password = String(posted.get('password') || e.currentTarget.querySelector('[name="password"]')?.value || form.password || '')
+    if (!fullName || !email || !password) {
+      setError('Enter your name, email and password')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
-      const result = await signUp({ ...form, role })
+      const result = await signUp({ ...form, fullName, phone, email, password, role: 'viewer' })
+
+      const afterSignup =
+        role === 'apply' ? '/dashboard?tab=become' : next || '/dashboard'
 
       // The project may still require an emailed confirmation link. Say so
       // plainly rather than appearing to sign them in and failing.
@@ -62,12 +74,16 @@ export default function Signup() {
        */
       if (result.signInFailed || !result.session) {
         showToast(result.message || 'Account created — please log in')
-        timer.current = setTimeout(() => navigate(authUrl('login', next), { replace: true }), 900)
+        timer.current = setTimeout(() => navigate(authUrl('login', afterSignup), { replace: true }), 900)
         return
       }
 
-      showToast(`🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`)
-      timer.current = setTimeout(() => navigate(next || '/dashboard', { replace: true }), 400)
+      showToast(
+        role === 'apply'
+          ? 'Account created. Apply to become a creator — an admin will review it.'
+          : `🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`
+      )
+      timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -129,7 +145,7 @@ export default function Signup() {
           Create your <span className="brand-accent">free account</span>
         </>
       }
-      subtitle="One account for watching and creating."
+      subtitle="Watch for free. Creating on MTONYO+ needs an application an admin approves."
     >
       <RoleToggle options={ROLES} value={role} onChange={setRole} />
 
@@ -148,6 +164,7 @@ export default function Signup() {
             type="text"
             placeholder="Juma Hassan"
             autoComplete="name"
+            name="fullName"
             value={form.fullName}
             onChange={set('fullName')}
             required
@@ -159,6 +176,7 @@ export default function Signup() {
             type="tel"
             placeholder="0712 000 000"
             autoComplete="tel"
+            name="phone"
             value={form.phone}
             onChange={set('phone')}
           />
@@ -171,6 +189,7 @@ export default function Signup() {
           type="email"
           placeholder="you@email.com"
           autoComplete="email"
+          name="email"
           value={form.email}
           onChange={set('email')}
           required
@@ -181,6 +200,7 @@ export default function Signup() {
           label="Password"
           placeholder="Minimum 8 characters"
           autoComplete="new-password"
+          name="password"
           minLength={8}
           value={form.password}
           onChange={set('password')}

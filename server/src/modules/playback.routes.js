@@ -25,7 +25,7 @@ const FULL_TOKEN_TTL = 60 * 60 // 1 hour
 const PREVIEW_TOKEN_TTL = 15 * 60 // 15 minutes
 
 /** Don't resume from the first breath of a video, or from its dying seconds. */
-const RESUME_MIN_SECONDS = 8
+const RESUME_MIN_SECONDS = 1
 const RESUME_END_MARGIN = 15
 
 /**

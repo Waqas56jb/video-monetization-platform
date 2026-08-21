@@ -176,8 +176,8 @@ export async function brandShareCard(posterBuf, { title, creator } = {}) {
       .composite([{ input: overlay, top: 0, left: 0 }])
       .jpeg({ quality: 74, mozjpeg: true })
       .toBuffer()
-    if (out.length > 110_000) {
-      out = await sharp(out).jpeg({ quality: 60, mozjpeg: true }).toBuffer()
+    if (out.length > 240_000) {
+      out = await sharp(out).jpeg({ quality: 68, mozjpeg: true }).toBuffer()
     }
     return out
   } catch (err) {

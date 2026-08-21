@@ -16,12 +16,21 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
+import {
+  instagramHref,
+  tiktokHref,
+  facebookHref,
+  socialTarget,
+  appFallback,
+  copyWatchUrl,
+} from '@/lib/socialShare'
 
 /**
  * Share sheet — layout, icons and type match the client's mock.
  *
- * WhatsApp / Facebook send the watch URL only (OG card). Instagram / TikTok
- * save the 60s clip. No extra publishing APIs.
+ * WhatsApp / Facebook send the watch URL so the recipient gets the branded
+ * Open Graph card. Instagram / TikTok / Facebook buttons are real app links
+ * (same idea as WhatsApp) — not the generic OS picker.
  */
 
 function IconWhatsApp({ size = 22 }) {
@@ -101,8 +110,6 @@ export default function ShareSheet({ open, video, onClose }) {
    * so a tap on Share looked like a tap that had not registered.
    */
   const [posterOn, setPosterOn] = useState(false)
-  /** True while the promo clip is downloading, so those buttons look alive. */
-  const [clipLoading, setClipLoading] = useState(false)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
@@ -125,7 +132,8 @@ export default function ShareSheet({ open, video, onClose }) {
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
   const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
-  const still = mediaUrl(video?.thumbnailUrl) || ogCard
+  /* The JPEG WhatsApp actually fetches — not the raw thumbnail with CSS on top. */
+  const still = ogCard || mediaUrl(video?.thumbnailUrl)
   const creator = video?.creator?.name
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
@@ -182,7 +190,6 @@ export default function ShareSheet({ open, video, onClose }) {
     if (!open || !clip?.downloadUrl) return
     let stop = false
     clipFile.current = null
-    setClipLoading(true)
     fetch(mediaUrl(clip.downloadUrl))
       .then((r) => (r.ok ? r.blob() : null))
       .then((blob) => {
@@ -190,12 +197,8 @@ export default function ShareSheet({ open, video, onClose }) {
         clipFile.current = new File([blob], `${slug}-promo.mp4`, { type: 'video/mp4' })
       })
       .catch(() => {})
-      .finally(() => {
-        if (!stop) setClipLoading(false)
-      })
     return () => {
       stop = true
-      setClipLoading(false)
     }
   }, [open, clip?.downloadUrl, slug])
 
@@ -252,55 +255,16 @@ export default function ShareSheet({ open, video, onClose }) {
     }
   }
 
-  /**
-   * Send this to Instagram or TikTok, for real.
-   *
-   * The old behaviour downloaded the clip and told the person to go and open
-   * the app themselves, which is what the client rejected. Neither app has a
-   * share URL, so the only handoff that genuinely launches them is the
-   * device's own share sheet — and on a phone that sheet lists Instagram and
-   * TikTok, and picking one opens it with the video already loaded.
-   *
-   * Everything below runs synchronously off the tap for that reason. The link
-   * is copied first so it is waiting in the clipboard for the caption, since
-   * neither app will take it any other way.
-   */
-  const openApp = (where) => {
+  const openNamedApp = (where) => {
     setProblem(null)
-    setHint(null)
-    navigator.clipboard?.writeText(url).catch(() => {})
-
-    const file = clipFile.current
-    const canFiles =
-      typeof navigator !== 'undefined' &&
-      navigator.canShare &&
-      file &&
-      navigator.canShare({ files: [file] })
-
-    if (canFiles) {
-      navigator
-        .share({ files: [file] })
-        .then(() => setHint('Link copied — paste it in your caption.'))
-        .catch((err) => {
-          if (err?.name !== 'AbortError') saveClip(where)
-        })
-      return
+    copyWatchUrl(url)
+    if (where === 'instagram') {
+      setHint('Instagram is opening. Paste the copied link in your caption.')
+    } else if (where === 'tiktok') {
+      setHint('TikTok is opening. Paste the copied link in your caption.')
+    } else {
+      setHint('Facebook is opening with this video.')
     }
-
-    // No file yet, but a share sheet exists: send the link and let them pick
-    // the app. Better than a download and an instruction.
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator
-        .share({ url })
-        .catch((err) => {
-          if (err?.name !== 'AbortError') saveClip(where)
-        })
-      return
-    }
-
-    // Desktop has no share sheet and these apps have no web composer, so the
-    // clip and the copied link are genuinely the best that can be offered.
-    saveClip(where)
   }
 
   const shareNative = async () => {
@@ -375,39 +339,43 @@ export default function ShareSheet({ open, video, onClose }) {
                 <Film size={28} />
               </span>
             )}
-            <span className="share-og-veil" aria-hidden="true" />
-            <span className="share-og-badge">MTONYO+</span>
-            {video.durationSeconds > 0 && (
-              <span className="share-og-time">{duration(video.durationSeconds)}</span>
+            {!ogCard && (
+              <>
+                <span className="share-og-veil" aria-hidden="true" />
+                <span className="share-og-badge">MTONYO+</span>
+                {video.durationSeconds > 0 && (
+                  <span className="share-og-time">{duration(video.durationSeconds)}</span>
+                )}
+                <span className="share-og-play" aria-hidden="true">
+                  <Play size={22} fill="currentColor" />
+                </span>
+                <div className="share-og-meta">
+                  {fresh && <span className="share-og-new">New release</span>}
+                  <b>{video.title}</b>
+                  {creator && (
+                    <small>
+                      {creator}
+                      {verified && <BadgeCheck size={13} />}
+                    </small>
+                  )}
+                  <em>Watch free preview</em>
+                </div>
+                <div className="share-og-stats">
+                  {video.views != null && (
+                    <span>
+                      <Eye size={12} />
+                      {compact(video.views)} views
+                    </span>
+                  )}
+                  {paid && (
+                    <span>
+                      <Lock size={12} />
+                      Pay to continue
+                    </span>
+                  )}
+                </div>
+              </>
             )}
-            <span className="share-og-play" aria-hidden="true">
-              <Play size={22} fill="currentColor" />
-            </span>
-            <div className="share-og-meta">
-              {fresh && <span className="share-og-new">New release</span>}
-              <b>{video.title}</b>
-              {creator && (
-                <small>
-                  {creator}
-                  {verified && <BadgeCheck size={13} />}
-                </small>
-              )}
-              <em>Watch free preview</em>
-            </div>
-            <div className="share-og-stats">
-              {video.views != null && (
-                <span>
-                  <Eye size={12} />
-                  {compact(video.views)} views
-                </span>
-              )}
-              {paid && (
-                <span>
-                  <Lock size={12} />
-                  Pay to continue
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -448,33 +416,47 @@ export default function ShareSheet({ open, video, onClose }) {
         </a>
 
         <div className="share-targets">
-          <button className="share-target is-ig" type="button" onClick={() => openApp('instagram')}>
-            {saving === 'instagram' || clipLoading ? (
-              <Loader2 size={22} className="spin" />
-            ) : (
-              <IconInstagram />
-            )}
+          <a
+            className="share-target is-ig"
+            href={instagramHref()}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onClick={() => {
+              openNamedApp('instagram')
+              appFallback('https://www.instagram.com/')()
+            }}
+          >
+            <IconInstagram />
             <b>Instagram</b>
-            <small>{clipLoading ? 'Preparing clip…' : 'Feed, Reels, Story'}</small>
-          </button>
-          <button className="share-target is-tt" type="button" onClick={() => openApp('tiktok')}>
-            {saving === 'tiktok' || clipLoading ? (
-              <Loader2 size={22} className="spin" />
-            ) : (
-              <IconTikTok />
-            )}
+            <small>Opens Instagram</small>
+          </a>
+          <a
+            className="share-target is-tt"
+            href={tiktokHref()}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onClick={() => {
+              openNamedApp('tiktok')
+              appFallback('https://www.tiktok.com/')()
+            }}
+          >
+            <IconTikTok />
             <b>TikTok</b>
-            <small>{clipLoading ? 'Preparing clip…' : 'Share video'}</small>
-          </button>
+            <small>Opens TikTok</small>
+          </a>
           <a
             className="share-target is-fb"
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
-            target="_blank"
+            href={facebookHref(url)}
+            target={socialTarget()}
             rel="noopener noreferrer"
+            onClick={() => {
+              openNamedApp('facebook')
+              appFallback(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`)()
+            }}
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Share to Feed</small>
+            <small>Opens Facebook</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}

@@ -1,8 +1,8 @@
-import { BadgeCheck, Check, Eye, Film, Gem, Lock, Play, Share2, TrendingUp } from 'lucide-react'
+import { Check, Gem, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Reveal from '@/components/ui/Reveal'
-import useApi, { compact, duration } from '@/hooks/useApi'
-import api, { mediaUrl } from '@/lib/api'
+import useApi from '@/hooks/useApi'
+import api from '@/lib/api'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
 
 /** Used only until the API answers, so the block is never empty on first paint. */
@@ -12,98 +12,110 @@ const SHARE_DEMO = {
   creator: { name: 'Asha Mwinyi' },
 }
 
+function IconWhatsApp({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.14-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.48.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26C2.16 5.34 6.59.9 12.05.9a9.82 9.82 0 0 1 6.99 2.9 9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88zm8.41-18.3A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L0 24l6.3-1.65a11.88 11.88 0 0 0 5.74 1.46h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41z" />
+    </svg>
+  )
+}
+function IconInstagram({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.64-.07-4.85s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0-2.16C8.74 0 8.33.01 7.05.07 2.7.27.27 2.69.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95C23.73 2.69 21.31.27 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.41-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" />
+    </svg>
+  )
+}
+function IconTikTok({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .56.04.82.12V9.01a6.27 6.27 0 0 0-.82-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.31a8.19 8.19 0 0 0 4.76 1.52V6.38a4.85 4.85 0 0 1-1-.31z" />
+    </svg>
+  )
+}
+function IconFacebook({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M22.68 12.07C22.68 6.13 17.87 1.32 11.93 1.32S1.18 6.13 1.18 12.07c0 5.37 3.93 9.82 9.07 10.61v-7.51H7.66v-3.1h2.59V9.7c0-2.56 1.52-3.97 3.85-3.97 1.12 0 2.28.2 2.28.2v2.51h-1.28c-1.27 0-1.66.79-1.66 1.6v1.92h2.83l-.45 3.1h-2.38v7.51c5.14-.79 9.07-5.24 9.07-10.61z" />
+    </svg>
+  )
+}
+function IconLink({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10.7 5.24" />
+      <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.4a5 5 0 0 0 7.07 7.07l1.72-1.72" />
+    </svg>
+  )
+}
+
 /**
- * The share card, as the person receiving it sees it.
- *
- * It used to be the finished Open Graph JPEG with the title, the creator and
- * WATCH FREE PREVIEW printed underneath it as well — so every one of them
- * appeared twice, once burned into the picture and once in the markup below.
- * The client asked for this to look like the card in the share sheet, which
- * composes those over the poster instead, and it now shares that markup and
- * those styles so the two cannot drift apart.
- *
- * The poster is the raw film frame rather than the branded JPEG, because the
- * branding is drawn on top here. And the video is whatever is genuinely
- * trending, which is what lets the line underneath say this is a real share
- * card without it being a claim.
+ * The homepage Share block must show the real Share This Video interface —
+ * WhatsApp, Instagram, TikTok, Facebook, Copy — not only a poster card.
+ * Buttons open that video's share sheet so a tap is a real action.
  */
-function ShareCardDemo() {
+function ShareThisVideoDemo() {
   const trending = useApi(() => api.videos.list({ sort: 'trending', limit: 1 }), [])
   const v = trending.data?.videos?.[0] || SHARE_DEMO
   const slug = v.slug || SHARE_DEMO.slug
-  const poster = mediaUrl(v.thumbnailUrl)
-  const creator = v.creator?.name || v.creatorName
-  const fresh =
-    v.publishedAt && Date.now() - new Date(v.publishedAt).getTime() < 1000 * 60 * 60 * 24 * 21
+  const shareTo = `/watch/${slug}?share=1`
+  const ogCard = `/og/card/${encodeURIComponent(slug)}.jpg`
 
   return (
-    <div className="pw-viz pw-viz-discover">
-      <div className="pw-share-head">
-        <Share2 size={14} />
-        <span>On WhatsApp and social</span>
-      </div>
-      <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
-
-      <Link
-        className="share-og-stage pw-og-stage"
-        to={`/watch/${slug}`}
-        aria-label={`${v.title} — watch the free preview`}
-      >
-        {poster ? (
-          <img src={poster} alt="" loading="lazy" decoding="async" />
-        ) : (
-          <span className="share-thumb-blank" aria-hidden="true">
-            <Film size={26} />
+    <div className="pw-viz pw-share-sheet">
+      <div className="share-card pw-share-card">
+        <h3>Share this video</h3>
+        <p className="share-sub">
+          They watch the free preview, then <b>pay</b> to continue.
+        </p>
+        <div className="share-og">
+          <Link className="share-og-stage" to={shareTo} aria-label={`${v.title} — open Share`}>
+            <img src={ogCard} alt="" loading="lazy" decoding="async" />
+          </Link>
+        </div>
+        <Link className="share-wa" to={shareTo}>
+          <IconWhatsApp size={26} />
+          <span className="share-wa-copy">
+            <b>Share on WhatsApp</b>
+            <small>Share privately or in groups</small>
           </span>
-        )}
-        <span className="share-og-veil" aria-hidden="true" />
-        <span className="share-og-badge">MTONYO+</span>
-        {v.durationSeconds > 0 && (
-          <span className="share-og-time">{duration(v.durationSeconds)}</span>
-        )}
-        <span className="share-og-play" aria-hidden="true">
-          <Play size={22} fill="currentColor" />
-        </span>
-        <span className="share-og-meta">
-          {fresh && <span className="share-og-new">New release</span>}
-          <b>{v.title}</b>
-          {creator && (
-            <small>
-              {creator}
-              {v.creator?.verified && <BadgeCheck size={13} />}
-            </small>
-          )}
-          <em>Watch free preview</em>
-        </span>
-        <span className="share-og-stats">
-          {v.views != null && (
-            <span>
-              <Eye size={12} />
-              {compact(v.views)} views
-            </span>
-          )}
-          {Number(v.priceTzs || 0) > 0 && (
-            <span>
-              <Lock size={12} />
-              Pay to continue
-            </span>
-          )}
-        </span>
-      </Link>
-
-      <small>
-        This is a real share card. Tap it — that video, free preview, then pay.{' '}
-        <Link className="pw-try" to={`/watch/${slug}?share=1`}>
-          Open Share
         </Link>
-      </small>
+        <div className="share-targets">
+          <Link className="share-target is-ig" to={shareTo}>
+            <IconInstagram />
+            <b>Instagram</b>
+            <small>Opens Instagram</small>
+          </Link>
+          <Link className="share-target is-tt" to={shareTo}>
+            <IconTikTok />
+            <b>TikTok</b>
+            <small>Opens TikTok</small>
+          </Link>
+          <Link className="share-target is-fb" to={shareTo}>
+            <IconFacebook />
+            <b>Facebook</b>
+            <small>Opens Facebook</small>
+          </Link>
+          <Link className="share-target is-copy" to={shareTo}>
+            <IconLink />
+            <b>Copy link</b>
+            <small>Get shareable link</small>
+          </Link>
+        </div>
+        <small>
+          This is the real Share This Video sheet.{' '}
+          <Link className="pw-try" to={shareTo}>
+            Open it on the video
+          </Link>
+        </small>
+      </div>
     </div>
   )
 }
 
 /** A small, honest picture of each capability. No images, no weight. */
 const VISUALS = {
-  discover: <ShareCardDemo />,
+  discover: <ShareThisVideoDemo />,
 
   monetize: (
     <div className="pw-viz pw-viz-monetize">

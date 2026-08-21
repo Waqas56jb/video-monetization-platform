@@ -68,7 +68,7 @@ async function loadVideo(slug) {
   try {
     const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(8000),
     })
     if (!r.ok) return null
     const body = await r.json()

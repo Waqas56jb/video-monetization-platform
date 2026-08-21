@@ -12,6 +12,7 @@ import Reset from '@/pages/Reset'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Dashboard from '@/pages/Dashboard'
 import Watch from '@/pages/Watch'
+import CreatorProfile from '@/pages/CreatorProfile'
 import Legal from '@/pages/Legal'
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/watch" element={<Watch />} />
         <Route path="/watch/:videoId" element={<Watch />} />
         <Route path="/s/:videoId" element={<Watch />} />
+        <Route path="/creator/:creatorId" element={<CreatorProfile />} />
 
         {/* Terms, privacy, the creator agreement, copyright and refunds. */}
         <Route path="/legal" element={<Navigate to="/legal/terms" replace />} />
