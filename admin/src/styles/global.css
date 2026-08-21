@@ -824,3 +824,11 @@ html.is-touch .btn:active{transform:scale(.97)}
 .sidebar .logo{display:flex;align-items:center;line-height:0;min-width:0}
 .sidebar .logo-img{display:block;width:auto;height:34px;max-width:100%}
 @media(max-width:900px){ .sidebar .logo-img{height:30px} }
+
+/* The artwork is supplied on black, and the app's surfaces are near-black but
+   not black, so the logo sat in a faintly visible rectangle. Screen blending
+   makes its black disappear into whatever is behind it while leaving the glow
+   around the play mark intact — which a transparency threshold would have
+   clipped. Everything this sits on is dark, which is the condition screen
+   needs. */
+.sidebar .logo-img{mix-blend-mode:screen}
