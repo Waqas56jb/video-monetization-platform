@@ -9,10 +9,17 @@ import { Link, useLocation } from 'react-router-dom'
  * black padding trimmed off so it can be positioned; nothing inside it has
  * been altered or recoloured.
  *
- * `size` picks how much room it gets. The tagline is only legible above a
- * certain height, which is why the header and a sign-in page do not get the
- * same one.
+ * Two files, because one cannot do both jobs. `logo-lockup.png` is the whole
+ * thing including WATCH. SUPPORT. EMPOWER., for places with room to read it.
+ * In a 38px bar that tagline stands about five pixels tall and comes out as a
+ * smudge under the word, so a bar gets `logo-bar.png`: the same artwork with
+ * the play mark and MTONYO+ and its trademark whole, and the tagline left out
+ * rather than printed illegibly. Neither file is recoloured or redrawn.
  */
+const ART = {
+  bar: '/logo-bar.png',
+  full: '/logo-lockup.png',
+}
 
 /**
  * Clicking the logo has to *do* something, even when it cannot navigate.
@@ -60,10 +67,8 @@ export default function Logo({ to = '/', className = '', onClick, size = 'bar' }
     >
       <img
         className={`logo-img is-${size}`}
-        src="/logo-lockup.png"
+        src={ART[size] || ART.bar}
         alt="MTONYO+"
-        width={1559}
-        height={364}
         /* Never lazy: it is the first thing on the page and the thing people
            look for to know where they are. */
         decoding="async"

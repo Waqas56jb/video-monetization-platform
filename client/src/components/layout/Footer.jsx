@@ -24,7 +24,7 @@ export default function Footer() {
       <div className="container">
         <div className="foot-grid">
           <div className="foot-brand">
-            <Logo />
+            <Logo size="full" />
             <p>
               The premium video platform helping Tanzanian creators monetize their content. Upload
               first, sell it, then release Free + Ads.

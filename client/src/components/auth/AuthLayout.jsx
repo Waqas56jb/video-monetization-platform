@@ -40,7 +40,7 @@ export default function AuthLayout({ side, back, title, subtitle, children }) {
 
           <div className="auth-card">
             <div className="auth-mobile-brand">
-              <Logo />
+              <Logo size="full" />
               <span className="badge">{side.badge}</span>
             </div>
             <Link className="back" to={back.to}>
