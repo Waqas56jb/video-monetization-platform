@@ -170,10 +170,12 @@ export default function Hero() {
             TANZANIA&apos;S CREATOR PLATFORM
           </span>
 
+          {/* Three lines, three brand colours, in the order the client set:
+              white, the logo's purple, the logo's gold. */}
           <h1>
             Your Content.
             <br />
-            Your Audience.
+            <span className="brand-purple">Your Audience.</span>
             <br />
             <span className="grad-text">Your Earnings.</span>
           </h1>

@@ -6,7 +6,8 @@
 :root{
   --bg:#0a0a12; --bg2:#0f0f1a; --card:#14141f; --card2:#191927;
   --border:rgba(124,58,237,.18); --border2:rgba(255,255,255,.07);
-  --purple:#7c3aed; --purple2:#a78bfa; --gold:#f5c518; --gold2:#ffd94a;
+  /* Sampled from the supplied MTONYO+ artwork, matching the public site. */
+  --purple:#7000ff; --purple2:#a78bfa; --gold:#ffc100; --gold2:#ffd94a;
   --green:#22c55e; --red:#ef4444; --blue:#38bdf8;
   --text:#f4f4f8; --muted:#a3a3b8; --muted2:#6b6b80;
   --shadow:0 24px 60px -12px rgba(0,0,0,.55); --glow:0 0 60px rgba(124,58,237,.35);
@@ -816,3 +817,10 @@ html.is-touch .btn:active{transform:scale(.97)}
   .app-decide{flex-direction:column;align-items:stretch}
   .app-decide .btn{width:100%;justify-content:center}
 }
+
+
+/* The lockup in the sidebar. The old rules drew a play icon in a rounded
+   square beside the word; this is the client's artwork instead. */
+.sidebar .logo{display:flex;align-items:center;line-height:0;min-width:0}
+.sidebar .logo-img{display:block;width:auto;height:34px;max-width:100%}
+@media(max-width:900px){ .sidebar .logo-img{height:30px} }

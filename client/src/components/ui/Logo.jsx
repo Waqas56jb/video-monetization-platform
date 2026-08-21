@@ -1,12 +1,17 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Play } from 'lucide-react'
 
 /**
- * The MTONYO+ wordmark.
+ * The MTONYO+ lockup, as supplied.
  *
- * The "+" is the single brand accent — when the client sends the final logo
- * artwork, swap the <span className="logo-mark"> block for an <img> and the
- * rest of the layout keeps working unchanged.
+ * This was drawn in markup — a Play icon in a rounded square beside the word.
+ * It is now the client's own artwork: the play mark, MTONYO+, the trademark
+ * and the tagline, in one image. `logo-lockup.png` is their file with the
+ * black padding trimmed off so it can be positioned; nothing inside it has
+ * been altered or recoloured.
+ *
+ * `size` picks how much room it gets. The tagline is only legible above a
+ * certain height, which is why the header and a sign-in page do not get the
+ * same one.
  */
 
 /**
@@ -29,7 +34,7 @@ import { Play } from 'lucide-react'
  * top. Everywhere else it stays an ordinary link — real href, middle-click and
  * open-in-new-tab intact.
  */
-export default function Logo({ to = '/', className = '', onClick }) {
+export default function Logo({ to = '/', className = '', onClick, size = 'bar' }) {
   const { pathname } = useLocation()
 
   const handleClick = (e) => {
@@ -53,12 +58,16 @@ export default function Logo({ to = '/', className = '', onClick }) {
       onClick={handleClick}
       aria-label="MTONYO+ home"
     >
-      <span className="logo-mark">
-        <Play />
-      </span>
-      <span className="logo-word">
-        MTONYO<span className="logo-plus">+</span>
-      </span>
+      <img
+        className={`logo-img is-${size}`}
+        src="/logo-lockup.png"
+        alt="MTONYO+"
+        width={1559}
+        height={364}
+        /* Never lazy: it is the first thing on the page and the thing people
+           look for to know where they are. */
+        decoding="async"
+      />
     </Link>
   )
 }

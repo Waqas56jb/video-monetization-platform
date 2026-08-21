@@ -1,6 +1,6 @@
 import { Fragment, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LogOut, Play } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/context/AuthContext'
 import { useNotifications } from '@/context/NotificationsContext'
@@ -95,13 +95,10 @@ export default function Sidebar({ open, onClose, onLogout, counts = {} }) {
       />
 
       <aside className={`sidebar ${open ? 'open' : ''}`.trim()}>
+        {/* The supplied artwork, the same file the public site uses, so the
+            two sides of the platform cannot drift onto different marks. */}
         <div className="logo">
-          <span className="logo-mark">
-            <Play />
-          </span>
-          <span className="logo-word">
-            MTONYO<span className="logo-plus">+</span>
-          </span>
+          <img className="logo-img" src="/logo-lockup.png" alt="MTONYO+" decoding="async" />
         </div>
         <span className="admin-tag">{roleLabel}</span>
 

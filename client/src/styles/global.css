@@ -9,8 +9,16 @@
      accents only, not as background colour. */
   --bg:#06060a; --bg2:#0b0b11; --card:#101017; --card2:#15151d;
   --border:rgba(124,58,237,.16); --border2:rgba(255,255,255,.06);
-  --purple:#7c3aed; --purple2:#a78bfa; --violet:#8b5cf6;
-  --gold:#f5c518; --gold2:#ffd94a; --green:#22c55e;
+  /* Taken from the supplied MTONYO+ artwork, not chosen: the most saturated
+     purple in the play mark and the most saturated gold in its arrow and the
+     plus. The old values were close but not the brand's — #7c3aed against the
+     logo's #7000ff, and #f5c518 against #ffc100. */
+  --purple:#7000ff; --purple2:#a78bfa; --violet:#8b5cf6;
+  --gold:#ffc100; --gold2:#ffd94a; --green:#22c55e;
+  /* The logo's purple where it has to read as text on black. The raw brand
+     purple is very dark against #06060a, so headline-sized type uses a lifted
+     version of the same hue. */
+  --purple-text:#9d4dff;
   --text:#f4f4f8; --muted:#a1a1b0; --muted2:#6b6b7d;
   --radius:18px; --shadow:0 30px 70px -18px rgba(0,0,0,.7);
   --glow:0 0 40px rgba(124,58,237,.22);
@@ -36,6 +44,10 @@ input,select,textarea{font-family:inherit}
 
 /* ---------- UTILITIES ---------- */
 .container{width:min(1800px,94%);margin-inline:auto}
+/* The middle line of the hero. Same hue as the mark, lifted enough to read
+   as large type on near-black. */
+.brand-purple{color:var(--purple-text)}
+
 .grad-text{background:linear-gradient(92deg,var(--gold) 0%,var(--gold2) 35%,#fff0b3 60%,var(--gold) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% auto;animation:shine 5s linear infinite}
 .grad-purple{background:linear-gradient(92deg,var(--purple2),#c4b5fd,var(--purple2));-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes shine{to{background-position:200% center}}
@@ -117,10 +129,18 @@ header{position:fixed;top:0;left:0;right:0;z-index:200;transition:background .25
 header{transform:translateZ(0)}
 header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.28)}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;min-width:0}
-.logo{display:flex;align-items:center;gap:11px;font-family:'Sora';font-weight:800;font-size:21px;letter-spacing:-.5px;min-width:0;flex-shrink:1}
-.logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:grid;place-items:center;box-shadow:var(--glow);position:relative;flex-shrink:0}
-.logo-mark::after{content:'';position:absolute;inset:-2px;border-radius:14px;background:linear-gradient(135deg,var(--purple),var(--gold));z-index:-1;opacity:.5;filter:blur(8px)}
-.logo-mark svg{width:20px;height:20px;color:var(--gold)}
+/* The lockup is an image now, so the row only has to hold it and keep it
+   clickable. The old type rules are gone with the markup they styled. */
+.logo{display:inline-flex;align-items:center;min-width:0;flex-shrink:1;line-height:0}
+.logo-img{display:block;width:auto;max-width:100%;height:auto}
+/* In a bar, where the tagline would be about five pixels tall. */
+.logo-img.is-bar{height:38px}
+/* Where there is room for the whole thing to be read. */
+.logo-img.is-full{height:76px}
+@media(max-width:600px){
+  .logo-img.is-bar{height:32px}
+  .logo-img.is-full{height:58px}
+}
 .nav-links{display:flex;gap:34px;align-items:center}
 .nav-links a{font-size:14.5px;font-weight:500;color:var(--muted);transition:.3s;position:relative}
 .nav-links a::after{content:'';position:absolute;left:0;bottom:-6px;width:0;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--purple),var(--gold));transition:.35s}
@@ -995,8 +1015,6 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 @media(max-width:380px){
   .container{width:min(1800px,94%)}
   .logo{font-size:18px;gap:9px}
-  .logo-mark{width:35px;height:35px;border-radius:10px}
-  .logo-mark svg{width:17px;height:17px}
   .btn-sm{padding:10px 14px;font-size:13px}
   .hero h1{font-size:30px}
   .steps{grid-template-columns:1fr}
@@ -1361,7 +1379,6 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    ========================================================================= */
 
 /* --- wordmark --- */
-.logo-word{font-family:'Sora',sans-serif;font-weight:800;letter-spacing:-.6px;white-space:nowrap}
 .logo-plus{color:var(--gold);margin-left:1px}
 .brand-accent{color:var(--gold2)}
 
@@ -1370,8 +1387,6 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .aurora .a1{background:#3b1d78}
 .aurora .a2{background:#241050}
 .aurora .a3{width:300px;height:300px;background:rgba(245,197,24,.07);opacity:.5}
-.logo-mark{box-shadow:0 8px 24px -10px rgba(124,58,237,.55)}
-.logo-mark::after{opacity:.28;filter:blur(10px)}
 .btn-gold{box-shadow:0 10px 30px -14px rgba(245,197,24,.42)}
 .btn-purple{box-shadow:0 10px 30px -14px rgba(124,58,237,.45)}
 
@@ -1889,11 +1904,9 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* --- all-caps wordmark needs the opposite tracking to a mixed-case one ---
    "Mtonyo" reads well tight; "MTONYO" needs air between the caps or it looks
    cramped and heavy. The "+" also sits better with a little breathing room. */
-.logo-word{letter-spacing:.6px}
 .logo-plus{margin-left:2px}
 .loader-logo{letter-spacing:.8px}
 .crash-mark{letter-spacing:.8px}
-@media(max-width:380px){.logo-word{letter-spacing:.3px}}
 
 /* --- explore: a way back, whichever side you arrived from --- */
 .explore-back{
