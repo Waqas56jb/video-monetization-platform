@@ -16,43 +16,22 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
-import {
-  instagramHref,
-  tiktokHref,
-  facebookHref,
-  socialTarget,
-  appFallback,
-  copyWatchUrl,
-} from '@/lib/socialShare'
+import { facebookHref, socialTarget } from '@/lib/socialShare'
 
 /**
  * Share sheet — layout, icons and type match the client's mock.
  *
- * WhatsApp / Facebook send the watch URL so the recipient gets the branded
- * Open Graph card. Instagram / TikTok / Facebook buttons are real app links
- * (same idea as WhatsApp) — not the generic OS picker.
+ * WhatsApp and Facebook can be opened with this watch URL. Instagram and
+ * TikTok have no web share that lands in their composer — those buttons
+ * would only open the OS picker, so they are not shown as direct-app shares.
+ * Recipients get a poster card (title, creator, MTONYO+). The free preview
+ * plays on MTONYO+ after they tap, not inside WhatsApp.
  */
 
 function IconWhatsApp({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.14-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.48.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26C2.16 5.34 6.59.9 12.05.9a9.82 9.82 0 0 1 6.99 2.9 9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88zm8.41-18.3A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L0 24l6.3-1.65a11.88 11.88 0 0 0 5.74 1.46h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41z" />
-    </svg>
-  )
-}
-
-function IconInstagram({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.64-.07-4.85s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0-2.16C8.74 0 8.33.01 7.05.07 2.7.27.27 2.69.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95C23.73 2.69 21.31.27 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.41-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" />
-    </svg>
-  )
-}
-
-function IconTikTok({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .56.04.82.12V9.01a6.27 6.27 0 0 0-.82-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.31a8.19 8.19 0 0 0 4.76 1.52V6.38a4.85 4.85 0 0 1-1-.31z" />
     </svg>
   )
 }
@@ -255,18 +234,6 @@ export default function ShareSheet({ open, video, onClose }) {
     }
   }
 
-  const openNamedApp = (where) => {
-    setProblem(null)
-    copyWatchUrl(url)
-    if (where === 'instagram') {
-      setHint('Instagram is opening. Paste the copied link in your caption.')
-    } else if (where === 'tiktok') {
-      setHint('TikTok is opening. Paste the copied link in your caption.')
-    } else {
-      setHint('Facebook is opening with this video.')
-    }
-  }
-
   const shareNative = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       if (busy) return
@@ -304,7 +271,8 @@ export default function ShareSheet({ open, video, onClose }) {
 
         <h3 id="share-title">Share this video</h3>
         <p className="share-sub">
-          Help people discover this. They watch the free preview, then <b>pay</b> to continue.
+          People receive a <b>poster card</b> — title, creator, MTONYO+. Tapping it
+          opens this video here. The free preview plays on MTONYO+, not inside WhatsApp.
         </p>
 
         <p className="share-kicker">
@@ -411,57 +379,25 @@ export default function ShareSheet({ open, video, onClose }) {
           <IconWhatsApp size={26} />
           <span className="share-wa-copy">
             <b>Share on WhatsApp</b>
-            <small>Share privately or in groups</small>
+            <small>Opens WhatsApp with this video</small>
           </span>
         </a>
 
-        <div className="share-targets">
-          <a
-            className="share-target is-ig"
-            href={instagramHref()}
-            target={socialTarget()}
-            rel="noopener noreferrer"
-            onClick={() => {
-              openNamedApp('instagram')
-              appFallback('https://www.instagram.com/')()
-            }}
-          >
-            <IconInstagram />
-            <b>Instagram</b>
-            <small>Opens Instagram</small>
-          </a>
-          <a
-            className="share-target is-tt"
-            href={tiktokHref()}
-            target={socialTarget()}
-            rel="noopener noreferrer"
-            onClick={() => {
-              openNamedApp('tiktok')
-              appFallback('https://www.tiktok.com/')()
-            }}
-          >
-            <IconTikTok />
-            <b>TikTok</b>
-            <small>Opens TikTok</small>
-          </a>
+        <div className="share-targets share-targets-direct">
           <a
             className="share-target is-fb"
             href={facebookHref(url)}
             target={socialTarget()}
             rel="noopener noreferrer"
-            onClick={() => {
-              openNamedApp('facebook')
-              appFallback(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`)()
-            }}
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Opens Facebook</small>
+            <small>Opens Facebook with this link</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}
             <b>{copied ? 'Copied' : 'Copy link'}</b>
-            <small>Get shareable link</small>
+            <small>Paste anywhere</small>
           </button>
         </div>
 
@@ -480,8 +416,8 @@ export default function ShareSheet({ open, video, onClose }) {
               */}
             <small>
               {onPhone
-                ? 'Share via other apps on your device'
-                : 'Email, Teams and others — for WhatsApp use the green button, it sends the card'}
+                ? 'Device share sheet — Instagram, TikTok and others. Not a direct app open.'
+                : 'Email, Teams and others. For WhatsApp use the green button so the poster card is sent.'}
             </small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
@@ -499,7 +435,7 @@ export default function ShareSheet({ open, video, onClose }) {
               {clip?.downloadUrl ? 'Save 60s promo clip' : 'Prepare 60s promo clip'}
               <em className="share-pill">Perfect for promotion</em>
             </b>
-            <small>Use for WhatsApp Status, Reels, TikTok &amp; Stories</small>
+            <small>Download the clip, then post it on Instagram or TikTok yourself. Those apps cannot be opened into a share composer from the web.</small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>

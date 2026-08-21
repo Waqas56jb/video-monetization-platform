@@ -139,8 +139,15 @@ router.get(
       })
     }
 
-    // Locked: hand back only the preview asset.
-    const previewUid = video.preview_uid || null
+    // Locked: recut the preview file if it is still the old 5:00 clip, then
+    // hand back only that asset. The number on screen and the last frame
+    // have to be the same second.
+    await Promise.race([
+      ensureClips(video.id).catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 8000)),
+    ])
+    const fresh = await one('select preview_uid from videos where id = $1', [video.id])
+    const previewUid = fresh?.preview_uid || video.preview_uid || null
     if (!previewUid) {
       return res.json({
         ...payload,
@@ -331,6 +338,11 @@ router.post(
  * Cloudflare does the clipping, so there is no FFmpeg worker to run or scale —
  * the "automatic social preview generation" requirement with no extra server.
  */
+function clipDurationSeconds(info) {
+  const n = Number(info?.duration ?? info?.durationSeconds ?? 0)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
 export async function ensureClips(videoId) {
   const video = await one('select * from videos where id = $1', [videoId])
   if (!video?.cloudflare_uid || !capabilities.cloudflareStream) return null
@@ -338,19 +350,35 @@ export async function ensureClips(videoId) {
 
   const duration = video.duration_seconds || 0
   const results = {}
+  const end = duration > 0 ? clampFreePreviewSeconds(video.free_preview_seconds || 300, duration) : 0
 
-  if (!video.preview_uid && duration > 0) {
-    const end = clampFreePreviewSeconds(video.free_preview_seconds || 300, duration)
-    if (end > 0) {
-      const clip = await cf.createClip({
-        uid: video.cloudflare_uid,
-        startSeconds: 0,
-        endSeconds: end,
-        requireSignedURLs: true,
-        name: `${video.title} — free preview`,
-      })
-      results.preview = clip?.uid
-      if (clip?.uid) await query('update videos set preview_uid = $2 where id = $1', [video.id, clip.uid])
+  /**
+   * The file itself must end where the label says.
+   *
+   * Clips were cut when previews were five minutes. The page then said 3:37
+   * and the file kept going until 5:00. Recut whenever the stored clip is
+   * longer (or shorter) than the number we show.
+   */
+  let previewStale = !video.preview_uid
+  if (video.preview_uid && end > 0) {
+    const info = await cf.getVideo(video.preview_uid).catch(() => null)
+    const have = clipDurationSeconds(info)
+    previewStale = Boolean(have) && Math.abs(have - end) > 1.25
+  }
+
+  if (previewStale && end > 0) {
+    const clip = await cf.createClip({
+      uid: video.cloudflare_uid,
+      startSeconds: 0,
+      endSeconds: end,
+      requireSignedURLs: true,
+      name: `${video.title} — free preview ${end}s`,
+    })
+    results.preview = clip?.uid
+    if (clip?.uid) {
+      const old = video.preview_uid
+      await query('update videos set preview_uid = $2 where id = $1', [video.id, clip.uid])
+      if (old && old !== clip.uid) cf.deleteVideo(old).catch(() => {})
     }
   }
 

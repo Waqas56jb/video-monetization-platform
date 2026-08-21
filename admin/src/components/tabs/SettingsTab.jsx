@@ -385,6 +385,9 @@ function PlatformPanel() {
               value={settings.preroll_skip_after_secs ?? ''}
               onChange={set('preroll_skip_after_secs')}
             />
+            <p className="field-note" style={{ marginTop: -8 }}>
+              0 = ads cannot be skipped. 5 = Skip appears after the ad has played for five seconds.
+            </p>
 
             <div className="settings-divider" />
 

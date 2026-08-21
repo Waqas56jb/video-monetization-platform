@@ -168,6 +168,7 @@ export default function StreamPlayer({
     let alive = true
     let kickTimer = null
     let watchdog = null
+    let stopPoll = null
 
     loadSdk().then((Stream) => {
       if (!alive || !Stream || !frame.current) return
@@ -176,29 +177,29 @@ export default function StreamPlayer({
         playerRef.current = player
         player.addEventListener('ended', () => onEnded?.())
         let stopped = false
-        player.addEventListener('timeupdate', () => {
+        const haltIfDue = () => {
+          if (!alive || !player) return
+          const limit = stopAtRef.current
           const at = Number(player.currentTime) || 0
-
-          if (stopAtRef.current > 0 && at >= stopAtRef.current - 0.15) {
-            // Pause first, then tell the page. The other order leaves a beat
-            // where the paywall is up and the film is still audible.
-            if (!stopped) {
-              stopped = true
-              try {
-                player.pause?.()
-                player.currentTime = stopAtRef.current
-              } catch {
-                /* the page still shows the paywall */
-              }
-              onStopReachedRef.current?.()
-            }
-            onTimeUpdate?.(stopAtRef.current, player.duration)
+          if (!(limit > 0) || at < limit - 0.15) {
+            if (limit > 0 && at < limit - 0.15) stopped = false
+            if (!(limit > 0 && at >= limit - 0.15)) onTimeUpdate?.(at, player.duration)
             return
           }
-
-          stopped = false
-          onTimeUpdate?.(at, player.duration)
-        })
+          try {
+            player.pause?.()
+            player.currentTime = limit
+          } catch {
+            /* paywall still covers it */
+          }
+          if (!stopped) {
+            stopped = true
+            onStopReachedRef.current?.()
+          }
+          onTimeUpdate?.(limit, player.duration)
+        }
+        player.addEventListener('timeupdate', haltIfDue)
+        stopPoll = setInterval(haltIfDue, 200)
         const shown = () => {
           markReady()
           onPlayingRef.current?.()
@@ -361,6 +362,7 @@ export default function StreamPlayer({
       player = null
       if (kickTimer) clearTimeout(kickTimer)
       if (watchdog) clearInterval(watchdog)
+      if (stopPoll) clearInterval(stopPoll)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iframeSrc, boot])

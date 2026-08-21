@@ -148,7 +148,12 @@
   cursor: pointer;
   border-color: rgba(245, 197, 24, .5);
 }
-.ad-skip.is-ready:hover { background: rgba(20, 20, 31, .9); border-color: var(--gold, #f5c518); }
+.ad-skip[hidden]{display:none}
+.ad-loading-note{
+  position:absolute;bottom:14px;right:14px;z-index:6;margin:0;
+  padding:9px 15px;border-radius:10px;background:rgba(8,8,14,.74);
+  color:rgba(255,255,255,.8);font-size:13px;font-weight:600;
+}
 .ad-note {
   position: absolute;
   bottom: 18px;

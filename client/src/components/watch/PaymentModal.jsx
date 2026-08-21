@@ -16,6 +16,10 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 /**
  * Paying for a video with mobile money.
  *
+ * Milestone 3 (AirPay/LinkPay) must keep this journey:
+ * preview stops → pay → confirmed → checkout closes → unlock → auto-resume
+ * from the exact preview-stop second, with no second Play button.
+ *
  * The flow mirrors what actually happens on a phone in Tanzania: you enter
  * your number, a prompt appears on the handset, you approve it there, and this
  * screen waits. So this waits too — polling the payment until the provider

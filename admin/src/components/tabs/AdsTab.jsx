@@ -35,6 +35,7 @@ const BLANK = {
   placements: ['pre_roll'],
   targetCategories: [],
   skipAfterSeconds: 5,
+  skippable: true,
   notes: '',
 }
 
@@ -97,7 +98,7 @@ export default function AdsTab() {
         endsAt: toInstant(form.endsAt),
         placements: form.placements,
         targetCategories: form.targetCategories,
-        skipAfterSeconds: Number(form.skipAfterSeconds) || 0,
+        skipAfterSeconds: form.skippable ? Math.max(1, Number(form.skipAfterSeconds) || 5) : 0,
         notes: form.notes.trim() || undefined,
       })
       showToast(`"${campaign.name}" created — now upload its advert`)
@@ -341,17 +342,38 @@ export default function AdsTab() {
                 </div>
               </div>
               <div className="field">
-                <label htmlFor="camp-skip">Skip after (seconds)</label>
-                <div className="input-wrap">
+                <label className="check-row" htmlFor="camp-skippable" style={{ marginBottom: 10 }}>
                   <input
-                    id="camp-skip"
-                    type="number"
-                    min={0}
-                    max={120}
-                    value={form.skipAfterSeconds}
-                    onChange={(e) => set({ skipAfterSeconds: e.target.value })}
+                    id="camp-skippable"
+                    type="checkbox"
+                    checked={form.skippable}
+                    onChange={(e) =>
+                      set({
+                        skippable: e.target.checked,
+                        skipAfterSeconds: e.target.checked ? form.skipAfterSeconds || 5 : 0,
+                      })
+                    }
                   />
-                </div>
+                  <span>
+                    Skippable
+                    <small>Off = the viewer must watch the whole advert</small>
+                  </span>
+                </label>
+                {form.skippable && (
+                  <>
+                    <label htmlFor="camp-skip">Seconds before Skip appears</label>
+                    <div className="input-wrap">
+                      <input
+                        id="camp-skip"
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={form.skipAfterSeconds}
+                        onChange={(e) => set({ skipAfterSeconds: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

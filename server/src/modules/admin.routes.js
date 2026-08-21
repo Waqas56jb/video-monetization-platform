@@ -457,6 +457,10 @@ router.patch(
              price_tzs            = case when coalesce($2, access_type) = 'free_with_ads'
                                          then 0 else coalesce($3, price_tzs) end,
              free_preview_seconds = coalesce($4, free_preview_seconds),
+             preview_uid          = case
+               when $4 is not null and $4 is distinct from free_preview_seconds then null
+               else preview_uid
+             end,
              premiere_days        = case when coalesce($2, access_type) = 'paid_premiere'
                                          then coalesce($5, premiere_days) else null end,
              ads_enabled          = coalesce($6, (coalesce($2, access_type) = 'free_with_ads')),
