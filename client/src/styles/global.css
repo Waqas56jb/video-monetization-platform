@@ -2417,7 +2417,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .power::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)}
 .power.gold::before{background:var(--gold)}
 .power.green::before{background:var(--green)}
-.power.is-lead{grid-template-columns:1fr 1.06fr;margin-bottom:22px}
+.power.is-lead{
+  grid-template-columns:minmax(0,1fr) minmax(240px,380px);
+  align-items:center;gap:clamp(18px,2.4vw,28px);
+  padding:clamp(18px,2.2vw,26px);margin-bottom:22px;
+}
 .power-pair{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .power-pair .power{align-content:start}
 
@@ -2457,6 +2461,20 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   box-shadow:0 18px 40px -22px rgba(0,0,0,.8);
   transition:transform .35s cubic-bezier(.22,1,.36,1), border-color .35s;
 }
+/* Homepage replica must stay card-sized. The Watch sheet uses 16/10 with a
+   min-height; stretched to a full column that frame towers over the copy. */
+.pw-viz-discover{gap:8px;padding:14px}
+.pw-viz-discover .pw-journey{font-size:13.5px}
+.pw-viz-discover .share-og-stage{
+  aspect-ratio:16/9;min-height:0;max-height:200px;
+}
+.pw-viz-discover .share-og-play{width:40px;height:40px;top:40%}
+.pw-viz-discover .share-og-play svg{width:16px;height:16px}
+.pw-viz-discover .share-og-meta{left:10px;right:96px;bottom:10px;gap:3px}
+.pw-viz-discover .share-og-meta b{font-size:13.5px;-webkit-line-clamp:1}
+.pw-viz-discover .share-og-meta small{font-size:11.5px}
+.pw-viz-discover .share-og-meta em{margin-top:4px;font-size:10px;padding:5px 8px}
+.pw-viz-discover .share-og-stats{right:8px;bottom:10px}
 /* Hover only where there is a pointer: on a phone this fires on the first tap
    and moves the card out from under the finger. */
 @media(hover:hover){
@@ -2487,6 +2505,9 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .pw-og-stage .share-og-play svg{width:19px;height:19px}
   .pw-og-stage .share-og-meta b{font-size:15px;-webkit-line-clamp:2}
   .pw-og-stage .share-og-meta em{margin-top:5px;font-size:10.5px;padding:5px 9px}
+  .pw-viz-discover .share-og-stage{min-height:0;max-height:176px}
+  .pw-viz-discover .share-og-play{width:36px;height:36px;top:38%}
+  .pw-viz-discover .share-og-meta b{font-size:13px;-webkit-line-clamp:1}
 }
 
 .pw-og{border:1px solid var(--border2);border-radius:14px;overflow:hidden;background:rgba(8,8,14,.7);min-width:0}
@@ -2525,10 +2546,11 @@ a.pw-og:hover{border-color:rgba(245,197,24,.45)}
   html:not(.is-touch) .power:hover{border-color:rgba(255,255,255,.14);transform:translateY(-2px)}
 }
 @media(max-width:1024px){
-  .power.is-lead{grid-template-columns:1fr;gap:24px}
+  .power.is-lead{grid-template-columns:1fr;gap:18px;padding:20px}
   .power-pair{grid-template-columns:1fr;gap:18px}
   .power-copy>p{max-width:none}
   .pw-og-poster{min-height:180px}
+  .pw-viz-discover{max-width:420px}
 }
 @media(max-width:600px){
   .power{padding:20px 17px;border-radius:20px}

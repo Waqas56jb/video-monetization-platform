@@ -28,6 +28,7 @@ import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
+import { warmSharePreview } from '@/lib/warmShare'
 
 /**
  * Watching a video.
@@ -131,6 +132,15 @@ export default function Watch() {
     if (!shareAlias && videoId === v.slug) return
     navigate(`/watch/${v.slug}${location.search || ''}`, { replace: true })
   }, [v?.slug, videoId, location.pathname, location.search, navigate])
+
+  /**
+   * Build the WhatsApp/Facebook poster before anyone pastes the link.
+   * Laptop previews give up if the JPEG is still being composed.
+   */
+  useEffect(() => {
+    if (!v?.slug) return
+    warmSharePreview(v.slug)
+  }, [v?.slug])
 
   useEffect(() => {
     if (!v?.slug) return

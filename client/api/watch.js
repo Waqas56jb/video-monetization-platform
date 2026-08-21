@@ -17,6 +17,9 @@ const API =
 const PREVIEW_BOT =
   /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|Pinterest|Googlebot|bingbot|Applebot/i
 
+const videoMemo = new Map()
+const VIDEO_MEMO_MS = 10 * 60 * 1000
+
 /**
  * Only the link-preview *bot* should get the tiny OG document.
  *
@@ -31,6 +34,24 @@ function isLinkPreviewBot(ua) {
     return false
   }
   return true
+}
+
+/**
+ * WhatsApp Web / Desktop paste does not send a WhatsApp User-Agent. It is a
+ * CORS fetch from Chrome. That used to receive the full SPA shell, which is
+ * slow and noisy, so the laptop preview timed out into a bare URL.
+ *
+ * A real person opening Watch is a navigation (document + navigate). Leave
+ * that on the SPA. Everything else that asks for this URL wants the card.
+ */
+function isUnfurlFetch(req) {
+  const ua = req.headers['user-agent'] || ''
+  if (isLinkPreviewBot(ua)) return true
+  const dest = String(req.headers['sec-fetch-dest'] || '')
+  const mode = String(req.headers['sec-fetch-mode'] || '')
+  if (dest === 'document' || mode === 'navigate') return false
+  if (mode === 'cors' || dest === 'empty') return true
+  return false
 }
 
 const escapeAttr = (s) =>
@@ -65,6 +86,8 @@ function publicPath(req, slug) {
 
 async function loadVideo(slug) {
   if (!slug) return null
+  const hit = videoMemo.get(slug)
+  if (hit && Date.now() - hit.at < VIDEO_MEMO_MS) return hit.video
   try {
     const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
       headers: { Accept: 'application/json' },
@@ -72,9 +95,11 @@ async function loadVideo(slug) {
     })
     if (!r.ok) return null
     const body = await r.json()
-    return body?.video || null
+    const video = body?.video || null
+    if (video) videoMemo.set(slug, { video, at: Date.now() })
+    return video
   } catch {
-    return null
+    return hit?.video || null
   }
 }
 
@@ -164,16 +189,22 @@ export default async function handler(req, res) {
    */
   res.setHeader('Access-Control-Allow-Origin', '*')
 
-  if (isLinkPreviewBot(ua)) {
+  if (isUnfurlFetch(req)) {
     /**
      * And give it something to read without waiting.
      *
-     * s-maxage was 60 seconds, so most previews arrived while the function
-     * was cold. Measured: 2.25s on a cold start against 0.35s warm, and a
-     * preview fetch that slow is one a client gives up on. Ten minutes at the
-     * edge, and a day of serving the old copy while a new one is fetched.
+     * Bots (WhatsApp app, Facebook) may be cached at the edge. Chrome CORS
+     * fetches from WhatsApp Web are not — Vercel does not reliably Vary on
+     * Sec-Fetch, and caching the tiny document under /watch/:slug would
+     * serve it to real viewers. The JPEG is what was slow; that is cached.
      */
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400')
+    const bot = isLinkPreviewBot(ua)
+    res.setHeader(
+      'Cache-Control',
+      bot
+        ? 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400'
+        : 'private, no-store'
+    )
     res.status(200)
     return res.end(
       crawlerDocument({ origin, canonical, title, description, image })

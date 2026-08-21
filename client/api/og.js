@@ -16,7 +16,13 @@ const API =
   process.env.API_URL ||
   'https://video-monetization-platform-backend.vercel.app'
 
+const posterMemo = new Map()
+const POSTER_MEMO_MS = 24 * 60 * 60 * 1000
+
 async function fetchPoster(slug) {
+  const hit = posterMemo.get(slug)
+  if (hit && Date.now() - hit.at < POSTER_MEMO_MS) return hit.poster
+
   const urls = [
     `${API}/api/share/${encodeURIComponent(slug)}/card.jpg`,
     `${API}/api/share/${encodeURIComponent(slug)}/card`,
@@ -30,13 +36,15 @@ async function fetchPoster(slug) {
         if (!/^image\/(jpeg|jpg|webp)/i.test(type) && type !== 'application/octet-stream') continue
         const buf = Buffer.from(await r.arrayBuffer())
         if (buf.length < 1000) continue
-        return { buf, type: type.startsWith('image/') ? type : 'image/jpeg' }
+        const poster = { buf, type: type.startsWith('image/') ? type : 'image/jpeg' }
+        posterMemo.set(slug, { poster, at: Date.now() })
+        return poster
       } catch {
         /* retry */
       }
     }
   }
-  return null
+  return hit?.poster || null
 }
 
 export default async function handler(req, res) {

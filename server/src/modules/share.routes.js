@@ -9,6 +9,7 @@ import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
+import { cardSourceKey, readCachedCard, writeCachedCard } from '../lib/shareCardCache.js'
 
 const router = Router()
 
@@ -96,6 +97,10 @@ router.get(
     // tiny webpage icon instead of fetching the Open Graph poster card.
     const encoded = encodeURIComponent(deepLink)
 
+    // Start the JPEG now, do not wait. Share sheet + Watch already opened;
+    // WhatsApp will ask for the bytes a moment later.
+    composeShareCard(video).catch(() => {})
+
     res.json({
       // `creator` and `description` are here for the link-preview renderer
       // (client/api/watch.js), which builds the Open Graph card a shared link
@@ -180,12 +185,11 @@ async function fetchPosterBytes(url) {
   return null
 }
 
-async function sendShareCard(req, res) {
-  const video = await videoByKey(String(req.params.id || '').replace(/\.jpe?g$/i, ''))
-  if (!video) throw notFound('Video not found')
-  if (!(video.is_published && video.review_status === 'approved')) {
-    throw notFound('Video not found')
-  }
+async function composeShareCard(video) {
+  const slug = video.slug || String(video.id)
+  const key = cardSourceKey(video)
+  const cached = await readCachedCard(slug, key)
+  if (cached) return cached
 
   let poster = null
   if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
@@ -202,15 +206,36 @@ async function sendShareCard(req, res) {
   if (!poster && video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
     poster = await fetchPosterBytes(video.thumbnail_url)
   }
-  if (!poster) throw notFound('No poster available')
+  if (!poster) return null
 
   const card = await brandShareCard(poster, {
     title: video.title,
     creator: video.creator_name,
   })
+  await writeCachedCard(slug, video.id, key, card)
+  return card
+}
+
+/** Build and store the JPEG so the next WhatsApp paste is a cache hit. */
+export async function warmShareCardById(id) {
+  const video = await videoByKey(String(id || ''))
+  if (!video || !(video.is_published && video.review_status === 'approved')) return null
+  return composeShareCard(video)
+}
+
+async function sendShareCard(req, res) {
+  const video = await videoByKey(String(req.params.id || '').replace(/\.jpe?g$/i, ''))
+  if (!video) throw notFound('Video not found')
+  if (!(video.is_published && video.review_status === 'approved')) {
+    throw notFound('Video not found')
+  }
+
+  const card = await composeShareCard(video)
+  if (!card) throw notFound('No poster available')
 
   res.set('Content-Type', 'image/jpeg')
-  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=604800')
+  res.set('Access-Control-Allow-Origin', '*')
+  res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.set('Content-Disposition', 'inline; filename="poster.jpg"')
   res.send(card)
 }

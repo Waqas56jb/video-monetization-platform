@@ -17,6 +17,7 @@ import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 import { facebookHref, socialTarget } from '@/lib/socialShare'
+import { warmSharePreview } from '@/lib/warmShare'
 
 /**
  * Share sheet — layout, icons and type match the client's mock.
@@ -134,6 +135,11 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useEffect(() => {
     if (!open || !slug) return
+    warmSharePreview(slug)
+  }, [open, slug])
+
+  useEffect(() => {
+    if (!open || !slug) return
     let stop = false
     const load = () =>
       api.share
@@ -184,9 +190,10 @@ export default function ShareSheet({ open, video, onClose }) {
   const copy = async () => {
     setProblem(null)
     try {
+      if (ogCard) await fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      setHint('Link copied. Paste it anywhere.')
+      setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is ready.')
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2400)
     } catch {
@@ -374,6 +381,7 @@ export default function ShareSheet({ open, video, onClose }) {
           href={whatsappHref(url)}
           target={whatsappTarget()}
           rel="noopener noreferrer"
+          onPointerDown={() => warmSharePreview(slug)}
           onClick={whatsappFallback(url)}
         >
           <IconWhatsApp size={26} />
@@ -389,6 +397,7 @@ export default function ShareSheet({ open, video, onClose }) {
             href={facebookHref(url)}
             target={socialTarget()}
             rel="noopener noreferrer"
+            onPointerDown={() => warmSharePreview(slug)}
           >
             <IconFacebook />
             <b>Facebook</b>
