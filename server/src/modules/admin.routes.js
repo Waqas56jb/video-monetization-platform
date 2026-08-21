@@ -108,7 +108,8 @@ router.get(
              from earnings`),
       one(`select count(*) filter (where status = 'pending')::int as withdrawals,
                   (select count(*)::int from video_deletion_requests where status = 'pending') as deletions,
-                  (select count(*)::int from content_reports where status = 'open') as reports
+                  (select count(*)::int from content_reports where status = 'open') as reports,
+                  (select count(*)::int from creator_applications where status = 'pending') as applications
              from withdrawals`),
     ])
 
@@ -125,6 +126,7 @@ router.get(
         pendingWithdrawals: pending.withdrawals,
         pendingDeletions: pending.deletions,
         openReports: pending.reports,
+        pendingApplications: pending.applications,
       },
     })
   })

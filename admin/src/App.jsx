@@ -18,6 +18,7 @@ import UsersTab from '@/components/tabs/UsersTab'
 import CreatorsTab from '@/components/tabs/CreatorsTab'
 import VideosTab from '@/components/tabs/VideosTab'
 import ReviewTab from '@/components/tabs/ReviewTab'
+import CreatorApplicationsTab from '@/components/tabs/CreatorApplicationsTab'
 import ModerationTab from '@/components/tabs/ModerationTab'
 import PaymentsTab from '@/components/tabs/PaymentsTab'
 import WithdrawalsTab from '@/components/tabs/WithdrawalsTab'
@@ -149,6 +150,12 @@ function Router() {
 
         <Route path="/videos" element={<Needs module="videos"><VideosTab /></Needs>} />
         <Route path="/review" element={<Needs module="review"><ReviewTab /></Needs>} />
+        {/* Applications sit under the creators permission: deciding who may sell
+            is the same responsibility as managing the creators who already do. */}
+        <Route
+          path="/creator-applications"
+          element={<Needs module="creators"><CreatorApplicationsTab /></Needs>}
+        />
         <Route path="/moderation" element={<Needs module="moderation"><ModerationTab /></Needs>} />
         <Route path="/payments" element={<Needs module="payments"><PaymentsTab /></Needs>} />
         <Route path="/withdrawals" element={<Needs module="withdrawals"><WithdrawalsTab /></Needs>} />

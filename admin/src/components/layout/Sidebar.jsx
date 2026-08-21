@@ -26,6 +26,7 @@ const NAV = [
     items: [
       { path: '/users', icon: 'users', label: 'Users', adminOnly: true, module: 'users' },
       { path: '/creators', icon: 'video', label: 'Creators', adminOnly: true, module: 'creators' },
+      { path: '/creator-applications', icon: 'user-plus', label: 'Creator Applications', badge: 'applications', module: 'creators' },
       { path: '/videos', icon: 'clapperboard', label: 'Videos', module: 'videos' },
       { path: '/review', icon: 'shield-check', label: 'Content Review', badge: 'review', module: 'review' },
       { path: '/moderation', icon: 'shield-alert', label: 'Moderation', module: 'moderation' },
