@@ -2460,7 +2460,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* Hover only where there is a pointer: on a phone this fires on the first tap
    and moves the card out from under the finger. */
 @media(hover:hover){
-  .pw-og-stage:hover{transform:translateY(-3px);border-color:var(--border)}
+  a.pw-og-stage:hover{transform:translateY(-3px);border-color:var(--border)}
 }
 .pw-og-stage:focus-visible{outline:2px solid var(--purple2);outline-offset:3px}
 
@@ -2789,6 +2789,7 @@ html.is-touch .btn:active{transform:scale(.97)}
   box-shadow:0 22px 48px -24px rgba(0,0,0,.85);
 }
 .pw-share-card h3{padding:0}
+.pw-viz-discover .pw-og-stage{cursor:default}
 .pw-share-card .share-wa,.pw-share-card .share-target,.pw-share-card .share-og-stage{
   text-decoration:none;cursor:default;pointer-events:none;
 }
