@@ -390,6 +390,10 @@ export const api = {
     removeAvatar: () => del('/api/account/avatar'),
     analytics: () => get('/api/account/analytics'),
     close: () => post('/api/account/close', { confirm: 'DELETE' }),
+
+    /** Applying to sell on the platform, and how that application is going. */
+    creatorApplication: () => get('/api/account/creator-application'),
+    applyAsCreator: (body) => post('/api/account/creator-application', body),
   },
 
   /** Everyone has an inbox: announcements, and news about their own account. */

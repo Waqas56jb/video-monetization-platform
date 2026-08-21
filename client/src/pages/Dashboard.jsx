@@ -208,7 +208,7 @@ export default function Dashboard() {
             {tab === 'upload' && <UploadTab />}
             {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
             {tab === 'earnings' && <EarningsTab />}
-            {tab === 'become' && <BecomeCreatorTab onUpgraded={() => selectTab('overview')} />}
+            {tab === 'become' && <BecomeCreatorTab />}
             {tab === 'analytics' && <AnalyticsTab />}
             {tab === 'profile' && <ProfileTab />}
             {tab === 'settings' && <SettingsTab />}

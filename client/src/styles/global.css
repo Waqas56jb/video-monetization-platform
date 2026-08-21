@@ -2705,3 +2705,45 @@ html.is-touch .btn:active{transform:scale(.97)}
   .share-og-loading{animation:none}
   .share-og-stage img{transition:none}
 }
+
+/* --- applying to become a creator ---------------------------------------- */
+
+/* Selects were never styled: every other input on the platform goes through
+   .input-wrap, and a bare <select> on a dark panel rendered as the browser's
+   own white box. Matches the textarea rule directly above it. */
+.field select{
+  width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:13px;
+  padding:14px 15px;color:var(--text);font-size:15px;font-family:inherit;
+  transition:border-color .25s, box-shadow .25s, background .25s;
+}
+.field select:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}
+
+.apply-form{display:block}
+.apply-form .btn-block{margin-top:6px}
+
+/* The agreement is a decision, so it gets a target worth tapping rather than a
+   14px checkbox next to a wall of text. */
+.apply-terms{
+  display:flex;gap:12px;align-items:flex-start;margin:4px 0 20px;padding:14px 16px;
+  border:1px solid var(--border2);border-radius:14px;background:rgba(8,8,14,.45);
+  font-size:14px;line-height:1.6;color:var(--muted);cursor:pointer;
+}
+.apply-terms input{width:20px;height:20px;flex-shrink:0;margin-top:1px;accent-color:var(--purple)}
+.apply-terms a{color:var(--gold);text-decoration:underline}
+
+/* What we already hold, while they wait. */
+.apply-summary{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;
+  margin:22px 0 16px;padding:16px 18px;border:1px solid var(--border2);border-radius:14px;
+  background:rgba(8,8,14,.45);
+}
+.apply-summary small{display:block;font-size:11.5px;color:var(--muted2);margin-bottom:4px}
+.apply-summary b{font-size:15px;color:#fff}
+
+.apply-declined{display:flex;gap:14px;align-items:flex-start;border-left:3px solid #ef4444}
+.apply-declined .ad-ic{color:#ef4444;flex-shrink:0;margin-top:2px}
+.apply-declined b{display:block;margin-bottom:6px}
+.apply-declined p{color:var(--muted);margin:0 0 8px;line-height:1.6}
+.apply-declined small{color:var(--muted2)}
+
+.become-note{display:inline-flex;align-items:center;gap:7px}

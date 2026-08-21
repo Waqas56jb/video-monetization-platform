@@ -318,6 +318,12 @@ export const api = {
     setUserStatus: (id, body) => post(`/api/admin/users/${id}/status`, body),
 
     creators: () => get('/api/admin/creators'),
+
+    /** Who has asked to sell on the platform, and deciding about them. */
+    creatorApplications: (params) => get(`/api/admin/creator-applications${qs(params)}`),
+    decideCreatorApplication: (id, body) =>
+      post(`/api/admin/creator-applications/${id}/decide`, body),
+    revokeCreator: (id, body) => post(`/api/admin/creators/${id}/revoke`, body),
     verifyCreator: (id, verified) => post(`/api/admin/creators/${id}/verify`, { verified }),
     setCreatorSplit: (id, splitPercent) => post(`/api/admin/creators/${id}/split`, { splitPercent }),
 
