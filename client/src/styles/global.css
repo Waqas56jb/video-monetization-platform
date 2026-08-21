@@ -2747,14 +2747,3 @@ html.is-touch .btn:active{transform:scale(.97)}
 .apply-declined small{color:var(--muted2)}
 
 .become-note{display:inline-flex;align-items:center;gap:7px}
-
-/* Two real app buttons, not four. Instagram and TikTok publish no address
-   that opens them with something to post, so they moved to the honest row
-   below and this grid holds only what genuinely opens. */
-.share-targets.is-two{grid-template-columns:repeat(2,1fr)}
-
-.share-row.is-social .share-social-ic{
-  display:inline-flex;align-items:center;gap:2px;color:var(--purple2);flex-shrink:0;
-}
-.share-row.is-social .share-social-ic .share-clip-ic,
-.share-row.is-social .share-social-ic svg{width:17px;height:17px}

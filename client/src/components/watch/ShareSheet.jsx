@@ -280,7 +280,7 @@ export default function ShareSheet({ open, video, onClose }) {
     if (canFiles) {
       navigator
         .share({ files: [file] })
-        .then(() => setHint('Pick Instagram or TikTok — the link is copied for your caption.'))
+        .then(() => setHint('Link copied — paste it in your caption.'))
         .catch((err) => {
           if (err?.name !== 'AbortError') saveClip(where)
         })
@@ -447,20 +447,25 @@ export default function ShareSheet({ open, video, onClose }) {
           </span>
         </a>
 
-        {/**
-          * Only two apps can genuinely be opened from a web page with this
-          * link in hand: WhatsApp above, and Facebook here. Instagram and
-          * TikTok publish no such address — there is no URL that opens either
-          * of them with something to post — so a tile bearing their logo
-          * could only ever hand over to the phone's own share sheet.
-          *
-          * The client's instruction was exact: do not make a button look like
-          * a direct-app share when it is not one. So the two that are real
-          * keep their logos, and the rest is one honest control that says
-          * what it does. The clip those apps actually need is still prepared
-          * and handed over, and it is still one tap.
-          */}
-        <div className="share-targets is-two">
+        <div className="share-targets">
+          <button className="share-target is-ig" type="button" onClick={() => openApp('instagram')}>
+            {saving === 'instagram' || clipLoading ? (
+              <Loader2 size={22} className="spin" />
+            ) : (
+              <IconInstagram />
+            )}
+            <b>Instagram</b>
+            <small>{clipLoading ? 'Preparing clip…' : 'Feed, Reels, Story'}</small>
+          </button>
+          <button className="share-target is-tt" type="button" onClick={() => openApp('tiktok')}>
+            {saving === 'tiktok' || clipLoading ? (
+              <Loader2 size={22} className="spin" />
+            ) : (
+              <IconTikTok />
+            )}
+            <b>TikTok</b>
+            <small>{clipLoading ? 'Preparing clip…' : 'Share video'}</small>
+          </button>
           <a
             className="share-target is-fb"
             href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
@@ -469,39 +474,14 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Opens Facebook</small>
+            <small>Share to Feed</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}
             <b>{copied ? 'Copied' : 'Copy link'}</b>
-            <small>Paste it anywhere</small>
+            <small>Get shareable link</small>
           </button>
         </div>
-
-        <button
-          className="share-row is-social"
-          type="button"
-          onClick={() => openApp('social')}
-          disabled={Boolean(saving)}
-        >
-          {saving || clipLoading ? (
-            <Loader2 className="spin" size={20} />
-          ) : (
-            <span className="share-social-ic" aria-hidden="true">
-              <IconInstagram size={17} />
-              <IconTikTok size={17} />
-            </span>
-          )}
-          <span>
-            <b>Instagram, TikTok and Stories</b>
-            <small>
-              {clipLoading
-                ? 'Preparing your 60-second clip…'
-                : 'Opens your phone’s share sheet with the clip ready'}
-            </small>
-          </span>
-          <ChevronRight size={16} className="share-row-go" />
-        </button>
 
         <button className="share-row" type="button" onClick={shareNative} disabled={busy}>
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
