@@ -65,24 +65,54 @@ function asBuffer(value) {
   return Buffer.from(value)
 }
 
+/**
+ * Why the last read did not return a card.
+ *
+ * The card was being rebuilt on every request while the row existed and the
+ * keys matched, and no combination of reading the table by hand reproduced
+ * it. Rather than keep guessing from the outside, the reason is recorded here
+ * and reported on the response.
+ */
+export let lastReadMiss = null
+
 export async function readCachedCard(slug, key) {
   const hit = mem.get(slug)
   if (hit && hit.sourceKey === key) return hit.jpeg
 
-  await ensureShareCardTable()
+  try {
+    await ensureShareCardTable()
+  } catch (err) {
+    lastReadMiss = 'table:' + err.message.slice(0, 40)
+    return null
+  }
+
   try {
     const row = await one('select jpeg, source_key from share_card_cache where slug = $1', [slug])
-    if (row && row.source_key === key) {
-      const jpeg = asBuffer(row.jpeg)
-      if (jpeg?.length > 1000) {
-        mem.set(slug, { jpeg, sourceKey: key })
-        return jpeg
-      }
+    if (!row) {
+      lastReadMiss = 'no-row'
+      return null
     }
+    if (row.source_key !== key) {
+      lastReadMiss = 'key-differs'
+      return null
+    }
+    const jpeg = asBuffer(row.jpeg)
+    if (!jpeg) {
+      lastReadMiss = 'jpeg-null'
+      return null
+    }
+    if (!(jpeg.length > 1000)) {
+      lastReadMiss = 'jpeg-short:' + jpeg.length
+      return null
+    }
+    mem.set(slug, { jpeg, sourceKey: key })
+    lastReadMiss = null
+    return jpeg
   } catch (err) {
+    lastReadMiss = 'threw:' + err.message.slice(0, 40)
     log.warn('share card cache read:', err.message)
+    return null
   }
-  return null
 }
 
 export async function writeCachedCard(slug, videoId, key, jpeg) {

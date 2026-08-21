@@ -9,7 +9,7 @@ import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
-import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable } from '../lib/shareCardCache.js'
+import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable, lastReadMiss } from '../lib/shareCardCache.js'
 import { publicOgCardUrl, publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { log } from '../lib/logger.js'
 
@@ -377,7 +377,10 @@ async function sendShareCard(req, res) {
   /* When a card is rebuilt on every request, the only question worth asking is
      what the two keys were. Short hashes, so a header cannot leak a title. */
   res.set('X-OG-Key', shortHash(key))
-  if (!cached) res.set('X-OG-Stored-Key', shortHash(await storedKeyFor(slug)))
+  if (!cached) {
+    res.set('X-OG-Stored-Key', shortHash(await storedKeyFor(slug)))
+    res.set('X-OG-Why', String(lastReadMiss ?? 'unknown'))
+  }
   res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.set('Content-Disposition', 'inline; filename="poster.jpg"')
   res.send(card)
