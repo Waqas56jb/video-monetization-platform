@@ -236,43 +236,27 @@ router.patch(
   })
 )
 
-/* ------------------------------------------- viewer upgrades to a creator */
+/* --------------------------------------- viewer asks to become a creator */
+
+/**
+ * This used to promote the account on the spot.
+ *
+ * One press and a viewer could sell on the platform. MTONYO+ decides who
+ * publishes here, so that is an application somebody reads — it lives at
+ * POST /api/account/creator-application, and only an administrator's approval
+ * moves the role.
+ *
+ * The endpoint is kept rather than deleted so an older client that still calls
+ * it is told what to do instead of failing at a missing route.
+ */
 router.post(
   '/become-creator',
   requireAuth(),
-  asyncHandler(async (req, res) => {
-    if (req.user.role === 'admin') throw badRequest('Admins already have full access')
-    if (req.user.role === 'sub_admin') {
-      throw forbidden(
-        'A sub-admin cannot become a creator — that would remove staff access. Use a viewer account.'
-      )
-    }
-    if (req.user.role === 'creator') return res.json(shape(req.user, null))
-
-    const profile = await transaction(
-      async (client) => {
-        const { rows } = await client.query(
-          `update profiles set role = 'creator' where id = $1 returning *`,
-          [req.user.id]
-        )
-        await client.query(
-          `insert into creator_profiles (user_id, display_name, payout_phone)
-           values ($1,$2,$3) on conflict (user_id) do nothing`,
-          [req.user.id, req.user.full_name || req.user.email, req.user.phone]
-        )
-        return rows[0]
-      },
-      { actorRole: 'admin', actorId: req.user.id }
+  asyncHandler(async (req) => {
+    if (req.user.role === 'creator') throw badRequest('This account is already a creator')
+    throw badRequest(
+      'Creator access is granted after review. Complete the creator application and the team will respond.'
     )
-
-    await recordAudit({
-      actorId: req.user.id,
-      action: 'BECAME_CREATOR',
-      entityType: 'profile',
-      entityId: req.user.id,
-      ip: clientIp(req),
-    })
-    res.json(shape(profile, null))
   })
 )
 

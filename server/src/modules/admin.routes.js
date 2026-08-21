@@ -48,6 +48,7 @@ router.use('/reports', requirePermission('moderation'))
 router.use('/deletion-requests', requirePermission('moderation'))
 router.use('/users', requirePermission('users'))
 router.use('/creators', requirePermission('creators'))
+router.use('/creator-applications', requirePermission('creators'))
 router.use('/payments', requirePermission('payments'))
 router.use('/withdrawals', requirePermission('withdrawals'))
 router.use('/revenue', requirePermission('revenue'))
@@ -1669,6 +1670,191 @@ router.delete(
       detail: { name: c.name },
     })
     res.json({ deleted: true })
+  })
+)
+
+/* ==========================================================================
+   CREATOR APPLICATIONS
+
+   Who is allowed to sell on the platform. Submitting an application changes
+   nothing about an account; this is where it changes.
+   ========================================================================== */
+
+router.get(
+  '/creator-applications',
+  asyncHandler(async (req, res) => {
+    const status = ['pending', 'approved', 'rejected'].includes(req.query.status)
+      ? req.query.status
+      : null
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100))
+
+    const rows = await many(
+      `select a.*, p.role::text as current_role, p.status::text as account_status,
+              d.email as decided_by_email
+         from creator_applications a
+         join profiles p on p.id = a.user_id
+         left join profiles d on d.id = a.decided_by
+        where ($1::text is null or a.status::text = $1)
+        order by case when a.status = 'pending' then 0 else 1 end,
+                 a.created_at desc
+        limit $2`,
+      [status, limit]
+    )
+
+    const counts = await many(
+      `select status::text as status, count(*)::int as n from creator_applications group by 1`
+    )
+
+    res.json({
+      applications: rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        fullName: r.full_name,
+        stageName: r.stage_name,
+        email: r.email,
+        phone: r.phone,
+        category: r.category,
+        description: r.description,
+        socials: r.socials || [],
+        termsAcceptedAt: r.terms_accepted_at,
+        status: r.status,
+        currentRole: r.current_role,
+        accountStatus: r.account_status,
+        decisionNote: r.decision_note,
+        decidedAt: r.decided_at,
+        decidedByEmail: r.decided_by_email,
+        createdAt: r.created_at,
+      })),
+      counts: Object.fromEntries(counts.map((c) => [c.status, c.n])),
+    })
+  })
+)
+
+/**
+ * Approve or reject.
+ *
+ * Approval is the only place a viewer becomes a creator. The role change and
+ * the creator profile are one transaction: a role without a profile is an
+ * account that can upload and cannot be paid.
+ */
+router.post(
+  '/creator-applications/:id/decide',
+  validate(
+    z.object({
+      decision: z.enum(['approve', 'reject']),
+      note: z.string().trim().max(1000).optional(),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const app = await one('select * from creator_applications where id = $1', [req.params.id])
+    if (!app) throw notFound('Application not found')
+    if (app.status !== 'pending') throw conflict('This application has already been decided')
+
+    const approving = req.body.decision === 'approve'
+
+    const updated = await transaction(
+      async (client) => {
+        const { rows } = await client.query(
+          `update creator_applications
+              set status = $2, decided_by = $3, decided_at = now(),
+                  decision_note = $4, updated_at = now()
+            where id = $1
+            returning *`,
+          [app.id, approving ? 'approved' : 'rejected', req.user.id, req.body.note || null]
+        )
+
+        if (approving) {
+          await client.query(`update profiles set role = 'creator' where id = $1`, [app.user_id])
+          await client.query(
+            `insert into creator_profiles (user_id, display_name, payout_phone)
+             values ($1,$2,$3)
+             on conflict (user_id) do update
+               set display_name = coalesce(creator_profiles.display_name, excluded.display_name)`,
+            [app.user_id, app.stage_name, app.phone]
+          )
+        }
+
+        return rows[0]
+      },
+      { actorRole: 'admin', actorId: req.user.id }
+    )
+
+    await recordAudit({
+      actorId: req.user.id,
+      action: approving ? 'CREATOR_APPROVED' : 'CREATOR_REJECTED',
+      entityType: 'creator_application',
+      entityId: app.id,
+      summary: `${who(req)} ${approving ? 'approved' : 'rejected'} ${app.stage_name}`,
+      ip: clientIp(req),
+    })
+
+    await notify({
+      userId: app.user_id,
+      kind: 'account',
+      title: approving ? 'You are now a creator on MTONYO+' : 'About your creator application',
+      body: approving
+        ? 'Your application was approved. The creator dashboard is open — you can upload, set your price and track earnings.'
+        : req.body.note ||
+          'Your application was not approved this time. You are welcome to apply again.',
+      actor: req.user,
+      action: approving ? 'CREATOR_APPROVED' : 'CREATOR_REJECTED',
+      entityType: 'creator_application',
+      entityId: app.id,
+    }).catch(() => {})
+
+    res.json({ application: { id: updated.id, status: updated.status } })
+  })
+)
+
+/**
+ * Take creator access away again.
+ *
+ * The account returns to being a viewer and keeps everything it bought. The
+ * videos are not touched here — publishing decisions belong to the review and
+ * moderation screens, and revoking access is not the same as a takedown.
+ */
+router.post(
+  '/creators/:id/revoke',
+  validate(z.object({ note: z.string().trim().max(1000).optional() })),
+  asyncHandler(async (req, res) => {
+    const target = await one(`select id, email, role::text as role from profiles where id = $1`, [
+      req.params.id,
+    ])
+    if (!target) throw notFound('Account not found')
+    if (target.role !== 'creator') throw conflict('That account is not a creator')
+
+    await transaction(
+      async (client) => {
+        await client.query(`update profiles set role = 'viewer' where id = $1`, [target.id])
+        await client.query(
+          `update creator_applications
+              set status = 'rejected', decision_note = $2, decided_by = $3,
+                  decided_at = now(), updated_at = now()
+            where user_id = $1 and status = 'approved'`,
+          [target.id, req.body.note || 'Creator access revoked', req.user.id]
+        )
+      },
+      { actorRole: 'admin', actorId: req.user.id }
+    )
+
+    await recordAudit({
+      actorId: req.user.id,
+      action: 'CREATOR_REVOKED',
+      entityType: 'profile',
+      entityId: target.id,
+      summary: `${who(req)} revoked creator access for ${target.email}`,
+      ip: clientIp(req),
+    })
+
+    await notify({
+      userId: target.id,
+      kind: 'account',
+      title: 'Creator access has been removed',
+      body: req.body.note || 'Your account is a viewer account again. Anything you bought is still yours.',
+      actor: req.user,
+    }).catch(() => {})
+
+    res.json({ ok: true })
   })
 )
 

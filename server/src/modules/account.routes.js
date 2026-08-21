@@ -7,7 +7,7 @@ import { validate } from '../middleware/validate.js'
 import { requireAuth } from '../middleware/auth.js'
 import { storeImage, removeImage } from '../services/uploads.js'
 import { verifyPassword } from '../lib/authdb.js'
-import { notify } from '../services/notify.js'
+import { notify, notifyMany } from '../services/notify.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 
 /**
@@ -443,6 +443,147 @@ router.post(
       ok: true,
       message:
         'Your account is closed. Anything you bought is preserved — contact support if you want it back.',
+    })
+  })
+)
+
+/* ==========================================================================
+   APPLYING TO BECOME A CREATOR
+
+   Submitting does not make anybody a creator. It creates a record for staff
+   to read, and the account stays exactly what it was — a viewer, with a
+   viewer's permissions — until an administrator approves it. Approval is the
+   only thing that moves the role, and it happens in admin.routes.js.
+   ========================================================================== */
+
+const CREATOR_TERMS =
+  'I confirm I hold the rights to the content I publish on MTONYO+ and accept the MTONYO+ Creator Terms.'
+
+const applicationSchema = z.object({
+  fullName: z.string().trim().min(2, 'Enter your full name').max(120),
+  stageName: z.string().trim().min(2, 'Enter your creator or business name').max(120),
+  email: z.string().trim().email('Enter a valid email address'),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[0-9+\s-]{9,15}$/, 'Enter the phone number we can reach you on'),
+  category: z.string().trim().min(2, 'Choose what you make').max(60),
+  description: z
+    .string()
+    .trim()
+    .min(30, 'Tell us a little more — at least a sentence or two about what you will publish')
+    .max(2000),
+  // One link is enough; four is fine. Whatever they have.
+  socials: z.array(z.string().trim().url('Each link must be a full web address')).max(6).default([]),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: 'You must accept the Creator Terms to apply' }),
+  }),
+})
+
+/** What this account's application looks like right now, if there is one. */
+router.get(
+  '/creator-application',
+  asyncHandler(async (req, res) => {
+    const row = await one(
+      `select id, status::text as status, category, stage_name, description,
+              decision_note, decided_at, created_at
+         from creator_applications
+        where user_id = $1
+        order by created_at desc
+        limit 1`,
+      [req.user.id]
+    )
+
+    res.json({
+      role: req.user.role,
+      terms: CREATOR_TERMS,
+      application: row
+        ? {
+            id: row.id,
+            status: row.status,
+            category: row.category,
+            stageName: row.stage_name,
+            description: row.description,
+            decisionNote: row.decision_note,
+            decidedAt: row.decided_at,
+            createdAt: row.created_at,
+          }
+        : null,
+    })
+  })
+)
+
+router.post(
+  '/creator-application',
+  validate(applicationSchema),
+  asyncHandler(async (req, res) => {
+    if (req.user.role === 'creator') throw badRequest('This account is already a creator')
+    if (req.user.role === 'admin' || req.user.role === 'sub_admin') {
+      throw badRequest('Staff accounts cannot apply — use a viewer account')
+    }
+
+    const open = await one(
+      `select id from creator_applications where user_id = $1 and status = 'pending'`,
+      [req.user.id]
+    )
+    if (open) throw badRequest('Your application is already with the team')
+
+    const b = req.body
+    const row = await one(
+      `insert into creator_applications
+         (user_id, full_name, stage_name, email, phone, category, description,
+          socials, terms_accepted_at, terms_statement)
+       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb, now(), $9)
+       returning id, status::text as status, created_at`,
+      [
+        req.user.id,
+        b.fullName,
+        b.stageName,
+        b.email.toLowerCase(),
+        b.phone,
+        b.category,
+        b.description,
+        JSON.stringify(b.socials || []),
+        CREATOR_TERMS,
+      ]
+    )
+
+    await recordAudit({
+      actorId: req.user.id,
+      action: 'CREATOR_APPLIED',
+      entityType: 'creator_application',
+      entityId: row.id,
+      summary: `${b.stageName} applied to become a creator`,
+      ip: clientIp(req),
+    })
+
+    // Staff need to know there is something waiting; the applicant needs to
+    // know it arrived and that nothing else is expected of them.
+    const staff = await many(
+      `select id from profiles where role in ('admin', 'sub_admin') and status = 'active'`
+    )
+    await notifyMany(
+      staff.map((x) => x.id),
+      {
+        kind: 'review',
+        title: 'New creator application',
+        body: `${b.stageName} (${b.email}) has applied to publish on MTONYO+.`,
+        actor: req.user,
+        action: 'CREATOR_APPLIED',
+        entityType: 'creator_application',
+        entityId: row.id,
+      }
+    ).catch(() => {})
+
+    await notify({
+      userId: req.user.id,
+      title: 'Creator application received',
+      body: 'The team will review it and let you know. Nothing else is needed from you.',
+      kind: 'account',
+    }).catch(() => {})
+
+    res.status(201).json({
+      application: { id: row.id, status: row.status, createdAt: row.created_at },
     })
   })
 )
