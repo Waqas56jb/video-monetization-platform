@@ -378,8 +378,10 @@ export default function ShareSheet({ open, video, onClose }) {
             if (url) navigator.clipboard.writeText(url).catch(() => {})
           }}
           onClick={(e) => {
+            // The link is copied on pointer-down above and stays copied, so if
+            // WhatsApp Web needs signing in first the URL is still in hand.
             if (!whatsappIsPhone()) {
-              setHint('Watch link copied. Paste it in the chat (Ctrl+V) — WhatsApp then draws the poster card.')
+              setHint('WhatsApp Web is opening with the link ready — choose a chat and send.')
             }
             whatsappFallback(url)(e)
           }}

@@ -1,11 +1,21 @@
 /**
  * Hand the watch link to WhatsApp.
  *
- * Phone: `whatsapp://send?text=` with ONLY the watch URL. The app fetches OG.
+ * Phone: `whatsapp://send?text=` with only the watch URL. The app fetches the
+ * card itself.
  *
- * Laptop / WhatsApp Web: do not prefill `send?text=`. WhatsApp then injects
- * the URL and sends it as a bare link (no poster). Copy the URL and open
- * WhatsApp; paste in the chat is what draws the card — same as Copy Link.
+ * Laptop: `web.whatsapp.com/send?text=` with the same URL. This opened a bare
+ * WhatsApp Web home page for a while, on the reasoning that a prefilled
+ * message is sent before WhatsApp has fetched a preview and so arrives as a
+ * plain link. The reasoning is sound for a share that sends instantly, and
+ * wrong here: this one puts the person in front of a chat list, and the
+ * preview is fetched while they choose a chat and press send — the same
+ * moment pasting gives it. What the bare page did give them was WhatsApp with
+ * no message, no chat picker and nothing to share, which is what came back.
+ *
+ * api.whatsapp.com is deliberately not used. It loads a marketing page with a
+ * "Share on WhatsApp" link to find, and it is what produced "Something went
+ * wrong. The application couldn't be opened." on iPad.
  */
 function device() {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -24,14 +34,11 @@ function isPhone() {
 
 export { isPhone as whatsappIsPhone }
 
-/**
- * Phone: open the app with the watch URL (WhatsApp fetches the poster).
- * Laptop: open WhatsApp Web with an empty compose — the URL is already copied.
- */
+/** Where the WhatsApp button points on this device. */
 export function whatsappHref(watchUrl) {
   const text = encodeURIComponent(watchUrl || '')
   if (device() === 'phone') return `whatsapp://send?text=${text}`
-  return 'https://web.whatsapp.com/'
+  return `https://web.whatsapp.com/send?text=${text}`
 }
 
 /** Phones leave the page for the app; everything else opens a tab. */
