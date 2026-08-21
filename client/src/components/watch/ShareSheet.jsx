@@ -288,12 +288,12 @@ export default function ShareSheet({ open, video, onClose }) {
           <div className="share-og-stage">
             {still ? (
               <>
-                {!posterOn && (
-                  <span className="share-og-loading" role="status" aria-label="Loading preview">
-                    <Loader2 size={20} className="spin" />
-                    <em>Building your preview…</em>
-                  </span>
-                )}
+                {/* A quiet shimmer while the poster arrives, and no words.
+                    It used to say "Building your preview…", which reads as if
+                    the card is being made to order — it is not, it is a
+                    picture being fetched — and the client asked for it gone.
+                    The shimmer stays so the frame is never simply empty. */}
+                {!posterOn && <span className="share-og-loading" aria-hidden="true" />}
                 <img
                   src={still}
                   alt=""
@@ -402,7 +402,7 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
-            <small>Feed / Story / Reel</small>
+            <small>Feed, Reels, Story</small>
           </button>
           <button
             className="share-target is-tt"
@@ -412,7 +412,7 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
-            <small>Post clip</small>
+            <small>Share video</small>
           </button>
           <a
             className="share-target is-fb"
@@ -423,7 +423,7 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Share</small>
+            <small>Share to Feed</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}
@@ -435,8 +435,8 @@ export default function ShareSheet({ open, video, onClose }) {
         <button className="share-row" type="button" onClick={shareNative} disabled={busy}>
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
           <span>
-            <b>More…</b>
-            <small>Messages, Mail, Telegram and other apps</small>
+            <b>More apps</b>
+            <small>Share via other apps on your device</small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>

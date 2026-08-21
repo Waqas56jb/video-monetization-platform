@@ -2211,8 +2211,15 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   font-family:inherit;cursor:pointer;text-align:left;
 }
 .share-row > svg,.share-row .share-clip-ic{flex-shrink:0;color:var(--gold)}
-.share-row span{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+/* Only the text column, never the icon.
+   This was `.share-row span`, which also matched the clapper icon — a span
+   with the 60s badge inside it. One class plus one element outranks the
+   icon's own single class, so the icon was handed display:flex, column and
+   flex:1 whatever its own rule said: it stretched, the badge fell out of its
+   corner, and the title was pushed into the middle of the row. */
+.share-row > span:not(.share-clip-ic){display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .share-row b{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(min-width:420px){ .share-row b{flex-wrap:nowrap} }
 .share-row small{font-size:11.5px;color:var(--muted);font-weight:500}
 .share-row-go{flex-shrink:0;opacity:.45}
 .share-clip-ic{position:relative;display:grid;place-items:center;width:28px;height:28px;color:var(--gold)}
@@ -2737,7 +2744,6 @@ html.is-touch .btn:active{transform:scale(.97)}
   align-items:center;justify-content:center;gap:10px;color:var(--muted);
   background:linear-gradient(100deg,var(--card2) 8%,rgba(124,58,237,.10) 20%,var(--card2) 34%);
   background-size:200% 100%;animation:shareShimmer 1.15s linear infinite}
-.share-og-loading em{font-style:normal;font-size:12.5px;font-weight:600;letter-spacing:.02em}
 @keyframes shareShimmer{to{background-position:-200% 0}}
 
 /* Fade the poster in over the skeleton rather than swapping it.
