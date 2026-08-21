@@ -9,17 +9,16 @@ import { Link, useLocation } from 'react-router-dom'
  * black padding trimmed off so it can be positioned; nothing inside it has
  * been altered or recoloured.
  *
- * Two files, because one cannot do both jobs. `logo-lockup.png` is the whole
- * thing including WATCH. SUPPORT. EMPOWER., for places with room to read it.
- * In a 38px bar that tagline stands about five pixels tall and comes out as a
- * smudge under the word, so a bar gets `logo-bar.png`: the same artwork with
- * the play mark and MTONYO+ and its trademark whole, and the tagline left out
- * rather than printed illegibly. Neither file is recoloured or redrawn.
+ * One file everywhere: the lockup as supplied, tagline included.
+ *
+ * A version without WATCH. SUPPORT. EMPOWER. was used in the bars for a while,
+ * because at that height the tagline is only a few pixels tall. The client
+ * looked at it and said to put the whole logo back, so it is back — the mark,
+ * the word, the trademark and the tagline, in every place the logo appears.
+ *
+ * `size` only decides how much room it gets. Nothing is cropped from either.
  */
-const ART = {
-  bar: '/logo-bar.png',
-  full: '/logo-lockup.png',
-}
+const ART = '/logo-lockup.png'
 
 /**
  * Clicking the logo has to *do* something, even when it cannot navigate.
@@ -67,7 +66,7 @@ export default function Logo({ to = '/', className = '', onClick, size = 'bar' }
     >
       <img
         className={`logo-img is-${size}`}
-        src={ART[size] || ART.bar}
+        src={ART}
         alt="MTONYO+"
         /* Never lazy: it is the first thing on the page and the thing people
            look for to know where they are. */

@@ -98,7 +98,7 @@ export default function Sidebar({ open, onClose, onLogout, counts = {} }) {
         {/* The supplied artwork, the same file the public site uses, so the
             two sides of the platform cannot drift onto different marks. */}
         <div className="logo">
-          <img className="logo-img" src="/logo-bar.png" alt="MTONYO+" decoding="async" />
+          <img className="logo-img" src="/logo-lockup.png" alt="MTONYO+" decoding="async" />
         </div>
         <span className="admin-tag">{roleLabel}</span>
 

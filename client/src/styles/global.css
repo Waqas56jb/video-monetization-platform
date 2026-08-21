@@ -133,12 +133,22 @@ header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit
    clickable. The old type rules are gone with the markup they styled. */
 .logo{display:inline-flex;align-items:center;min-width:0;flex-shrink:1;line-height:0}
 .logo-img{display:block;width:auto;max-width:100%;height:auto}
-/* In a bar, where the tagline would be about five pixels tall. */
-.logo-img.is-bar{height:38px}
+/* As tall as the bar allows.
+   The whole lockup goes in every position, tagline included, on the client's
+   instruction. The tagline is a small share of the artwork's height, so in a
+   76px bar it lands at three or four pixels whatever we do — the only way to
+   make it properly readable there is a taller bar, which is a decision about
+   the header rather than about the logo. Given that, it takes the most room
+   the bar can give it. */
+.logo-img.is-bar{height:52px}
 /* Where there is room for the whole thing to be read. */
 .logo-img.is-full{height:76px}
+@media(max-width:900px){
+  .logo-img.is-bar{height:44px}
+}
 @media(max-width:600px){
-  .logo-img.is-bar{height:32px}
+  /* Beside a menu button on a 390px screen, anything larger crowds it out. */
+  .logo-img.is-bar{height:36px}
   .logo-img.is-full{height:58px}
 }
 .nav-links{display:flex;gap:34px;align-items:center}

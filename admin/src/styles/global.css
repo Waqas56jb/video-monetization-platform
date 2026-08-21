@@ -822,8 +822,8 @@ html.is-touch .btn:active{transform:scale(.97)}
 /* The lockup in the sidebar. The old rules drew a play icon in a rounded
    square beside the word; this is the client's artwork instead. */
 .sidebar .logo{display:flex;align-items:center;line-height:0;min-width:0}
-.sidebar .logo-img{display:block;width:auto;height:34px;max-width:100%}
-@media(max-width:900px){ .sidebar .logo-img{height:30px} }
+.sidebar .logo-img{display:block;width:auto;height:46px;max-width:100%}
+@media(max-width:900px){ .sidebar .logo-img{height:40px} }
 
 /* The artwork is supplied on black, and the app's surfaces are near-black but
    not black, so the logo sat in a faintly visible rectangle. Screen blending
