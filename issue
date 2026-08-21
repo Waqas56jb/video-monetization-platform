@@ -1,4 +1,5 @@
-8: Auto continue after pay — REFIX (full video does not start; extra Play)
-6: Share buttons open WhatsApp / Instagram / TikTok / Facebook — REFIX (real phone)
-24: Share card — title, creator, MTONYO+, WATCH FREE PREVIEW must be readable — REFIX
-29: Preview length — creator/admin chooses minutes/seconds, sensible cap (not 50%) — REFIX
+Preview: recut 5:00 clip so 3:37 means 3:37
+Share: honest WhatsApp + Facebook only; IG/TT are clip save; poster card not in-chat video
+Ads: Skip hidden until ad has played N seconds; 0 = non-skippable
+Creator apply → admin (already)
+M3: AirPay + resume from preview stop, no second Play

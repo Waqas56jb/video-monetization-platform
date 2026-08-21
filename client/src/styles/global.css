@@ -2719,11 +2719,10 @@ html.is-touch .btn:active{transform:scale(.97)}
 @keyframes shareShimmer{to{background-position:-200% 0}}
 
 /* Fade the poster in over the skeleton rather than swapping it.
-   Scoped to the sheet: the homepage card reuses .share-og-stage but has no
-   skeleton and never sets `is-on`, so an unscoped rule left its poster at
-   zero opacity — a black card with the text floating on nothing. */
-.share-og .share-og-stage img{opacity:0;transition:opacity .35s ease}
-.share-og .share-og-stage img.is-on{opacity:1}
+   Only the Watch sheet uses the skeleton/`is-on` handshake. The homepage
+   replica has no skeleton, so this must not hide its poster. */
+.share-modal .share-og .share-og-stage img{opacity:0;transition:opacity .35s ease}
+.share-modal .share-og .share-og-stage img.is-on{opacity:1}
 
 @media(prefers-reduced-motion:reduce){
   .share-og-loading{animation:none}
@@ -2790,7 +2789,9 @@ html.is-touch .btn:active{transform:scale(.97)}
   box-shadow:0 22px 48px -24px rgba(0,0,0,.85);
 }
 .pw-share-card h3{padding:0}
-.pw-share-card .share-wa,.pw-share-card .share-target{text-decoration:none}
+.pw-share-card .share-wa,.pw-share-card .share-target,.pw-share-card .share-og-stage{
+  text-decoration:none;cursor:default;pointer-events:none;
+}
 .pw-share-card > small{display:block;margin-top:8px;color:var(--muted2);font-size:11.5px;line-height:1.5}
 a.creator-row{color:inherit;text-decoration:none;transition:border-color .25s}
 a.creator-row:hover{border-color:var(--purple)}
