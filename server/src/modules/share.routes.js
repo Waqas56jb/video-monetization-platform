@@ -335,6 +335,23 @@ export function queueMissingShareCards() {
   warmMissingShareCards({ limit: 6 }).catch(() => {})
 }
 
+const shortHash = (v) => {
+  const str = String(v ?? '')
+  if (!str) return 'none'
+  let h = 0
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+
+async function storedKeyFor(slug) {
+  try {
+    const row = await one('select source_key from share_card_cache where slug = $1', [slug])
+    return row?.source_key ?? null
+  } catch {
+    return null
+  }
+}
+
 async function sendShareCard(req, res) {
   const id = String(req.params.id || '').replace(/\.jpe?g$/i, '')
   if (!id || id === 'undefined' || id === 'null') throw notFound('Video not found')
@@ -357,6 +374,10 @@ async function sendShareCard(req, res) {
   res.set('Content-Type', 'image/jpeg')
   res.set('Access-Control-Allow-Origin', '*')
   res.set('X-OG-Cache', cached ? 'hit' : 'miss')
+  /* When a card is rebuilt on every request, the only question worth asking is
+     what the two keys were. Short hashes, so a header cannot leak a title. */
+  res.set('X-OG-Key', shortHash(key))
+  if (!cached) res.set('X-OG-Stored-Key', shortHash(await storedKeyFor(slug)))
   res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.set('Content-Disposition', 'inline; filename="poster.jpg"')
   res.send(card)
