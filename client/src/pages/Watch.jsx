@@ -526,6 +526,23 @@ export default function Watch() {
                 startAt={resumeAt}
                 autoplay={autoContinue}
                 playOnReady={autoContinue}
+                /**
+                 * Where the free preview ends, enforced by the player itself.
+                 *
+                 * The page used to do this by showing the paywall over the
+                 * top when the clock passed the number — which never stopped
+                 * the film. The preview is its own Cloudflare clip, cut when
+                 * previews were five minutes long, so a video stating 3:37
+                 * kept playing underneath the paywall until 5:00.
+                 */
+                stopAt={needsPayment ? Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0) : 0}
+                onStopReached={() => {
+                  setPreviewOver(true)
+                  reportProgress(
+                    Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0),
+                    { force: true }
+                  )
+                }}
                 onPlaying={() => setContinueReady(true)}
                 onRetry={() => playback.reload()}
                 onEnded={() => {

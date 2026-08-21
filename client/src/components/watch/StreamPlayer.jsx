@@ -65,6 +65,20 @@ export default function StreamPlayer({
    */
   startAt = 0,
   /**
+   * The second the free preview ends.
+   *
+   * This has to be enforced here, where the player is, and not by the page
+   * putting a paywall over the top of it. The preview is its own Cloudflare
+   * clip, and those clips were cut when the preview was five minutes long —
+   * so a video that now states 3:37 still has a 5:00 file behind it. The page
+   * showed the paywall at 3:37 and the film carried on playing underneath for
+   * another minute and a half, which is what the client heard.
+   *
+   * Whatever the clip's own length turns out to be, playback stops on this
+   * number.
+   */
+  stopAt = 0,
+  /**
    * Try to start playing without a further tap.
    *
    * Used after a purchase, where the viewer's click on Pay is recent enough that
@@ -76,6 +90,8 @@ export default function StreamPlayer({
   title = 'Video player',
   onRetry,
   onPlaying,
+  /** Fired once when `stopAt` is reached, after playback has been paused. */
+  onStopReached,
 }) {
   /**
    * Playing, but silent.
@@ -92,6 +108,12 @@ export default function StreamPlayer({
   const frame = useRef(null)
   const onPlayingRef = useRef(onPlaying)
   onPlayingRef.current = onPlaying
+  /* Read through refs: the listener is attached once per source, and must not
+     be torn down and rebuilt every time the page re-renders. */
+  const stopAtRef = useRef(0)
+  stopAtRef.current = Math.max(0, Number(stopAt) || 0)
+  const onStopReachedRef = useRef(null)
+  onStopReachedRef.current = onStopReached
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
@@ -151,9 +173,30 @@ export default function StreamPlayer({
         player = Stream(frame.current)
         playerRef.current = player
         player.addEventListener('ended', () => onEnded?.())
-        player.addEventListener('timeupdate', () =>
-          onTimeUpdate?.(player.currentTime, player.duration)
-        )
+        let stopped = false
+        player.addEventListener('timeupdate', () => {
+          const at = Number(player.currentTime) || 0
+
+          if (stopAtRef.current > 0 && at >= stopAtRef.current - 0.15) {
+            // Pause first, then tell the page. The other order leaves a beat
+            // where the paywall is up and the film is still audible.
+            if (!stopped) {
+              stopped = true
+              try {
+                player.pause?.()
+                player.currentTime = stopAtRef.current
+              } catch {
+                /* the page still shows the paywall */
+              }
+              onStopReachedRef.current?.()
+            }
+            onTimeUpdate?.(stopAtRef.current, player.duration)
+            return
+          }
+
+          stopped = false
+          onTimeUpdate?.(at, player.duration)
+        })
         const shown = () => {
           markReady()
           onPlayingRef.current?.()
