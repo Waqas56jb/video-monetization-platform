@@ -25,13 +25,37 @@ export async function ensureShareCardTable() {
 }
 
 /** Rebuild the JPEG when title, creator or poster source changes. */
+/**
+ * What the stored card was built from.
+ *
+ * Every part of this has to be a plain string that means the same thing
+ * wherever it is computed. `updated_at` arrives from the driver as a Date, and
+ * joining a Date renders it in the running process's locale and timezone --
+ * "Fri Aug 21 2026 22:11:45 GMT+0000 (Coordinated Universal Time)" where the
+ * card was written, "Sat Aug 22 2026 03:11:45 GMT+0500 (Pakistan Standard
+ * Time)" where it was read. The same instant, two different keys, so the
+ * comparison could never succeed and every share rebuilt the JPEG from
+ * scratch. Measured against production: X-OG-Cache reported miss on every
+ * request, for every video, with all eight rows sitting in the table.
+ *
+ * An epoch number cannot do that. Neither can the rest, which are already
+ * strings, but they are made explicit so nothing here depends on how a value
+ * happens to print.
+ */
 export function cardSourceKey(video) {
+  const stamp = video.updated_at ? new Date(video.updated_at).getTime() : 0
   return [
-    video.id,
-    video.title,
-    video.creator_name || '',
-    video.updated_at || '',
-    video.custom_thumbnail_url || video.thumbnail_url || video.preview_uid || video.cloudflare_uid || '',
+    String(video.id ?? ''),
+    String(video.title ?? ''),
+    String(video.creator_name ?? ''),
+    String(stamp),
+    String(
+      video.custom_thumbnail_url ||
+        video.thumbnail_url ||
+        video.preview_uid ||
+        video.cloudflare_uid ||
+        ''
+    ),
   ].join('|')
 }
 
