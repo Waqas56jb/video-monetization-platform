@@ -207,16 +207,45 @@ export default function ShareSheet({ open, video, onClose }) {
       await navigator.clipboard.writeText(url).catch(() => {})
 
       let fileUrl = clip?.downloadUrl ? mediaUrl(clip.downloadUrl) : null
+
+      /**
+       * Ask once, and only wait if waiting can help.
+       *
+       * This used to poll ten times at a second and a half whenever the clip
+       * was not already in hand — fifteen seconds of spinner. When the share
+       * endpoint is failing, which it can, every one of those ten calls fails
+       * the same way and the person watches a button spin for a quarter of a
+       * minute before being told to try again. Reported exactly that way.
+       *
+       * So: one call. If it answers and the clip is simply not ready yet,
+       * waiting is worth something and it waits briefly. If it errors, no
+       * amount of waiting will change that and it says so at once.
+       */
       if (!fileUrl) {
-        setHint('Preparing the 60-second clip… Watch link is already copied.')
-        api.share.generate(slug).catch(() => {})
-        for (let i = 0; i < 10 && !fileUrl; i++) {
-          await new Promise((r) => setTimeout(r, 1500))
-          const body = await api.share.payload(slug).catch(() => null)
-          if (body?.clip?.downloadUrl) {
-            setClip(body.clip)
-            fileUrl = mediaUrl(body.clip.downloadUrl)
-          }
+        let body = null
+        let failed = false
+        try {
+          body = await api.share.payload(slug)
+        } catch {
+          failed = true
+        }
+
+        if (failed) {
+          setProblem(
+            'The clip could not be fetched just now. The watch link is copied — you can paste it anywhere.'
+          )
+          return
+        }
+
+        if (body?.clip?.downloadUrl) {
+          setClip(body.clip)
+          fileUrl = mediaUrl(body.clip.downloadUrl)
+        } else {
+          // No clip on this video yet. Start one and let them know, rather
+          // than holding the button while nothing happens.
+          setHint('Preparing the 60-second clip — try again shortly. The watch link is copied.')
+          api.share.generate(slug).catch(() => {})
+          return
         }
       }
 
