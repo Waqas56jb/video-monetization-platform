@@ -17,7 +17,8 @@ import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 import { facebookHref, socialTarget } from '@/lib/socialShare'
-import { warmSharePreview } from '@/lib/warmShare'
+import { prepareShareCard } from '@/lib/warmShare'
+import { canonicalWatchUrl } from '@/lib/watchUrl'
 
 /**
  * Share sheet — client's layout and honest actions.
@@ -102,14 +103,15 @@ export default function ShareSheet({ open, video, onClose }) {
    * so a tap on Share looked like a tap that had not registered.
    */
   const [posterOn, setPosterOn] = useState(false)
+  const [waReady, setWaReady] = useState(false)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
 
   useLockBodyScroll(open)
 
-  const slug = video?.slug || video?.id || ''
-  const url = video ? `${window.location.origin}/watch/${slug}` : ''
+  const slug = video?.slug || ''
+  const url = canonicalWatchUrl(video)
   const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
   /* Film frame + overlays, as in the client's mock — not the burned JPEG. */
   const still = mediaUrl(video?.thumbnailUrl)
@@ -127,6 +129,7 @@ export default function ShareSheet({ open, video, onClose }) {
     setHint(null)
     setSaving(null)
     setPosterOn(false)
+    setWaReady(false)
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -134,7 +137,18 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useEffect(() => {
     if (!open || !slug) return
-    warmSharePreview(slug)
+    let stop = false
+    setWaReady(false)
+    prepareShareCard(slug)
+      .then(() => {
+        if (!stop) setWaReady(true)
+      })
+      .catch(() => {
+        if (!stop) setWaReady(true)
+      })
+    return () => {
+      stop = true
+    }
   }, [open, slug])
 
   useEffect(() => {
@@ -162,7 +176,7 @@ export default function ShareSheet({ open, video, onClose }) {
   const copy = async () => {
     setProblem(null)
     try {
-      if (ogCard) await fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
+      if (slug) await prepareShareCard(slug)
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
@@ -344,12 +358,23 @@ export default function ShareSheet({ open, video, onClose }) {
 
         {/* An anchor, not a button with a handler: iOS follows a link the
             person tapped and refuses a location the script assigned. */}
+        {!waReady ? (
+          <button className="share-wa" type="button" disabled>
+            <Loader2 size={26} className="spin" />
+            <span className="share-wa-copy">
+              <b>Share on WhatsApp</b>
+              <small>Preparing poster card…</small>
+            </span>
+          </button>
+        ) : (
         <a
           className="share-wa"
           href={whatsappHref(url)}
           target={whatsappTarget()}
           rel="noopener noreferrer"
-          onPointerDown={() => warmSharePreview(slug)}
+          onPointerDown={() => {
+            if (url) navigator.clipboard.writeText(url).catch(() => {})
+          }}
           onClick={whatsappFallback(url)}
         >
           <IconWhatsApp size={26} />
@@ -358,6 +383,7 @@ export default function ShareSheet({ open, video, onClose }) {
             <small>Share privately or in groups</small>
           </span>
         </a>
+        )}
 
         <div className="share-targets">
           <button
@@ -385,7 +411,7 @@ export default function ShareSheet({ open, video, onClose }) {
             href={facebookHref(url)}
             target={socialTarget()}
             rel="noopener noreferrer"
-            onPointerDown={() => warmSharePreview(slug)}
+            onPointerDown={() => prepareShareCard(slug)}
           >
             <IconFacebook />
             <b>Facebook</b>

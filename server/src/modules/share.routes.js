@@ -97,8 +97,9 @@ router.get(
     // tiny webpage icon instead of fetching the Open Graph poster card.
     const encoded = encodeURIComponent(deepLink)
 
-    // Start the JPEG now, do not wait. Share sheet + Watch already opened;
-    // WhatsApp will ask for the bytes a moment later.
+    // JPEG is composed while the share sheet waits on /og/card/{slug}.jpg.
+    // Do not block this JSON — crawlers also call this endpoint for title
+    // and an 8s timeout here used to drop the Open Graph document entirely.
     composeShareCard(video).catch(() => {})
 
     res.json({
@@ -185,11 +186,33 @@ async function fetchPosterBytes(url) {
   return null
 }
 
+const composing = new Map()
+
+function pingLinkPreview(slug) {
+  const watchUrl = `${env.publicWebUrl}/watch/${slug}`
+  fetch(`https://graph.facebook.com/?id=${encodeURIComponent(watchUrl)}&scrape=true`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(5000),
+  }).catch(() => {})
+}
+
 async function composeShareCard(video) {
+  const slug = video.slug || String(video.id)
+  const pending = composing.get(slug)
+  if (pending) return pending
+  const run = composeShareCardOnce(video).finally(() => composing.delete(slug))
+  composing.set(slug, run)
+  return run
+}
+
+async function composeShareCardOnce(video) {
   const slug = video.slug || String(video.id)
   const key = cardSourceKey(video)
   const cached = await readCachedCard(slug, key)
-  if (cached) return cached
+  if (cached) {
+    pingLinkPreview(slug)
+    return cached
+  }
 
   let poster = null
   if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
@@ -213,6 +236,7 @@ async function composeShareCard(video) {
     creator: video.creator_name,
   })
   await writeCachedCard(slug, video.id, key, card)
+  pingLinkPreview(slug)
   return card
 }
 
