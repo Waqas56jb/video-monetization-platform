@@ -30,26 +30,46 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
   const remaining = Math.max(0, Math.ceil(skipAfter - elapsed))
 
   /**
-   * The countdown runs on wall clock, not on the advert's playback position.
+   * The countdown starts when the advert starts, not when the panel appears.
    *
-   * Tying it to playback looked more correct and was worse: when a browser
-   * refuses to autoplay — which many do, and every one may — `currentTime` never
-   * moves, so the countdown never finishes and the viewer is left holding a
-   * frozen advert they cannot skip, in front of a video they came to watch. The
-   * advert being stuck must never become the viewer's problem.
+   * It used to run on the wall clock from the moment this mounted, so a few
+   * seconds spent loading came out of the advertiser's five and Skip could be
+   * ready before much had been seen — which is what was reported, and it
+   * hollows out Free + Ads.
    *
-   * Revenue is unaffected: an advertiser is billed on `completed`, which only
-   * the advert's own `ended` event sets. Time passing earns nobody anything.
+   * It cannot depend on playback alone either. When a browser refuses to
+   * autoplay, `currentTime` never moves, the countdown never finishes, and the
+   * viewer is left holding a frozen advert in front of the video they came
+   * for. An advert being stuck must never become their problem.
+   *
+   * So: the clock waits for playback to actually begin, and if it has not
+   * begun within a few seconds it starts anyway, because by then something is
+   * wrong with the advert and nobody should be trapped by it.
+   *
+   * Revenue is unaffected either way — an advertiser is billed on `completed`,
+   * which only the advert's own `ended` event sets. Time passing earns nobody
+   * anything.
    */
+  const [playing, setPlaying] = useState(false)
+
   useEffect(() => {
     if (!ad) return
-    const started = Date.now()
+    // The safety net: if the advert has not started in this long, treat it as
+    // broken and let the countdown run regardless.
+    const STUCK_AFTER_MS = 4000
+    const mounted = Date.now()
+    let from = null
+
     const tick = setInterval(() => {
-      setElapsed((was) => Math.max(was, (Date.now() - started) / 1000))
-    }, 500)
+      const broken = Date.now() - mounted > STUCK_AFTER_MS
+      if (!playing && !broken) return
+      if (from == null) from = Date.now()
+      setElapsed((was) => Math.max(was, (Date.now() - from) / 1000))
+    }, 400)
+
     return () => clearInterval(tick)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ad?.campaignId])
+  }, [ad?.campaignId, playing])
 
   /**
    * Report the impression exactly once, then hand the video back.
@@ -104,8 +124,12 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         autoplay
         controls={false}
         onEnded={() => finish(true)}
+        onPlaying={() => setPlaying(true)}
         onTimeUpdate={(current) => {
           watched.current = Math.max(watched.current, current || 0)
+          // Frames are moving, so the advert is genuinely running whatever the
+          // player reported about starting.
+          if (current > 0.2) setPlaying(true)
           // Never let a reported position wind the countdown backwards.
           setElapsed((was) => Math.max(was, current || 0))
         }}
@@ -126,8 +150,10 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
             Skip ad
             <SkipForward size={14} />
           </>
-        ) : (
+        ) : playing ? (
           `Skip in ${remaining}`
+        ) : (
+          'Loading ad…'
         )}
       </button>
 
