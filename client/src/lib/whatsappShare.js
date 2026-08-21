@@ -1,12 +1,11 @@
 /**
  * Hand the watch link to WhatsApp.
  *
- * Always prefill `send?text=` with ONLY the watch URL (no caption). WhatsApp
- * fetches the Open Graph poster. Extra text makes it send a bare link.
+ * Phone: `whatsapp://send?text=` with ONLY the watch URL. The app fetches OG.
  *
- * Do not open WhatsApp until the JPEG is in the CDN — a cold first hit is
- * slower than WhatsApp waits, which is why paste-after-1s showed a card and
- * tap-and-send did not.
+ * Laptop / WhatsApp Web: do not prefill `send?text=`. WhatsApp then injects
+ * the URL and sends it as a bare link (no poster). Copy the URL and open
+ * WhatsApp; paste in the chat is what draws the card — same as Copy Link.
  */
 function device() {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -26,15 +25,13 @@ function isPhone() {
 export { isPhone as whatsappIsPhone }
 
 /**
- * Prefill WhatsApp with the watch URL only. Phone uses the app scheme;
- * laptop / iPad use WhatsApp Web. The Share sheet waits until the poster
- * JPEG is cached before this link is tappable.
+ * Phone: open the app with the watch URL (WhatsApp fetches the poster).
+ * Laptop: open WhatsApp Web with an empty compose — the URL is already copied.
  */
 export function whatsappHref(watchUrl) {
   const text = encodeURIComponent(watchUrl || '')
   if (device() === 'phone') return `whatsapp://send?text=${text}`
-  if (device() === 'ipad') return `https://web.whatsapp.com/send?text=${text}`
-  return `https://web.whatsapp.com/send?text=${text}`
+  return 'https://web.whatsapp.com/'
 }
 
 /** Phones leave the page for the app; everything else opens a tab. */

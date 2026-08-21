@@ -24,6 +24,9 @@ const server = app.listen(env.port, async () => {
       await query('select 1')
       const s = await getSettings()
       log.ok(`database connected · split ${s.creator_split_percent}/${100 - s.creator_split_percent}`)
+      import('./modules/share.routes.js')
+        .then((m) => m.queueMissingShareCards())
+        .catch(() => {})
     } catch (err) {
       log.error('database check failed:', err.message)
     }

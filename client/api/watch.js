@@ -39,19 +39,28 @@ async function loadVideo(slug) {
   if (!isPublicSlug(slug)) return null
   const hit = videoMemo.get(slug)
   if (hit && Date.now() - hit.at < VIDEO_MEMO_MS) return hit.video
-  try {
-    const r = await fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!r.ok) return null
-    const body = await r.json()
-    const video = body?.video || null
-    if (video) videoMemo.set(slug, { video, at: Date.now() })
-    return video
-  } catch {
-    return hit?.video || null
+  const urls = [
+    `${API}/api/share/${encodeURIComponent(slug)}`,
+    `${API}/api/videos/${encodeURIComponent(slug)}`,
+  ]
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!r.ok) continue
+      const body = await r.json()
+      const video = body?.video || null
+      if (video) {
+        videoMemo.set(slug, { video, at: Date.now() })
+        return video
+      }
+    } catch {
+      /* try the next source */
+    }
   }
+  return hit?.video || null
 }
 
 export default async function handler(req, res) {
@@ -66,7 +75,7 @@ export default async function handler(req, res) {
   const canonical = path ? `${origin}${path}` : `${origin}/watch/${requested || ''}`
   const ua = req.headers['user-agent'] || ''
   const { title, description } = previewCopy(video)
-  const image = video ? cardFor(origin, video, publicSlug) : null
+  const image = cardFor(origin, video, publicSlug)
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Vary', 'User-Agent')
@@ -80,7 +89,7 @@ export default async function handler(req, res) {
         ? 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400'
         : 'private, no-store'
     )
-    if (!video || !path || !image) {
+    if (!path || !image) {
       console.log(
         `og-html slug=${requested || 'empty'} status=404 ms=${Date.now() - started} kind=unfurl`
       )

@@ -15,7 +15,7 @@ import {
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
-import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
+import { whatsappHref, whatsappTarget, whatsappFallback, whatsappIsPhone } from '@/lib/whatsappShare'
 import { facebookHref, socialTarget } from '@/lib/socialShare'
 import { prepareShareCard, warmSharePreview } from '@/lib/warmShare'
 import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
@@ -353,7 +353,12 @@ export default function ShareSheet({ open, video, onClose }) {
           onPointerDown={() => {
             if (url) navigator.clipboard.writeText(url).catch(() => {})
           }}
-          onClick={whatsappFallback(url)}
+          onClick={(e) => {
+            if (!whatsappIsPhone()) {
+              setHint('Watch link copied. Paste it in the chat (Ctrl+V) — WhatsApp then draws the poster card.')
+            }
+            whatsappFallback(url)(e)
+          }}
         >
           <IconWhatsApp size={26} />
           <span className="share-wa-copy">

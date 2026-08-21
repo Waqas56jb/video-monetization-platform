@@ -31,6 +31,7 @@
     "cf:origins": "node src/cli/cf-origins.js",
     "demo:seed": "node src/cli/demo.js seed",
     "demo:status": "node src/cli/demo.js status",
+    "share:warm": "node src/cli/share-cards.js",
     "demo:clear": "node src/cli/demo.js clear",
     "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js"
   },

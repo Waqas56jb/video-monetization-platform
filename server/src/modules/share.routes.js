@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { one } from '../db/pool.js'
+import { one, many } from '../db/pool.js'
 import { asyncHandler, notFound } from '../lib/errors.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
 import { ensureClips } from './playback.routes.js'
@@ -9,7 +9,7 @@ import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
-import { cardSourceKey, readCachedCard, writeCachedCard } from '../lib/shareCardCache.js'
+import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable } from '../lib/shareCardCache.js'
 import { publicOgCardUrl, publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { log } from '../lib/logger.js'
 
@@ -87,7 +87,7 @@ router.get(
          * `directDownloadUrl` for anything that wants to download rather than
          * read it.
          */
-        downloadUrl: `/api/share/${encodeURIComponent(pathKey)}/clip.mp4`,
+        downloadUrl: `/api/share/${encodeURIComponent(video.slug)}/clip.mp4`,
         directDownloadUrl: mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
         downloadReady: mp4?.status === 'ready',
         hls: urls.hls,
@@ -266,6 +266,74 @@ export async function warmShareCardSoon(id) {
   }
 }
 
+async function videosNeedingShareCards(limit = null) {
+  await ensureShareCardTable()
+  const sql = `
+    select v.*, coalesce(cp.display_name, p.full_name) as creator_name
+      from videos v
+      join profiles p on p.id = v.creator_id
+      left join creator_profiles cp on cp.user_id = v.creator_id
+      left join share_card_cache c on c.slug = v.slug
+     where v.deleted_at is null
+       and v.slug is not null
+       and v.slug <> ''
+       and (c.slug is null or octet_length(c.jpeg) < 1000)
+     order by v.is_published desc, v.published_at desc nulls last, v.created_at desc
+     ${limit ? 'limit $1' : ''}`
+  return limit ? many(sql, [limit]) : many(sql)
+}
+
+async function storeCardsFor(rows) {
+  let stored = 0
+  let failed = 0
+  for (const video of rows) {
+    try {
+      const card = await composeShareCard(video)
+      if (card) stored += 1
+      else failed += 1
+    } catch (err) {
+      log.warn(`og-card backfill slug=${video.slug}:`, err.message)
+      failed += 1
+    }
+  }
+  return { scanned: rows.length, stored, failed }
+}
+
+/** Fill Postgres for videos that have no JPEG yet. Safe to call often. */
+export async function warmMissingShareCards({ limit = 6 } = {}) {
+  const rows = await videosNeedingShareCards(limit)
+  if (!rows.length) return { scanned: 0, stored: 0, failed: 0 }
+  const result = await storeCardsFor(rows)
+  log.info(`og-card backfill stored=${result.stored} failed=${result.failed} scanned=${result.scanned}`)
+  return result
+}
+
+/** Every video with a slug — used by the CLI for existing catalogue. */
+export async function warmAllShareCards() {
+  await ensureShareCardTable()
+  const rows = await many(
+    `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
+       from videos v
+       join profiles p on p.id = v.creator_id
+       left join creator_profiles cp on cp.user_id = v.creator_id
+      where v.deleted_at is null
+        and v.slug is not null
+        and v.slug <> ''
+      order by v.is_published desc, v.created_at desc`
+  )
+  const result = await storeCardsFor(rows)
+  log.info(`og-card warm-all stored=${result.stored} failed=${result.failed} scanned=${result.scanned}`)
+  return result
+}
+
+let lastMissingWarm = 0
+export function queueMissingShareCards() {
+  const now = Date.now()
+  if (now - lastMissingWarm < 20_000) return
+  lastMissingWarm = now
+  warmMissingShareCards({ limit: 6 }).catch(() => {})
+}
+
 async function sendShareCard(req, res) {
   const id = String(req.params.id || '').replace(/\.jpe?g$/i, '')
   if (!id || id === 'undefined' || id === 'null') throw notFound('Video not found')
@@ -295,6 +363,16 @@ async function sendShareCard(req, res) {
 
 router.get('/:id/card.jpg', asyncHandler(sendShareCard))
 router.get('/:id/card', asyncHandler(sendShareCard))
+
+router.post(
+  '/warm-missing',
+  requireAuth(),
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'admin') throw notFound('Video not found')
+    const result = await warmAllShareCards()
+    res.json({ ok: true, ...result })
+  })
+)
 
 /** Force the preview and promo clips to be generated (or regenerated). */
 router.post(

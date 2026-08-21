@@ -175,6 +175,9 @@ router.get(
       limit,
       offset,
     })
+    import('./share.routes.js')
+      .then((m) => m.queueMissingShareCards())
+      .catch(() => {})
   })
 )
 

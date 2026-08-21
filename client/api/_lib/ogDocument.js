@@ -61,7 +61,7 @@ export function canonicalWatchPath(slug) {
 }
 
 export function cardFor(origin, video, slug) {
-  const key = video?.slug || (video && isPublicSlug(slug) ? slug : null)
+  const key = video?.slug || (isPublicSlug(slug) ? slug : null)
   if (!isPublicSlug(key)) return null
   return `${origin}/og/card/${encodeURIComponent(key)}.jpg`
 }

@@ -53,6 +53,7 @@ test('crawler HTML is per-video and never /s/', () => {
 test('unknown slug helpers do not invent another video image', () => {
   assert.equal(isPublicSlug('undefined'), false)
   assert.equal(cardFor(ORIGIN, null, 'undefined'), null)
+  assert.ok(cardFor(ORIGIN, null, 'studio-session-track-4').endsWith('/og/card/studio-session-track-4.jpg'))
   assert.match(notFoundDocument(), /Not found/)
   assert.doesNotMatch(notFoundDocument(), /og:image/)
 })
