@@ -178,37 +178,61 @@ export default function ShareSheet({ open, video, onClose }) {
     if (saving) return
     setProblem(null)
     setHint(null)
-
-    if (!clip?.downloadUrl) {
-      setHint('The 60-second clip is still being prepared. Try again in a moment.')
-      api.share
-        .payload(slug)
-        .then((body) => setClip(body?.clip || null))
-        .catch(() => {})
-      return
-    }
-
     setSaving(where)
-    try {
-      if (ogCard) await fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
-      await navigator.clipboard.writeText(url).catch(() => {})
+
+    const caption =
+      where === 'instagram'
+        ? '60s clip saved. Post it to Instagram Feed, Story or Reel. Watch link is copied for the caption.'
+        : where === 'tiktok'
+          ? '60s clip saved. Upload it on TikTok. Watch link is copied for the caption.'
+          : '60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.'
+
+    const downloadFile = async (fileUrl) => {
+      const r = await fetch(fileUrl, { mode: 'cors', credentials: 'omit' })
+      if (!r.ok) throw new Error('clip')
+      const blob = await r.blob()
+      if (blob.size < 1000) throw new Error('clip')
+      const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = mediaUrl(clip.downloadUrl)
-      a.download = `${slug}-promo.mp4`
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
+      a.href = objectUrl
+      a.download = `${slug || 'promo'}-promo.mp4`
+      a.rel = 'noopener'
       document.body.appendChild(a)
       a.click()
       a.remove()
-      if (where === 'instagram') {
-        setHint('60s clip saved. Post it to Instagram Feed, Story or Reel. Watch link is copied for the caption.')
-      } else if (where === 'tiktok') {
-        setHint('60s clip saved. Upload it on TikTok. Watch link is copied for the caption.')
-      } else {
-        setHint('60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.')
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 8000)
+    }
+
+    try {
+      await navigator.clipboard.writeText(url).catch(() => {})
+
+      let fileUrl = clip?.downloadUrl ? mediaUrl(clip.downloadUrl) : null
+      if (!fileUrl) {
+        setHint('Preparing the 60-second clip… Watch link is already copied.')
+        api.share.generate(slug).catch(() => {})
+        for (let i = 0; i < 10 && !fileUrl; i++) {
+          await new Promise((r) => setTimeout(r, 1500))
+          const body = await api.share.payload(slug).catch(() => null)
+          if (body?.clip?.downloadUrl) {
+            setClip(body.clip)
+            fileUrl = mediaUrl(body.clip.downloadUrl)
+          }
+        }
       }
+
+      if (!fileUrl) {
+        setHint('Watch link copied for the caption. Tap again in a moment to save the 60s clip.')
+        return
+      }
+
+      try {
+        await downloadFile(fileUrl)
+      } catch {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer')
+      }
+      setHint(caption)
     } catch {
-      setProblem('Could not start the clip download. Check your connection and try again.')
+      setProblem('Could not save the clip. Check your connection and try again — the watch link is copied.')
     } finally {
       setSaving(null)
     }

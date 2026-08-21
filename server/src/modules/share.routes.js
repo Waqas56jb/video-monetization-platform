@@ -104,6 +104,7 @@ router.get(
     // Do not block this JSON — crawlers also call this endpoint for title
     // and an 8s timeout here used to drop the Open Graph document entirely.
     composeShareCard(video).catch(() => {})
+    if (!video.social_clip_uid) ensureClips(video.id).catch(() => {})
 
     res.json({
       // `creator` and `description` are here for the link-preview renderer
@@ -421,7 +422,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const keys = slugFallbacks(req.params.id)
     const video = await one(
-      `select social_clip_uid, is_published, review_status
+      `select slug, social_clip_uid, is_published, review_status
          from videos
         where (id::text = any($1) or slug = any($1)) and deleted_at is null`,
       [keys]
@@ -438,8 +439,11 @@ router.get(
     const upstream = await fetch(source, { redirect: 'follow' })
     if (!upstream.ok || !upstream.body) throw notFound('The clip is still being prepared')
 
+    const filename = `${video.slug || 'promo'}-promo.mp4`
     res.setHeader('Content-Type', 'video/mp4')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length')
     res.setHeader('Cache-Control', 'public, max-age=3600')
     const len = upstream.headers.get('content-length')
     if (len) res.setHeader('Content-Length', len)
