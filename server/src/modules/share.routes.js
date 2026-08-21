@@ -246,10 +246,11 @@ async function composeShareCardOnce(video) {
   return card
 }
 
-/** Build and store the JPEG so the first WhatsApp crawl is a cache hit. */
+/** Build and store the JPEG as soon as a poster exists — including drafts.
+ * Creators share after upload/publish; the share sheet must not wait. */
 export async function warmShareCardById(id) {
   const video = await videoByKey(String(id || ''))
-  if (!video || !(video.is_published && video.review_status === 'approved')) return null
+  if (!video) return null
   return composeShareCard(video)
 }
 

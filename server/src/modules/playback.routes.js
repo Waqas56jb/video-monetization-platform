@@ -328,6 +328,9 @@ router.post(
 
     // Generate the two derived assets once the source is ready.
     await ensureClips(video.id).catch(() => {})
+    import('./share.routes.js')
+      .then((m) => m.warmShareCardById(video.slug || video.id))
+      .catch(() => {})
     res.json({ ok: true, state: 'ready' })
   })
 )

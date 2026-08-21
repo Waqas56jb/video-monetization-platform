@@ -18,6 +18,13 @@ import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 
+function queueShareCard(id) {
+  if (!id) return
+  import('./share.routes.js')
+    .then((m) => m.warmShareCardById(id))
+    .catch(() => {})
+}
+
 const router = Router()
 
 /**
@@ -248,6 +255,8 @@ router.post(
       ]
     )
 
+    queueShareCard(video.slug || video.id)
+
     res.status(201).json({
       video: studioVideo(video),
       upload: upload
@@ -367,6 +376,8 @@ router.patch(
       ]
     )
 
+    if (b.title) queueShareCard(updated.slug || updated.id)
+
     res.json({
       video: studioVideo(updated),
       ...(previewClamped
@@ -454,7 +465,9 @@ router.post(
       entityId: video.id,
       detail: { title: video.title },
       ip: clientIp(req),
-    })
+    }    )
+
+    queueShareCard(updated.slug || updated.id)
 
     res.json({
       video: studioVideo(updated),
@@ -503,6 +516,8 @@ router.post(
       removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
     }
 
+    queueShareCard(updated.slug || updated.id)
+
     res.json({ video: studioVideo(updated) })
   })
 )
@@ -525,6 +540,8 @@ router.delete(
     if (previous) {
       removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
     }
+
+    queueShareCard(updated.slug || updated.id)
 
     res.json({ video: studioVideo(updated) })
   })
@@ -595,6 +612,7 @@ router.get(
       )
       // Cut the free preview and the social promo now the source exists.
       ensureClips(video.id).catch(() => {})
+      queueShareCard(updated.slug || updated.id)
       return res.json({ state: 'ready', progress: 100, video: studioVideo(updated) })
     }
 

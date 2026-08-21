@@ -17,7 +17,7 @@ import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 import { facebookHref, socialTarget } from '@/lib/socialShare'
-import { prepareShareCard } from '@/lib/warmShare'
+import { prepareShareCard, warmSharePreview } from '@/lib/warmShare'
 import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
 
 /**
@@ -103,7 +103,6 @@ export default function ShareSheet({ open, video, onClose }) {
    * so a tap on Share looked like a tap that had not registered.
    */
   const [posterOn, setPosterOn] = useState(false)
-  const [waReady, setWaReady] = useState(false)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
@@ -129,7 +128,6 @@ export default function ShareSheet({ open, video, onClose }) {
     setHint(null)
     setSaving(null)
     setPosterOn(false)
-    setWaReady(false)
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -137,23 +135,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useEffect(() => {
     if (!open || !slug) return
-    let stop = false
-    setWaReady(false)
-    const arm = async () => {
-      while (!stop) {
-        const ok = await prepareShareCard(slug).catch(() => false)
-        if (stop) return
-        if (ok) {
-          setWaReady(true)
-          return
-        }
-        await new Promise((r) => setTimeout(r, 800))
-      }
-    }
-    arm()
-    return () => {
-      stop = true
-    }
+    warmSharePreview(slug)
   }, [open, slug])
 
   useEffect(() => {
@@ -181,7 +163,7 @@ export default function ShareSheet({ open, video, onClose }) {
   const copy = async () => {
     setProblem(null)
     try {
-      if (slug) await prepareShareCard(slug)
+      if (slug) prepareShareCard(slug).catch(() => {})
       await navigator.clipboard.writeText(url)
       setCopied(true)
       setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
@@ -363,15 +345,6 @@ export default function ShareSheet({ open, video, onClose }) {
 
         {/* An anchor, not a button with a handler: iOS follows a link the
             person tapped and refuses a location the script assigned. */}
-        {!waReady ? (
-          <button className="share-wa" type="button" disabled>
-            <Loader2 size={26} className="spin" />
-            <span className="share-wa-copy">
-              <b>Share on WhatsApp</b>
-              <small>Preparing poster card…</small>
-            </span>
-          </button>
-        ) : (
         <a
           className="share-wa"
           href={whatsappHref(url)}
@@ -388,7 +361,6 @@ export default function ShareSheet({ open, video, onClose }) {
             <small>Share privately or in groups</small>
           </span>
         </a>
-        )}
 
         <div className="share-targets">
           <button
