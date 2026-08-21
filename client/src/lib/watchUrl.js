@@ -5,13 +5,28 @@
  * never query junk — those are what WhatsApp shows as an "ugly link".
  */
 export function canonicalWatchPath(video) {
-  const slug = video?.slug
-  if (!slug) return null
+  const slug = typeof video === 'string' ? video : video?.slug
+  if (!slug || slug === 'undefined' || slug === 'null') return null
   return `/watch/${slug}`
 }
 
-export function canonicalWatchUrl(video) {
+export function canonicalWatchUrl(video, origin) {
   const path = canonicalWatchPath(video)
-  if (!path || typeof window === 'undefined') return ''
-  return `${window.location.origin}${path}`
+  if (!path) return ''
+  const base = String(origin || (typeof window !== 'undefined' ? window.location.origin : '')).replace(
+    /\/$/,
+    ''
+  )
+  if (!base) return path
+  return `${base}${path}`
+}
+
+/** The only text WhatsApp should send. */
+export function whatsappShareText(watchUrl) {
+  return String(watchUrl || '').trim()
+}
+
+/** The only payload More… may send. Never attach the promo MP4. */
+export function nativeShareData(watchUrl) {
+  return { url: String(watchUrl || '') }
 }

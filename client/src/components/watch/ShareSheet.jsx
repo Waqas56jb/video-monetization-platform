@@ -18,7 +18,7 @@ import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 import { facebookHref, socialTarget } from '@/lib/socialShare'
 import { prepareShareCard } from '@/lib/warmShare'
-import { canonicalWatchUrl } from '@/lib/watchUrl'
+import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
 
 /**
  * Share sheet — client's layout and honest actions.
@@ -139,13 +139,18 @@ export default function ShareSheet({ open, video, onClose }) {
     if (!open || !slug) return
     let stop = false
     setWaReady(false)
-    prepareShareCard(slug)
-      .then(() => {
-        if (!stop) setWaReady(true)
-      })
-      .catch(() => {
-        if (!stop) setWaReady(true)
-      })
+    const arm = async () => {
+      while (!stop) {
+        const ok = await prepareShareCard(slug).catch(() => false)
+        if (stop) return
+        if (ok) {
+          setWaReady(true)
+          return
+        }
+        await new Promise((r) => setTimeout(r, 800))
+      }
+    }
+    arm()
     return () => {
       stop = true
     }
@@ -233,7 +238,7 @@ export default function ShareSheet({ open, video, onClose }) {
       setBusy(true)
       setProblem(null)
       try {
-        await navigator.share({ url })
+        await navigator.share(nativeShareData(url))
         onClose()
       } catch (err) {
         if (err?.name !== 'AbortError') {

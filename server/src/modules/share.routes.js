@@ -10,6 +10,8 @@ import { env, capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
 import { cardSourceKey, readCachedCard, writeCachedCard } from '../lib/shareCardCache.js'
+import { publicOgCardUrl, publicWatchUrl } from '../lib/publicWatchUrl.js'
+import { log } from '../lib/logger.js'
 
 const router = Router()
 
@@ -53,14 +55,15 @@ router.get(
       throw notFound('Video not found')
     }
 
-    // The deep link: opens this exact video's watch & purchase page.
-    const pathKey = video.slug || video.id
-    const deepLink = `${env.publicWebUrl}/watch/${pathKey}`
+    if (!video.slug) throw notFound('Video not found')
+
+    const deepLink = publicWatchUrl(env.publicWebUrl, video.slug)
+    if (!deepLink) throw notFound('Video not found')
     const title = video.title
     const text = video.creator_name
       ? `${title} by ${video.creator_name}. Watch the free preview on MTONYO+.`
       : `Watch the free preview of "${title}" on MTONYO+.`
-    const cardUrl = `/api/share/${encodeURIComponent(pathKey)}/card.jpg`
+    const cardUrl = publicOgCardUrl(env.publicWebUrl, video.slug)
 
     // The 60s promo clip, public so Instagram / TikTok can be handed a file.
     // WhatsApp still gets the watch URL only — attaching this MP4 there
@@ -152,7 +155,7 @@ router.get(
           : 'WATCH FREE PREVIEW · MTONYO+',
         'og:image': cardUrl,
         'og:url': deepLink,
-        'og:type': 'website',
+        'og:type': 'video.other',
       },
     })
   })
@@ -208,9 +211,11 @@ async function composeShareCard(video) {
 async function composeShareCardOnce(video) {
   const slug = video.slug || String(video.id)
   const key = cardSourceKey(video)
+  const started = Date.now()
   const cached = await readCachedCard(slug, key)
   if (cached) {
     pingLinkPreview(slug)
+    log.info(`og-card slug=${slug} cache=hit ms=${Date.now() - started} bytes=${cached.length}`)
     return cached
   }
 
@@ -237,28 +242,51 @@ async function composeShareCardOnce(video) {
   })
   await writeCachedCard(slug, video.id, key, card)
   pingLinkPreview(slug)
+  log.info(`og-card slug=${slug} cache=miss ms=${Date.now() - started} bytes=${card.length}`)
   return card
 }
 
-/** Build and store the JPEG so the next WhatsApp paste is a cache hit. */
+/** Build and store the JPEG so the first WhatsApp crawl is a cache hit. */
 export async function warmShareCardById(id) {
   const video = await videoByKey(String(id || ''))
   if (!video || !(video.is_published && video.review_status === 'approved')) return null
   return composeShareCard(video)
 }
 
+/** Same, but never block an admin/publish request for more than 15s. */
+export async function warmShareCardSoon(id) {
+  try {
+    await Promise.race([
+      warmShareCardById(id),
+      new Promise((resolve) => setTimeout(resolve, 15000)),
+    ])
+  } catch {
+    /* JPEG can still be composed on the first /og/card hit */
+  }
+}
+
 async function sendShareCard(req, res) {
-  const video = await videoByKey(String(req.params.id || '').replace(/\.jpe?g$/i, ''))
+  const id = String(req.params.id || '').replace(/\.jpe?g$/i, '')
+  if (!id || id === 'undefined' || id === 'null') throw notFound('Video not found')
+  const started = Date.now()
+  const video = await videoByKey(id)
   if (!video) throw notFound('Video not found')
   if (!(video.is_published && video.review_status === 'approved')) {
     throw notFound('Video not found')
   }
 
-  const card = await composeShareCard(video)
+  const slug = video.slug || String(video.id)
+  const key = cardSourceKey(video)
+  const cached = await readCachedCard(slug, key)
+  const card = cached || (await composeShareCard(video))
   if (!card) throw notFound('No poster available')
 
+  log.info(
+    `og-card-http slug=${slug} cache=${cached ? 'hit' : 'miss'} ms=${Date.now() - started} status=200`
+  )
   res.set('Content-Type', 'image/jpeg')
   res.set('Access-Control-Allow-Origin', '*')
+  res.set('X-OG-Cache', cached ? 'hit' : 'miss')
   res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.set('Content-Disposition', 'inline; filename="poster.jpg"')
   res.send(card)
@@ -332,6 +360,7 @@ router.get(
     if (!upstream.ok || !upstream.body) throw notFound('The clip is still being prepared')
 
     res.setHeader('Content-Type', 'video/mp4')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Cache-Control', 'public, max-age=3600')
     const len = upstream.headers.get('content-length')
     if (len) res.setHeader('Content-Length', len)

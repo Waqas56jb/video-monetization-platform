@@ -16,6 +16,7 @@ import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
+import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 
 const router = Router()
 
@@ -697,9 +698,14 @@ router.get(
     if (!(row.is_published && row.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
       throw notFound('Video not found')
     }
+    if (row.is_published && row.review_status === 'approved' && row.slug) {
+      import('./share.routes.js')
+        .then((m) => m.warmShareCardById(row.slug))
+        .catch(() => {})
+    }
     res.json({
       video: publicVideo(withCreatorName(row), access),
-      shareUrl: `${env.publicWebUrl}/watch/${row.slug || row.id}`,
+      shareUrl: publicWatchUrl(env.publicWebUrl, row.slug),
       ...(isOwnerOrAdmin ? { studio: studioVideo(row) } : {}),
     })
   })

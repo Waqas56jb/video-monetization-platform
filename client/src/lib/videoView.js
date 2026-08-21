@@ -1,5 +1,6 @@
 import { ACCESS_SHORT, duration, tzs, compact, daysUntil } from '@/hooks/useApi'
 import { mediaUrl } from '@/lib/api'
+import { canonicalWatchPath } from '@/lib/watchUrl'
 
 /**
  * Turn a video from the API into the shape the card component draws.
@@ -54,5 +55,5 @@ export function toCard(v, { owned = false } = {}) {
   }
 }
 
-/** Where a video lives. Slug when it has one, so the URL reads as something. */
-export const videoLink = (v) => `/watch/${v?.slug || v?.id || ''}`
+/** In-app navigation. Public shares never use this UUID fallback. */
+export const videoLink = (v) => canonicalWatchPath(v) || (v?.id ? `/watch/${v.id}` : '/explore')

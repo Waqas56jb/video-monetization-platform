@@ -4,6 +4,7 @@ import { asyncHandler, notFound } from '../lib/errors.js'
 import { requireAuth } from '../middleware/auth.js'
 import { thumbnailFor } from '../services/entitlement.js'
 import { env } from '../config/env.js'
+import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 
 const router = Router()
 
@@ -65,7 +66,7 @@ router.get(
           method: r.method,
           reference: r.provider_ref,
         },
-        watchUrl: `${env.publicWebUrl}/watch/${r.slug || r.id}`,
+        watchUrl: publicWatchUrl(env.publicWebUrl, r.slug),
         isPublished: r.is_published,
       })),
     })

@@ -19,6 +19,14 @@ const API =
 const posterMemo = new Map()
 const POSTER_MEMO_MS = 24 * 60 * 60 * 1000
 
+function isPublicSlug(slug) {
+  const s = String(slug || '').trim()
+  if (!s) return false
+  if (s === 'undefined' || s === 'null') return false
+  if (s.length > 200) return false
+  return true
+}
+
 async function fetchPoster(slug) {
   const hit = posterMemo.get(slug)
   if (hit && Date.now() - hit.at < POSTER_MEMO_MS) return hit.poster
@@ -51,17 +59,20 @@ export default async function handler(req, res) {
   const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
   const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
 
-  if (!slug) {
+  if (!isPublicSlug(slug)) {
     res.status(404)
     return res.end()
   }
 
+  const started = Date.now()
   const poster = await fetchPoster(slug)
   if (!poster) {
+    console.log(`og-jpeg slug=${slug} status=404 ms=${Date.now() - started}`)
     res.status(404)
     return res.end()
   }
 
+  console.log(`og-jpeg slug=${slug} status=200 ms=${Date.now() - started} bytes=${poster.buf.length}`)
   res.setHeader('Content-Type', poster.type)
   /**
    * WhatsApp Web reads these bytes from inside the browser to build its

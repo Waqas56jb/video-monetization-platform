@@ -236,9 +236,8 @@ router.post(
 
     // Cut the preview and promo clips now that it is live.
     ensureClips(video.id).catch(() => {})
-    // Branded WhatsApp JPEG, stored so the first share is not a 3s Sharp wait.
-    import('./share.routes.js')
-      .then((m) => m.warmShareCardById(video.slug || video.id))
+    await import('./share.routes.js')
+      .then((m) => m.warmShareCardSoon(video.slug || video.id))
       .catch(() => {})
 
     await recordStaffAction(req, {
@@ -567,8 +566,8 @@ router.post(
       body: 'Your video is now visible to viewers.',
       actor: req.user, action: 'publish', entityType: 'video', entityId: video.id,
     })
-    import('./share.routes.js')
-      .then((m) => m.warmShareCardById(updated.slug || updated.id))
+    await import('./share.routes.js')
+      .then((m) => m.warmShareCardSoon(updated.slug || updated.id))
       .catch(() => {})
     res.json({ video: studioVideo(updated) })
   })

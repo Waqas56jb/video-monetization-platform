@@ -19,7 +19,14 @@ export const env = {
   isProd: process.env.NODE_ENV === 'production',
   port: int(process.env.PORT, 4000),
   corsOrigins: list(process.env.CORS_ORIGINS),
-  publicWebUrl: (process.env.PUBLIC_WEB_URL || 'http://localhost:5173').replace(/\/$/, ''),
+  publicWebUrl: (() => {
+    const raw = (process.env.PUBLIC_WEB_URL || '').replace(/\/$/, '')
+    if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) return raw
+    if (process.env.NODE_ENV === 'production') {
+      return 'https://video-monetization-platform-chi.vercel.app'
+    }
+    return raw || 'http://localhost:5173'
+  })(),
   // The admin app lives on its own origin; staff invitations must point there,
   // not at the public site, or the link lands somewhere with no admin login.
   adminWebUrl: (process.env.ADMIN_WEB_URL || 'http://localhost:5174').replace(/\/$/, ''),

@@ -241,12 +241,12 @@ export default function Watch() {
    */
   useEffect(() => {
     if (!new URLSearchParams(location.search).get('unlock')) return
-    if (!signedIn || !accessReady) return
+    if (!signedIn || !accessReady || !v?.id) return
 
     if (needsPayment) setPayOpen(true)
-    navigate(`/watch/${videoId}`, { replace: true })
+    navigate(`/watch/${v.slug || videoId}`, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, signedIn, accessReady, needsPayment])
+  }, [location.search, signedIn, accessReady, needsPayment, v?.id, v?.slug, videoId])
 
   /** The breaks this video carries, by placement. */
   const ads = adBreaks.data?.ads || []
@@ -528,7 +528,7 @@ export default function Watch() {
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer
-                key={justPaid ? `paid-${p.playback.kind}-${Math.floor(resumeAt)}` : p.playback.kind}
+                key={`${v.id}-${justPaid ? 'paid' : p.playback.kind}-${Math.floor(resumeAt)}`}
                 src={p.playback.iframe}
                 poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}

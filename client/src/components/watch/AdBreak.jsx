@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SkipForward } from 'lucide-react'
 import StreamPlayer from './StreamPlayer'
 import api from '@/lib/api'
+import { adSkipRules } from '@/lib/adSkip'
 
 /**
  * An advert playing in the place of the video.
@@ -19,9 +20,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
   const done = useRef(false)
   const watched = useRef(0)
 
-  const configured = Number(ad?.skipAfterSeconds)
-  const skippable = Number.isFinite(configured) ? configured > 0 : true
-  const skipAfter = skippable ? Math.max(1, configured || 5) : Infinity
+  const { skippable, skipAfter } = adSkipRules(ad?.skipAfterSeconds)
   const canSkip = skippable && playing && elapsed >= skipAfter
   const remaining = Math.max(0, Math.ceil(skipAfter - elapsed))
 

@@ -24,8 +24,10 @@ export function safeNext(value) {
   if (!value || typeof value !== 'string') return null
   if (!value.startsWith('/')) return null
   if (value.startsWith('//')) return null
-  if (value.startsWith('/login') || value.startsWith('/signup')) return null // no loops
-  if (value.length > 512) return null // nothing legitimate is this long
+  if (value.includes('://') || value.includes('\\')) return null
+  if (/[\s]/.test(value)) return null
+  if (value.startsWith('/login') || value.startsWith('/signup')) return null
+  if (value.length > 512) return null
   return value
 }
 
