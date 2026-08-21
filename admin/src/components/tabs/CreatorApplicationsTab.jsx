@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BadgeCheck, Check, ExternalLink, Mail, Phone, UserPlus, X } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
-import { Async, EmptyState } from '@/components/ui/States'
+import { Async } from '@/components/ui/States'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
 

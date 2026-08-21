@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock, Rocket, Send, ShieldCheck, XCircle } from 'lucide-react'
+import { Clock, Send, ShieldCheck, XCircle } from 'lucide-react'
 import Panel from '../Panel'
 import Icon from '@/components/ui/Icon'
 import Field from '@/components/ui/Field'
