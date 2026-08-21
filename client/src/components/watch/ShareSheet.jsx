@@ -16,17 +16,23 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
-import { facebookHref, socialTarget } from '@/lib/socialShare'
+import {
+  instagramHref,
+  tiktokHref,
+  facebookHref,
+  socialTarget,
+  appFallback,
+  isPhone,
+} from '@/lib/socialShare'
 import { warmSharePreview } from '@/lib/warmShare'
 
 /**
- * Share sheet — layout, icons and type match the client's mock.
+ * Share sheet — layout matches the client's mock.
  *
- * WhatsApp and Facebook can be opened with this watch URL. Instagram and
- * TikTok have no web share that lands in their composer — those buttons
- * would only open the OS picker, so they are not shown as direct-app shares.
- * Recipients get a poster card (title, creator, MTONYO+). The free preview
- * plays on MTONYO+ after they tap, not inside WhatsApp.
+ * WhatsApp / Facebook / Copy send the watch URL so the recipient gets the
+ * poster card. Instagram and TikTok have no web composer; those buttons save
+ * the 60s clip (and on a phone, hand it to the OS share sheet) then open the
+ * app. Preview plays on MTONYO+ after they tap, not inside the chat.
  */
 
 function IconWhatsApp({ size = 22 }) {
@@ -37,6 +43,20 @@ function IconWhatsApp({ size = 22 }) {
   )
 }
 
+function IconInstagram({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.64-.07-4.85s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0-2.16C8.74 0 8.33.01 7.05.07 2.7.27.27 2.69.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95C23.73 2.69 21.31.27 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.41-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" />
+    </svg>
+  )
+}
+function IconTikTok({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .56.04.82.12V9.01a6.27 6.27 0 0 0-.82-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.31a8.19 8.19 0 0 0 4.76 1.52V6.38a4.85 4.85 0 0 1-1-.31z" />
+    </svg>
+  )
+}
 function IconFacebook({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -98,22 +118,11 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useLockBodyScroll(open)
 
-  /**
-   * Whether this is a phone, for the wording on the "More apps" row only.
-   *
-   * On a phone the device sheet is the best thing here: it lists WhatsApp,
-   * Instagram and TikTok and genuinely launches them. On a laptop it is worth
-   * saying what it is good for, because WhatsApp Desktop is the one target
-   * that comes out worse through it — see the note on that row.
-   */
-  const onPhone =
-    typeof navigator !== 'undefined' && /Android|iPhone|iPod/i.test(navigator.userAgent || '')
-
   const slug = video?.slug || video?.id || ''
   const url = video ? `${window.location.origin}/watch/${slug}` : ''
   const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
-  /* The JPEG WhatsApp actually fetches — not the raw thumbnail with CSS on top. */
-  const still = ogCard || mediaUrl(video?.thumbnailUrl)
+  /* Film frame + overlays, as in the client's mock — not the burned JPEG. */
+  const still = mediaUrl(video?.thumbnailUrl)
   const creator = video?.creator?.name
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
@@ -201,6 +210,59 @@ export default function ShareSheet({ open, video, onClose }) {
     }
   }
 
+  const shareClipApp = async (where) => {
+    if (saving) return
+    setProblem(null)
+    setHint(null)
+    setSaving(where)
+    try {
+      if (ogCard) fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
+      navigator.clipboard.writeText(url).catch(() => {})
+      const file = clipFile.current
+      if (file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: video?.title, text: url })
+          setHint(
+            where === 'instagram'
+              ? 'Pick Instagram — Feed, Reels or Story. The watch link is copied for the caption.'
+              : 'Pick TikTok and upload the clip. The watch link is copied for the caption.'
+          )
+          return
+        } catch (err) {
+          if (err?.name === 'AbortError') return
+        }
+      }
+      if (!clip?.downloadUrl) {
+        setHint('The 60-second clip is still being prepared. Try again in a moment.')
+        api.share.payload(slug).then((body) => setClip(body?.clip || null)).catch(() => {})
+        return
+      }
+      const a = document.createElement('a')
+      a.href = mediaUrl(clip.downloadUrl)
+      a.download = `${slug}-promo.mp4`
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      const app = where === 'instagram' ? instagramHref() : tiktokHref()
+      const web = where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
+      if (isPhone()) {
+        window.location.href = app
+        appFallback(web)()
+      }
+      setHint(
+        where === 'instagram'
+          ? 'Clip saved. Open Instagram and post to Feed, Reels or Story. Caption link is copied.'
+          : 'Clip saved. Open TikTok and upload it. Caption link is copied.'
+      )
+    } catch {
+      setProblem('Could not start the share. Try Copy link, or save the promo clip below.')
+    } finally {
+      setSaving(null)
+    }
+  }
+
   const saveClip = async (where) => {
     if (saving) return
     setProblem(null)
@@ -226,14 +288,7 @@ export default function ShareSheet({ open, video, onClose }) {
       document.body.appendChild(a)
       a.click()
       a.remove()
-
-      if (where === 'instagram') {
-        setHint('Clip ready. Open Instagram and post it to Feed, Story or Reel. The watch link is copied for the caption.')
-      } else if (where === 'tiktok') {
-        setHint('Clip ready. Open TikTok and upload it. The watch link is copied for the caption.')
-      } else {
-        setHint('60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.')
-      }
+      setHint('60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.')
     } catch {
       setProblem('Could not start the clip download. Check your connection and try again.')
     } finally {
@@ -278,8 +333,8 @@ export default function ShareSheet({ open, video, onClose }) {
 
         <h3 id="share-title">Share this video</h3>
         <p className="share-sub">
-          People receive a <b>poster card</b> — title, creator, MTONYO+. Tapping it
-          opens this video here. The free preview plays on MTONYO+, not inside WhatsApp.
+          Help people discover this amazing content. They watch the free preview, then <b>pay</b> to
+          continue.
         </p>
 
         <p className="share-kicker">
@@ -314,43 +369,39 @@ export default function ShareSheet({ open, video, onClose }) {
                 <Film size={28} />
               </span>
             )}
-            {!ogCard && (
-              <>
-                <span className="share-og-veil" aria-hidden="true" />
-                <span className="share-og-badge">MTONYO+</span>
-                {video.durationSeconds > 0 && (
-                  <span className="share-og-time">{duration(video.durationSeconds)}</span>
-                )}
-                <span className="share-og-play" aria-hidden="true">
-                  <Play size={22} fill="currentColor" />
-                </span>
-                <div className="share-og-meta">
-                  {fresh && <span className="share-og-new">New release</span>}
-                  <b>{video.title}</b>
-                  {creator && (
-                    <small>
-                      {creator}
-                      {verified && <BadgeCheck size={13} />}
-                    </small>
-                  )}
-                  <em>Watch free preview</em>
-                </div>
-                <div className="share-og-stats">
-                  {video.views != null && (
-                    <span>
-                      <Eye size={12} />
-                      {compact(video.views)} views
-                    </span>
-                  )}
-                  {paid && (
-                    <span>
-                      <Lock size={12} />
-                      Pay to continue
-                    </span>
-                  )}
-                </div>
-              </>
+            <span className="share-og-veil" aria-hidden="true" />
+            <span className="share-og-badge">MTONYO+</span>
+            {video.durationSeconds > 0 && (
+              <span className="share-og-time">{duration(video.durationSeconds)}</span>
             )}
+            <span className="share-og-play" aria-hidden="true">
+              <Play size={22} fill="currentColor" />
+            </span>
+            <div className="share-og-meta">
+              {fresh && <span className="share-og-new">New release</span>}
+              <b>{video.title}</b>
+              {creator && (
+                <small>
+                  {creator}
+                  {verified && <BadgeCheck size={13} />}
+                </small>
+              )}
+              <em>Watch free preview</em>
+            </div>
+            <div className="share-og-stats">
+              {video.views != null && (
+                <span>
+                  <Eye size={12} />
+                  {compact(video.views)} views
+                </span>
+              )}
+              {paid && (
+                <span>
+                  <Lock size={12} />
+                  Pay to continue
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -387,11 +438,31 @@ export default function ShareSheet({ open, video, onClose }) {
           <IconWhatsApp size={26} />
           <span className="share-wa-copy">
             <b>Share on WhatsApp</b>
-            <small>Opens WhatsApp with this video</small>
+            <small>Share privately or in groups</small>
           </span>
         </a>
 
-        <div className="share-targets share-targets-direct">
+        <div className="share-targets">
+          <button
+            className="share-target is-ig"
+            type="button"
+            onClick={() => shareClipApp('instagram')}
+            disabled={Boolean(saving)}
+          >
+            {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
+            <b>Instagram</b>
+            <small>Feed, Reels, Story</small>
+          </button>
+          <button
+            className="share-target is-tt"
+            type="button"
+            onClick={() => shareClipApp('tiktok')}
+            disabled={Boolean(saving)}
+          >
+            {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
+            <b>TikTok</b>
+            <small>Share video</small>
+          </button>
           <a
             className="share-target is-fb"
             href={facebookHref(url)}
@@ -401,12 +472,12 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Opens Facebook with this link</small>
+            <small>Share to Feed</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}
             <b>{copied ? 'Copied' : 'Copy link'}</b>
-            <small>Paste anywhere</small>
+            <small>Get shareable link</small>
           </button>
         </div>
 
@@ -414,20 +485,7 @@ export default function ShareSheet({ open, video, onClose }) {
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
           <span>
             <b>More apps</b>
-            {/**
-              * WhatsApp Desktop sends a shared link the instant it receives
-              * it, without the pause its compose box takes to fetch a
-              * preview — so the same URL that arrives with a full card when
-              * pasted, or sent from the button above, arrives as a bare link
-              * through here. It is the app's own behaviour and nothing the
-              * page can set. Rather than let someone find that out after
-              * sending, the row says what it is good for.
-              */}
-            <small>
-              {onPhone
-                ? 'Device share sheet — Instagram, TikTok and others. Not a direct app open.'
-                : 'Email, Teams and others. For WhatsApp use the green button so the poster card is sent.'}
-            </small>
+            <small>Share via other apps on your device</small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>
@@ -441,10 +499,10 @@ export default function ShareSheet({ open, video, onClose }) {
           {saving === 'save' ? <Loader2 className="spin" size={20} /> : <IconClapper />}
           <span>
             <b>
-              {clip?.downloadUrl ? 'Save 60s promo clip' : 'Prepare 60s promo clip'}
+              Save 60s promo clip
               <em className="share-pill">Perfect for promotion</em>
             </b>
-            <small>Download the clip, then post it on Instagram or TikTok yourself. Those apps cannot be opened into a share composer from the web.</small>
+            <small>Use for WhatsApp Status, Reels, TikTok &amp; Stories</small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>
