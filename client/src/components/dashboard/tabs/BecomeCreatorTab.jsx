@@ -64,7 +64,10 @@ export default function BecomeCreatorTab() {
   /* Start from what the account already knows rather than asking twice. */
   const me = useApi(() => api.account.get(), [])
   useEffect(() => {
-    const a = me.data?.account
+    // The endpoint answers { user }, not { account }. Reading the wrong key
+    // filled nothing, so the form posted an empty name, email and phone and
+    // the server refused it — with the form still looking complete.
+    const a = me.data?.user
     if (!a) return
     setForm((f) => ({
       ...f,
@@ -85,6 +88,13 @@ export default function BecomeCreatorTab() {
     if (busy) return
     setError(null)
 
+    if (!form.fullName.trim()) return setError('Enter your full name')
+    if (!form.stageName.trim()) return setError('Enter the name your audience knows you as')
+    if (!form.email.trim()) return setError('Enter an email address')
+    if (!/^[0-9+\s-]{9,15}$/.test(form.phone.trim())) {
+      return setError('Enter the phone number we can reach you on')
+    }
+    if (!form.category) return setError('Choose what you make')
     if (!form.acceptTerms) return setError('You must accept the Creator Terms to apply')
     if (form.description.trim().length < 30) {
       return setError('Tell us a little more about what you will publish — a sentence or two')
