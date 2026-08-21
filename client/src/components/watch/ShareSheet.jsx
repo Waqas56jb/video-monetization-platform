@@ -16,23 +16,15 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
-import {
-  instagramHref,
-  tiktokHref,
-  facebookHref,
-  socialTarget,
-  appFallback,
-  isPhone,
-} from '@/lib/socialShare'
+import { facebookHref, socialTarget } from '@/lib/socialShare'
 import { warmSharePreview } from '@/lib/warmShare'
 
 /**
- * Share sheet — layout matches the client's mock.
+ * Share sheet — client's layout and honest actions.
  *
- * WhatsApp / Facebook / Copy send the watch URL so the recipient gets the
- * poster card. Instagram and TikTok have no web composer; those buttons save
- * the 60s clip (and on a phone, hand it to the OS share sheet) then open the
- * app. Preview plays on MTONYO+ after they tap, not inside the chat.
+ * WhatsApp / Facebook / Copy send the watch URL (poster card for the recipient).
+ * Instagram and TikTok cannot be posted into from the web — those buttons save
+ * the 60s promo clip. More… is the device share menu (URL only, never a file).
  */
 
 function IconWhatsApp({ size = 22 }) {
@@ -113,8 +105,6 @@ export default function ShareSheet({ open, video, onClose }) {
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
-  /** The promo clip, ready to hand to the OS the moment a button is tapped. */
-  const clipFile = useRef(null)
 
   useLockBodyScroll(open)
 
@@ -169,97 +159,17 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
-  /**
-   * Fetch the promo clip up front, while the sheet is open and nobody is
-   * waiting.
-   *
-   * Instagram and TikTok have no web composer — there is no URL that posts to
-   * them. What they do accept is a video handed over by the operating system.
-   * `navigator.share` can do that, but only if it is called inside the tap
-   * itself: any await beforehand and iOS treats it as a share the page tried
-   * to start on its own and refuses. So the file has to already be in hand
-   * when the finger lands, which is what this does.
-   */
-  useEffect(() => {
-    if (!open || !clip?.downloadUrl) return
-    let stop = false
-    clipFile.current = null
-    fetch(mediaUrl(clip.downloadUrl))
-      .then((r) => (r.ok ? r.blob() : null))
-      .then((blob) => {
-        if (stop || !blob) return
-        clipFile.current = new File([blob], `${slug}-promo.mp4`, { type: 'video/mp4' })
-      })
-      .catch(() => {})
-    return () => {
-      stop = true
-    }
-  }, [open, clip?.downloadUrl, slug])
-
   const copy = async () => {
     setProblem(null)
     try {
       if (ogCard) await fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is ready.')
+      setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2400)
     } catch {
       setProblem('Could not copy automatically. Long-press the link and copy it.')
-    }
-  }
-
-  const shareClipApp = async (where) => {
-    if (saving) return
-    setProblem(null)
-    setHint(null)
-    setSaving(where)
-    try {
-      if (ogCard) fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
-      navigator.clipboard.writeText(url).catch(() => {})
-      const file = clipFile.current
-      if (file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: video?.title, text: url })
-          setHint(
-            where === 'instagram'
-              ? 'Pick Instagram — Feed, Reels or Story. The watch link is copied for the caption.'
-              : 'Pick TikTok and upload the clip. The watch link is copied for the caption.'
-          )
-          return
-        } catch (err) {
-          if (err?.name === 'AbortError') return
-        }
-      }
-      if (!clip?.downloadUrl) {
-        setHint('The 60-second clip is still being prepared. Try again in a moment.')
-        api.share.payload(slug).then((body) => setClip(body?.clip || null)).catch(() => {})
-        return
-      }
-      const a = document.createElement('a')
-      a.href = mediaUrl(clip.downloadUrl)
-      a.download = `${slug}-promo.mp4`
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      const app = where === 'instagram' ? instagramHref() : tiktokHref()
-      const web = where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
-      if (isPhone()) {
-        window.location.href = app
-        appFallback(web)()
-      }
-      setHint(
-        where === 'instagram'
-          ? 'Clip saved. Open Instagram and post to Feed, Reels or Story. Caption link is copied.'
-          : 'Clip saved. Open TikTok and upload it. Caption link is copied.'
-      )
-    } catch {
-      setProblem('Could not start the share. Try Copy link, or save the promo clip below.')
-    } finally {
-      setSaving(null)
     }
   }
 
@@ -279,6 +189,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
     setSaving(where)
     try {
+      if (ogCard) await fetch(ogCard, { mode: 'cors', credentials: 'omit' }).catch(() => {})
       await navigator.clipboard.writeText(url).catch(() => {})
       const a = document.createElement('a')
       a.href = mediaUrl(clip.downloadUrl)
@@ -288,7 +199,13 @@ export default function ShareSheet({ open, video, onClose }) {
       document.body.appendChild(a)
       a.click()
       a.remove()
-      setHint('60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.')
+      if (where === 'instagram') {
+        setHint('60s clip saved. Post it to Instagram Feed, Story or Reel. Watch link is copied for the caption.')
+      } else if (where === 'tiktok') {
+        setHint('60s clip saved. Upload it on TikTok. Watch link is copied for the caption.')
+      } else {
+        setHint('60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.')
+      }
     } catch {
       setProblem('Could not start the clip download. Check your connection and try again.')
     } finally {
@@ -446,22 +363,22 @@ export default function ShareSheet({ open, video, onClose }) {
           <button
             className="share-target is-ig"
             type="button"
-            onClick={() => shareClipApp('instagram')}
+            onClick={() => saveClip('instagram')}
             disabled={Boolean(saving)}
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
-            <small>Feed, Reels, Story</small>
+            <small>Feed / Story / Reel</small>
           </button>
           <button
             className="share-target is-tt"
             type="button"
-            onClick={() => shareClipApp('tiktok')}
+            onClick={() => saveClip('tiktok')}
             disabled={Boolean(saving)}
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
-            <small>Share video</small>
+            <small>Post clip</small>
           </button>
           <a
             className="share-target is-fb"
@@ -472,7 +389,7 @@ export default function ShareSheet({ open, video, onClose }) {
           >
             <IconFacebook />
             <b>Facebook</b>
-            <small>Share to Feed</small>
+            <small>Share</small>
           </a>
           <button className="share-target is-copy" type="button" onClick={copy}>
             {copied ? <Check size={22} /> : <IconLink />}
@@ -484,8 +401,8 @@ export default function ShareSheet({ open, video, onClose }) {
         <button className="share-row" type="button" onClick={shareNative} disabled={busy}>
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
           <span>
-            <b>More apps</b>
-            <small>Share via other apps on your device</small>
+            <b>More…</b>
+            <small>Messages, Mail, Telegram and other apps</small>
           </span>
           <ChevronRight size={16} className="share-row-go" />
         </button>

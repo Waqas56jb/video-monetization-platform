@@ -74,7 +74,7 @@ function ShareCardDemo() {
         </span>
       </div>
 
-      <small>This is a real share card — that video, free preview, then pay.</small>
+      <small>Share → Watch free preview → Pay → Continue watching</small>
     </div>
   )
 }
