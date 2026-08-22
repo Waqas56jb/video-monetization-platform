@@ -1,4 +1,22 @@
-import { BadgeCheck, Check, Eye, Film, Gem, Lock, Play, Share2, TrendingUp } from 'lucide-react'
+import {
+  BadgeCheck,
+  Check,
+  Clapperboard,
+  Eye,
+  Film,
+  Gem,
+  Link2,
+  Lock,
+  Play,
+  Share2,
+  TrendingUp,
+} from 'lucide-react'
+import {
+  IconFacebook,
+  IconInstagram,
+  IconTikTok,
+  IconWhatsApp,
+} from '@/components/ui/SocialIcons'
 import Reveal from '@/components/ui/Reveal'
 import useApi, { compact, duration } from '@/hooks/useApi'
 import api, { mediaUrl } from '@/lib/api'
@@ -9,6 +27,70 @@ const SHARE_DEMO = {
   slug: 'behind-the-fame-a-coast-documentary',
   title: 'Behind The Fame — A Coast Documentary',
   creator: { name: 'Asha Mwinyi' },
+}
+
+/**
+ * The share sheet exactly as it appears in the app.
+ *
+ * The homepage used to show only the card a recipient receives, which answers
+ * "what do they get" and leaves "what do I press" unanswered -- and pressing
+ * it is the part a creator has to believe in before they upload anything. The
+ * real class names are reused deliberately: this is the interface, not an
+ * artist's impression of it, and it cannot drift away from the real one
+ * without the drift being visible here.
+ *
+ * Inert on purpose. Everything is a span, and the block is hidden from screen
+ * readers, because offering controls that do nothing is worse than showing no
+ * controls at all.
+ */
+function ShareSheetPreview() {
+  return (
+    <div className="pw-sheet" aria-hidden="true">
+      <div className="pw-sheet-bar">
+        <b>Share this video</b>
+        <span className="pw-sheet-x">&times;</span>
+      </div>
+
+      <span className="share-wa pw-sheet-wa">
+        <IconWhatsApp size={24} />
+        <span className="share-wa-copy">
+          <b>Share on WhatsApp</b>
+          <small>Share privately or in groups</small>
+        </span>
+      </span>
+
+      <div className="share-targets">
+        <span className="share-target is-ig">
+          <IconInstagram />
+          <b>Instagram</b>
+          <small>Feed, Reels, Story</small>
+        </span>
+        <span className="share-target is-tt">
+          <IconTikTok />
+          <b>TikTok</b>
+          <small>Share video</small>
+        </span>
+        <span className="share-target is-fb">
+          <IconFacebook />
+          <b>Facebook</b>
+          <small>Share to Feed</small>
+        </span>
+        <span className="share-target is-copy">
+          <Link2 size={22} />
+          <b>Copy link</b>
+          <small>Get shareable link</small>
+        </span>
+      </div>
+
+      <span className="pw-sheet-clip">
+        <Clapperboard size={18} />
+        <span>
+          <b>Save 60s promo clip</b>
+          <small>For WhatsApp Status, Reels, TikTok &amp; Stories</small>
+        </span>
+      </span>
+    </div>
+  )
 }
 
 /**
@@ -29,7 +111,12 @@ function ShareCardDemo() {
         <Share2 size={14} />
         <span>On WhatsApp and social</span>
       </div>
-      <p className="pw-journey">Share → Watch free preview → Pay → Keep watching</p>
+
+      <ShareSheetPreview />
+
+      <p className="pw-sheet-arrow">
+        <span>What they receive</span>
+      </p>
 
       <div className="share-og-stage pw-og-stage">
         {poster ? (

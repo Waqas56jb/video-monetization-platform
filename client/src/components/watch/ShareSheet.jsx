@@ -12,11 +12,24 @@ import {
   Shield,
   X,
 } from 'lucide-react'
+import {
+  IconFacebook,
+  IconInstagram,
+  IconTikTok,
+  IconWhatsApp,
+} from '@/components/ui/SocialIcons'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import { whatsappHref, whatsappTarget, whatsappFallback, whatsappIsPhone } from '@/lib/whatsappShare'
-import { facebookHref, socialTarget } from '@/lib/socialShare'
+import {
+  appFallback,
+  copyWatchUrl,
+  facebookHref,
+  instagramHref,
+  socialTarget,
+  tiktokHref,
+} from '@/lib/socialShare'
 import { prepareShareCard, warmSharePreview } from '@/lib/warmShare'
 import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
 
@@ -24,39 +37,17 @@ import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
  * Share sheet — client's layout and honest actions.
  *
  * WhatsApp / Facebook / Copy send the watch URL (poster card for the recipient).
- * Instagram and TikTok cannot be posted into from the web — those buttons save
- * the 60s promo clip. More… is the device share menu (URL only, never a file).
+ *
+ * Instagram and TikTok cannot be posted into from a web page -- neither
+ * accepts a shared URL, and no amount of wanting changes that. What they can
+ * do is open. So those two are real links to the apps, and the 60-second clip
+ * and the watch link are put in hand on the way out, which is everything the
+ * person needs once they arrive. They used to only save the clip, and the
+ * device answered a tap on "Instagram" with its own app picker -- reported,
+ * fairly, as Instagram not opening Instagram.
+ *
+ * More... is the device share menu (URL only, never a file).
  */
-
-function IconWhatsApp({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.14-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.48.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.05 21.79h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26C2.16 5.34 6.59.9 12.05.9a9.82 9.82 0 0 1 6.99 2.9 9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88zm8.41-18.3A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L0 24l6.3-1.65a11.88 11.88 0 0 0 5.74 1.46h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.16-3.48-8.41z" />
-    </svg>
-  )
-}
-
-function IconInstagram({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.64.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.64-.07-4.85s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16zm0-2.16C8.74 0 8.33.01 7.05.07 2.7.27.27 2.69.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95C23.73 2.69 21.31.27 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.41-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" />
-    </svg>
-  )
-}
-function IconTikTok({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .56.04.82.12V9.01a6.27 6.27 0 0 0-.82-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.31a8.19 8.19 0 0 0 4.76 1.52V6.38a4.85 4.85 0 0 1-1-.31z" />
-    </svg>
-  )
-}
-function IconFacebook({ size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M22.68 12.07C22.68 6.13 17.87 1.32 11.93 1.32S1.18 6.13 1.18 12.07c0 5.37 3.93 9.82 9.07 10.61v-7.51H7.66v-3.1h2.59V9.7c0-2.56 1.52-3.97 3.85-3.97 1.12 0 2.28.2 2.28.2v2.51h-1.28c-1.27 0-1.66.79-1.66 1.6v1.92h2.83l-.45 3.1h-2.38v7.51c5.14-.79 9.07-5.24 9.07-10.61z" />
-    </svg>
-  )
-}
 
 function IconLink({ size = 22 }) {
   return (
@@ -198,9 +189,9 @@ export default function ShareSheet({ open, video, onClose }) {
 
     const caption =
       where === 'instagram'
-        ? '60s clip saved. Post it to Instagram Feed, Story or Reel. Watch link is copied for the caption.'
+        ? 'Opening Instagram. The 60s clip is saved and the watch link is copied for your caption.'
         : where === 'tiktok'
-          ? '60s clip saved. Upload it on TikTok. Watch link is copied for the caption.'
+          ? 'Opening TikTok. The 60s clip is saved and the watch link is copied for your caption.'
           : '60-second clip saved. Use it on WhatsApp Status, Reels, TikTok and Stories.'
 
     const downloadFile = async (fileUrl) => {
@@ -439,26 +430,39 @@ export default function ShareSheet({ open, video, onClose }) {
         </a>
 
         <div className="share-targets">
-          <button
+          {/* Pointer-down, not click: the clip download and the copy have to
+              start before the browser leaves for the app, or on a phone they
+              never start at all. */}
+          <a
             className="share-target is-ig"
-            type="button"
-            onClick={() => saveClip('instagram')}
-            disabled={Boolean(saving)}
+            href={instagramHref()}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onPointerDown={() => {
+              copyWatchUrl(url)
+              saveClip('instagram')
+            }}
+            onClick={appFallback('https://www.instagram.com/')}
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
             <small>Feed, Reels, Story</small>
-          </button>
-          <button
+          </a>
+          <a
             className="share-target is-tt"
-            type="button"
-            onClick={() => saveClip('tiktok')}
-            disabled={Boolean(saving)}
+            href={tiktokHref()}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onPointerDown={() => {
+              copyWatchUrl(url)
+              saveClip('tiktok')
+            }}
+            onClick={appFallback('https://www.tiktok.com/')}
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
             <small>Share video</small>
-          </button>
+          </a>
           <a
             className="share-target is-fb"
             href={facebookHref(url)}
