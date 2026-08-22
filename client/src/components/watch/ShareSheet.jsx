@@ -141,20 +141,36 @@ export default function ShareSheet({ open, video, onClose }) {
   useEffect(() => {
     if (!open || !slug) return
     let stop = false
+    let retry = null
+
+    /**
+     * Ask once, and only ask again if the first answer was not usable.
+     *
+     * The retry used to be unconditional, so every open of this sheet cost two
+     * calls to the same endpoint and the second returned exactly what the
+     * first had. Measured on the live site: 2x GET /api/share/{slug} per open,
+     * one of them for nothing. It is worth keeping for the case it was written
+     * for -- a video whose promo clip is still being made -- and worth not
+     * paying for every other time.
+     */
     const load = () =>
       api.share
         .payload(slug)
         .then((body) => {
-          if (!stop) setClip(body?.clip || null)
+          if (stop) return
+          setClip(body?.clip || null)
+          if (!body?.clip && !retry) retry = setTimeout(load, 4000)
         })
         .catch(() => {
-          if (!stop) setClip(null)
+          if (stop) return
+          setClip(null)
+          if (!retry) retry = setTimeout(load, 4000)
         })
+
     load()
-    const retry = setTimeout(load, 4000)
     return () => {
       stop = true
-      clearTimeout(retry)
+      if (retry) clearTimeout(retry)
     }
   }, [open, slug])
 

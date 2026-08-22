@@ -22,10 +22,23 @@ export async function prepareShareCard(slug) {
     const card = `${origin}/og/card/${encodeURIComponent(slug)}.jpg`
     const page = `${origin}/watch/${encodeURIComponent(slug)}`
 
-    for (let i = 0; i < 16; i++) {
+    /**
+     * Bounded, and it no longer throws away the warm copy on the way in.
+     *
+     * The first attempt used to pass `cache: 'reload'`, which deliberately
+     * bypasses the CDN -- so pressing Share forced the server to recompose the
+     * poster even though a finished one was sitting at the edge. Sixteen
+     * attempts at 400ms plus a slow fetch each is how a background warm-up
+     * became a minute of waiting when anything upstream was unwell.
+     *
+     * The poster is built once and cached now (the card endpoint reports
+     * `X-Og-Cache: hit`), so the normal path succeeds on the first attempt and
+     * this loop only ever runs for a video whose clip is still being made.
+     */
+    for (let i = 0; i < 8; i++) {
       try {
         const [imgRes, pageRes] = await Promise.all([
-          fetch(card, { mode: 'cors', credentials: 'omit', cache: i === 0 ? 'reload' : 'force-cache' }),
+          fetch(card, { mode: 'cors', credentials: 'omit' }),
           fetch(page, { mode: 'cors', credentials: 'omit' }),
         ])
         if (!imgRes.ok) throw new Error('jpeg not ready')
