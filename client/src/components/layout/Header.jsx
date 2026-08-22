@@ -30,7 +30,7 @@ export default function Header({ solid = false }) {
 
   return (
     <>
-      <header className={solid || scrolled ? 'scrolled' : ''}>
+      <header className={`site-header${solid || scrolled ? ' scrolled' : ''}`}>
         <div className="container nav">
           <Logo />
           <nav className="nav-links">

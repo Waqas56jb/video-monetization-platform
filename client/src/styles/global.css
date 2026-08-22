@@ -125,9 +125,15 @@ input,select,textarea{font-family:inherit}
 .grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px 180px}
 
 /* ---------- HEADER ---------- */
-header{position:fixed;top:0;left:0;right:0;z-index:200;transition:background .25s ease,box-shadow .25s ease,border-color .25s ease}
-header{transform:translateZ(0)}
-header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.28)}
+/* Scoped to the site header by class, not by tag.
+   A bare `header` selector claimed every <header> in the app: the creator
+   profile's own <header class="creator-hero"> was pinned to the top of the
+   viewport, where it covered the Back button, the "Videos" heading and the
+   top of the first video card. The element was correct HTML; the selector
+   was too greedy. */
+.site-header{position:fixed;top:0;left:0;right:0;z-index:200;transition:background .25s ease,box-shadow .25s ease,border-color .25s ease}
+.site-header{transform:translateZ(0)}
+.site-header.scrolled{background:rgba(10,10,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border2);box-shadow:0 8px 28px rgba(0,0,0,.28)}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;min-width:0}
 /* The lockup is an image now, so the row only has to hold it and keep it
    clickable. The old type rules are gone with the markup they styled. */
@@ -1168,7 +1174,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   }
 
   /* The alpha the blur was quietly providing, given back directly. */
-  header.scrolled { background: rgba(10, 10, 18, .97) }
+  .site-header.scrolled { background: rgba(10, 10, 18, .97) }
   .badge { background: rgba(124, 58, 237, .18) }
   .btn-ghost { background: rgba(255, 255, 255, .06) }
   .hero-pay { background: rgba(20, 20, 31, .9) }
@@ -1241,7 +1247,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 
 /* --- print --- */
 @media print{
-  .aurora,.grain,#preloader,#toast,header,.mobile-menu,.sidebar,.scroll-hint{display:none !important}
+  .aurora,.grain,#preloader,#toast,.site-header,.mobile-menu,.sidebar,.scroll-hint{display:none !important}
   body{background:#fff;color:#000}
 }
 
@@ -2825,7 +2831,9 @@ html.is-touch .btn:active{transform:scale(.97)}
 a.creator-row{color:inherit;text-decoration:none;transition:border-color .25s}
 a.creator-row:hover{border-color:var(--purple)}
 
-.creator-page{padding:28px 0 64px}
+/* The header is fixed, so every page has to open below it. This one did not,
+   and the Back button sat underneath it at every width. */
+.creator-page{padding:calc(var(--header-h) + 28px) 0 64px}
 .creator-hero{
   display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;
   background:var(--card);border:1px solid var(--border2);border-radius:22px;
