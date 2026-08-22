@@ -11,6 +11,9 @@
  * and shows a tiny webpage icon instead.
  */
 
+/** The commit serving this, so a stale deploy is visible instead of puzzling. */
+const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
+
 const API =
   process.env.VITE_API_URL ||
   process.env.API_URL ||
@@ -109,11 +112,14 @@ export default async function handler(req, res) {
 
   console.log(`og-jpeg slug=${slug} status=200 ms=${Date.now() - started} bytes=${poster.buf.length}`)
   res.setHeader('Content-Type', poster.type)
+  res.setHeader('X-Build', BUILD)
   /**
-   * WhatsApp Web reads these bytes from inside the browser to build its
-   * thumbnail, so the fetch is cross-origin and is refused without this. It
-   * is why a laptop share showed the title and description but no picture,
-   * while the same link from a phone showed the whole card.
+   * Kept, but not for the reason first written here. The original note claimed
+   * WhatsApp Web fetched these bytes from inside the browser, and that CORS
+   * was therefore the missing piece; that model turned out to be wrong --
+   * every WhatsApp client crawls server-side, where CORS does not apply. The
+   * header still earns its place for the in-app browser and for anything else
+   * that reads the card cross-origin, so it stays with an honest reason.
    */
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')

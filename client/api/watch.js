@@ -17,7 +17,18 @@ import {
   previewCopy,
   slugFrom,
   escapeAttr,
+  experimentToken,
+  withToken,
 } from './_lib/ogDocument.js'
+
+/**
+ * Which commit is actually serving this.
+ *
+ * Twice now a fault has been chased in code that production was not running:
+ * the deploy had not landed and the old build was still answering. Reporting
+ * the commit turns that from an hour of confusion into one glance at a header.
+ */
+const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
 const API =
   process.env.VITE_API_URL ||
@@ -107,14 +118,19 @@ export default async function handler(req, res) {
   const video = await loadVideo(requested)
   const publicSlug = video?.slug || requested
   const path = canonicalWatchPath(publicSlug)
-  const canonical = path ? `${origin}${path}` : `${origin}/watch/${requested || ''}`
+  const token = experimentToken(req)
+  const canonical = withToken(
+    path ? `${origin}${path}` : `${origin}/watch/${requested || ''}`,
+    token
+  )
   const ua = req.headers['user-agent'] || ''
   const { title, description } = previewCopy(video)
-  const image = cardFor(origin, video, publicSlug)
+  const image = withToken(cardFor(origin, video, publicSlug), token)
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Vary', 'User-Agent')
   res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('X-Build', BUILD)
 
   if (isUnfurlFetch(req)) {
     const bot = isLinkPreviewBot(ua)

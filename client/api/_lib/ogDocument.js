@@ -66,6 +66,28 @@ export function cardFor(origin, video, slug) {
   return `${origin}/og/card/${encodeURIComponent(key)}.jpg`
 }
 
+/**
+ * A one-off token that makes a familiar video look like a brand-new URL.
+ *
+ * WhatsApp caches a preview per URL, and every video here has already been
+ * shared while testing, so none of them can serve as a fresh subject. `?e=`
+ * mints a URL WhatsApp has never seen for a video whose card we already
+ * understand, which is what allows warming to be compared against nothing.
+ *
+ * It has to reach og:url and og:image too. Those are the identities the
+ * crawler and the edge cache key on, and if the arms shared them, warming one
+ * would warm all of them and the comparison would measure nothing at all.
+ */
+export function experimentToken(req) {
+  const raw = String((req.query && req.query.e) || '')
+  return /^[a-z0-9-]{1,24}$/i.test(raw) ? raw : null
+}
+
+export function withToken(url, token) {
+  if (!url || !token) return url
+  return `${url}${url.includes('?') ? '&' : '?'}e=${encodeURIComponent(token)}`
+}
+
 export function previewCopy(video) {
   const title = video?.title || 'MTONYO+'
   const creator = video?.creator?.name || video?.creatorName

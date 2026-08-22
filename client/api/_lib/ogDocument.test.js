@@ -10,6 +10,8 @@ import {
   notFoundDocument,
   previewCopy,
   slugFrom,
+  experimentToken,
+  withToken,
 } from './ogDocument.js'
 
 const ORIGIN = 'https://video-monetization-platform-chi.vercel.app'
@@ -94,4 +96,24 @@ test('WhatsApp Web CORS unfurl is treated as a crawler fetch', () => {
 test('slugFrom strips /s/ and /watch/ and query', () => {
   assert.equal(slugFrom({ query: { slug: 'live-at-arusha-full-set' } }), 'live-at-arusha-full-set')
   assert.equal(slugFrom({ query: {}, url: '/s/studio-session-track-4' }), 'studio-session-track-4')
+})
+
+test('experimentToken accepts a short safe token and nothing else', () => {
+  assert.equal(experimentToken({ query: { e: 'exp-a1' } }), 'exp-a1')
+  assert.equal(experimentToken({ query: {} }), null)
+  assert.equal(experimentToken({}), null)
+  // It is echoed straight into og:url and og:image, so anything that could
+  // carry a quote, a path or a second parameter has to be refused here.
+  assert.equal(experimentToken({ query: { e: 'a/../b' } }), null)
+  assert.equal(experimentToken({ query: { e: 'a"b' } }), null)
+  assert.equal(experimentToken({ query: { e: 'a&x=1' } }), null)
+  assert.equal(experimentToken({ query: { e: 'x'.repeat(25) } }), null)
+})
+
+test('withToken makes each arm of the experiment a distinct URL', () => {
+  assert.equal(withToken('https://h/watch/s', 'a1'), 'https://h/watch/s?e=a1')
+  assert.equal(withToken('https://h/og/card/s.jpg?v=2', 'a1'), 'https://h/og/card/s.jpg?v=2&e=a1')
+  // Without a token nothing changes, so ordinary shares keep clean URLs.
+  assert.equal(withToken('https://h/watch/s', null), 'https://h/watch/s')
+  assert.equal(withToken(null, 'a1'), null)
 })
