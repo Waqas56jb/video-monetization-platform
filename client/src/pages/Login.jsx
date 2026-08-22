@@ -9,6 +9,26 @@ import { useAuth } from '@/context/AuthContext'
 import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
+function loginErrorMessage(err) {
+  const raw = String(err?.message || '').trim()
+  if (/staff/i.test(raw)) {
+    return 'These details do not match an account. Check your email and password.'
+  }
+  if (/does not have a creator|creator account yet|no creator account/i.test(raw)) {
+    return 'No creator account is registered with this email.'
+  }
+  if (/incorrect|invalid login|invalid credentials/i.test(raw)) {
+    return 'These details do not match an account. Check your email and password.'
+  }
+  if (/blocked/i.test(raw)) {
+    return 'This account has been blocked. Contact support if you need help.'
+  }
+  if (/too many|rate limit/i.test(raw)) {
+    return 'Too many sign-in attempts. Please wait a moment and try again.'
+  }
+  return raw || 'Unable to sign in. Please try again.'
+}
+
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
   { value: 'creator', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
@@ -74,11 +94,11 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      const user = await signIn({ email, password, side })
-      showToast(`Karibu tena, ${user.fullName || user.email}!`)
+      await signIn({ email, password, side })
+      showToast(side === 'creator' ? 'Signed in to your creator account.' : 'Signed in to your viewer account.')
       navigate(next || dashboardPath(side), { replace: true })
     } catch (err) {
-      setError(err.message)
+      setError(loginErrorMessage(err))
       setBusy(false)
     }
   }

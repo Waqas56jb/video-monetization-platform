@@ -42,18 +42,24 @@ const loginSchema = z.object({
   side: z.enum(['viewer', 'creator']).optional(),
 })
 
+function canOpenCreatorSide(role) {
+  return role === 'creator' || role === 'admin' || role === 'sub_admin'
+}
+
 async function ensureCreatorSide(profile, { fullName, phone } = {}) {
-  if (profile.role === 'admin' || profile.role === 'sub_admin') return profile
+  const display = fullName || profile.full_name || profile.email || 'Creator'
+  const payout = phone || profile.phone || null
+  const keepRole = profile.role === 'admin' || profile.role === 'sub_admin'
   await transaction(
     async (client) => {
-      if (profile.role !== 'creator') {
+      if (!keepRole && profile.role !== 'creator') {
         await client.query(`update profiles set role = 'creator' where id = $1`, [profile.id])
       }
       await client.query(
         `insert into creator_profiles (user_id, display_name, payout_phone)
          values ($1,$2,$3)
          on conflict (user_id) do nothing`,
-        [profile.id, fullName || profile.full_name || profile.email || 'Creator', phone || profile.phone || null]
+        [profile.id, display, payout]
       )
     },
     { actorRole: 'admin' }
@@ -116,7 +122,7 @@ router.post(
     if (existingAuth) {
       const passwordOk = await verifyPassword(existingAuth.id, password)
       if (!passwordOk) {
-        throw conflict('That email is already registered — try signing in instead')
+        throw conflict('These details do not match an account.')
       }
 
       let profile = await one('select * from profiles where id = $1', [existingAuth.id])
@@ -129,9 +135,6 @@ router.post(
       }
       if (profile.status === 'blocked') throw forbidden('This account has been blocked')
       if (wanted === 'creator') {
-        if (profile.role === 'sub_admin') {
-          throw badRequest('Staff accounts cannot become creators here')
-        }
         profile = await ensureCreatorSide(profile, { fullName, phone })
       }
 
@@ -203,10 +206,8 @@ router.post(
       )
     }
     if (profile.status === 'blocked') throw forbidden('This account has been blocked')
-    if (side === 'creator' && profile.role !== 'creator' && profile.role !== 'admin') {
-      throw forbidden(
-        'This email does not have a creator account yet. Use Create Account → I want to Create with the same email and password.'
-      )
+    if (side === 'creator' && !canOpenCreatorSide(profile.role)) {
+      throw forbidden('No creator account is registered with this email.')
     }
 
     res.json({ ...shape(profile, session), side })

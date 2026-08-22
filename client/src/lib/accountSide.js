@@ -13,8 +13,7 @@ export function setAccountSide(side) {
 
 export function panelRoleFor(accountRole, side) {
   const real = accountRole || 'viewer'
-  if (real === 'sub_admin') return 'viewer'
-  if (real === 'admin' || real === 'creator') {
+  if (real === 'admin' || real === 'creator' || real === 'sub_admin') {
     return side === 'viewer' ? 'viewer' : 'creator'
   }
   return 'viewer'

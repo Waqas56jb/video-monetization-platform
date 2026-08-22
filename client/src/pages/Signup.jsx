@@ -9,6 +9,20 @@ import { useAuth } from '@/context/AuthContext'
 import { dashboardPath, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
+function signupErrorMessage(err) {
+  const raw = String(err?.message || '').trim()
+  if (/staff/i.test(raw)) {
+    return 'These details do not match an account.'
+  }
+  if (/already registered|already used|already exists/i.test(raw)) {
+    return 'These details do not match an account.'
+  }
+  if (/blocked/i.test(raw)) {
+    return 'This account has been blocked. Contact support if you need help.'
+  }
+  return raw || 'Unable to create this account. Please try again.'
+}
+
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
   { value: 'creator', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
@@ -75,7 +89,7 @@ export default function Signup() {
       }
 
       if (result.signInFailed || !result.session) {
-        showToast(result.message || 'Account created — please log in')
+        showToast('Account created. Please sign in to continue.')
         timer.current = setTimeout(
           () => navigate(authUrl('login', afterSignup, { side: wanted }), { replace: true }),
           900
@@ -85,16 +99,12 @@ export default function Signup() {
 
       showToast(
         wanted === 'creator'
-          ? result.attached
-            ? `Creator side is ready, ${result.user.fullName || result.user.email}.`
-            : `Creator account created — karibu, ${result.user.fullName || result.user.email}!`
-          : result.attached
-            ? `Viewer side is open, ${result.user.fullName || result.user.email}.`
-            : `🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`
+          ? 'Your creator account is ready.'
+          : 'Your viewer account is ready.'
       )
       timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
     } catch (err) {
-      setError(err.message)
+      setError(signupErrorMessage(err))
       setBusy(false)
     }
   }

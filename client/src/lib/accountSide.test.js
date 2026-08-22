@@ -15,8 +15,9 @@ test('viewer account cannot open the creator panel until that side exists', () =
   assert.equal(panelRoleFor('viewer', 'viewer'), 'viewer')
 })
 
-test('staff stay out of a fake studio on the public site', () => {
-  assert.equal(panelRoleFor('sub_admin', 'creator'), 'viewer')
+test('admin and staff can open Watch or Create on the same email', () => {
+  assert.equal(panelRoleFor('sub_admin', 'creator'), 'creator')
+  assert.equal(panelRoleFor('sub_admin', 'viewer'), 'viewer')
   assert.equal(panelRoleFor('admin', 'viewer'), 'viewer')
   assert.equal(panelRoleFor('admin', 'creator'), 'creator')
 })

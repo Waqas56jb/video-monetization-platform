@@ -171,7 +171,8 @@ export function AuthProvider({ children }) {
       accountRole,
       accountSide,
       setAccountSide: switchSide,
-      isCreator: accountRole === 'creator' || accountRole === 'admin',
+      isCreator:
+        accountRole === 'creator' || accountRole === 'admin' || accountRole === 'sub_admin',
       isAdmin: accountRole === 'admin',
       signIn,
       signUp,
