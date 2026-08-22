@@ -159,7 +159,7 @@ export default function Testimonials() {
         )}
 
         <div className="center" style={{ marginTop: 40 }}>
-          <button className="btn btn-gold" onClick={() => navigate('/signup')}>
+          <button className="btn btn-gold" onClick={() => navigate('/signup?side=creator')}>
             Start selling your work
           </button>
         </div>

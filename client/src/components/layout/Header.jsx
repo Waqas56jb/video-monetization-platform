@@ -86,7 +86,7 @@ export default function Header({ solid = false }) {
                 </button>
                 <button
                   className="btn btn-gold btn-sm nav-cta-primary"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/signup?side=creator')}
                 >
                   <Sparkles size={18} />
                   <span className="btn-label-full">Start Creating</span>

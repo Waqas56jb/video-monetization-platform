@@ -4,6 +4,7 @@ import { one, query, transaction } from '../db/pool.js'
 import { signInWithPassword, refreshSession } from '../lib/supabase.js'
 import {
   createAuthUser,
+  findAuthUserByEmail,
   issueResetToken,
   peekResetToken,
   consumeResetToken,
@@ -11,7 +12,7 @@ import {
   setAuthPassword,
 } from '../lib/authdb.js'
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
-import { asyncHandler, badRequest, forbidden, notFound } from '../lib/errors.js'
+import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { requireAuth, permissionsFor } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
@@ -23,7 +24,7 @@ import { env, capabilities } from '../config/env.js'
 const router = Router()
 
 const registerSchema = z.object({
-  email: z.string().email('Enter a valid email address'),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().min(2, 'Enter your full name').max(120),
   phone: z
@@ -38,7 +39,42 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   password: z.string().min(1, 'Enter your password'),
+  side: z.enum(['viewer', 'creator']).optional(),
 })
+
+async function ensureCreatorSide(profile, { fullName, phone } = {}) {
+  if (profile.role === 'admin' || profile.role === 'sub_admin') return profile
+  await transaction(
+    async (client) => {
+      if (profile.role !== 'creator') {
+        await client.query(`update profiles set role = 'creator' where id = $1`, [profile.id])
+      }
+      await client.query(
+        `insert into creator_profiles (user_id, display_name, payout_phone)
+         values ($1,$2,$3)
+         on conflict (user_id) do nothing`,
+        [profile.id, fullName || profile.full_name || profile.email || 'Creator', phone || profile.phone || null]
+      )
+    },
+    { actorRole: 'admin' }
+  )
+  return one('select * from profiles where id = $1', [profile.id])
+}
+
+async function trySignIn(email, password) {
+  try {
+    const { session } = await signInWithPassword({ email, password })
+    return { session, signInNote: null }
+  } catch (err) {
+    log.warn(`registered ${email} but could not sign them in: ${err.message}`)
+    return {
+      session: null,
+      signInNote:
+        'Your account was created. Signing you in automatically did not work — ' +
+        'please log in with the password you just chose.',
+    }
+  }
+}
 
 const shape = (profile, session) => ({
   user: {
@@ -66,12 +102,48 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
     const { password, fullName, phone } = req.body
+    const wanted = req.body.role === 'creator' ? 'creator' : 'viewer'
 
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
-    // Viewer only. "I want to create" is an application an admin approves.
-    // Signing up as creator used to skip that queue.
+    /**
+     * One login, two sides. Watch and Create share the same email and password.
+     * Signing up on the other side with the same password opens that side
+     * instead of rejecting the address as taken.
+     */
+    const existingAuth = await findAuthUserByEmail(email)
+    if (existingAuth) {
+      const passwordOk = await verifyPassword(existingAuth.id, password)
+      if (!passwordOk) {
+        throw conflict('That email is already registered — try signing in instead')
+      }
+
+      let profile = await one('select * from profiles where id = $1', [existingAuth.id])
+      if (!profile) {
+        profile = await one(
+          `insert into profiles (id, email, full_name, phone, role)
+           values ($1,$2,$3,$4,$5) returning *`,
+          [existingAuth.id, email, fullName, phone || null, wanted]
+        )
+      }
+      if (profile.status === 'blocked') throw forbidden('This account has been blocked')
+      if (wanted === 'creator') {
+        if (profile.role === 'sub_admin') {
+          throw badRequest('Staff accounts cannot become creators here')
+        }
+        profile = await ensureCreatorSide(profile, { fullName, phone })
+      }
+
+      const { session, signInNote } = await trySignIn(email, password)
+      return res.status(200).json({
+        ...shape(profile, session),
+        side: wanted,
+        attached: true,
+        needsEmailConfirmation: false,
+        ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
+      })
+    }
 
     /**
      * The account and its profile are created in one transaction: either both
@@ -85,38 +157,26 @@ router.post(
         const { rows } = await client.query(
           `insert into profiles (id, email, full_name, phone, role)
            values ($1,$2,$3,$4,$5) returning *`,
-          [authUser.id, email, fullName, phone || null, 'viewer']
+          [authUser.id, email, fullName, phone || null, wanted]
         )
+        if (wanted === 'creator') {
+          await client.query(
+            `insert into creator_profiles (user_id, display_name, payout_phone)
+             values ($1,$2,$3)
+             on conflict (user_id) do nothing`,
+            [authUser.id, fullName, phone || null]
+          )
+        }
         return { profile: rows[0] }
       },
       { actorRole: 'system' }
     )
 
-    /**
-     * The account is usable straight away — no emailed confirmation and no
-     * one-time code — so sign them in here and they land in their dashboard
-     * rather than on a "now go check your email" dead end.
-     *
-     * But the account already exists by this point. If this one call fails —
-     * a rate limit, a blip in the auth service — reporting the whole
-     * registration as a failure would tell someone their password was wrong
-     * for an account that had just been created with it, and they would try
-     * again and be told the email was taken. Hand back the account without a
-     * session and say plainly what to do.
-     */
-    let session = null
-    let signInNote = null
-    try {
-      ;({ session } = await signInWithPassword({ email, password }))
-    } catch (err) {
-      log.warn(`registered ${email} but could not sign them in: ${err.message}`)
-      signInNote =
-        'Your account was created. Signing you in automatically did not work — ' +
-        'please log in with the password you just chose.'
-    }
-
+    const { session, signInNote } = await trySignIn(email, password)
     res.status(201).json({
       ...shape(profile, session),
+      side: wanted,
+      attached: false,
       needsEmailConfirmation: false,
       ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
     })
@@ -130,6 +190,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
     const { password } = req.body
+    const side = req.body.side === 'creator' ? 'creator' : 'viewer'
     const { session, user } = await signInWithPassword({ email, password })
 
     let profile = await one('select * from profiles where id = $1', [user.id])
@@ -142,8 +203,13 @@ router.post(
       )
     }
     if (profile.status === 'blocked') throw forbidden('This account has been blocked')
+    if (side === 'creator' && profile.role !== 'creator' && profile.role !== 'admin') {
+      throw forbidden(
+        'This email does not have a creator account yet. Use Create Account → I want to Create with the same email and password.'
+      )
+    }
 
-    res.json(shape(profile, session))
+    res.json({ ...shape(profile, session), side })
   })
 )
 

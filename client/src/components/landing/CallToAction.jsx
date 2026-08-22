@@ -19,11 +19,11 @@ export default function CallToAction() {
           </h2>
           <p>Join Tanzanian creators earning directly from their audiences on MTONYO+.</p>
           <div className="cta-actions">
-            <button className="btn btn-gold" onClick={() => navigate('/signup')}>
+            <button className="btn btn-gold" onClick={() => navigate('/signup?side=creator')}>
               <Sparkles />
               Start Earning Today
             </button>
-            <button className="btn btn-ghost" onClick={() => navigate('/login')}>
+            <button className="btn btn-ghost" onClick={() => navigate('/login?side=creator')}>
               <LogIn />
               I Have an Account
             </button>

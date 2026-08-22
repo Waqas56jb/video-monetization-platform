@@ -89,7 +89,7 @@ export default function MobileMenu({ open, onClose }) {
             <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
               Log in
             </button>
-            <button type="button" className="btn btn-gold btn-block" onClick={() => goTo('/signup')}>
+            <button type="button" className="btn btn-gold btn-block" onClick={() => goTo('/signup?side=creator')}>
               Start Creating
             </button>
           </>

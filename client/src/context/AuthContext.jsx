@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api, { saveSession, clearSession, getAccessToken, onSessionExpired } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
+import { getAccountSide, setAccountSide as persistAccountSide, panelRoleFor } from '@/lib/accountSide'
 
 /**
  * The real signed-in user, from the backend.
@@ -34,19 +35,27 @@ export function useRole() {
   const ctx = useAuth()
   return {
     ...ctx,
-    role: ctx.user?.role || 'viewer',
+    role: ctx.role || 'viewer',
     authed: Boolean(ctx.user),
-    isCreator: ctx.user?.role === 'creator' || ctx.user?.role === 'admin',
-    isAdmin: ctx.user?.role === 'admin',
+    isCreator: ctx.isCreator,
+    isAdmin: ctx.isAdmin,
   }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [creator, setCreator] = useState(null)
+  const [accountSide, setSideState] = useState(() => getAccountSide())
   const [loading, setLoading] = useState(Boolean(getAccessToken()))
   const navigate = useNavigate()
   const showToast = useToast()
+
+  const switchSide = useCallback((side) => {
+    const next = side === 'creator' ? 'creator' : 'viewer'
+    persistAccountSide(next)
+    setSideState(next)
+    return next
+  }, [])
 
   /** Re-read the profile from the server. */
   const reload = useCallback(async () => {
@@ -95,31 +104,35 @@ export function AuthProvider({ children }) {
     [navigate, showToast]
   )
 
-  const signIn = useCallback(async ({ email, password }) => {
+  const signIn = useCallback(async ({ email, password, side }) => {
     setLoading(true)
     try {
       const data = await api.auth.login({
         email: String(email || '').trim().toLowerCase(),
         password,
+        side: side === 'creator' ? 'creator' : 'viewer',
       })
       saveSession(data.session)
       setUser(data.user)
       setCreator(data.creator || null)
+      switchSide(data.side || side || 'viewer')
       return data.user
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [switchSide])
 
   const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {
-    const data = await api.auth.register({ email, password, fullName, phone, role })
+    const wanted = role === 'creator' ? 'creator' : 'viewer'
+    const data = await api.auth.register({ email, password, fullName, phone, role: wanted })
     if (data.session) {
       saveSession(data.session)
       setUser(data.user)
       await reload()
     }
+    switchSide(data.side || wanted)
     return data
-  }, [reload])
+  }, [reload, switchSide])
 
   const signOut = useCallback(async () => {
     try {
@@ -145,15 +158,21 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
+  const accountRole = user?.role || 'viewer'
+  const panelRole = panelRoleFor(accountRole, accountSide)
+
   const value = useMemo(
     () => ({
       user,
       creator,
       loading,
       authed: Boolean(user),
-      role: user?.role || 'viewer',
-      isCreator: user?.role === 'creator' || user?.role === 'admin',
-      isAdmin: user?.role === 'admin',
+      role: panelRole,
+      accountRole,
+      accountSide,
+      setAccountSide: switchSide,
+      isCreator: accountRole === 'creator' || accountRole === 'admin',
+      isAdmin: accountRole === 'admin',
       signIn,
       signUp,
       signOut,
@@ -161,7 +180,21 @@ export function AuthProvider({ children }) {
       updateProfile,
       reload,
     }),
-    [user, creator, loading, signIn, signUp, signOut, becomeCreator, updateProfile, reload]
+    [
+      user,
+      creator,
+      loading,
+      panelRole,
+      accountRole,
+      accountSide,
+      switchSide,
+      signIn,
+      signUp,
+      signOut,
+      becomeCreator,
+      updateProfile,
+      reload,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

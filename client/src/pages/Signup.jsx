@@ -6,20 +6,21 @@ import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
+import { dashboardPath, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
 const ROLES = [
   { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
-  { value: 'apply', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
+  { value: 'creator', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
 ]
 
 export default function Signup() {
   const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
-  const { signUp, authed, loading: authLoading } = useAuth()
+  const { signUp, authed, loading: authLoading, user, isCreator, setAccountSide } = useAuth()
 
-  const [role, setRole] = useState('viewer')
+  const [role, setRole] = useState(() => sideFromSearch(location.search) || 'viewer')
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -31,9 +32,17 @@ export default function Signup() {
   /** Whatever they were doing before being asked to make an account. */
   const next = nextFrom(location)
 
+  /**
+   * Already signed in: open the side they picked if they already have it.
+   * A viewer opening Create stays on the form so the same email can attach
+   * the creator side.
+   */
   useEffect(() => {
-    if (!authLoading && authed) navigate(next || '/dashboard', { replace: true })
-  }, [authed, authLoading, navigate, next])
+    if (authLoading || !authed) return
+    if (role === 'creator' && !isCreator) return
+    setAccountSide(role)
+    navigate(next || dashboardPath(role), { replace: true })
+  }, [authed, authLoading, isCreator, navigate, next, role, setAccountSide])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -54,34 +63,34 @@ export default function Signup() {
     setBusy(true)
     setError(null)
     try {
-      const result = await signUp({ ...form, fullName, phone, email, password, role: 'viewer' })
+      const wanted = role === 'creator' ? 'creator' : 'viewer'
+      const result = await signUp({ ...form, fullName, phone, email, password, role: wanted })
 
-      const afterSignup =
-        role === 'apply' ? '/dashboard?tab=become' : next || '/dashboard'
+      const afterSignup = next || dashboardPath(wanted)
 
-      // The project may still require an emailed confirmation link. Say so
-      // plainly rather than appearing to sign them in and failing.
       if (result.needsEmailConfirmation) {
         setConfirmSent(true)
         setBusy(false)
         return
       }
 
-      /**
-       * The account exists but signing them in did not work — a rate limit, or
-       * the auth service having a moment. Send them to log in rather than
-       * leaving them on a form that would now tell them the email is taken.
-       */
       if (result.signInFailed || !result.session) {
         showToast(result.message || 'Account created — please log in')
-        timer.current = setTimeout(() => navigate(authUrl('login', afterSignup), { replace: true }), 900)
+        timer.current = setTimeout(
+          () => navigate(authUrl('login', afterSignup, { side: wanted }), { replace: true }),
+          900
+        )
         return
       }
 
       showToast(
-        role === 'apply'
-          ? 'Account created. Apply to become a creator — an admin will review it.'
-          : `🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`
+        wanted === 'creator'
+          ? result.attached
+            ? `Creator side is ready, ${result.user.fullName || result.user.email}.`
+            : `Creator account created — karibu, ${result.user.fullName || result.user.email}!`
+          : result.attached
+            ? `Viewer side is open, ${result.user.fullName || result.user.email}.`
+            : `🎉 Karibu MTONYO+, ${result.user.fullName || result.user.email}!`
       )
       timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
     } catch (err) {
@@ -131,23 +140,43 @@ export default function Signup() {
           </>
         ),
         heading: (
-          <>
-            Get paid before
-            <br />
-            you go free.
-          </>
+          role === 'creator' ? (
+            <>
+              Get paid before
+              <br />
+              you go free.
+            </>
+          ) : (
+            <>
+              Watch first.
+              <br />
+              Pay only if you want more.
+            </>
+          )
         ),
-        text: 'Create your free account, upload your first video, set your price — and start receiving M-Pesa payments today.',
+        text:
+          role === 'creator'
+            ? 'Create your studio, upload your first video, set your price — and start receiving payments.'
+            : 'Create a free viewer account. The same email can open a creator studio later.',
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={
         <>
-          Create your <span className="brand-accent">free account</span>
+          Create your <span className="brand-accent">{role === 'creator' ? 'creator' : 'viewer'} account</span>
         </>
       }
-      subtitle="Watch for free. Creating on MTONYO+ needs an application an admin approves."
+      subtitle="Watch and Create are different sides. The same email can open both."
     >
       <RoleToggle options={ROLES} value={role} onChange={setRole} />
+
+      {authed && !isCreator && role === 'creator' && (
+        <div className="notice" style={{ marginBottom: 18 }}>
+          <span>
+            You are signed in as <b>{user?.email}</b>. Use the same password to open the
+            creator side on this email.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={onSubmit} noValidate>
         {error && (
@@ -220,12 +249,18 @@ export default function Signup() {
 
         <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           <Rocket />
-          {busy ? 'Creating your account…' : 'Create Account'}
+          {busy
+            ? role === 'creator'
+              ? 'Opening your studio…'
+              : 'Creating your account…'
+            : role === 'creator'
+              ? 'Create Creator Account'
+              : 'Create Viewer Account'}
         </button>
       </form>
 
       <div className="auth-alt">
-        Already have an account? <Link to={authUrl('login', next)}>Log in</Link>
+        Already have an account? <Link to={authUrl('login', next, { side: role })}>Log in</Link>
       </div>
     </AuthLayout>
   )

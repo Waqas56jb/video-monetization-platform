@@ -53,7 +53,7 @@ const GROUPS = [
 export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role, signOut } = useRole()
+  const { role, signOut, isCreator, accountSide, setAccountSide } = useRole()
   const [signingOut, setSigningOut] = useState(false)
   // Staff who open the public app get the creator menu, not an empty sidebar.
   /**
@@ -97,7 +97,7 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
           i.roles.includes(menuRole) &&
           /* Not for staff. Taking it would set their role to `creator` and
              quietly strip the sub-admin access they were given. */
-          !(i.tab === 'become' && role === 'sub_admin')
+          !(i.tab === 'become' && (role === 'sub_admin' || isCreator))
       ),
     }))
     // A group whose every item was filtered out should not leave a heading
@@ -145,6 +145,20 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
         ))}
 
         <div className="side-foot">
+          {isCreator && (
+            <button
+              className="side-link"
+              type="button"
+              onClick={() => {
+                const next = accountSide === 'creator' ? 'viewer' : 'creator'
+                setAccountSide(next)
+                onTab(next === 'creator' ? 'overview' : 'library')
+              }}
+            >
+              <Icon name={accountSide === 'creator' ? 'user' : 'video'} />
+              Open {accountSide === 'creator' ? 'Viewer' : 'Creator'} side
+            </button>
+          )}
           <button className="side-link" onClick={logout} disabled={signingOut}>
             <Icon name="log-out" />
             {signingOut ? 'Signing out…' : 'Log out'}

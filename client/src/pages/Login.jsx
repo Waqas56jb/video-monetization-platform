@@ -2,17 +2,25 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, Sparkles } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
+import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
+import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
+
+const ROLES = [
+  { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
+  { value: 'creator', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
+]
 
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
-  const { signIn, authed, loading: authLoading } = useAuth()
+  const { signIn, authed, loading: authLoading, setAccountSide, user } = useAuth()
 
+  const [side, setSide] = useState(() => sideFromSearch(location.search) || getAccountSide())
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -31,8 +39,11 @@ export default function Login() {
   // destination on the way past, which is how a viewer trying to unlock a video
   // ended up on the dashboard instead.
   useEffect(() => {
-    if (!authLoading && authed) navigate(next || '/dashboard', { replace: true })
-  }, [authed, authLoading, navigate, next])
+    if (!authLoading && authed) {
+      setAccountSide(side)
+      navigate(next || dashboardPath(panelRoleFor(user?.role, side)), { replace: true })
+    }
+  }, [authed, authLoading, navigate, next, setAccountSide, side, user?.role])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -63,9 +74,9 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      const user = await signIn({ email, password })
+      const user = await signIn({ email, password, side })
       showToast(`Karibu tena, ${user.fullName || user.email}!`)
-      navigate(next || '/dashboard', { replace: true })
+      navigate(next || dashboardPath(side), { replace: true })
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -82,13 +93,24 @@ export default function Login() {
           </>
         ),
         heading: (
-          <>
-            Your library is
-            <br />
-            waiting for you.
-          </>
+          side === 'creator' ? (
+            <>
+              Your studio is
+              <br />
+              waiting for you.
+            </>
+          ) : (
+            <>
+              Your library is
+              <br />
+              waiting for you.
+            </>
+          )
         ),
-        text: "Every video you've purchased stays in your library. Log in from any device — your content follows you.",
+        text:
+          side === 'creator'
+            ? 'Log in on the Create side to upload, price, and earn. The same email also has a Watch side.'
+            : 'Every video you have purchased stays in your library. The same email can also open a creator studio.',
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={
@@ -96,8 +118,10 @@ export default function Login() {
           Log in to <span className="brand-accent">MTONYO+</span>
         </>
       }
-      subtitle="Enter your details to continue watching & earning."
+      subtitle="Choose Watch or Create, then enter the same email and password."
     >
+      <RoleToggle options={ROLES} value={side} onChange={setSide} />
+
       <form onSubmit={onSubmit} noValidate>
         {expired && (
           <div className="form-error" role="status">
@@ -143,13 +167,13 @@ export default function Login() {
 
         <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           <LogIn />
-          {busy ? 'Signing in…' : 'Log In'}
+          {busy ? 'Signing in…' : side === 'creator' ? 'Log in as Creator' : 'Log in as Viewer'}
         </button>
       </form>
 
       <div className="divider">NEW TO MTONYO+?</div>
 
-      <button className="btn btn-ghost btn-block" onClick={() => navigate(authUrl('signup', next))} disabled={busy}>
+      <button className="btn btn-ghost btn-block" onClick={() => navigate(authUrl('signup', next, { side }))} disabled={busy}>
         <Sparkles />
         Create Free Account
       </button>

@@ -199,7 +199,7 @@ export default function Hero() {
               <span className="btn-label-full">Watch Content</span>
               <span className="btn-label-short">Watch</span>
             </button>
-            <button className="btn btn-ghost btn-strong" onClick={() => navigate('/signup')}>
+            <button className="btn btn-ghost btn-strong" onClick={() => navigate('/signup?side=creator')}>
               <Rocket />
               <span className="btn-label-full">Start Creating</span>
               <span className="btn-label-short">Create</span>

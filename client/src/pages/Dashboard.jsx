@@ -88,7 +88,9 @@ export default function Dashboard() {
    * Derived rather than stored, so a role change cannot strand somebody on a
    * tab they may no longer open — the fallback is simply computed again.
    */
-  const allowed = TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer
+  const allowed = (TABS_BY_ROLE[safeRole] || TABS_BY_ROLE.viewer).filter(
+    (t) => !(t === 'become' && isCreator)
+  )
   const home = HOME_TAB[safeRole] || 'library'
   const requested = params.get('tab')
   const denied = Boolean(requested) && !allowed.includes(requested)
@@ -182,7 +184,7 @@ export default function Dashboard() {
                 )}
                 <div className="dash-avatar-meta">
                   <b>{user?.fullName || user?.email || 'Your account'}</b>
-                  <small>{isCreator ? 'Creator Account' : 'Viewer Account'}</small>
+                  <small>{role === 'creator' || role === 'admin' ? 'Creator Account' : 'Viewer Account'}</small>
                 </div>
               </div>
             </div>
