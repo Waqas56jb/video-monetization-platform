@@ -10,6 +10,7 @@ import { env, capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
 import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable, lastReadMiss } from '../lib/shareCardCache.js'
+import { recordCrawlerHit } from '../lib/crawlerLog.js'
 import { publicOgCardUrl, publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { log } from '../lib/logger.js'
 
@@ -383,6 +384,19 @@ async function sendShareCard(req, res) {
   }
   res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.set('Content-Disposition', 'inline; filename="poster.jpg"')
+
+  // Who fetched the poster, and how long it took them to be served.
+  recordCrawlerHit({
+    asset: 'image',
+    slug,
+    queryString: req.originalUrl.split('?')[1] || null,
+    userAgent: req.get('user-agent'),
+    status: 200,
+    ms: Date.now() - started,
+    cache: cached ? 'hit' : 'miss',
+    region: process.env.VERCEL_REGION || null,
+  })
+
   res.send(card)
 }
 
@@ -479,6 +493,36 @@ router.get(
       res.write(Buffer.from(value))
     }
     res.end()
+  })
+)
+
+/**
+ * The Open Graph document is served by a function in the frontend project,
+ * which has no database connection, so it reports its crawler hits here.
+ *
+ * Deliberately unauthenticated: it is called by our own edge function on
+ * every preview crawl, and adding a secret would mean putting one in the
+ * frontend's environment for no protection worth having. Nothing here is
+ * read back into the product — it is a log staff can query — and every field
+ * is length-capped and the asset type is constrained, so the worst a stranger
+ * can do is add rows to a table nobody makes decisions from without looking.
+ */
+router.post(
+  '/crawl-hit',
+  asyncHandler(async (req, res) => {
+    const b = req.body || {}
+    recordCrawlerHit({
+      asset: 'html',
+      slug: b.slug,
+      queryString: b.query,
+      userAgent: b.userAgent,
+      status: b.status,
+      ms: b.ms,
+      cache: b.cache,
+      region: b.region,
+    })
+    // Answer immediately; the caller must never wait on telemetry.
+    res.status(202).end()
   })
 )
 

@@ -63,6 +63,41 @@ async function loadVideo(slug) {
   return hit?.video || null
 }
 
+
+/**
+ * Tell the API who just asked for a preview.
+ *
+ * This function runs in the frontend Vercel project and has no database, so
+ * the record is posted across. Fire and forget on purpose: the crawler is
+ * answered first and never waits on this, and a telemetry failure must not
+ * become a preview failure.
+ *
+ * The point is to learn what WhatsApp actually does — crawl on paste or on
+ * send, once or repeatedly, and whether the Android, iOS and Web clients
+ * behave alike — rather than continuing to infer it from curl.
+ */
+function reportCrawl(req, { slug, status, ms }) {
+  try {
+    const body = JSON.stringify({
+      slug,
+      query: (req.url || '').split('?')[1] || null,
+      userAgent: req.headers['user-agent'] || null,
+      status,
+      ms,
+      region: process.env.VERCEL_REGION || null,
+    })
+    fetch(`${API}/api/share/crawl-hit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body,
+      // Never let this hold the response open.
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => {})
+  } catch {
+    /* telemetry is never worth an error */
+  }
+}
+
 export default async function handler(req, res) {
   const started = Date.now()
   const host = req.headers['x-forwarded-host'] || req.headers.host
@@ -99,6 +134,7 @@ export default async function handler(req, res) {
     console.log(
       `og-html slug=${publicSlug} status=200 ms=${Date.now() - started} kind=${bot ? 'bot' : 'cors'}`
     )
+    reportCrawl(req, { slug: publicSlug, status: 200, ms: Date.now() - started })
     res.status(200)
     return res.end(crawlerDocument({ canonical, title, description, image }))
   }
