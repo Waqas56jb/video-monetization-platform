@@ -55,6 +55,41 @@ async function fetchPoster(slug) {
   return hit?.poster || null
 }
 
+
+/**
+ * Report who fetched the poster.
+ *
+ * The API cannot tell: this function proxies the image, so by the time the
+ * request reaches the API the User-Agent is this proxy's, not WhatsApp's, and
+ * every poster fetch was being classified as an ordinary visitor and dropped.
+ * Whether WhatsApp actually fetched the image, and when relative to the HTML,
+ * is half the question being investigated — so it is reported from here,
+ * where the real User-Agent still exists.
+ *
+ * Fire and forget: the crawler is answered first and never waits on this.
+ */
+function reportImageCrawl(req, { slug, status, ms, cache }) {
+  try {
+    fetch(`${API}/api/share/crawl-hit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        asset: 'image',
+        slug,
+        query: (req.url || '').split('?')[1] || null,
+        userAgent: req.headers['user-agent'] || null,
+        status,
+        ms,
+        cache,
+        region: process.env.VERCEL_REGION || null,
+      }),
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => {})
+  } catch {
+    /* telemetry is never worth an error */
+  }
+}
+
 export default async function handler(req, res) {
   const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
   const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
@@ -83,6 +118,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.setHeader('Content-Disposition', 'inline; filename="poster.jpg"')
+  reportImageCrawl(req, {
+    slug,
+    status: 200,
+    ms: Date.now() - started,
+    cache: res.getHeader('X-OG-Cache') || null,
+  })
   res.status(200)
   return res.end(poster.buf)
 }

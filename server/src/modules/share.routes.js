@@ -512,7 +512,9 @@ router.post(
   asyncHandler(async (req, res) => {
     const b = req.body || {}
     recordCrawlerHit({
-      asset: 'html',
+      // The caller says which half of the chain it is; the poster is reported
+      // by the frontend's image proxy, where the real User-Agent still exists.
+      asset: b.asset === 'image' ? 'image' : 'html',
       slug: b.slug,
       queryString: b.query,
       userAgent: b.userAgent,
