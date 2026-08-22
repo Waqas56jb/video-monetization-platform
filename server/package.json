@@ -19,6 +19,8 @@
     "db:setup": "node src/cli/db.js setup",
     "cron:premieres": "node src/cli/cron.js premieres",
     "smoke": "node src/cli/smoke.js",
+    "unfurl:setup": "node src/cli/unfurl.js setup",
+    "unfurl:report": "node src/cli/unfurl.js report",
     "admin:create": "node src/cli/admin.js create",
     "admin:promote": "node src/cli/admin.js promote",
     "admin:list": "node src/cli/admin.js list",
