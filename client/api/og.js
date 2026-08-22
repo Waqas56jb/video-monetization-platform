@@ -19,6 +19,8 @@ const API =
   process.env.API_URL ||
   'https://video-monetization-platform-backend.vercel.app'
 
+import { startReport, settleReport } from './_lib/report.js'
+
 const posterMemo = new Map()
 const POSTER_MEMO_MS = 24 * 60 * 60 * 1000
 
@@ -59,40 +61,6 @@ async function fetchPoster(slug) {
 }
 
 
-/**
- * Report who fetched the poster.
- *
- * The API cannot tell: this function proxies the image, so by the time the
- * request reaches the API the User-Agent is this proxy's, not WhatsApp's, and
- * every poster fetch was being classified as an ordinary visitor and dropped.
- * Whether WhatsApp actually fetched the image, and when relative to the HTML,
- * is half the question being investigated — so it is reported from here,
- * where the real User-Agent still exists.
- *
- * Fire and forget: the crawler is answered first and never waits on this.
- */
-function reportImageCrawl(req, { slug, status, ms, cache }) {
-  try {
-    fetch(`${API}/api/share/crawl-hit`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        asset: 'image',
-        slug,
-        query: (req.url || '').split('?')[1] || null,
-        userAgent: req.headers['user-agent'] || null,
-        status,
-        ms,
-        cache,
-        region: process.env.VERCEL_REGION || null,
-      }),
-      signal: AbortSignal.timeout(2000),
-    }).catch(() => {})
-  } catch {
-    /* telemetry is never worth an error */
-  }
-}
-
 export default async function handler(req, res) {
   const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
   const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
@@ -102,10 +70,21 @@ export default async function handler(req, res) {
     return res.end()
   }
 
+  /**
+   * The API cannot record this one itself: this handler proxies the image, so
+   * by the time the request reaches the API the User-Agent is this proxy's and
+   * every poster fetch looked like an ordinary visitor. Whether WhatsApp
+   * fetches the card at all, and when relative to the document, is half the
+   * question -- so it is reported from here, where the real caller is still
+   * visible, and started before the fetch so it costs nothing.
+   */
+  const pending = startReport(API, req, { asset: 'image', slug })
+
   const started = Date.now()
   const poster = await fetchPoster(slug)
   if (!poster) {
     console.log(`og-jpeg slug=${slug} status=404 ms=${Date.now() - started}`)
+    await settleReport(pending)
     res.status(404)
     return res.end()
   }
@@ -124,12 +103,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
   res.setHeader('Content-Disposition', 'inline; filename="poster.jpg"')
-  reportImageCrawl(req, {
-    slug,
-    status: 200,
-    ms: Date.now() - started,
-    cache: res.getHeader('X-OG-Cache') || null,
-  })
+  await settleReport(pending)
   res.status(200)
   return res.end(poster.buf)
 }

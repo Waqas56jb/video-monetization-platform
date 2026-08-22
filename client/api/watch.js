@@ -20,6 +20,7 @@ import {
   experimentToken,
   withToken,
 } from './_lib/ogDocument.js'
+import { startReport, settleReport } from './_lib/report.js'
 
 /**
  * Which commit is actually serving this.
@@ -75,46 +76,23 @@ async function loadVideo(slug) {
 }
 
 
-/**
- * Tell the API who just asked for a preview.
- *
- * This function runs in the frontend Vercel project and has no database, so
- * the record is posted across. Fire and forget on purpose: the crawler is
- * answered first and never waits on this, and a telemetry failure must not
- * become a preview failure.
- *
- * The point is to learn what WhatsApp actually does — crawl on paste or on
- * send, once or repeatedly, and whether the Android, iOS and Web clients
- * behave alike — rather than continuing to infer it from curl.
- */
-function reportCrawl(req, { slug, status, ms }) {
-  try {
-    const body = JSON.stringify({
-      slug,
-      query: (req.url || '').split('?')[1] || null,
-      userAgent: req.headers['user-agent'] || null,
-      status,
-      ms,
-      region: process.env.VERCEL_REGION || null,
-    })
-    fetch(`${API}/api/share/crawl-hit`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body,
-      // Never let this hold the response open.
-      signal: AbortSignal.timeout(2000),
-    }).catch(() => {})
-  } catch {
-    /* telemetry is never worth an error */
-  }
-}
-
 export default async function handler(req, res) {
   const started = Date.now()
   const host = req.headers['x-forwarded-host'] || req.headers.host
   const proto = req.headers['x-forwarded-proto'] || 'https'
   const origin = `${proto}://${host}`
   const requested = slugFrom(req)
+
+  /**
+   * Started here, deliberately, so it overlaps the video lookup below rather
+   * than being tacked on at the end where the function freezes underneath it.
+   * Only unfurl fetches are reported; people are the overwhelming majority of
+   * this route's traffic and are not what the table is for.
+   */
+  const pending = isUnfurlFetch(req)
+    ? startReport(API, req, { asset: 'html', slug: requested })
+    : null
+
   const video = await loadVideo(requested)
   const publicSlug = video?.slug || requested
   const path = canonicalWatchPath(publicSlug)
@@ -144,13 +122,14 @@ export default async function handler(req, res) {
       console.log(
         `og-html slug=${requested || 'empty'} status=404 ms=${Date.now() - started} kind=unfurl`
       )
+      await settleReport(pending)
       res.status(404)
       return res.end(notFoundDocument())
     }
     console.log(
       `og-html slug=${publicSlug} status=200 ms=${Date.now() - started} kind=${bot ? 'bot' : 'cors'}`
     )
-    reportCrawl(req, { slug: publicSlug, status: 200, ms: Date.now() - started })
+    await settleReport(pending)
     res.status(200)
     return res.end(crawlerDocument({ canonical, title, description, image }))
   }
