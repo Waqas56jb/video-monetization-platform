@@ -22,7 +22,22 @@ import { getSettings } from './services/settings.js'
 
 const app = express()
 
+/**
+ * Which commit is answering.
+ *
+ * This project has twice lost an hour to a fault chased in code production was
+ * not running: the frontend deployed, the backend did not, and the old build
+ * kept answering plausibly. The most recent time, telemetry rows arrived with
+ * the wrong asset type for exactly that reason. One header ends that class of
+ * confusion, so it is on every response.
+ */
+const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
+
 app.set('trust proxy', 1)
+app.use((req, res, next) => {
+  res.setHeader('X-Build', BUILD)
+  next()
+})
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
 /**
