@@ -94,8 +94,16 @@ async function setup() {
 
   console.log(`  Facebook Sharing Debugger, for arm C only:`)
   console.log(`  https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(watchUrl(token('C', stamp)))}\n`)
-  console.log(`  Then send each of the four from WhatsApp Web -- paste, send immediately,`)
-  console.log(`  and write down whether the recipient got a card or a bare link.`)
+  console.log(`  Then, from WhatsApp Web, for A, C and D:`)
+  console.log(`    paste, send immediately, note card or bare link, note the time.`)
+  console.log(``)
+  console.log(`  B is different, and the difference is the whole point of B:`)
+  console.log(`    paste it, wait for the card to appear, then close that compose`)
+  console.log(`    box without sending. Open a new one, paste the same URL, send`)
+  console.log(`    at once. B asks whether a preview WhatsApp has already built`)
+  console.log(`    once is attached to a later immediate send -- not whether`)
+  console.log(`    waiting works, which we already know it does.`)
+  console.log(``)
   console.log(`  Afterwards: npm run unfurl:report\n`)
 }
 
