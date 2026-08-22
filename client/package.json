@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test src/lib/shareRules.test.js src/styles/global.test.js api/_lib/ogDocument.test.js"
+    "test": "node --test src/lib/shareRules.test.js src/lib/resumePoint.test.js src/styles/global.test.js api/_lib/ogDocument.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.462.0",

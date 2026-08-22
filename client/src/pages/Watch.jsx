@@ -24,6 +24,7 @@ import MoreLikeThis from '@/components/watch/MoreLikeThis'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
+import { resumePoint } from '@/lib/resumePoint'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
@@ -315,16 +316,15 @@ export default function Watch() {
   }, [v?.id])
 
   const onUnlocked = useCallback(() => {
-    const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
-    const previewHadEnded = previewOver
-    let from = Math.max(0, Number(watchedTo.current) || 0, recallProgress(videoId))
-    /**
-     * The preview clip often jumps currentTime back to 0 when it ends or is
-     * paused at the paywall. Paying then looked like a restart. If they had
-     * already used the preview (or the player reset), pick up at the stop.
-     */
-    if (from < 2 && stopsAt > 2 && previewHadEnded) from = stopsAt
-    if (from < 2 && stopsAt > 2 && watchedTo.current >= stopsAt - 1.5) from = stopsAt
+    /* The rule itself lives in resumePoint, with the client's exact report
+       written down as a test. Keeping it there means the behaviour they
+       disputed cannot be changed by accident. */
+    const from = resumePoint({
+      watchedTo: watchedTo.current,
+      remembered: recallProgress(videoId),
+      stopsAt: Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0),
+      previewEnded: previewOver,
+    })
     watchedTo.current = from
     rememberProgress(videoId, from, { force: true })
 
