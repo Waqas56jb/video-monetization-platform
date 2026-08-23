@@ -9,9 +9,10 @@ import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
-import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable, lastReadMiss } from '../lib/shareCardCache.js'
-import { recordCrawlerHit } from '../lib/crawlerLog.js'
-import { publicOgCardUrl, publicWatchUrl } from '../lib/publicWatchUrl.js'
+import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable } from '../lib/shareCardCache.js'
+import { publicWatchUrl } from '../lib/publicWatchUrl.js'
+import { shareSourceKey, shareCardUrl } from '../lib/shareMeta.js'
+import { handleShareCard } from '../lib/shareCardServe.js'
 import { log } from '../lib/logger.js'
 
 const router = Router()
@@ -64,7 +65,8 @@ router.get(
     const text = video.creator_name
       ? `${title} by ${video.creator_name}. Watch the free preview on MTONYO+.`
       : `Watch the free preview of "${title}" on MTONYO+.`
-    const cardUrl = publicOgCardUrl(env.publicWebUrl, video.slug)
+    const sourceKey = shareSourceKey(video)
+    const cardUrl = shareCardUrl(video.slug, sourceKey)
 
     // The 60s promo clip, public so Instagram / TikTok can be handed a file.
     // WhatsApp still gets the watch URL only — attaching this MP4 there
@@ -119,8 +121,10 @@ router.get(
         description: video.description || null,
         creator: video.creator_name ? { name: video.creator_name } : null,
         thumbnailUrl: thumbnailFor(video),
+        sourceKey,
       },
       cardUrl,
+      sourceKey,
       deepLink,
       title,
       text,
@@ -336,72 +340,15 @@ export function queueMissingShareCards() {
   warmMissingShareCards({ limit: 6 }).catch(() => {})
 }
 
-const shortHash = (v) => {
-  const str = String(v ?? '')
-  if (!str) return 'none'
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
-  return (h >>> 0).toString(36)
+async function legacyShareCard(req, res) {
+  req.params = { slug: String(req.params.id || '').replace(/\.jpe?g$/i, '') }
+  return handleShareCard(req, res)
 }
 
-async function storedKeyFor(slug) {
-  try {
-    const row = await one('select source_key from share_card_cache where slug = $1', [slug])
-    return row?.source_key ?? null
-  } catch {
-    return null
-  }
-}
-
-async function sendShareCard(req, res) {
-  const id = String(req.params.id || '').replace(/\.jpe?g$/i, '')
-  if (!id || id === 'undefined' || id === 'null') throw notFound('Video not found')
-  const started = Date.now()
-  const video = await videoByKey(id)
-  if (!video) throw notFound('Video not found')
-  if (!(video.is_published && video.review_status === 'approved')) {
-    throw notFound('Video not found')
-  }
-
-  const slug = video.slug || String(video.id)
-  const key = cardSourceKey(video)
-  const cached = await readCachedCard(slug, key)
-  const card = cached || (await composeShareCard(video))
-  if (!card) throw notFound('No poster available')
-
-  log.info(
-    `og-card-http slug=${slug} cache=${cached ? 'hit' : 'miss'} ms=${Date.now() - started} status=200`
-  )
-  res.set('Content-Type', 'image/jpeg')
-  res.set('Access-Control-Allow-Origin', '*')
-  res.set('X-OG-Cache', cached ? 'hit' : 'miss')
-  /* When a card is rebuilt on every request, the only question worth asking is
-     what the two keys were. Short hashes, so a header cannot leak a title. */
-  res.set('X-OG-Key', shortHash(key))
-  if (!cached) {
-    res.set('X-OG-Stored-Key', shortHash(await storedKeyFor(slug)))
-    res.set('X-OG-Why', String(lastReadMiss ?? 'unknown'))
-  }
-  res.set('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
-  res.set('Content-Disposition', 'inline; filename="poster.jpg"')
-
-  // Who fetched the poster, and how long it took them to be served.
-  recordCrawlerHit({
-    asset: 'image',
-    slug,
-    queryString: req.originalUrl.split('?')[1] || null,
-    userAgent: req.get('user-agent'),
-    status: 200,
-    ms: Date.now() - started,
-    cache: cached ? 'hit' : 'miss',
-    region: process.env.VERCEL_REGION || null,
-  })
-
-  res.send(card)
-}
-
-router.get('/:id/card.jpg', asyncHandler(sendShareCard))
-router.get('/:id/card', asyncHandler(sendShareCard))
+router.get('/:id/card.jpg', asyncHandler(legacyShareCard))
+router.get('/:id/card', asyncHandler(legacyShareCard))
+router.head('/:id/card.jpg', asyncHandler(legacyShareCard))
+router.head('/:id/card', asyncHandler(legacyShareCard))
 
 router.post(
   '/warm-missing',

@@ -145,7 +145,10 @@ export default function Watch() {
    */
   useEffect(() => {
     if (!v?.slug) return
-    warmSharePreview(v.slug)
+    fetch(`${import.meta.env.VITE_API_URL || 'https://video-monetization-platform-server.vercel.app'}/api/public/videos/${encodeURIComponent(v.slug)}/share-meta`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((meta) => warmSharePreview(v.slug, meta?.sourceKey))
+      .catch(() => warmSharePreview(v.slug))
   }, [v?.slug])
 
   useEffect(() => {
@@ -723,7 +726,10 @@ export default function Watch() {
               )}
               <button
                 className="btn btn-ghost btn-sm"
-                onPointerEnter={() => v?.slug && warmSharePreview(v.slug)}
+                onPointerEnter={() => {
+                  if (!v?.slug) return
+                  warmSharePreview(v.slug, v.sourceKey)
+                }}
                 onClick={() => setSharing(true)}
               >
                 <Share2 />

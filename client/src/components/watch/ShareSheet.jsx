@@ -32,13 +32,14 @@ import {
   tiktokHref,
 } from '@/lib/socialShare'
 import { prepareShareCard, waitForShareCard } from '@/lib/warmShare'
-import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
+import { shareWatchUrl, nativeShareData } from '@/lib/watchUrl'
 import { whatsappIsPhone } from '@/lib/whatsappShare'
+import { DEPLOY } from '@/lib/deployUrls'
 
-async function warmBeforeSend(slug, setHint, setCardReady) {
+async function warmBeforeSend(slug, sourceKey, setHint, setCardReady) {
   if (!slug) return false
   setHint?.('Preparing your share card…')
-  const ok = await waitForShareCard(slug, 4000)
+  const ok = await waitForShareCard(slug, sourceKey, 6000)
   if (ok) {
     setCardReady?.(true)
     setHint?.('Share card ready — recipients see the poster, title and preview button.')
@@ -115,6 +116,8 @@ export default function ShareSheet({ open, video, onClose }) {
   const [cardReady, setCardReady] = useState(false)
   const [waBusy, setWaBusy] = useState(false)
   const [fbBusy, setFbBusy] = useState(false)
+  const [shareEnabled, setShareEnabled] = useState(false)
+  const [sourceKey, setSourceKey] = useState(video?.sourceKey || null)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
@@ -122,11 +125,13 @@ export default function ShareSheet({ open, video, onClose }) {
   useLockBodyScroll(open)
 
   const slug = video?.slug || ''
-  const url = canonicalWatchUrl(video)
-  const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
-  /* Film frame + overlays, as in the client's mock — not the burned JPEG. */
+  const shareUrl = shareWatchUrl(video, undefined, sourceKey)
+  const serverCard =
+    slug && sourceKey
+      ? `${DEPLOY.api}/api/share-card/${encodeURIComponent(slug)}.jpg?v=${encodeURIComponent(sourceKey)}`
+      : ''
   const still = mediaUrl(video?.thumbnailUrl)
-  const posterSrc = cardReady && ogCard ? ogCard : still
+  const posterSrc = cardReady && serverCard ? serverCard : still
   const creator = video?.creator?.name
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
@@ -146,6 +151,8 @@ export default function ShareSheet({ open, video, onClose }) {
     setSaving(null)
     setPosterOn(false)
     setCardReady(false)
+    setShareEnabled(false)
+    setSourceKey(video?.sourceKey || null)
     setWaBusy(false)
     setFbBusy(false)
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -156,13 +163,21 @@ export default function ShareSheet({ open, video, onClose }) {
   useEffect(() => {
     if (!open || !slug) return
     let stop = false
-    prepareShareCard(slug).then((ready) => {
-      if (!stop) setCardReady(ready)
+    setShareEnabled(false)
+    const cap = setTimeout(() => {
+      if (!stop) setShareEnabled(true)
+    }, 6000)
+    prepareShareCard(slug, sourceKey).then((ready) => {
+      if (!stop) {
+        setCardReady(ready)
+        if (ready) setShareEnabled(true)
+      }
     })
     return () => {
       stop = true
+      clearTimeout(cap)
     }
-  }, [open, slug])
+  }, [open, slug, sourceKey])
 
   useEffect(() => {
     if (!open || !slug) return
@@ -185,6 +200,7 @@ export default function ShareSheet({ open, video, onClose }) {
         .then((body) => {
           if (stop) return
           setClip(body?.clip || null)
+          if (body?.sourceKey) setSourceKey(body.sourceKey)
           if (!body?.clip && !retry) retry = setTimeout(load, 4000)
         })
         .catch(() => {
@@ -205,12 +221,12 @@ export default function ShareSheet({ open, video, onClose }) {
   const copy = async () => {
     setProblem(null)
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2400)
-      waitForShareCard(slug, 5000).then((ok) => {
+      waitForShareCard(slug, sourceKey, 5000).then((ok) => {
         if (ok) setCardReady(true)
       })
     } catch {
@@ -223,9 +239,9 @@ export default function ShareSheet({ open, video, onClose }) {
     setWaBusy(true)
     setProblem(null)
     try {
-      await warmBeforeSend(slug, setHint, setCardReady)
-      await navigator.clipboard.writeText(url).catch(() => {})
-      const href = whatsappHref(url)
+      await warmBeforeSend(slug, sourceKey, setHint, setCardReady)
+      await navigator.clipboard.writeText(shareUrl).catch(() => {})
+      const href = whatsappHref(shareUrl, video.title, creator)
       const target = whatsappTarget()
       if (target === '_self') {
         window.location.href = href
@@ -237,7 +253,7 @@ export default function ShareSheet({ open, video, onClose }) {
           )
         }
       }
-      whatsappFallback(url)()
+      whatsappFallback(shareUrl, video.title, creator)()
     } finally {
       setWaBusy(false)
     }
@@ -248,9 +264,9 @@ export default function ShareSheet({ open, video, onClose }) {
     setFbBusy(true)
     setProblem(null)
     try {
-      await warmBeforeSend(slug, setHint, setCardReady)
-      await copyWatchUrl(url)
-      window.open(facebookHref(url), socialTarget(), 'noopener,noreferrer')
+      await warmBeforeSend(slug, sourceKey, setHint, setCardReady)
+      await copyWatchUrl(shareUrl)
+      window.open(facebookHref(shareUrl), socialTarget(), 'noopener,noreferrer')
       setHint('Facebook is opening — the link includes the poster card preview.')
     } finally {
       setFbBusy(false)
@@ -258,8 +274,8 @@ export default function ShareSheet({ open, video, onClose }) {
   }
 
   const launchSocial = (where) => {
-    copyWatchUrl(url)
-    waitForShareCard(slug, 2000).then((ok) => {
+    copyWatchUrl(shareUrl)
+    waitForShareCard(slug, sourceKey, 2000).then((ok) => {
       if (ok) setCardReady(true)
     })
     if (!saving) void saveClip(where)
@@ -313,7 +329,7 @@ export default function ShareSheet({ open, video, onClose }) {
     }
 
     try {
-      await navigator.clipboard.writeText(url).catch(() => {})
+      await navigator.clipboard.writeText(shareUrl).catch(() => {})
 
       let fileUrl = clip?.downloadUrl ? mediaUrl(clip.downloadUrl) : null
 
@@ -382,10 +398,10 @@ export default function ShareSheet({ open, video, onClose }) {
       setBusy(true)
       setProblem(null)
       try {
-        waitForShareCard(slug, 3000).then((ok) => {
+        waitForShareCard(slug, sourceKey, 3000).then((ok) => {
           if (ok) setCardReady(true)
         })
-        await navigator.share(nativeShareData(url))
+        await navigator.share(nativeShareData(shareUrl, video.title, creator))
         onClose()
       } catch (err) {
         if (err?.name !== 'AbortError') {
@@ -401,7 +417,7 @@ export default function ShareSheet({ open, video, onClose }) {
 
   const previewCard = () => {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (ogCard) window.open(ogCard, '_blank', 'noopener,noreferrer')
+    if (serverCard) window.open(serverCard, '_blank', 'noopener,noreferrer')
   }
 
   if (!open || !video) return null
@@ -492,7 +508,7 @@ export default function ShareSheet({ open, video, onClose }) {
             </p>
             <input
               className="share-link"
-              value={url}
+              value={shareUrl}
               readOnly
               onFocus={(e) => e.target.select()}
               aria-label="Share link"
@@ -505,7 +521,7 @@ export default function ShareSheet({ open, video, onClose }) {
           </p>
         )}
 
-        <button className="share-wa" type="button" onClick={shareWhatsApp} disabled={waBusy}>
+        <button className="share-wa" type="button" onClick={shareWhatsApp} disabled={waBusy || !shareEnabled}>
           {waBusy ? <Loader2 size={26} className="spin" /> : <IconWhatsApp size={26} />}
           <span className="share-wa-copy">
             <b>{waBusy ? 'Preparing card…' : 'Share on WhatsApp'}</b>
@@ -540,7 +556,7 @@ export default function ShareSheet({ open, video, onClose }) {
             className="share-target is-fb"
             type="button"
             onClick={shareFacebook}
-            disabled={fbBusy}
+            disabled={fbBusy || !shareEnabled}
           >
             {fbBusy ? <Loader2 size={22} className="spin" /> : <IconFacebook />}
             <b>Facebook</b>

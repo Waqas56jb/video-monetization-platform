@@ -1,10 +1,5 @@
 /**
- * Have the poster JPEG and OG HTML in the CDN *before* WhatsApp asks.
- *
- * WhatsApp Web only draws the card if HTML + JPEG return in a few hundred
- * milliseconds. First hit composes the JPEG (Cloudflare + Sharp) and that
- * takes longer than WhatsApp waits. We wait on a real 200 JPEG — not a
- * one-second timer — then hand WhatsApp a warm URL.
+ * Wait until the server has a built share-card JPEG (not the generic fallback).
  */
 import { DEPLOY } from '@/lib/deployUrls'
 
@@ -19,105 +14,85 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-/** True when a recent probe found JPEG + OG tags for this slug. */
+function cardHeadUrl(slug, sourceKey) {
+  const v = sourceKey ? `?v=${encodeURIComponent(sourceKey)}` : ''
+  return `${API}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
+}
+
+async function headBuilt(slug, sourceKey) {
+  try {
+    const r = await fetch(cardHeadUrl(slug, sourceKey), {
+      method: 'HEAD',
+      credentials: 'omit',
+    })
+    return r.ok && r.headers.get('x-share-card') === 'built'
+  } catch {
+    return false
+  }
+}
+
+async function probeHtml(slug) {
+  if (!slug || typeof window === 'undefined') return false
+  const page = `${window.location.origin}/watch/${encodeURIComponent(slug)}`
+  try {
+    const r = await fetch(page, { mode: 'cors', credentials: 'omit' })
+    if (!r.ok) return false
+    const html = await r.text()
+    return /property=["']og:image["']/i.test(html) && !/og:title" content="MTONYO\+ —/i.test(html)
+  } catch {
+    return false
+  }
+}
+
 export function isShareCardReady(slug) {
   return Boolean(slug && ready.has(slug))
 }
 
-function kickServerCompose(slug) {
-  if (!slug) return Promise.resolve()
-  return Promise.allSettled([
-    fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
-      headers: { Accept: 'application/json' },
-      credentials: 'omit',
-    }),
-    fetch(`${API}/api/share/${encodeURIComponent(slug)}/card.jpg`, {
-      credentials: 'omit',
-    }),
-  ])
-}
-
-async function probeCard(slug) {
-  if (!slug || typeof window === 'undefined') return false
-  const origin = window.location.origin
-  const card = `${origin}/og/card/${encodeURIComponent(slug)}.jpg`
-  const page = `${origin}/watch/${encodeURIComponent(slug)}`
-
-  const [imgRes, pageRes] = await Promise.all([
-    fetch(card, { mode: 'cors', credentials: 'omit' }),
-    fetch(page, { mode: 'cors', credentials: 'omit' }),
-  ])
-  if (!imgRes.ok) return false
-  const type = imgRes.headers.get('content-type') || ''
-  const bytes = await imgRes.arrayBuffer()
-  const html = pageRes.ok ? await pageRes.text() : ''
-  const jpegReady = bytes.byteLength > 2000 && /image\/jpeg/i.test(type)
-  const tagsReady = /property=["']og:image["']/i.test(html)
-  if (!jpegReady || !tagsReady) return false
-
-  await new Promise((resolve) => {
-    const im = new Image()
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
-      resolve()
-    }
-    im.onload = finish
-    im.onerror = finish
-    im.src = card
-    setTimeout(finish, 8000)
-  })
-  return true
-}
-
-export async function prepareShareCard(slug) {
+export async function prepareShareCard(slug, sourceKey) {
   if (!slug || slug === 'undefined' || typeof window === 'undefined') return false
-  if (ready.has(slug)) return true
-  const pending = inflight.get(slug)
+  const key = `${slug}:${sourceKey || ''}`
+  if (ready.has(key)) return true
+  const pending = inflight.get(key)
   if (pending) return pending
 
   const run = (async () => {
-    kickServerCompose(slug)
+    fetch(`${API}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
+      credentials: 'omit',
+    }).catch(() => {})
 
-    for (let i = 0; i < 10; i++) {
-      try {
-        if (await probeCard(slug)) {
-          ready.add(slug)
-          return true
-        }
-      } catch {
-        /* retry until the Postgres-backed JPEG exists */
+    for (let i = 0; i < 12; i++) {
+      if (await headBuilt(slug, sourceKey)) {
+        ready.add(key)
+        return true
       }
-      if (i === 2 || i === 5) kickServerCompose(slug)
+      if (i > 2 && (await probeHtml(slug))) {
+        ready.add(key)
+        return true
+      }
       await sleep(400)
     }
     return false
   })()
 
-  inflight.set(slug, run)
+  inflight.set(key, run)
   try {
     return await run
   } finally {
-    inflight.delete(slug)
+    inflight.delete(key)
   }
 }
 
-/**
- * Wait up to maxMs for the poster card. Used when the person taps Share on
- * WhatsApp — not when the sheet opens, which must stay instant.
- */
-export async function waitForShareCard(slug, maxMs = 4000) {
+export async function waitForShareCard(slug, sourceKey, maxMs = 6000) {
   if (!slug || typeof window === 'undefined') return false
-  if (ready.has(slug)) return true
-  const pending = inflight.get(slug) || prepareShareCard(slug)
-  return Promise.race([
-    pending,
-    sleep(maxMs).then(() => ready.has(slug)),
-  ])
+  const key = `${slug}:${sourceKey || ''}`
+  if (ready.has(key)) return true
+  const pending = inflight.get(key) || prepareShareCard(slug, sourceKey)
+  return Promise.race([pending, sleep(maxMs).then(() => ready.has(key))])
 }
 
-export function warmSharePreview(slug) {
-  if (!slug || ready.has(slug)) return
-  prepareShareCard(slug).catch(() => {})
+export function warmSharePreview(slug, sourceKey) {
+  if (!slug) return
+  const key = `${slug}:${sourceKey || ''}`
+  if (ready.has(key)) return
+  prepareShareCard(slug, sourceKey).catch(() => {})
 }

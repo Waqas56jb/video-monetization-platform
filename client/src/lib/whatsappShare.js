@@ -35,8 +35,11 @@ function isPhone() {
 export { isPhone as whatsappIsPhone }
 
 /** Where the WhatsApp button points on this device. */
-export function whatsappHref(watchUrl) {
-  const text = encodeURIComponent(watchUrl || '')
+export function whatsappHref(watchUrl, title, creator) {
+  const lines = []
+  if (title) lines.push(creator ? `${title} — ${creator}` : title)
+  if (watchUrl) lines.push(watchUrl)
+  const text = encodeURIComponent(lines.join('\n'))
   if (device() === 'phone') return `whatsapp://send?text=${text}`
   return `https://web.whatsapp.com/send?text=${text}`
 }
@@ -53,9 +56,12 @@ export function whatsappTarget() {
  * to the app scheme by the time this runs, so a device with WhatsApp
  * installed never sees the fallback.
  */
-export function whatsappFallback(watchUrl) {
+export function whatsappFallback(watchUrl, title, creator) {
   if (!isPhone()) return () => {}
-  const web = `https://web.whatsapp.com/send?text=${encodeURIComponent(watchUrl || '')}`
+  const lines = []
+  if (title) lines.push(creator ? `${title} — ${creator}` : title)
+  if (watchUrl) lines.push(watchUrl)
+  const web = `https://web.whatsapp.com/send?text=${encodeURIComponent(lines.join('\n'))}`
   return () => {
     let left = false
     const onHide = () => {

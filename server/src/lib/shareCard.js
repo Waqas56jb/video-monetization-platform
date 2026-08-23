@@ -164,7 +164,7 @@ export async function brandShareCard(posterBuf, { title, creator } = {}) {
     sharp(posterBuf)
       .rotate()
       .resize(W, H, { fit: 'cover', position: 'centre' })
-      .jpeg({ quality: 74, mozjpeg: true })
+      .jpeg({ quality: 78, mozjpeg: true, progressive: false, chromaSubsampling: '4:2:0' })
       .toBuffer()
 
   try {
@@ -174,10 +174,13 @@ export async function brandShareCard(posterBuf, { title, creator } = {}) {
       .rotate()
       .resize(W, H, { fit: 'cover', position: 'centre' })
       .composite([{ input: overlay, top: 0, left: 0 }])
-      .jpeg({ quality: 74, mozjpeg: true })
+      .jpeg({ quality: 78, mozjpeg: true, progressive: false, chromaSubsampling: '4:2:0' })
       .toBuffer()
-    if (out.length > 240_000) {
-      out = await sharp(out).jpeg({ quality: 68, mozjpeg: true }).toBuffer()
+    if (out.length > 280_000) {
+      out = await sharp(out).jpeg({ quality: 68, mozjpeg: true, progressive: false }).toBuffer()
+    }
+    if (out.length > 280_000) {
+      out = await sharp(out).jpeg({ quality: 58, mozjpeg: true, progressive: false }).toBuffer()
     }
     return out
   } catch (err) {

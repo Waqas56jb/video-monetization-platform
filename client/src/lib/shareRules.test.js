@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   canonicalWatchPath,
   canonicalWatchUrl,
+  shareWatchUrl,
   nativeShareData,
   videoRouteMatches,
   whatsappShareText,
@@ -29,20 +30,31 @@ test('route match accepts slug or id and rejects stale rows', () => {
   assert.equal(videoRouteMatches('other-title', video), false)
 })
 
-test('WhatsApp payload is the watch URL only', () => {
-  const url = `${ORIGIN}/watch/behind-the-fame-a-coast-documentary`
-  const text = whatsappShareText(url)
-  assert.equal(text, url)
-  assert.equal(text.includes('Watch this'), false)
+test('share URL adds cache-busting ?s= when sourceKey is set', () => {
+  const video = { slug: 'studio-session-track-4' }
+  assert.equal(
+    shareWatchUrl(video, ORIGIN, 'abc123'),
+    `${ORIGIN}/watch/studio-session-track-4?s=abc123`
+  )
+  assert.equal(canonicalWatchUrl(video, ORIGIN), `${ORIGIN}/watch/studio-session-track-4`)
+})
+
+test('WhatsApp payload puts the URL on its own line after title', () => {
+  const url = `${ORIGIN}/watch/behind-the-fame-a-coast-documentary?s=abc`
+  const text = whatsappShareText(url, 'Behind the Fame', 'Yasmin Chali')
+  assert.equal(text, `Behind the Fame — Yasmin Chali\n${url}`)
   assert.equal(text.endsWith('.mp4'), false)
 })
 
-test('More… payload is URL only with no files', () => {
-  const url = `${ORIGIN}/watch/live-at-arusha-full-set`
-  const data = nativeShareData(url)
-  assert.deepEqual(data, { url })
+test('More… payload includes title, text and url', () => {
+  const url = `${ORIGIN}/watch/live-at-arusha-full-set?s=x`
+  const data = nativeShareData(url, 'Live at Arusha', 'DJ Kibo')
+  assert.deepEqual(data, {
+    title: 'Live at Arusha',
+    text: 'Live at Arusha — DJ Kibo',
+    url,
+  })
   assert.equal('files' in data, false)
-  assert.equal('text' in data, false)
 })
 
 test('login next stays on the same video and encodes nested unlock', () => {

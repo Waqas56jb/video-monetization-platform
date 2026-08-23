@@ -4,29 +4,25 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/og.js": { "maxDuration": 30 },
-    "api/watch.js": { "maxDuration": 15 }
+    "api/watch.js": {
+      "maxDuration": 10,
+      "memory": 1024,
+      "includeFiles": "dist/**"
+    },
+    "api/og.js": { "maxDuration": 10 }
   },
   "rewrites": [
+    {
+      "source": "/watch/:slug",
+      "destination": "/api/watch?slug=:slug"
+    },
     {
       "source": "/og/card/:slug.jpg",
       "destination": "/api/og?slug=:slug.jpg"
     },
     {
-      "source": "/og/:slug.jpg",
-      "destination": "/api/og?slug=:slug.jpg"
-    },
-    {
-      "source": "/og/:slug",
-      "destination": "/api/og?slug=:slug"
-    },
-    {
       "source": "/s/:slug",
       "destination": "/api/watch?slug=:slug&share=1"
-    },
-    {
-      "source": "/watch/:slug",
-      "destination": "/api/watch?slug=:slug"
     },
     {
       "source": "/(.*)",
@@ -34,6 +30,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/watch/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
     {
       "source": "/og/(.*)",
       "headers": [

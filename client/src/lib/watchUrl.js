@@ -1,8 +1,8 @@
 /**
  * Canonical watch URL for share, copy and Open Graph.
  *
- * Always `/watch/{slug}` on the current origin. Never a UUID, never /s/,
- * never query junk — those are what WhatsApp shows as an "ugly link".
+ * og:url and canonical stay clean (/watch/{slug}). The ?s= query busts
+ * WhatsApp/Facebook cache when the poster or title changes.
  */
 export function canonicalWatchPath(video) {
   const slug = typeof video === 'string' ? video : video?.slug
@@ -21,6 +21,15 @@ export function canonicalWatchUrl(video, origin) {
   return `${base}${path}`
 }
 
+/** Share link with cache-busting source key (not used in og:url). */
+export function shareWatchUrl(video, origin, sourceKey) {
+  const base = canonicalWatchUrl(video, origin)
+  if (!base) return ''
+  const key = sourceKey || (typeof video === 'object' ? video?.sourceKey : null)
+  if (!key) return base
+  return `${base}?s=${encodeURIComponent(key)}`
+}
+
 /** True when the loaded video is the one the /watch/:videoId route asked for. */
 export function videoRouteMatches(idOrSlug, video) {
   if (!idOrSlug || !video) return false
@@ -28,12 +37,16 @@ export function videoRouteMatches(idOrSlug, video) {
   return key === video.slug || key === video.id
 }
 
-/** The only text WhatsApp should send. */
-export function whatsappShareText(watchUrl) {
-  return String(watchUrl || '').trim()
+export function whatsappShareText(watchUrl, title, creator) {
+  const url = String(watchUrl || '').trim()
+  if (!title) return url
+  const head = creator ? `${title} — ${creator}` : title
+  return `${head}\n${url}`
 }
 
-/** The only payload More… may send. Never attach the promo MP4. */
-export function nativeShareData(watchUrl) {
-  return { url: String(watchUrl || '') }
+/** Native share payload — URL carries the rich card. */
+export function nativeShareData(watchUrl, title, creator) {
+  const url = String(watchUrl || '')
+  const text = creator ? `${title || 'MTONYO+'} — ${creator}` : title || ''
+  return { title: title || 'MTONYO+', text, url }
 }

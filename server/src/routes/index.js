@@ -7,6 +7,9 @@ import paymentRoutes from '../modules/payments/payments.routes.js'
 import libraryRoutes from '../modules/library.routes.js'
 import earningsRoutes from '../modules/earnings.routes.js'
 import shareRoutes from '../modules/share.routes.js'
+import shareCardRoutes from '../modules/shareCard.routes.js'
+import publicRoutes from '../modules/public.routes.js'
+import internalRoutes from '../modules/internal.routes.js'
 import adsRoutes from '../modules/ads.routes.js'
 import adminRoutes from '../modules/admin.routes.js'
 import statsRoutes from '../modules/stats.routes.js'
@@ -30,6 +33,9 @@ router.use('/playback', playbackRoutes)
 router.use('/payments', paymentRoutes)
 router.use('/library', libraryRoutes)
 router.use('/earnings', earningsRoutes)
+router.use('/public', publicRoutes)
+router.use('/share-card', shareCardRoutes)
+router.use('/internal', internalRoutes)
 router.use('/share', shareRoutes)
 router.use('/ads', adsRoutes)
 // Staff work — notifications, announcements, the sub-admin team. Mounted
