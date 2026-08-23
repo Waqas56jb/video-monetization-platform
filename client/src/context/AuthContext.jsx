@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api, { saveSession, clearSession, getAccessToken, onSessionExpired } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
-import { getAccountSide, setAccountSide as persistAccountSide, panelRoleFor } from '@/lib/accountSide'
+import { getAccountSide, setAccountSide as persistAccountSide, panelRoleFor, hasCreatorStudio } from '@/lib/accountSide'
 
 /**
  * The real signed-in user, from the backend.
@@ -127,7 +127,6 @@ export function AuthProvider({ children }) {
     const data = await api.auth.register({ email, password, fullName, phone, role: wanted })
     if (data.session) {
       saveSession(data.session)
-      setUser(data.user)
       await reload()
     }
     switchSide(data.side || wanted)
@@ -159,7 +158,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const accountRole = user?.role || 'viewer'
-  const panelRole = panelRoleFor(accountRole, accountSide)
+  const studioAccess = hasCreatorStudio(accountRole, creator)
+  const panelRole = panelRoleFor(accountRole, accountSide, Boolean(creator))
 
   const value = useMemo(
     () => ({
@@ -171,8 +171,7 @@ export function AuthProvider({ children }) {
       accountRole,
       accountSide,
       setAccountSide: switchSide,
-      isCreator:
-        accountRole === 'creator' || accountRole === 'admin' || accountRole === 'sub_admin',
+      isCreator: studioAccess,
       isAdmin: accountRole === 'admin',
       signIn,
       signUp,
@@ -189,6 +188,7 @@ export function AuthProvider({ children }) {
       accountRole,
       accountSide,
       switchSide,
+      studioAccess,
       signIn,
       signUp,
       signOut,

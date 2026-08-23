@@ -11,12 +11,21 @@ export function setAccountSide(side) {
   setItem(KEY, side === 'creator' ? 'creator' : 'viewer')
 }
 
-export function panelRoleFor(accountRole, side) {
+export function panelRoleFor(accountRole, side, hasCreatorProfile = false) {
   const real = accountRole || 'viewer'
-  if (real === 'admin' || real === 'creator' || real === 'sub_admin') {
+  const canStudio =
+    real === 'admin' || real === 'creator' || real === 'sub_admin' || hasCreatorProfile
+  if (canStudio) {
     return side === 'viewer' ? 'viewer' : 'creator'
   }
   return 'viewer'
+}
+
+export function hasCreatorStudio(accountRole, creatorProfile) {
+  const real = accountRole || 'viewer'
+  return (
+    real === 'creator' || real === 'admin' || real === 'sub_admin' || Boolean(creatorProfile)
+  )
 }
 
 export function homeTabFor(panel) {

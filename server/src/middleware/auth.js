@@ -99,7 +99,32 @@ export function requireAdmin() {
   }
 }
 
-export const requireCreator = () => requireRole('creator')
+/**
+ * Studio access: a creator, an administrator, a staff member who opened the
+ * Create side on this email, or anyone who already has a creator profile.
+ *
+ * The public app lets one email use Watch and Create. The profile role stays
+ * `admin` / `sub_admin` so staff access is not stripped — this check follows
+ * the creator side, not only `profiles.role = creator`.
+ */
+export async function hasCreatorAccess(user) {
+  if (!user) return false
+  if (user.role === 'creator' || user.role === 'admin' || user.role === 'sub_admin') return true
+  const row = await one('select user_id from creator_profiles where user_id = $1', [user.id])
+  return Boolean(row)
+}
+
+export function requireCreator() {
+  return async (req, _res, next) => {
+    try {
+      if (!req.user) throw unauthorized()
+      if (await hasCreatorAccess(req.user)) return next()
+      throw forbidden('This action requires the creator role')
+    } catch (err) {
+      next(err)
+    }
+  }
+}
 
 export const isStaff = (user) => user?.role === 'admin' || user?.role === 'sub_admin'
 

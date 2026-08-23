@@ -46,6 +46,11 @@ export default function Signup() {
   /** Whatever they were doing before being asked to make an account. */
   const next = nextFrom(location)
 
+  useEffect(() => {
+    const fromUrl = sideFromSearch(location.search)
+    if (fromUrl) setRole(fromUrl)
+  }, [location.search])
+
   /**
    * Already signed in: open the side they picked if they already have it.
    * A viewer opening Create stays on the form so the same email can attach
@@ -77,7 +82,9 @@ export default function Signup() {
     setBusy(true)
     setError(null)
     try {
-      const wanted = role === 'creator' ? 'creator' : 'viewer'
+      const postedRole = String(posted.get('role') || '').trim()
+      const wanted =
+        postedRole === 'creator' || role === 'creator' ? 'creator' : 'viewer'
       const result = await signUp({ ...form, fullName, phone, email, password, role: wanted })
 
       const afterSignup = next || dashboardPath(wanted)
@@ -189,6 +196,7 @@ export default function Signup() {
       )}
 
       <form onSubmit={onSubmit} noValidate>
+        <input type="hidden" name="role" value={role} />
         {error && (
           <div className="form-error" role="alert">
             {error}

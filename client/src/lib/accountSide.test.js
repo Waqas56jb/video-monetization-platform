@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardPath, homeTabFor, panelRoleFor, sideFromSearch } from './accountSide.js'
+import { dashboardPath, homeTabFor, panelRoleFor, hasCreatorStudio, sideFromSearch } from './accountSide.js'
 
 test('creator account can open the viewer panel', () => {
   assert.equal(panelRoleFor('creator', 'viewer'), 'viewer')
@@ -10,9 +10,10 @@ test('creator account can open the viewer panel', () => {
   assert.equal(dashboardPath('creator'), '/dashboard?tab=overview')
 })
 
-test('viewer account cannot open the creator panel until that side exists', () => {
-  assert.equal(panelRoleFor('viewer', 'creator'), 'viewer')
-  assert.equal(panelRoleFor('viewer', 'viewer'), 'viewer')
+test('creator profile unlocks the studio even when profile role is viewer', () => {
+  assert.equal(panelRoleFor('viewer', 'creator', true), 'creator')
+  assert.equal(hasCreatorStudio('viewer', { display_name: 'Test' }), true)
+  assert.equal(hasCreatorStudio('viewer', null), false)
 })
 
 test('admin and staff can open Watch or Create on the same email', () => {

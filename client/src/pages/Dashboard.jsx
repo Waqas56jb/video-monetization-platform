@@ -64,7 +64,7 @@ function dashRole(role) {
 }
 
 export default function Dashboard() {
-  const { role, isCreator, user, loading, authed } = useAuth()
+  const { role, isCreator, user, loading, authed, accountSide } = useAuth()
   const safeRole = dashRole(role)
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -184,7 +184,7 @@ export default function Dashboard() {
                 )}
                 <div className="dash-avatar-meta">
                   <b>{user?.fullName || user?.email || 'Your account'}</b>
-                  <small>{role === 'creator' || role === 'admin' ? 'Creator Account' : 'Viewer Account'}</small>
+                  <small>{accountSide === 'creator' ? 'Creator Account' : 'Viewer Account'}</small>
                 </div>
               </div>
             </div>

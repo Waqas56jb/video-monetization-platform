@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, hasCreatorAccess } from '../middleware/auth.js'
 import { storeImage, removeImage } from '../services/uploads.js'
 import { verifyPassword } from '../lib/authdb.js'
 import { notify, notifyMany } from '../services/notify.js'
@@ -167,7 +167,7 @@ router.patch(
         )
 
         let creatorRow = null
-        if (req.user.role === 'creator') {
+        if (await hasCreatorAccess(req.user)) {
           const upd = await c.query(
             `update creator_profiles set
                display_name  = coalesce($2, display_name),
@@ -277,7 +277,7 @@ router.delete(
 router.get(
   '/analytics',
   asyncHandler(async (req, res) => {
-    const isCreator = req.user.role === 'creator' || req.user.role === 'admin'
+    const isCreator = await hasCreatorAccess(req.user)
 
     /* ---------------- what I have watched and bought ---------------- */
     const [spend, owned, recent] = await Promise.all([

@@ -14,7 +14,7 @@ import {
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
 import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
-import { requireAuth, permissionsFor } from '../middleware/auth.js'
+import { requireAuth, permissionsFor, hasCreatorAccess } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
@@ -44,6 +44,12 @@ const loginSchema = z.object({
 
 function canOpenCreatorSide(role) {
   return role === 'creator' || role === 'admin' || role === 'sub_admin'
+}
+
+async function profileHasCreatorSide(profile) {
+  if (canOpenCreatorSide(profile.role)) return true
+  const row = await one('select user_id from creator_profiles where user_id = $1', [profile.id])
+  return Boolean(row)
 }
 
 async function ensureCreatorSide(profile, { fullName, phone } = {}) {
@@ -206,7 +212,7 @@ router.post(
       )
     }
     if (profile.status === 'blocked') throw forbidden('This account has been blocked')
-    if (side === 'creator' && !canOpenCreatorSide(profile.role)) {
+    if (side === 'creator' && !(await profileHasCreatorSide(profile))) {
       throw forbidden('No creator account is registered with this email.')
     }
 
@@ -280,7 +286,7 @@ router.patch(
       [req.user.id, b.fullName ?? null, b.phone ?? null, b.avatarUrl ?? null]
     )
 
-    if (req.user.role === 'creator') {
+    if (await hasCreatorAccess(req.user)) {
       await query(
         `update creator_profiles
             set bio           = coalesce($2, bio),
