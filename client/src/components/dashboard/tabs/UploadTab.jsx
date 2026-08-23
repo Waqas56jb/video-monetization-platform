@@ -23,7 +23,9 @@ import {
   validateFile,
   watchEncoding,
 } from '@/lib/upload'
-import { useToast } from '@/context/ToastContext'
+import { useToast, useNotify } from '@/context/ToastContext'
+import { isTouchMobile } from '@/lib/socialShare'
+import BusyButton from '@/components/ui/BusyButton'
 import VideoPreview from '@/components/dashboard/VideoPreview'
 import PreviewDuration, { splitSeconds, toSeconds, maxFreePreviewSeconds } from '@/components/dashboard/PreviewDuration'
 import ThumbnailPicker from '@/components/dashboard/ThumbnailPicker'
@@ -71,13 +73,17 @@ const STEP = {
 
 export default forwardRef(function UploadTab({ onSubmitted }, ref) {
   const showToast = useToast()
+  const notify = useNotify()
+  const mobile = isTouchMobile()
   const uploadRef = useRef(null)
   const watchRef = useRef(null)
+  const uploadStarted = useRef(0)
 
   const [file, setFile] = useState(null)
   const [step, setStep] = useState('idle')
   const [progress, setProgress] = useState(0)
   const [encodeProgress, setEncodeProgress] = useState(0)
+  const [uploadMeta, setUploadMeta] = useState({ sent: 0, total: 0, speed: 0 })
   const [error, setError] = useState(null)
   const [dragging, setDragging] = useState(false)
 
@@ -97,6 +103,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
     previewUnit: 'seconds',
   })
   const [previewing, setPreviewing] = useState(null)
+  const [openingId, setOpeningId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   /**
@@ -163,6 +170,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
 
     try {
       setStep('uploading')
+      uploadStarted.current = Date.now()
       const created = await api.videos.create({
         title: guessedTitle,
         description: form.description || undefined,
@@ -178,7 +186,16 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
         )
       }
 
-      uploadRef.current = uploadToCloudflare(chosen, created.upload.url, (pct) => setProgress(pct))
+      uploadRef.current = uploadToCloudflare(chosen, created.upload.url, (pct, sent, total) => {
+        setProgress(pct)
+        const now = Date.now()
+        setUploadMeta((prev) => {
+          const elapsed = (now - (prev.at || uploadStarted.current)) / 1000
+          const delta = sent - (prev.sent || 0)
+          const speed = elapsed > 0 && delta > 0 ? delta / elapsed : prev.speed
+          return { sent, total, speed, at: now }
+        })
+      })
       await uploadRef.current.promise
 
       setStep('encoding')
@@ -204,11 +221,13 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
       }
 
       setStep('ready')
-      showToast('Upload complete — add the details and submit for review')
+      if (!mobile) showToast('Upload complete — add the details and submit for review')
+      else notify.success('Upload complete — add details below')
       loadMine()
     } catch (err) {
       setError(err.message)
       setStep('failed')
+      notify.error(err.message || 'Upload failed', { retry: () => file && start(file) })
     }
   }
 
@@ -260,10 +279,16 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
 
       const res = await api.videos.submit(video.id, { confirmRights: rightsOk })
       setSubmitted(true)
-      showToast(res.message || 'Submitted for review')
+      if (!mobile) {
+        showToast(res.message || 'Submitted for review')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        requestAnimationFrame(() => {
+          document.querySelector('.upload-toolbar.is-success')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      }
       loadMine()
       onSubmitted?.()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -312,6 +337,23 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
   // Until the video is encoded we do not know its length, so allow anything
   // reasonable; afterwards, the running time is the ceiling.
   const durationSeconds = Number(video?.durationSeconds) || 0
+
+  const openPreview = (v) => {
+    if (v?.state === 'processing') {
+      notify.info('Still encoding — usually 1–3 min')
+      return
+    }
+    setOpeningId(v?.id)
+    setPreviewing(v)
+    requestAnimationFrame(() => setOpeningId(null))
+  }
+
+  const uploadEta =
+    uploadMeta.speed > 0 && uploadMeta.total > uploadMeta.sent
+      ? Math.ceil((uploadMeta.total - uploadMeta.sent) / uploadMeta.speed)
+      : null
+
+  const stepIndex = submitted ? 3 : { idle: -1, uploading: 0, encoding: 1, ready: 2, failed: -1 }[step] ?? -1
 
   return (
     <>
@@ -396,6 +438,21 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
             </>
           ) : (
             <div className="upload-live">
+              <div className="ul-stepper" aria-label="Upload progress">
+                {['Uploading', 'Processing', 'Ready', 'Submit'].map((label, i) => (
+                  <span
+                    key={label}
+                    className={`ul-step${stepIndex > i ? ' is-done' : stepIndex === i ? ' is-active' : ''}`.trim()}
+                  >
+                    {stepIndex > i ? (
+                      <Check size={13} />
+                    ) : stepIndex === i ? (
+                      <RefreshCw className="ui-spin" size={13} />
+                    ) : null}
+                    {label}
+                  </span>
+                ))}
+              </div>
               <div className="ul-head">
                 <span className="ul-ic">
                   {step === 'ready' ? <CheckCircle2 /> : <Film />}
@@ -419,8 +476,9 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
                     <span style={{ width: `${progress}%` }} />
                   </div>
                   <small className="ul-note">
-                    {progress}% · {fileSize((file?.size || 0) * (progress / 100))} of{' '}
-                    {fileSize(file?.size)}
+                    {progress}% · {fileSize(uploadMeta.sent || 0)} / {fileSize(file?.size)}
+                    {uploadMeta.speed > 0 ? ` · ${fileSize(uploadMeta.speed)}/s` : ''}
+                    {uploadEta ? ` · ~${uploadEta < 60 ? `${uploadEta}s` : `${Math.ceil(uploadEta / 60)}m`} left` : ''}
                   </small>
                 </>
               )}
@@ -431,8 +489,9 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
                     <span className="is-encoding" style={{ width: `${Math.max(encodeProgress, 5)}%` }} />
                   </div>
                   <small className="ul-note">
-                    {encodeProgress}% · preparing every quality level so it plays on any connection.
-                    You can fill in the details below while this finishes.
+                    {encodeProgress > 0
+                      ? `${encodeProgress}% · preparing every quality level`
+                      : 'Still working — safe to fill in details below · usually 1–3 min'}
                   </small>
                 </>
               )}
@@ -445,10 +504,14 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
                   </small>
                   {/* Watch it before setting a price. Finding out afterwards
                       that the wrong file went up is a bad way to find out. */}
-                  <button className="btn btn-ghost btn-sm" onClick={() => setPreviewing(video)}>
-                    <Play size={14} />
+                  <BusyButton
+                    className="btn btn-ghost btn-sm"
+                    busy={openingId === video?.id}
+                    icon={Play}
+                    onClick={() => openPreview(video)}
+                  >
                     Watch it
-                  </button>
+                  </BusyButton>
                 </div>
               )}
 
@@ -624,10 +687,12 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
               </span>
             </div>
           ) : (
-            <button
+            <BusyButton
               className="btn btn-gold btn-block"
+              busy={submitting}
+              icon={Send}
               onClick={submit}
-              disabled={!canSubmit || submitting || !rightsOk}
+              disabled={!canSubmit || !rightsOk}
               title={
                 !canSubmit
                   ? 'Finish uploading your video first'
@@ -636,9 +701,8 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
                     : 'Send this to the review team'
               }
             >
-              <Send />
               {submitting ? 'Submitting…' : 'Submit for Review'}
-            </button>
+            </BusyButton>
           )}
         </Panel>
 

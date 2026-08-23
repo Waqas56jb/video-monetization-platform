@@ -1,13 +1,12 @@
+import { useState } from 'react'
 import { Play } from 'lucide-react'
 import Icon from './Icon'
 import Reveal from './Reveal'
+import useInView from '@/hooks/useInView'
 
 /**
  * The trending / library video card. Used on the landing grid and inside the
  * dashboard library, with the same hover-zoom + pulsing play button.
- *
- * Set `reveal` to animate it in on scroll (landing); omit it inside the
- * dashboard where cards are already in view when their tab opens.
  */
 export default function VideoCard({ video, onClick, reveal = false, delay = 0, eager = false }) {
   const {
@@ -25,22 +24,27 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
     action,
   } = video
 
+  const [imgOn, setImgOn] = useState(false)
+  const [ref, inView] = useInView({ skip: eager })
+  const showImg = eager || inView
   const imgLoading = eager ? 'eager' : 'lazy'
 
   const body = (
     <>
       <div className="vid-thumb">
         {tag && <span className={`vid-tag ${tag.cls}`}>{tag.label}</span>}
-        <img
-          src={thumb}
-          alt=""
-          loading={imgLoading}
-          decoding="async"
-          {...(eager ? { fetchpriority: 'high' } : {})}
-        />
-        {/* A gradient foot rather than a flat crop: the thumbnail reads as a
-            still from a film instead of a product photo, and the badge and
-            duration sitting on it stay legible whatever the frame is. */}
+        {!imgOn && <span className="vid-thumb-placeholder" aria-hidden="true" />}
+        {showImg && thumb && (
+          <img
+            src={thumb}
+            alt=""
+            loading={imgLoading}
+            decoding="async"
+            className={imgOn ? 'is-on' : ''}
+            {...(eager ? { fetchPriority: 'high' } : {})}
+            onLoad={() => setImgOn(true)}
+          />
+        )}
         <span className="vid-shade" aria-hidden="true" />
         {time && <span className="vid-time">{time}</span>}
         <div className="vid-play">
@@ -52,7 +56,9 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
       <div className="vid-info">
         <h4>{title}</h4>
         <div className="by">
-          {avatar && <img src={avatar} alt="" loading={imgLoading} decoding="async" />}
+          {avatar && showImg && (
+            <img src={avatar} alt="" loading={imgLoading} decoding="async" />
+          )}
           {author || byline}
         </div>
         <div className="vid-meta">
@@ -78,7 +84,7 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
   }
 
   return (
-    <button type="button" className="vid-card" onClick={onClick}>
+    <button ref={ref} type="button" className="vid-card" onClick={onClick} style={{ contentVisibility: 'auto', containIntrinsicSize: '280px' }}>
       {body}
     </button>
   )

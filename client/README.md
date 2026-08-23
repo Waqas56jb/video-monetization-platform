@@ -87,6 +87,25 @@ On top of the original breakpoints this build adds:
   body never scrolls sideways.
 - **Sidebar scrim** — tapping outside the mobile dashboard drawer closes it.
 
+## API notes
+
+### Video list pagination (`GET /api/videos`)
+
+The explore page requests videos in pages instead of loading the full catalogue at once.
+
+| Query param | Type | Default | Description |
+|-------------|------|---------|-------------|
+| `limit` | number | 24 | Page size (max 50). Client uses 12 on touch devices, 24 on desktop. |
+| `offset` | number | 0 | Zero-based offset into the filtered result set. |
+
+Response fields:
+
+- `videos` — array of video objects for this page
+- `total` — total matches for the current filters
+- `nextOffset` — pass as `offset` on the next request, or `null` when there are no more pages
+
+Example: `GET /api/videos?limit=12&offset=0&sort=newest`
+
 ## Notes on behaviour
 
 - Icons come from `lucide-react`; `components/ui/Icon.jsx` maps the original

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from '@/context/ToastContext'
+import { ProgressProvider } from '@/context/ProgressContext'
 import { AuthProvider } from '@/context/AuthContext'
 import Preloader from '@/components/layout/Preloader'
 import BackgroundFX from '@/components/layout/BackgroundFX'
@@ -18,6 +19,7 @@ import Legal from '@/pages/Legal'
 export default function App() {
   return (
     <ToastProvider>
+      <ProgressProvider>
       <AuthProvider>
       <Preloader />
       <BackgroundFX />
@@ -43,6 +45,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </AuthProvider>
+      </ProgressProvider>
     </ToastProvider>
   )
 }

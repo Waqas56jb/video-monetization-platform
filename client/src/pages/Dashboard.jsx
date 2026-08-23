@@ -207,7 +207,11 @@ export default function Dashboard() {
             {tab === 'overview' && <OverviewTab />}
             {tab === 'library' && <LibraryTab />}
             {tab === 'purchases' && <PurchasesTab />}
-            {tab === 'upload' && <UploadTab />}
+            {allowed.includes('upload') && (
+              <div className={tab === 'upload' ? undefined : 'dash-tab-persist'} hidden={tab !== 'upload'}>
+                <UploadTab />
+              </div>
+            )}
             {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
             {tab === 'earnings' && <EarningsTab />}
             {tab === 'become' && <BecomeCreatorTab />}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, RefreshCw, X } from 'lucide-react'
+import { AlertTriangle, Play, RefreshCw, X } from 'lucide-react'
 import StreamPlayer from '@/components/watch/StreamPlayer'
 import api, { mediaUrl } from '@/lib/api'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import { isTouchMobile } from '@/lib/socialShare'
 
 const OVERLAY_STYLE = {
   position: 'fixed',
@@ -24,8 +25,9 @@ const OVERLAY_STYLE = {
 export default function VideoPreview({ video, open, onClose }) {
   const [state, setState] = useState({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const touch = isTouchMobile()
 
-  useLockBodyScroll(open)
+  useLockBodyScroll(open, { delay: true })
 
   useEffect(() => {
     if (!open || !video?.id) return
@@ -50,6 +52,21 @@ export default function VideoPreview({ video, open, onClose }) {
   }, [open, video?.id, attempt])
 
   useEffect(() => {
+    if (!open || video?.state !== 'processing') return
+    const poll = setInterval(() => {
+      api.videos
+        .status(video.id)
+        .then((res) => {
+          if (res?.video?.state && res.video.state !== 'processing') {
+            setAttempt((n) => n + 1)
+          }
+        })
+        .catch(() => {})
+    }, 5000)
+    return () => clearInterval(poll)
+  }, [open, video?.id, video?.state])
+
+  useEffect(() => {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -57,6 +74,8 @@ export default function VideoPreview({ video, open, onClose }) {
   }, [open, onClose])
 
   if (!open) return null
+
+  const poster = mediaUrl(video?.thumbnailUrl)
 
   const modal = (
     <div
@@ -77,26 +96,25 @@ export default function VideoPreview({ video, open, onClose }) {
           <small>Only you can see this until it is approved</small>
         </div>
 
-        {state.status === 'loading' && (
-          <div className="preview-player">
-            <div className="skeleton preview-frame" />
-          </div>
-        )}
+        <div className="preview-player">
+          {state.status === 'loading' && (
+            <div className="preview-frame preview-frame-shell">
+              {poster && <img src={poster} alt="" className="preview-poster" />}
+              <p className="stream-boot-msg">Loading preview…</p>
+            </div>
+          )}
 
-        {state.status === 'ready' && (
-          <div className="preview-player">
+          {state.status === 'ready' && (
             <StreamPlayer
               src={state.src}
-              poster={mediaUrl(video?.thumbnailUrl)}
+              poster={poster}
               title={video?.title}
-              autoplay
-              playOnReady
+              autoplay={!touch}
+              playOnReady={!touch}
             />
-          </div>
-        )}
+          )}
 
-        {(state.status === 'empty' || state.status === 'error') && (
-          <div className="preview-player">
+          {(state.status === 'empty' || state.status === 'error') && (
             <div className="state-block">
               <AlertTriangle />
               <b>{state.status === 'error' ? 'Could not load it' : 'Not ready yet'}</b>
@@ -106,8 +124,14 @@ export default function VideoPreview({ video, open, onClose }) {
                 Try again
               </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {state.status === 'ready' && touch && (
+            <p className="preview-tap-hint">
+              <Play size={14} /> Tap the player to start preview
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

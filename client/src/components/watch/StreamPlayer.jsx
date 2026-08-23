@@ -407,6 +407,9 @@ export default function StreamPlayer({
         />
       )}
       {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
+      {!ready && !timedOut && (
+        <p className="stream-boot-msg">Connecting to player…</p>
+      )}
 
       <iframe
         key={boot}

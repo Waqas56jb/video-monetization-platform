@@ -35,7 +35,12 @@ img{display:block;max-width:100%}
 a{color:inherit;text-decoration:none;cursor:pointer}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* Kill the old 300ms tap delay so Login / Share / Pay / Unlock fire on the first press. */
-a,button,.btn,.vid-card,.share-wa,.share-target,.share-row,.hamburger,.chip,.side-link,[role=button]{touch-action:manipulation}
+a,button,.btn,.vid-card,.share-wa,.share-target,.share-row,.hamburger,.chip,.side-link,[role=button]{
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+a:active,button:active,.btn:active,.vid-card:active,.share-wa:active,.share-target:active,.share-row:active,.chip:active{
+  transform:scale(.97);opacity:.85;
+}
 input,select,textarea{font-family:inherit}
 ::selection{background:rgba(124,58,237,.5)}
 ::-webkit-scrollbar{width:10px}
@@ -767,7 +772,23 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 
 /* ---------- TOAST ---------- */
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(90px);background:var(--card2);border:1px solid var(--border);border-radius:15px;padding:15px 24px;display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600;z-index:500;transition:.5s cubic-bezier(.22,1,.36,1);box-shadow:var(--shadow);max-width:calc(100% - 32px)}
-#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
+#toast.is-error svg,#toast.is-error>svg:first-child{color:#fca5a5}
+#toast.is-info svg,#toast.is-info>svg:first-child{color:var(--purple2)}
+#toast.is-mobile{
+  top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;left:12px;right:12px;
+  width:auto;max-width:none;transform:translateY(calc(-100% - 24px));
+  border-radius:12px;padding:14px 16px;font-size:13.5px;
+}
+#toast.is-mobile.show{transform:translateY(0)}
+#toast .toast-retry{
+  margin-left:auto;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06);color:var(--gold);font-size:12px;font-weight:700;flex-shrink:0;
+}
+#toast .toast-close{
+  display:grid;place-items:center;width:28px;height:28px;border-radius:8px;flex-shrink:0;
+  background:rgba(255,255,255,.05);color:var(--muted);
+}
 #toast svg{width:18px;height:18px;color:var(--green);flex-shrink:0}
 
 /* ---------- RESPONSIVE ---------- */
@@ -1651,9 +1672,10 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .sub-resubmit{width:100%;justify-content:center}
 }
 
-/* A toast is informational — it must never swallow a tap meant for the UI
-   underneath it (on a 320px phone it overlaps the open nav drawer). */
+/* A toast is informational — desktop keeps pointer-events off so it does not
+   swallow taps; mobile toasts are tap-to-dismiss and need pointer-events. */
 #toast{pointer-events:none}
+#toast.show{pointer-events:auto}
 
 /* --- hero polish -----------------------------------------------------------
    1. A money figure must never break across lines ("TZS 142 M+").
@@ -2090,6 +2112,52 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .skeleton-thumb{height:190px;border-radius:0}
 .skeleton-line{height:14px;margin:16px 18px 0}
 .skeleton-line.short{width:55%}
+.skeleton-label{
+  grid-column:1/-1;font-size:13px;color:var(--muted);font-weight:600;margin:0 0 4px;
+}
+.is-shimmer .skeleton{background-size:200% 100%;animation:shimmer 1.4s linear infinite}
+.vid-thumb-placeholder{position:absolute;inset:0;background:var(--card2);z-index:0}
+.vid-thumb img{opacity:0;transition:opacity .35s ease}
+.vid-thumb img.is-on{opacity:1}
+.explore-updating-pill{
+  display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;margin-left:10px;
+  font-size:11px;font-weight:700;color:var(--purple2);
+  background:rgba(112,0,255,.12);border:1px solid rgba(112,0,255,.22);
+}
+.explore-more{display:flex;justify-content:center;padding:28px 0 8px}
+.explore-loading-more{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  font-size:13px;color:var(--muted);padding:8px 0 20px;
+}
+.ui-spin,.spin{animation:spin .85s linear infinite}
+.top-progress{
+  position:fixed;top:0;left:0;right:0;height:3px;z-index:10001;pointer-events:none;
+  padding-top:env(safe-area-inset-top,0px);
+}
+.top-progress-bar{
+  display:block;height:3px;width:35%;background:linear-gradient(90deg,var(--purple),var(--gold));
+  animation:topProg 1.1s ease-in-out infinite;border-radius:0 2px 2px 0;
+}
+@keyframes topProg{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+.preview-frame-shell{position:relative;min-height:220px;background:#000;border-radius:14px;overflow:hidden;display:grid;place-items:center}
+.preview-frame-shell .preview-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.preview-tap-hint{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+.stream-boot-msg{
+  position:absolute;inset:auto 0 18px;z-index:3;text-align:center;
+  font-size:13px;font-weight:600;color:rgba(255,255,255,.85);pointer-events:none;
+}
+.ul-stepper{
+  display:flex;align-items:center;gap:6px;margin:14px 0 10px;flex-wrap:wrap;
+}
+.ul-step{
+  display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  color:var(--muted2);letter-spacing:.02em;
+}
+.ul-step.is-done{color:var(--green)}
+.ul-step.is-active{color:var(--gold)}
+.ul-step svg{width:13px;height:13px}
+.dash-tab-persist{display:none}
+.dash-tab-persist.is-visible{display:block}
 
 /* --- empty / error blocks --- */
 .state-block{
@@ -2204,6 +2272,16 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    SHARE SHEET — client's mock: card, WhatsApp, 4-up brands, more, clip
    ========================================================================= */
 .share-modal{padding:20px;align-items:center}
+.share-modal .share-card{
+  transform:translateY(0);transition:transform .2s ease;will-change:transform;
+}
+@media(max-width:720px){
+  .share-modal .modal-card.share-card{transform:translateY(100%)}
+  .share-modal.open .modal-card.share-card,.modal.open.share-modal .modal-card.share-card{transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .share-modal .modal-card.share-card{transition:none;transform:none !important}
+}
 .share-card{
   width:min(420px,100%);max-width:420px;max-height:min(88dvh,920px);overflow-y:auto;
   text-align:center;padding:28px 22px 20px;
@@ -2917,7 +2995,7 @@ html.is-touch .btn:active{transform:scale(.97)}
 /* Fade the poster in over the skeleton rather than swapping it.
    Only the Watch sheet uses the skeleton/`is-on` handshake. The homepage
    replica has no skeleton, so this must not hide its poster. */
-.share-modal .share-og .share-og-stage img{opacity:0;transition:opacity .35s ease}
+.share-modal .share-og .share-og-stage img{opacity:1;transition:opacity .35s ease}
 .share-modal .share-og .share-og-stage img.is-on{opacity:1}
 
 @media(prefers-reduced-motion:reduce){

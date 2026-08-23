@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Film, Play, Plus, Send, Trash2, X } from 'lucide-react'
 import Panel from '../Panel'
 import TableScroll from '@/components/ui/TableScroll'
+import BusyButton from '@/components/ui/BusyButton'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import Field, { SelectField } from '@/components/ui/Field'
 import PreviewDuration, { splitSeconds, toSeconds, maxFreePreviewSeconds } from '@/components/dashboard/PreviewDuration'
@@ -10,7 +11,7 @@ import useApi, { tzs, compact, ACCESS_SHORT } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import { CATEGORIES, PREMIERE_WINDOWS } from '@/data/copy'
 import api from '@/lib/api'
-import { useToast } from '@/context/ToastContext'
+import { useToast, useNotify } from '@/context/ToastContext'
 import VideoPreview from '@/components/dashboard/VideoPreview'
 
 /**
@@ -23,9 +24,21 @@ import VideoPreview from '@/components/dashboard/VideoPreview'
  */
 export default function MyVideosTab({ onNewUpload }) {
   const showToast = useToast()
+  const notify = useNotify()
   const [previewing, setPreviewing] = useState(null)
+  const [openingId, setOpeningId] = useState(null)
   const { data, loading, error, reload } = useApi(() => api.videos.mine(), [])
   const videos = data?.videos || []
+
+  const openPreview = (v) => {
+    if (v.state === 'processing') {
+      notify.info('Still encoding — usually 1–3 min')
+      return
+    }
+    setOpeningId(v.id)
+    setPreviewing(v)
+    requestAnimationFrame(() => setOpeningId(null))
+  }
 
   const requestRemoval = async (v) => {
     const reason = window.prompt(
@@ -182,15 +195,16 @@ export default function MyVideosTab({ onNewUpload }) {
                     <span className={`pill ${st.pill}`}>{st.label}</span>
                   </td>
                   <td>
-                    <button
+                    <BusyButton
                       className="btn btn-ghost btn-sm"
-                      onClick={() => setPreviewing(v)}
+                      busy={openingId === v.id}
+                      icon={Play}
+                      onClick={() => openPreview(v)}
                       title="Watch this video"
                       style={{ marginRight: 6 }}
                     >
-                      <Play size={14} />
                       <span className="btn-label">Watch</span>
-                    </button>
+                    </BusyButton>
                     {/* The way back into review. Without it, a note from the
                         reviewer was something to read and nothing to act on. */}
                     {canEdit(v) && (

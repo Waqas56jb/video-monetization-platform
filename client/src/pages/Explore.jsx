@@ -1,27 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Rocket, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowLeft, Loader2, Rocket, Search, SlidersHorizontal, X } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
+import BusyButton from '@/components/ui/BusyButton'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
-import useApi, { useDebounced } from '@/hooks/useApi'
+import { useDebounced } from '@/hooks/useApi'
+import { useProgressBar } from '@/context/ProgressContext'
 import { toCard, videoLink } from '@/lib/videoView'
 import { CATEGORIES } from '@/data/copy'
 import useGoBack, { hasHistory } from '@/hooks/useGoBack'
 import api from '@/lib/api'
 import { useRole } from '@/context/AuthContext'
+import { explorePageSize } from '@/lib/mobileUx'
 
-/**
- * Browse everything on the platform.
- *
- * Deliberately a searchable catalogue, not a ranked feed — discovery on
- * MTONYO+ happens through shared social links, and this is the "I'm already
- * here, show me what else there is" surface.
- *
- * Searching and filtering happen on the server, so the results are the whole
- * catalogue rather than whichever page happened to be loaded.
- */
 const ACCESS_FILTERS = [
   { label: 'All Access', value: '' },
   { label: 'Pay Once', value: 'ppv_forever' },
@@ -35,6 +28,8 @@ const SORTS = [
   { label: 'Cheapest', value: 'price_low' },
 ]
 
+const PAGE_SIZE = explorePageSize()
+
 export default function Explore() {
   const navigate = useNavigate()
   const { authed } = useRole()
@@ -43,28 +38,79 @@ export default function Explore() {
   const [category, setCategory] = useState('')
   const [access, setAccess] = useState('')
   const [sort, setSort] = useState('newest')
+  const [videos, setVideos] = useState([])
+  const [total, setTotal] = useState(0)
+  const [nextOffset, setNextOffset] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [isRefetching, setIsRefetching] = useState(false)
+  const [error, setError] = useState(null)
+  const videosRef = useRef(videos)
+  videosRef.current = videos
 
   const debounced = useDebounced(query, 300)
+  const filtered = Boolean(query || category || access)
+  const categoryChips = ['', ...CATEGORIES]
 
-  const results = useApi(
-    () => api.videos.list({ q: debounced, category, access, sort, limit: 48 }),
+  useProgressBar(isRefetching)
+
+  const fetchPage = useCallback(
+    async (offset, { append = false, quiet = false } = {}) => {
+      if (append) {
+        setLoadingMore(true)
+      } else if (videosRef.current.length) {
+        setIsRefetching(true)
+      } else if (!quiet) {
+        setLoading(true)
+      }
+      setError(null)
+      try {
+        const res = await api.videos.list({
+          q: debounced || undefined,
+          category: category || undefined,
+          access: access || undefined,
+          sort,
+          limit: PAGE_SIZE,
+          offset,
+        })
+        const rows = res?.videos || []
+        setVideos((prev) => (append ? [...prev, ...rows] : rows))
+        setTotal(res?.total ?? 0)
+        setNextOffset(res?.nextOffset ?? null)
+      } catch (err) {
+        setError(err?.message || 'No connection — tap to retry')
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
+        setIsRefetching(false)
+      }
+    },
     [debounced, category, access, sort]
   )
 
-  const videos = results.data?.videos || []
-  const total = results.data?.total ?? 0
-  const filtered = Boolean(query || category || access)
+  useEffect(() => {
+    fetchPage(0, { append: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced, category, access, sort])
 
-  /**
-   * The ten canonical categories, in the same order as the homepage.
-   *
-   * This list used to be built from whatever strings existed in the database,
-   * which is why Documentaries and Documentary both appeared, and why Food
-   * showed up as an eleventh chip the client never asked for. Extras are not
-   * appended: unknown values stay reachable under All, but they cannot mint
-   * a new pill.
-   */
-  const categoryChips = useMemo(() => ['', ...CATEGORIES], [])
+  const loadMore = useCallback(() => {
+    if (loadingMore || nextOffset == null) return
+    fetchPage(nextOffset, { append: true })
+  }, [loadingMore, nextOffset, fetchPage])
+
+  const sentinelRef = useRef(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || nextOffset == null) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore()
+      },
+      { rootMargin: '200px' }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [nextOffset, loadMore])
 
   const reset = () => {
     setQuery('')
@@ -72,19 +118,12 @@ export default function Explore() {
     setAccess('')
   }
 
-  /**
-   * Actually go back.
-   *
-   * This used to push /dashboard, which is not the same thing: it threw away
-   * whichever tab the person had come from and dropped them on the dashboard's
-   * default. The button said Back and behaved like a link.
-   *
-   * The fallback only applies to somebody who arrived here directly — on a
-   * shared link, or as their first page — where there is nothing of ours
-   * behind them to return to.
-   */
   const goBack = useGoBack(authed ? '/dashboard' : '/')
   const canGoBack = hasHistory()
+
+  const openVideo = (v) => {
+    navigate(videoLink(v), { state: { preview: toCard(v) } })
+  }
 
   return (
     <div className="page">
@@ -184,8 +223,11 @@ export default function Explore() {
           <div className="explore-results">
             <div className="explore-count">
               <span>
-                {results.loading ? 'Searching…' : `${total} ${total === 1 ? 'video' : 'videos'}`}
+                {loading && !videos.length
+                  ? 'Loading videos…'
+                  : `${total} ${total === 1 ? 'video' : 'videos'}`}
               </span>
+              {isRefetching && <span className="explore-updating-pill">Updating…</span>}
               {filtered && (
                 <button className="link-btn" onClick={reset}>
                   Clear filters
@@ -193,16 +235,39 @@ export default function Explore() {
               )}
             </div>
 
-            {results.loading ? (
-              <SkeletonCards count={8} />
-            ) : results.error ? (
-              <ErrorState error={results.error} onRetry={results.reload} />
+            {loading && !videos.length ? (
+              <SkeletonCards count={PAGE_SIZE > 12 ? 8 : 6} label="Loading videos…" />
+            ) : error && !videos.length ? (
+              <ErrorState error={error} onRetry={() => fetchPage(0)} />
             ) : videos.length ? (
-              <div className="vid-grid">
-                {videos.map((v) => (
-                  <VideoCard key={v.id} video={toCard(v)} onClick={() => navigate(videoLink(v))} />
-                ))}
-              </div>
+              <>
+                <div className="vid-grid">
+                  {videos.map((v, i) => (
+                    <VideoCard
+                      key={v.id}
+                      video={toCard(v)}
+                      eager={i < 4}
+                      onClick={() => openVideo(v)}
+                    />
+                  ))}
+                </div>
+                {nextOffset != null && (
+                  <div className="explore-more" ref={sentinelRef}>
+                    <BusyButton
+                      className="btn btn-ghost"
+                      busy={loadingMore}
+                      onClick={loadMore}
+                    >
+                      {loadingMore ? 'Loading more…' : 'Load more videos'}
+                    </BusyButton>
+                  </div>
+                )}
+                {loadingMore && (
+                  <p className="explore-loading-more" aria-live="polite">
+                    <Loader2 size={16} className="ui-spin" /> Loading more…
+                  </p>
+                )}
+              </>
             ) : (
               <div className="explore-empty">
                 <Search />

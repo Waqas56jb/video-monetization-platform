@@ -179,6 +179,7 @@ router.get(
       total: total?.n ?? 0,
       limit,
       offset,
+      nextOffset: offset + rows.length < (total?.n ?? 0) ? offset + limit : null,
     })
     import('./share.routes.js')
       .then((m) => m.queueMissingShareCards())

@@ -1,41 +1,72 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+const FETCH_TIMEOUT_MS = 10_000
+
+function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('No connection — tap to retry'))
+    }, ms)
+    Promise.resolve(promise)
+      .then((v) => {
+        clearTimeout(timer)
+        resolve(v)
+      })
+      .catch((err) => {
+        clearTimeout(timer)
+        if (err?.name === 'AbortError') {
+          reject(new Error('No connection — tap to retry'))
+          return
+        }
+        reject(err)
+      })
+  })
+}
+
 /**
  * Fetch from the API and keep the three states that always come with it:
  * loading, error, and the data.
- *
- * Every screen used to read from a file of invented rows, where none of those
- * states existed. Now that the figures are real, a screen has to be able to say
- * "still loading", "that failed" and "there is genuinely nothing yet" — and
- * mean each of them.
  */
-export default function useApi(fetcher, deps = [], { skip = false } = {}) {
+export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false } = {}) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(!skip)
+  const [isRefetching, setIsRefetching] = useState(false)
   const [error, setError] = useState(null)
 
-  // Keep the latest fetcher without making it a dependency, or an inline arrow
-  // function would re-trigger the request on every render.
   const ref = useRef(fetcher)
   ref.current = fetcher
+  const dataRef = useRef(data)
+  dataRef.current = data
 
-  const reload = useCallback(
+  const runFetch = useCallback(
     async ({ quiet = false } = {}) => {
       if (skip) return
-      if (!quiet) setLoading(true)
+      const hasPrevious = keepPreviousData && dataRef.current != null
+      if (!quiet && !hasPrevious) setLoading(true)
+      if (hasPrevious) setIsRefetching(true)
       try {
-        const res = await ref.current()
+        const res = await withTimeout(ref.current())
         setData(res)
         setError(null)
         return res
       } catch (err) {
-        setError(err.message)
+        setError(err?.message || 'Something went wrong')
+        throw err
       } finally {
         setLoading(false)
+        setIsRefetching(false)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [skip, ...deps]
+    [skip, keepPreviousData, ...deps]
+  )
+
+  const reload = useCallback(
+    (opts) =>
+      runFetch(opts).catch(() => {
+        /* caller may handle */
+      }),
+    [runFetch]
   )
 
   useEffect(() => {
@@ -44,23 +75,30 @@ export default function useApi(fetcher, deps = [], { skip = false } = {}) {
       setLoading(false)
       return
     }
-    setLoading(true)
-    ref
-      .current()
+    const hasPrevious = keepPreviousData && dataRef.current != null
+    if (!hasPrevious) setLoading(true)
+    else setIsRefetching(true)
+
+    withTimeout(ref.current())
       .then((res) => {
         if (!alive) return
         setData(res)
         setError(null)
       })
-      .catch((err) => alive && setError(err.message))
-      .finally(() => alive && setLoading(false))
+      .catch((err) => alive && setError(err?.message || 'Something went wrong'))
+      .finally(() => {
+        if (!alive) return
+        setLoading(false)
+        setIsRefetching(false)
+      })
+
     return () => {
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skip, ...deps])
+  }, [skip, keepPreviousData, ...deps])
 
-  return { data, loading, error, reload, setData }
+  return { data, loading, error, isRefetching, reload, setData }
 }
 
 /** Wait for typing to settle before asking the server again. */
@@ -75,10 +113,8 @@ export function useDebounced(value, ms = 300) {
 
 /* ---------------------------------------------------------- formatting */
 
-/** Money, the way it is written in Tanzania. */
 export const tzs = (n) => 'TZS ' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
-/** Big numbers, shortened for a stat tile. */
 export const compact = (n) => {
   const v = Number(n || 0)
   if (v >= 1_000_000) return (v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1) + 'M'
@@ -109,14 +145,12 @@ export const timeAgo = (iso) => {
   return shortDate(iso)
 }
 
-/** How long until a paid premiere opens up. */
 export const daysUntil = (iso) => {
   if (!iso) return null
   const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
   return days > 0 ? days : 0
 }
 
-/** What to call each way of selling a video, in the viewer's language. */
 export const ACCESS_LABEL = {
   ppv_forever: 'Pay Once',
   paid_premiere: 'Paid Premiere',

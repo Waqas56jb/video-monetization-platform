@@ -21,6 +21,7 @@ import PaymentModal from '@/components/watch/PaymentModal'
 import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
 import MoreLikeThis from '@/components/watch/MoreLikeThis'
+import BusyButton from '@/components/ui/BusyButton'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
@@ -52,6 +53,7 @@ export default function Watch() {
   const [previewOver, setPreviewOver] = useState(false)
   /* The share sheet — what is going out, shown before it goes. */
   const [sharing, setSharing] = useState(false)
+  const [shareOpening, setShareOpening] = useState(false)
   const [shareLive, setShareLive] = useState(null)
   /* Reporting, from the video itself rather than an address on a policy page. */
   const [reporting, setReporting] = useState(false)
@@ -164,6 +166,14 @@ export default function Watch() {
 
   const primeShare = () => {
     if (share?.watchUrl) warmShareFromMeta(share)
+  }
+
+  const openShare = () => {
+    setShareOpening(true)
+    requestAnimationFrame(() => {
+      setSharing(true)
+      setShareOpening(false)
+    })
   }
 
   useEffect(() => {
@@ -739,16 +749,17 @@ export default function Watch() {
                   <span className="ob-short">{accessReason.short}</span>
                 </span>
               )}
-              <button
+              <BusyButton
                 className="btn btn-ghost btn-sm"
+                busy={shareOpening}
+                icon={Share2}
                 onPointerEnter={primeShare}
                 onTouchStart={primeShare}
                 onFocus={primeShare}
-                onClick={() => setSharing(true)}
+                onClick={openShare}
               >
-                <Share2 />
                 <span className="btn-label">Share</span>
-              </button>
+              </BusyButton>
             </div>
           </div>
 

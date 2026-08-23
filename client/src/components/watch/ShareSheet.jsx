@@ -19,6 +19,7 @@ import {
   IconWhatsApp,
 } from '@/components/ui/SocialIcons'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import { useNotify } from '@/context/ToastContext'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
 import {
@@ -31,6 +32,7 @@ import {
 import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
+import { idle, cancelIdle } from '@/lib/mobileUx'
 
 function isMobileUa() {
   return /Android|iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')
@@ -69,6 +71,7 @@ function IconClapper({ size = 22 }) {
 }
 
 export default function ShareSheet({ open, video, share, onClose }) {
+  const notify = useNotify()
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(null)
@@ -80,11 +83,12 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
+  const touchStartY = useRef(null)
 
-  useLockBodyScroll(open)
+  useLockBodyScroll(open, { delay: true })
 
   const { shareUrl, cleanUrl, cardUrl } = urlsFromShare(video, share)
-  const slug = video?.slug || ''
+  const slug = video?.slug || share?.slug || ''
   const still = mediaUrl(video?.thumbnailUrl)
   /** Server JPEG already has title, play, badge — no CSS overlays on top. */
   const usingComposedCard = Boolean(cardUrl && !cardFailed)
@@ -111,14 +115,21 @@ export default function ShareSheet({ open, video, share, onClose }) {
     setProblem(null)
     setHint(null)
     setSaving(null)
-    warm()
-    if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
-      healShareCard(slug)
-    }
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose, shareUrl, cleanUrl, cardUrl])
+  }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    const warmId = idle(() => {
+      if (shareUrl) warmShare({ shareUrl, cleanUrl, cardUrl })
+      if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
+        healShareCard(slug)
+      }
+    })
+    return () => cancelIdle(warmId)
+  }, [open, shareUrl, cleanUrl, cardUrl, share?.cardStatus, slug])
 
   useEffect(() => {
     if (!open || !slug) return
@@ -137,9 +148,11 @@ export default function ShareSheet({ open, video, share, onClose }) {
           setClip(null)
           if (!retry) retry = setTimeout(load, 4000)
         })
-    load()
+
+    const idleId = idle(load)
     return () => {
       stop = true
+      cancelIdle(idleId)
       if (retry) clearTimeout(retry)
     }
   }, [open, slug])
@@ -180,14 +193,17 @@ export default function ShareSheet({ open, video, share, onClose }) {
       .writeText(shareUrl)
       .then(() => {
         setCopied(true)
-        setHint('Link copied. Paste in WhatsApp — the poster card is on this link.')
+        notify.success('Link copied')
         clearTimeout(copyTimer.current)
         copyTimer.current = setTimeout(() => setCopied(false), 2400)
       })
       .catch(() => {
         setProblem('Could not copy automatically. Long-press the link and copy it.')
+        notify.error('Could not copy — select the link below', {
+          retry: () => onCopy(),
+        })
       })
-    warm()
+    if (shareUrl) warmShare({ shareUrl, cleanUrl, cardUrl })
   }
 
   const launchSocial = (where) => {
@@ -307,12 +323,26 @@ export default function ShareSheet({ open, video, share, onClose }) {
     if (cardUrl) window.open(cardUrl, '_blank', 'noopener,noreferrer')
   }
 
-  if (!open || !video) return null
+  if (!open) return null
+
+  const title = video?.title || share?.title || 'Share this video'
+  const cardReady = share?.cardStatus === 'ready' || usingComposedCard
 
   return createPortal(
     <div className="modal open share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
       <div className="modal-bg" onClick={onClose} />
-      <div className="modal-card share-card">
+      <div
+        className="modal-card share-card"
+        onTouchStart={(e) => {
+          touchStartY.current = e.touches[0]?.clientY ?? null
+        }}
+        onTouchEnd={(e) => {
+          const start = touchStartY.current
+          const end = e.changedTouches[0]?.clientY
+          if (start != null && end != null && end - start > 72) onClose()
+          touchStartY.current = null
+        }}
+      >
         <button className="modal-x share-xbtn" onClick={onClose} aria-label="Close" ref={closeRef}>
           <X />
         </button>
@@ -326,7 +356,9 @@ export default function ShareSheet({ open, video, share, onClose }) {
         <p className="share-kicker">
           <Eye size={14} />
           This is what your audience will see
-          <span className="share-ready-pill">Card ready</span>
+          <span className={`share-ready-pill${cardReady ? '' : ' is-wait'}`.trim()}>
+            {cardReady ? 'Card ready' : 'Loading card…'}
+          </span>
         </p>
 
         <div className="share-og" ref={cardRef}>
@@ -358,7 +390,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
               <>
                 <span className="share-og-veil" aria-hidden="true" />
                 <span className="share-og-badge">MTONYO+</span>
-                {video.durationSeconds > 0 && (
+                {video?.durationSeconds > 0 && (
                   <span className="share-og-time">{duration(video.durationSeconds)}</span>
                 )}
                 <span className="share-og-play" aria-hidden="true">
@@ -366,7 +398,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
                 </span>
                 <div className="share-og-meta">
                   {fresh && <span className="share-og-new">New release</span>}
-                  <b>{video.title}</b>
+                  <b>{title}</b>
                   {creator && (
                     <small>
                       {creator}
@@ -376,7 +408,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
                   <em>Watch free preview</em>
                 </div>
                 <div className="share-og-stats">
-                  {video.views != null && (
+                  {video?.views != null && (
                     <span>
                       <Eye size={12} />
                       {compact(video.views)} views
@@ -427,7 +459,6 @@ export default function ShareSheet({ open, video, share, onClose }) {
             className="share-target is-ig"
             type="button"
             onClick={() => launchSocial('instagram')}
-            disabled={saving === 'instagram'}
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
@@ -437,7 +468,6 @@ export default function ShareSheet({ open, video, share, onClose }) {
             className="share-target is-tt"
             type="button"
             onClick={() => launchSocial('tiktok')}
-            disabled={saving === 'tiktok'}
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
@@ -468,7 +498,6 @@ export default function ShareSheet({ open, video, share, onClose }) {
           className="share-row"
           type="button"
           onClick={() => saveClip('save')}
-          disabled={Boolean(saving)}
         >
           {saving === 'save' ? <Loader2 className="spin" size={20} /> : <IconClapper />}
           <span>

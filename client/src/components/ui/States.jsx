@@ -11,11 +11,12 @@ export function Skeleton({ rows = 3, className = '' }) {
   )
 }
 
-export function SkeletonCards({ count = 4 }) {
+export function SkeletonCards({ count = 4, label }) {
   return (
-    <div className="vid-grid" aria-busy="true">
+    <div className="vid-grid" aria-busy="true" aria-live="polite">
+      {label && <p className="skeleton-label">{label}</p>}
       {Array.from({ length: count }).map((_, i) => (
-        <div className="skeleton-card" key={i}>
+        <div className="skeleton-card is-shimmer" key={i}>
           <div className="skeleton skeleton-thumb" />
           <div className="skeleton skeleton-line" />
           <div className="skeleton skeleton-line short" />
