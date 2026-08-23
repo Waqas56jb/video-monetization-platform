@@ -261,13 +261,84 @@ textarea:focus { outline: none; border-color: rgba(233,185,73,.5); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ---------- watching a video before deciding about it -------------------- */
-.preview-modal .preview-card { width: min(880px, 100%); max-width: 880px; }
-.preview-head { margin-bottom: 14px; padding-right: 34px; }
+.preview-modal.modal.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding:
+    max(12px, env(safe-area-inset-top, 0px))
+    max(12px, env(safe-area-inset-right, 0px))
+    max(12px, env(safe-area-inset-bottom, 0px))
+    max(12px, env(safe-area-inset-left, 0px));
+  overscroll-behavior: contain;
+}
+.preview-modal .modal-bg { position: absolute; inset: 0; }
+.preview-modal .preview-card {
+  position: relative;
+  z-index: 1;
+  width: min(840px, 100%);
+  max-width: 840px;
+  margin: auto;
+  flex: 0 1 auto;
+  max-height: min(94dvh, 94vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(18px, 4vw, 28px);
+  -webkit-overflow-scrolling: touch;
+}
+.preview-head { margin-bottom: 14px; padding-right: 34px; text-align: left; }
 .preview-head b { display: block; font-size: 16px; }
 .preview-head small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.preview-player {
+  width: 100%;
+  margin-inline: auto;
+}
+.preview-shell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: min(calc((100vw - 48px) * 9 / 16), calc(94dvh - 150px));
+  margin-inline: auto;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
 .preview-frame {
-  display: block; width: 100%; aspect-ratio: 16 / 9;
-  border: 0; border-radius: 12px; background: #000;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 12px;
+  background: #000;
+}
+.preview-shell .preview-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: unset;
+  border-radius: 0;
+}
+.preview-player .state-block {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: 12px;
+}
+.preview-note { margin: 10px 0 0; }
+@media (max-width: 720px) {
+  .preview-modal .preview-card {
+    width: 100%;
+    padding: 20px 16px 18px;
+  }
+  .preview-shell {
+    max-height: calc(94dvh - 140px);
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .preview-shell {
+    max-height: calc(94dvh - 110px);
+  }
 }
 
 /* The poster is the obvious thing to click to watch something. */

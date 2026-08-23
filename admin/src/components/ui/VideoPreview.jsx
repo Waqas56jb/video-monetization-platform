@@ -1,25 +1,32 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
-import api from '@/lib/api'
+import { createPortal } from 'react-dom'
+import { AlertTriangle, RefreshCw, X } from 'lucide-react'
+import api, { mediaUrl } from '@/lib/api'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+
+function buildIframeSrc(src, poster) {
+  try {
+    const url = new URL(src)
+    if (poster) url.searchParams.set('poster', poster)
+    url.searchParams.set('autoplay', 'true')
+    url.searchParams.set('muted', 'true')
+    url.searchParams.set('letterboxColor', '000000')
+    url.searchParams.set('preload', 'auto')
+    return url.toString()
+  } catch {
+    return src
+  }
+}
 
 /**
  * Watch a video without leaving the queue.
  *
- * Reviewing means watching. Deciding whether something may be published from
- * its title, its price and a thumbnail is guesswork, and this screen was
- * asking for exactly that.
- *
- * Staff get the full video, not the free preview — the server decides that,
- * and every action taken afterwards is recorded against the name and email of
- * whoever took it.
- *
- * Cloudflare's embedded player rather than a bare <video>: these are HLS
- * streams, which Chrome and Firefox will not play natively, and the src is a
- * signed short-lived token rather than anything reusable.
+ * Reviewing means watching. Staff get the full video when available, not
+ * just the free preview clip — the server decides that.
  */
 export default function VideoPreview({ video, open, onClose }) {
   const [state, setState] = useState({ status: 'loading' })
+  const [attempt, setAttempt] = useState(0)
 
   useLockBodyScroll(open)
 
@@ -43,9 +50,8 @@ export default function VideoPreview({ video, open, onClose }) {
     return () => {
       alive = false
     }
-  }, [open, video?.id])
+  }, [open, video?.id, attempt])
 
-  // Escape closes, like any dialog.
   useEffect(() => {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -55,8 +61,15 @@ export default function VideoPreview({ video, open, onClose }) {
 
   if (!open) return null
 
-  return (
-    <div className="modal open preview-modal" role="dialog" aria-modal="true" aria-label={`Preview ${video?.title}`}>
+  const poster = video?.thumbnailUrl ? mediaUrl(video.thumbnailUrl) : ''
+
+  const modal = (
+    <div
+      className="modal open preview-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Preview ${video?.title}`}
+    >
       <div className="modal-bg" onClick={onClose} />
       <div className="modal-card preview-card">
         <button className="modal-x" onClick={onClose} aria-label="Close preview">
@@ -68,33 +81,47 @@ export default function VideoPreview({ video, open, onClose }) {
           {video?.creator?.name && <small>{video.creator.name}</small>}
         </div>
 
-        {state.status === 'loading' && <div className="sk preview-frame" />}
+        {state.status === 'loading' && (
+          <div className="preview-player">
+            <div className="sk preview-frame" />
+          </div>
+        )}
 
         {state.status === 'ready' && (
-          <>
-            <iframe
-              className="preview-frame"
-              src={state.src}
-              title={video?.title || 'Video preview'}
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-              allowFullScreen
-            />
+          <div className="preview-player">
+            <div className="preview-shell">
+              <iframe
+                className="preview-frame"
+                src={buildIframeSrc(state.src, poster)}
+                title={video?.title || 'Video preview'}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+              />
+            </div>
             {state.kind === 'preview' && (
-              <p className="field-note" style={{ marginTop: 10 }}>
+              <p className="field-note preview-note">
                 Showing the free preview clip — the full video was not available.
               </p>
             )}
-          </>
+          </div>
         )}
 
         {(state.status === 'empty' || state.status === 'error') && (
-          <div className="state-block">
-            <AlertTriangle size={24} />
-            <b>{state.status === 'error' ? 'Could not load it' : 'Nothing to play'}</b>
-            <p>{state.note}</p>
+          <div className="preview-player">
+            <div className="state-block">
+              <AlertTriangle size={24} />
+              <b>{state.status === 'error' ? 'Could not load it' : 'Nothing to play'}</b>
+              <p>{state.note}</p>
+              <button className="btn btn-ghost" type="button" onClick={() => setAttempt((n) => n + 1)}>
+                <RefreshCw size={14} />
+                Try again
+              </button>
+            </div>
           </div>
         )}
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

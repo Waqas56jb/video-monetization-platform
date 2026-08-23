@@ -868,6 +868,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 500;
   padding:
     max(12px, env(safe-area-inset-top, 0px))
     max(12px, env(safe-area-inset-right, 0px))
