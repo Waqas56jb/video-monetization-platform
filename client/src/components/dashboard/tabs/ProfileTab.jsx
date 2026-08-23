@@ -128,65 +128,8 @@ export default function ProfileTab() {
   const u = data.user
 
   return (
-    <div className="two-col">
-      <div>
-        <Panel title="Your photo">
-          <div className="avatar-editor">
-            <div className={`avatar-big ${uploading ? 'busy' : ''}`.trim()}>
-              {avatar ? (
-                <img src={avatar} alt="" />
-              ) : (
-                <span className="avatar-initials">{initialsOf(u.fullName || u.email)}</span>
-              )}
-              <label
-                className="avatar-cam"
-                htmlFor="profile-photo-file"
-                aria-label="Change your photo"
-                aria-disabled={uploading}
-              >
-                <Camera size={16} />
-              </label>
-            </div>
-
-            <div className="avatar-text">
-              <b>{u.fullName || 'Your account'}</b>
-              <small>{u.email}</small>
-              <small>Joined {shortDate(u.createdAt)}</small>
-
-              <div className="avatar-actions">
-                <label
-                  htmlFor="profile-photo-file"
-                  className={`btn btn-ghost btn-sm ${uploading ? 'is-disabled' : ''}`.trim()}
-                  aria-disabled={uploading}
-                >
-                  <Camera size={14} />
-                  {uploading ? 'Uploading…' : avatar ? 'Change photo' : 'Add a photo'}
-                </label>
-                {avatar && (
-                  <button className="btn btn-ghost btn-sm" onClick={removePhoto} disabled={uploading}>
-                    <Trash2 size={14} />
-                    Remove
-                  </button>
-                )}
-              </div>
-              <small className="field-hint" style={{ margin: 0 }}>
-                JPEG, PNG, GIF or WebP, up to 2 MB. A square picture looks best.
-              </small>
-            </div>
-          </div>
-
-          <input
-            id="profile-photo-file"
-            className="sr-file"
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            onChange={pickPhoto}
-          />
-        </Panel>
-      </div>
-
-      <div>
+    <div className="profile-layout">
+      <div className="profile-main">
         <Panel title="Your details">
           <form onSubmit={save} noValidate>
             {formError && (
