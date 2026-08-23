@@ -16,7 +16,7 @@ router.get(
       res.setHeader('Cache-Control', 'private, no-store')
       return res.status(404).json({ isPublic: false })
     }
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600')
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.json(meta)
   })

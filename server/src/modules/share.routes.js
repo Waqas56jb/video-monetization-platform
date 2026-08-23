@@ -10,6 +10,7 @@ import { env, capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { brandShareCard } from '../lib/shareCard.js'
 import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable } from '../lib/shareCardCache.js'
+import { uploadShareCardToStorage } from '../lib/shareCardStorage.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { shareSourceKey, shareCardUrl } from '../lib/shareMeta.js'
 import { handleShareCard } from '../lib/shareCardServe.js'
@@ -247,6 +248,7 @@ async function composeShareCardOnce(video) {
     creator: video.creator_name,
   })
   await writeCachedCard(slug, video.id, key, card)
+  uploadShareCardToStorage(slug, key, card).catch(() => {})
   pingLinkPreview(slug)
   log.info(`og-card slug=${slug} cache=miss ms=${Date.now() - started} bytes=${card.length}`)
   return card

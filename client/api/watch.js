@@ -72,7 +72,7 @@ async function loadShareMeta(slug) {
   try {
     const r = await fetch(`${API}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(1500),
     })
     if (r.ok) meta = await r.json()
   } catch {
@@ -188,7 +188,7 @@ export default async function handler(req, res) {
   )
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
+  res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
   res.setHeader('Vary', 'Accept-Encoding')
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Build', BUILD)

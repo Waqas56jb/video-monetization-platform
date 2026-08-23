@@ -1,105 +1,66 @@
 /**
- * Wait until the server has a built share-card JPEG (not the generic fallback).
+ * Edge-warm share URLs in the background — no polling, no awaits on user tap.
+ * WhatsApp crawls server-side; we only prime CDN/browser caches early.
  */
-import { DEPLOY } from '@/lib/deployUrls'
 
-const inflight = new Map()
-const ready = new Set()
+const warmed = new Set()
 
-const API =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
-  DEPLOY.api
-
-function normalizeApi(url) {
-  if (/video-monetization-platform-backend\.vercel\.app/i.test(String(url))) return DEPLOY.api
-  return String(url || DEPLOY.api).replace(/\/$/, '')
+function warmUrl(u) {
+  if (!u) return
+  fetch(u, { mode: 'no-cors', cache: 'default', priority: 'low', keepalive: true }).catch(() => {})
 }
 
-const API_BASE = normalizeApi(API)
+/**
+ * @param {{ shareUrl: string, cleanUrl?: string, cardUrl?: string }} urls
+ */
+export function warmShare(urls) {
+  if (typeof window === 'undefined' || !urls?.shareUrl) return
+  const key = urls.shareUrl
+  if (warmed.has(key)) return
+  warmed.add(key)
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
-function cardHeadUrl(slug, sourceKey) {
-  const v = sourceKey ? `?v=${encodeURIComponent(sourceKey)}` : ''
-  return `${API_BASE}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
-}
-
-async function headBuilt(slug, sourceKey) {
-  try {
-    const r = await fetch(cardHeadUrl(slug, sourceKey), {
-      method: 'HEAD',
-      credentials: 'omit',
-    })
-    return r.ok && r.headers.get('x-share-card') === 'built'
-  } catch {
-    return false
-  }
-}
-
-async function probeHtml(slug) {
-  if (!slug || typeof window === 'undefined') return false
-  const page = `${window.location.origin}/watch/${encodeURIComponent(slug)}`
-  try {
-    const r = await fetch(page, { mode: 'cors', credentials: 'omit' })
-    if (!r.ok) return false
-    const html = await r.text()
-    return /property=["']og:image["']/i.test(html) && !/og:title" content="MTONYO\+ —/i.test(html)
-  } catch {
-    return false
-  }
-}
-
-export function isShareCardReady(slug) {
-  return Boolean(slug && ready.has(slug))
-}
-
-export async function prepareShareCard(slug, sourceKey) {
-  if (!slug || slug === 'undefined' || typeof window === 'undefined') return false
-  const key = `${slug}:${sourceKey || ''}`
-  if (ready.has(key)) return true
-  const pending = inflight.get(key)
-  if (pending) return pending
-
-  const run = (async () => {
-    fetch(`${API_BASE}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
-      credentials: 'omit',
-    }).catch(() => {})
-
-    for (let i = 0; i < 12; i++) {
-      if (await headBuilt(slug, sourceKey)) {
-        ready.add(key)
-        return true
+  const run = () => {
+    warmUrl(urls.shareUrl)
+    warmUrl(urls.cleanUrl)
+    if (urls.cardUrl) {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = urls.cardUrl
+      if (!document.querySelector(`link[rel="prefetch"][href="${urls.cardUrl}"]`)) {
+        const link = document.createElement('link')
+        link.rel = 'prefetch'
+        link.as = 'image'
+        link.href = urls.cardUrl
+        document.head.appendChild(link)
       }
-      if (i > 2 && (await probeHtml(slug))) {
-        ready.add(key)
-        return true
-      }
-      await sleep(400)
     }
-    return false
-  })()
-
-  inflight.set(key, run)
-  try {
-    return await run
-  } finally {
-    inflight.delete(key)
   }
+
+  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 })
+  else setTimeout(run, 0)
 }
 
-export async function waitForShareCard(slug, sourceKey, maxMs = 6000) {
-  if (!slug || typeof window === 'undefined') return false
-  const key = `${slug}:${sourceKey || ''}`
-  if (ready.has(key)) return true
-  const pending = inflight.get(key) || prepareShareCard(slug, sourceKey)
-  return Promise.race([pending, sleep(maxMs).then(() => ready.has(key))])
+/** Build warm URLs from share payload + optional overrides. */
+export function warmShareFromMeta(meta) {
+  if (!meta?.watchUrl) return
+  const cleanUrl = meta.watchUrl
+  const shareUrl = meta.sourceKey
+    ? `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}s=${encodeURIComponent(meta.sourceKey)}`
+    : cleanUrl
+  warmShare({ shareUrl, cleanUrl, cardUrl: meta.cardUrl })
 }
 
-export function warmSharePreview(slug, sourceKey) {
+/** @deprecated use warmShareFromMeta */
+export function warmSharePreview(slug, sourceKey, meta) {
+  if (meta?.watchUrl) {
+    warmShareFromMeta(meta)
+    return
+  }
   if (!slug) return
-  const key = `${slug}:${sourceKey || ''}`
-  if (ready.has(key)) return
-  prepareShareCard(slug, sourceKey).catch(() => {})
+  const origin = window.location.origin
+  const cleanUrl = `${origin}/watch/${encodeURIComponent(slug)}`
+  const shareUrl = sourceKey
+    ? `${cleanUrl}?s=${encodeURIComponent(sourceKey)}`
+    : cleanUrl
+  warmShare({ shareUrl, cleanUrl })
 }

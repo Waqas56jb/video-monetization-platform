@@ -29,15 +29,8 @@ import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
-import { warmSharePreview } from '@/lib/warmShare'
+import { warmShareFromMeta } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
-import { DEPLOY } from '@/lib/deployUrls'
-
-function apiBase() {
-  const raw = import.meta.env?.VITE_API_URL || DEPLOY.api
-  if (/video-monetization-platform-backend\.vercel\.app/i.test(String(raw))) return DEPLOY.api
-  return String(raw).replace(/\/$/, '')
-}
 
 /**
  * Watching a video.
@@ -106,6 +99,7 @@ export default function Watch() {
   const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
 
   const v = video.data?.video
+  const share = video.data?.share
   const p = playback.data
   /**
    * Only decide lock state after playback access is known.
@@ -151,12 +145,13 @@ export default function Watch() {
    * Laptop previews give up if the JPEG is still being composed.
    */
   useEffect(() => {
-    if (!v?.slug) return
-    fetch(`${apiBase()}/api/public/videos/${encodeURIComponent(v.slug)}/share-meta`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((meta) => warmSharePreview(v.slug, meta?.sourceKey))
-      .catch(() => warmSharePreview(v.slug))
-  }, [v?.slug])
+    if (!share?.watchUrl) return
+    warmShareFromMeta(share)
+  }, [share])
+
+  const primeShare = () => {
+    if (share?.watchUrl) warmShareFromMeta(share)
+  }
 
   useEffect(() => {
     if (!v?.slug) return
@@ -733,10 +728,9 @@ export default function Watch() {
               )}
               <button
                 className="btn btn-ghost btn-sm"
-                onPointerEnter={() => {
-                  if (!v?.slug) return
-                  warmSharePreview(v.slug, v.sourceKey)
-                }}
+                onPointerEnter={primeShare}
+                onTouchStart={primeShare}
+                onFocus={primeShare}
                 onClick={() => setSharing(true)}
               >
                 <Share2 />
@@ -839,7 +833,7 @@ export default function Watch() {
         </div>
       </div>
 
-      <ShareSheet open={sharing} video={v} onClose={() => setSharing(false)} />
+      <ShareSheet open={sharing} video={v} share={share} onClose={() => setSharing(false)} />
 
       <ReportDialog
         open={reporting}

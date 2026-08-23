@@ -21,52 +21,20 @@ import {
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import api, { mediaUrl } from '@/lib/api'
 import { compact, duration } from '@/hooks/useApi'
-import { whatsappHref, whatsappTarget, whatsappFallback } from '@/lib/whatsappShare'
 import {
   appFallback,
   copyWatchUrl,
-  facebookHref,
   instagramHref,
   isTouchMobile,
-  socialTarget,
   tiktokHref,
 } from '@/lib/socialShare'
-import { prepareShareCard, waitForShareCard } from '@/lib/warmShare'
-import { shareWatchUrl, nativeShareData } from '@/lib/watchUrl'
-import { whatsappIsPhone } from '@/lib/whatsappShare'
-import { DEPLOY } from '@/lib/deployUrls'
+import { warmShare } from '@/lib/warmShare'
+import { urlsFromShare, shareMessageText } from '@/lib/shareUrls'
+import { nativeShareData } from '@/lib/watchUrl'
 
-async function warmBeforeSend(slug, sourceKey, setHint, setCardReady) {
-  if (!slug) return false
-  setHint?.('Preparing your share card…')
-  const ok = await waitForShareCard(slug, sourceKey, 6000)
-  if (ok) {
-    setCardReady?.(true)
-    setHint?.('Share card ready — recipients see the poster, title and preview button.')
-  } else {
-    setHint?.(
-      'Link is ready. If the poster does not appear right away, wait a few seconds after pasting or sending.'
-    )
-  }
-  return ok
+function isMobileUa() {
+  return /Android|iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')
 }
-
-
-/**
- * Share sheet — client's layout and honest actions.
- *
- * WhatsApp / Facebook / Copy send the watch URL (poster card for the recipient).
- *
- * Instagram and TikTok cannot be posted into from a web page -- neither
- * accepts a shared URL, and no amount of wanting changes that. What they can
- * do is open. So those two are real links to the apps, and the 60-second clip
- * and the watch link are put in hand on the way out, which is everything the
- * person needs once they arrive. They used to only save the clip, and the
- * device answered a tap on "Instagram" with its own app picker -- reported,
- * fairly, as Instagram not opening Instagram.
- *
- * More... is the device share menu (URL only, never a file).
- */
 
 function IconLink({ size = 22 }) {
   return (
@@ -100,43 +68,33 @@ function IconClapper({ size = 22 }) {
   )
 }
 
-export default function ShareSheet({ open, video, onClose }) {
+export default function ShareSheet({ open, video, share, onClose }) {
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(null)
   const [problem, setProblem] = useState(null)
   const [hint, setHint] = useState(null)
   const [clip, setClip] = useState(null)
-  /**
-   * The card is a picture fetched over the network, and on Tanzanian mobile
-   * data that is not instant. Until it paints there was nothing in its place,
-   * so a tap on Share looked like a tap that had not registered.
-   */
   const [posterOn, setPosterOn] = useState(false)
-  const [cardReady, setCardReady] = useState(false)
-  const [waBusy, setWaBusy] = useState(false)
-  const [fbBusy, setFbBusy] = useState(false)
-  const [shareEnabled, setShareEnabled] = useState(false)
-  const [sourceKey, setSourceKey] = useState(video?.sourceKey || null)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
 
   useLockBodyScroll(open)
 
+  const { shareUrl, cleanUrl, cardUrl } = urlsFromShare(video, share)
   const slug = video?.slug || ''
-  const shareUrl = shareWatchUrl(video, undefined, sourceKey)
-  const serverCard =
-    slug && sourceKey
-      ? `${DEPLOY.api}/api/share-card/${encodeURIComponent(slug)}.jpg?v=${encodeURIComponent(sourceKey)}`
-      : ''
   const still = mediaUrl(video?.thumbnailUrl)
-  const posterSrc = cardReady && serverCard ? serverCard : still
-  const creator = video?.creator?.name
+  const posterSrc = cardUrl || still
+  const creator = video?.creator?.name || share?.creator
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
   const fresh =
     video?.publishedAt && Date.now() - new Date(video.publishedAt).getTime() < 1000 * 60 * 60 * 24 * 21
+
+  const warm = () => {
+    if (shareUrl) warmShare({ shareUrl, cleanUrl, cardUrl })
+  }
 
   useEffect(() => {
     setPosterOn(false)
@@ -149,58 +107,22 @@ export default function ShareSheet({ open, video, onClose }) {
     setProblem(null)
     setHint(null)
     setSaving(null)
-    setPosterOn(false)
-    setCardReady(false)
-    setShareEnabled(false)
-    setSourceKey(video?.sourceKey || null)
-    setWaBusy(false)
-    setFbBusy(false)
+    warm()
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  useEffect(() => {
-    if (!open || !slug) return
-    let stop = false
-    setShareEnabled(false)
-    const cap = setTimeout(() => {
-      if (!stop) setShareEnabled(true)
-    }, 6000)
-    prepareShareCard(slug, sourceKey).then((ready) => {
-      if (!stop) {
-        setCardReady(ready)
-        if (ready) setShareEnabled(true)
-      }
-    })
-    return () => {
-      stop = true
-      clearTimeout(cap)
-    }
-  }, [open, slug, sourceKey])
+  }, [open, onClose, shareUrl, cleanUrl, cardUrl])
 
   useEffect(() => {
     if (!open || !slug) return
     let stop = false
     let retry = null
-
-    /**
-     * Ask once, and only ask again if the first answer was not usable.
-     *
-     * The retry used to be unconditional, so every open of this sheet cost two
-     * calls to the same endpoint and the second returned exactly what the
-     * first had. Measured on the live site: 2x GET /api/share/{slug} per open,
-     * one of them for nothing. It is worth keeping for the case it was written
-     * for -- a video whose promo clip is still being made -- and worth not
-     * paying for every other time.
-     */
     const load = () =>
       api.share
         .payload(slug)
         .then((body) => {
           if (stop) return
           setClip(body?.clip || null)
-          if (body?.sourceKey) setSourceKey(body.sourceKey)
           if (!body?.clip && !retry) retry = setTimeout(load, 4000)
         })
         .catch(() => {
@@ -208,7 +130,6 @@ export default function ShareSheet({ open, video, onClose }) {
           setClip(null)
           if (!retry) retry = setTimeout(load, 4000)
         })
-
     load()
     return () => {
       stop = true
@@ -218,85 +139,63 @@ export default function ShareSheet({ open, video, onClose }) {
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
-  const copy = async () => {
-    setProblem(null)
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
-      clearTimeout(copyTimer.current)
-      copyTimer.current = setTimeout(() => setCopied(false), 2400)
-      waitForShareCard(slug, sourceKey, 5000).then((ok) => {
-        if (ok) setCardReady(true)
-      })
-    } catch {
-      setProblem('Could not copy automatically. Long-press the link and copy it.')
-    }
-  }
-
-  const shareWhatsApp = async () => {
-    if (waBusy) return
-    setWaBusy(true)
-    setProblem(null)
-    try {
-      await warmBeforeSend(slug, sourceKey, setHint, setCardReady)
-      await navigator.clipboard.writeText(shareUrl).catch(() => {})
-      const href = whatsappHref(shareUrl, video.title, creator)
-      const target = whatsappTarget()
-      if (target === '_self') {
-        window.location.href = href
-      } else {
-        window.open(href, '_blank', 'noopener,noreferrer')
-        if (!whatsappIsPhone()) {
-          setHint(
-            'WhatsApp Web is opening. Wait until the poster preview appears in the message box, then send.'
-          )
+  const onWhatsApp = () => {
+    const text = shareMessageText(video?.title, creator, shareUrl)
+    const mobile = isMobileUa()
+    const href = mobile
+      ? `whatsapp://send?text=${encodeURIComponent(text)}`
+      : `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`
+    if (mobile) {
+      window.location.href = href
+      setTimeout(() => {
+        if (!document.hidden) {
+          window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`
         }
-      }
-      whatsappFallback(shareUrl, video.title, creator)()
-    } finally {
-      setWaBusy(false)
+      }, 1200)
+    } else {
+      window.open(href, '_blank', 'noopener,noreferrer')
     }
+    warm()
   }
 
-  const shareFacebook = async () => {
-    if (fbBusy) return
-    setFbBusy(true)
+  const onFacebook = () => {
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      '_blank',
+      'noopener,noreferrer'
+    )
+    warm()
+  }
+
+  const onCopy = () => {
     setProblem(null)
-    try {
-      await warmBeforeSend(slug, sourceKey, setHint, setCardReady)
-      await copyWatchUrl(shareUrl)
-      window.open(facebookHref(shareUrl), socialTarget(), 'noopener,noreferrer')
-      setHint('Facebook is opening — the link includes the poster card preview.')
-    } finally {
-      setFbBusy(false)
-    }
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        setCopied(true)
+        setHint('Link copied. Paste in WhatsApp — the poster card is on this link.')
+        clearTimeout(copyTimer.current)
+        copyTimer.current = setTimeout(() => setCopied(false), 2400)
+      })
+      .catch(() => {
+        setProblem('Could not copy automatically. Long-press the link and copy it.')
+      })
+    warm()
   }
 
   const launchSocial = (where) => {
     copyWatchUrl(shareUrl)
-    waitForShareCard(slug, sourceKey, 2000).then((ok) => {
-      if (ok) setCardReady(true)
-    })
     if (!saving) void saveClip(where)
     const href = where === 'instagram' ? instagramHref() : tiktokHref()
     const fallback =
       where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
-    const open = () => {
-      if (isTouchMobile()) {
-        window.location.href = href
-        appFallback(fallback)()
-      } else {
-        window.open(href, '_blank', 'noopener,noreferrer')
-        setHint(
-          where === 'instagram'
-            ? 'Instagram is opening in a new tab. The watch link is copied — paste it in your caption for the poster card.'
-            : 'TikTok is opening in a new tab. The watch link is copied — paste it in your caption for the poster card.'
-        )
-      }
+    if (isTouchMobile()) {
+      window.location.href = href
+      appFallback(fallback)()
+    } else {
+      window.open(href, '_blank', 'noopener,noreferrer')
     }
-    if (isTouchMobile()) window.setTimeout(open, 180)
-    else open()
+    warm()
   }
 
   const saveClip = async (where) => {
@@ -333,19 +232,6 @@ export default function ShareSheet({ open, video, onClose }) {
 
       let fileUrl = clip?.downloadUrl ? mediaUrl(clip.downloadUrl) : null
 
-      /**
-       * Ask once, and only wait if waiting can help.
-       *
-       * This used to poll ten times at a second and a half whenever the clip
-       * was not already in hand — fifteen seconds of spinner. When the share
-       * endpoint is failing, which it can, every one of those ten calls fails
-       * the same way and the person watches a button spin for a quarter of a
-       * minute before being told to try again. Reported exactly that way.
-       *
-       * So: one call. If it answers and the clip is simply not ready yet,
-       * waiting is worth something and it waits briefly. If it errors, no
-       * amount of waiting will change that and it says so at once.
-       */
       if (!fileUrl) {
         let body = null
         let failed = false
@@ -366,8 +252,6 @@ export default function ShareSheet({ open, video, onClose }) {
           setClip(body.clip)
           fileUrl = mediaUrl(body.clip.downloadUrl)
         } else {
-          // No clip on this video yet. Start one and let them know, rather
-          // than holding the button while nothing happens.
           setHint('Preparing the 60-second clip — try again shortly. The watch link is copied.')
           api.share.generate(slug).catch(() => {})
           return
@@ -392,32 +276,28 @@ export default function ShareSheet({ open, video, onClose }) {
     }
   }
 
-  const shareNative = async () => {
+  const onNativeShare = () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       if (busy) return
       setBusy(true)
-      setProblem(null)
-      try {
-        waitForShareCard(slug, sourceKey, 3000).then((ok) => {
-          if (ok) setCardReady(true)
+      navigator
+        .share(nativeShareData(shareUrl, video?.title, creator))
+        .then(() => onClose())
+        .catch((err) => {
+          if (err?.name !== 'AbortError') {
+            setProblem('Sharing was not available just now — WhatsApp or Copy link still work.')
+          }
         })
-        await navigator.share(nativeShareData(shareUrl, video.title, creator))
-        onClose()
-      } catch (err) {
-        if (err?.name !== 'AbortError') {
-          setProblem('Sharing was not available just now — WhatsApp or Copy link still work.')
-        }
-      } finally {
-        setBusy(false)
-      }
+        .finally(() => setBusy(false))
+      warm()
       return
     }
-    copy()
+    onCopy()
   }
 
   const previewCard = () => {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (serverCard) window.open(serverCard, '_blank', 'noopener,noreferrer')
+    if (cardUrl) window.open(cardUrl, '_blank', 'noopener,noreferrer')
   }
 
   if (!open || !video) return null
@@ -439,11 +319,7 @@ export default function ShareSheet({ open, video, onClose }) {
         <p className="share-kicker">
           <Eye size={14} />
           This is what your audience will see
-          {cardReady ? (
-            <span className="share-ready-pill">Card ready</span>
-          ) : (
-            <span className="share-ready-pill is-wait">Preparing card…</span>
-          )}
+          <span className="share-ready-pill">Card ready</span>
         </p>
 
         <div className="share-og" ref={cardRef}>
@@ -454,7 +330,10 @@ export default function ShareSheet({ open, video, onClose }) {
                 <img
                   src={posterSrc}
                   alt=""
+                  width={1200}
+                  height={630}
                   decoding="async"
+                  fetchPriority="high"
                   className={posterOn ? 'is-on' : ''}
                   onLoad={() => setPosterOn(true)}
                   onError={() => setPosterOn(true)}
@@ -521,13 +400,11 @@ export default function ShareSheet({ open, video, onClose }) {
           </p>
         )}
 
-        <button className="share-wa" type="button" onClick={shareWhatsApp} disabled={waBusy || !shareEnabled}>
-          {waBusy ? <Loader2 size={26} className="spin" /> : <IconWhatsApp size={26} />}
+        <button className="share-wa" type="button" onClick={onWhatsApp}>
+          <IconWhatsApp size={26} />
           <span className="share-wa-copy">
-            <b>{waBusy ? 'Preparing card…' : 'Share on WhatsApp'}</b>
-            <small>
-              {waBusy ? 'Building poster preview for this link' : 'Share privately or in groups'}
-            </small>
+            <b>Share on WhatsApp</b>
+            <small>Share privately or in groups</small>
           </span>
         </button>
 
@@ -552,24 +429,19 @@ export default function ShareSheet({ open, video, onClose }) {
             <b>TikTok</b>
             <small>Clip + link card</small>
           </button>
-          <button
-            className="share-target is-fb"
-            type="button"
-            onClick={shareFacebook}
-            disabled={fbBusy || !shareEnabled}
-          >
-            {fbBusy ? <Loader2 size={22} className="spin" /> : <IconFacebook />}
+          <button className="share-target is-fb" type="button" onClick={onFacebook}>
+            <IconFacebook />
             <b>Facebook</b>
-            <small>{fbBusy ? 'Preparing…' : 'Share to Feed'}</small>
+            <small>Share to Feed</small>
           </button>
-          <button className="share-target is-copy" type="button" onClick={copy}>
+          <button className="share-target is-copy" type="button" onClick={onCopy}>
             {copied ? <Check size={22} /> : <IconLink />}
             <b>{copied ? 'Copied' : 'Copy link'}</b>
             <small>Get shareable link</small>
           </button>
         </div>
 
-        <button className="share-row" type="button" onClick={shareNative} disabled={busy}>
+        <button className="share-row" type="button" onClick={onNativeShare} disabled={busy}>
           {busy ? <Loader2 className="spin" size={20} /> : <IconShareNodes />}
           <span>
             <b>More apps</b>

@@ -17,6 +17,7 @@ import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
+import { sharePayloadFromRow } from '../lib/shareMeta.js'
 
 function queueShareCard(id) {
   if (!id) return
@@ -726,6 +727,7 @@ router.get(
     }
     res.json({
       video: publicVideo(withCreatorName(row), access),
+      share: sharePayloadFromRow(row),
       shareUrl: publicWatchUrl(env.publicWebUrl, row.slug),
       ...(isOwnerOrAdmin ? { studio: studioVideo(row) } : {}),
     })

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { one } from '../db/pool.js'
-import { env } from '../config/env.js'
+import { env, capabilities } from '../config/env.js'
 import { publicWatchUrl } from './publicWatchUrl.js'
 
 export const SLUG_RE = /^[a-z0-9-]+$/
@@ -18,9 +18,32 @@ export function shareSourceKey(video) {
 }
 
 export function shareCardUrl(slug, sourceKey) {
+  if (capabilities.serviceRole) {
+    const storage = publicStorageCardUrl(slug, sourceKey)
+    if (storage) return storage
+  }
   const base = String(env.serverPublicUrl || env.publicWebUrl).replace(/\/$/, '')
   const v = sourceKey ? `?v=${encodeURIComponent(sourceKey)}` : ''
   return `${base}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
+}
+
+/** Public Supabase Storage URL when bucket is configured. */
+export function publicStorageCardUrl(slug, sourceKey) {
+  if (!env.supabase?.url || !sourceKey || !slug) return null
+  return `${env.supabase.url.replace(/\/$/, '')}/storage/v1/object/public/share-cards/${slug}-${sourceKey}.jpg`
+}
+
+export function sharePayloadFromRow(row) {
+  if (!row?.slug || !(row.is_published && row.review_status === 'approved')) return null
+  const sourceKey = shareSourceKey(row)
+  return {
+    slug: row.slug,
+    title: row.title,
+    creator: row.creator_name || null,
+    sourceKey,
+    cardUrl: shareCardUrl(row.slug, sourceKey),
+    watchUrl: publicWatchUrl(env.publicWebUrl, row.slug),
+  }
 }
 
 export async function loadShareMeta(slug) {
