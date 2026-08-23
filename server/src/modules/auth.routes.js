@@ -212,11 +212,47 @@ router.post(
       )
     }
     if (profile.status === 'blocked') throw forbidden('This account has been blocked')
-    if (side === 'creator' && !(await profileHasCreatorSide(profile))) {
+
+    const hasCreator = await profileHasCreatorSide(profile)
+    const staff = profile.role === 'admin' || profile.role === 'sub_admin'
+
+    if (side === 'creator' && !hasCreator) {
       throw forbidden('No creator account is registered with this email.')
     }
 
-    res.json({ ...shape(profile, session), side })
+    /**
+     * Watch and Create are separate doors.
+     *
+     * A creator who logs in on Watch still had a valid session, but the
+     * dashboard opened on the library before the Create side had been chosen —
+     * which reads as "creator credentials opened the viewer panel". Pure viewers
+     * and staff are the only ones who may use the Watch login.
+     */
+    if (side === 'viewer' && hasCreator && !staff) {
+      throw forbidden('This email is registered as a creator account. Log in on the Create side.')
+    }
+
+    let creator = null
+    if (hasCreator) {
+      creator = await one(
+        `select display_name, verified, payout_phone, payout_method
+           from creator_profiles where user_id = $1`,
+        [profile.id]
+      )
+    }
+
+    res.json({
+      ...shape(profile, session),
+      side,
+      creator: creator
+        ? {
+            displayName: creator.display_name,
+            verified: creator.verified,
+            payoutPhone: creator.payout_phone,
+            payoutMethod: creator.payout_method,
+          }
+        : null,
+    })
   })
 )
 

@@ -14,8 +14,11 @@ function loginErrorMessage(err) {
   if (/staff/i.test(raw)) {
     return 'These details do not match an account. Check your email and password.'
   }
-  if (/does not have a creator|creator account yet|no creator account/i.test(raw)) {
-    return 'No creator account is registered with this email.'
+  if (/does not have a creator|creator account yet|no creator account|registered as a creator|create side/i.test(raw)) {
+    if (/registered as a creator|create side/i.test(raw)) {
+      return 'This email is registered as a creator account. Choose Create above, then log in again.'
+    }
+    return 'No creator account is registered with this email. Choose Watch, or sign up on the Create side.'
   }
   if (/incorrect|invalid login|invalid credentials/i.test(raw)) {
     return 'These details do not match an account. Check your email and password.'
@@ -38,7 +41,7 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
-  const { signIn, authed, loading: authLoading, setAccountSide, user } = useAuth()
+  const { signIn, authed, loading: authLoading, setAccountSide, user, isCreator } = useAuth()
 
   const [side, setSide] = useState(() => sideFromSearch(location.search) || getAccountSide())
   const [form, setForm] = useState({ email: '', password: '' })
@@ -61,9 +64,10 @@ export default function Login() {
   useEffect(() => {
     if (!authLoading && authed) {
       setAccountSide(side)
-      navigate(next || dashboardPath(panelRoleFor(user?.role, side)), { replace: true })
+      const panel = panelRoleFor(user?.role, side, isCreator)
+      navigate(next || dashboardPath(panel === 'creator' ? 'creator' : 'viewer'), { replace: true })
     }
-  }, [authed, authLoading, navigate, next, setAccountSide, side, user?.role])
+  }, [authed, authLoading, isCreator, navigate, next, setAccountSide, side, user?.role])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -94,9 +98,10 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      await signIn({ email, password, side })
-      showToast(side === 'creator' ? 'Signed in to your creator account.' : 'Signed in to your viewer account.')
-      navigate(next || dashboardPath(side), { replace: true })
+      const result = await signIn({ email, password, side })
+      const panel = panelRoleFor(result.user?.role, result.side, Boolean(result.creator))
+      showToast(panel === 'creator' ? 'Signed in to your creator account.' : 'Signed in to your viewer account.')
+      navigate(next || dashboardPath(panel === 'creator' ? 'creator' : 'viewer'), { replace: true })
     } catch (err) {
       setError(loginErrorMessage(err))
       setBusy(false)

@@ -105,33 +105,42 @@ export function AuthProvider({ children }) {
   )
 
   const signIn = useCallback(async ({ email, password, side }) => {
+    const wanted = side === 'creator' ? 'creator' : 'viewer'
     setLoading(true)
     try {
       const data = await api.auth.login({
         email: String(email || '').trim().toLowerCase(),
         password,
-        side: side === 'creator' ? 'creator' : 'viewer',
+        side: wanted,
       })
       saveSession(data.session)
+      const resolved = data.side === 'creator' ? 'creator' : 'viewer'
+      // Persist before React state so the dashboard never opens on the wrong side.
+      persistAccountSide(resolved)
+      setSideState(resolved)
       setUser(data.user)
       setCreator(data.creator || null)
-      switchSide(data.side || side || 'viewer')
-      return data.user
+      return { user: data.user, side: resolved, creator: data.creator || null }
     } finally {
       setLoading(false)
     }
-  }, [switchSide])
+  }, [])
 
   const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {
     const wanted = role === 'creator' ? 'creator' : 'viewer'
     const data = await api.auth.register({ email, password, fullName, phone, role: wanted })
     if (data.session) {
       saveSession(data.session)
+      const resolved = data.side === 'creator' ? 'creator' : wanted
+      persistAccountSide(resolved)
+      setSideState(resolved)
       await reload()
+    } else {
+      persistAccountSide(data.side === 'creator' ? 'creator' : wanted)
+      setSideState(data.side === 'creator' ? 'creator' : wanted)
     }
-    switchSide(data.side || wanted)
     return data
-  }, [reload, switchSide])
+  }, [reload])
 
   const signOut = useCallback(async () => {
     try {

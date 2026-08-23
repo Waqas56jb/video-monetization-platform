@@ -53,7 +53,7 @@ const GROUPS = [
 export default function Sidebar({ open, activeTab, onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role, signOut, isCreator, accountSide, setAccountSide } = useRole()
+  const { role, signOut, isCreator, accountSide, setAccountSide, accountRole } = useRole()
   const [signingOut, setSigningOut] = useState(false)
   // Staff who open the public app get the creator menu, not an empty sidebar.
   /**
@@ -145,7 +145,7 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
         ))}
 
         <div className="side-foot">
-          {isCreator && (
+          {accountRole === 'admin' && isCreator && (
             <button
               className="side-link"
               type="button"
