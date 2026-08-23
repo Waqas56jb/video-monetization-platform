@@ -19,8 +19,7 @@ export function isPublicSlug(slug) {
 export function publicWebOrigin(configured) {
   const raw = cleanOrigin(configured)
   if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) return raw
-  if (process.env.NODE_ENV === 'production') return PROD_WEB
-  return raw || 'http://localhost:5173'
+  return PROD_WEB
 }
 
 export function publicWatchPath(slug) {

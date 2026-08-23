@@ -120,6 +120,10 @@ normal flow knows they exist. Add `-- --delete` to clear them.
 Check the API first if anything looks wrong:
 `https://video-monetization-platform-server.vercel.app/health`
 
+All three apps use these Vercel URLs end-to-end. Set the same values in each
+project's Vercel **Environment Variables** (see `server/.env.example`,
+`client/.env.example`, `admin/.env.example`).
+
 ---
 
 ## Deploying
@@ -146,9 +150,9 @@ Preview and Development:
 
 ```
 NODE_ENV=production
-CORS_ORIGINS=https://your-app.vercel.app,https://your-admin.vercel.app
-PUBLIC_WEB_URL=https://your-app.vercel.app
-ADMIN_WEB_URL=https://your-admin.vercel.app
+CORS_ORIGINS=https://video-monetization-platform-chi.vercel.app,https://video-monetization-platform-admin.vercel.app
+PUBLIC_WEB_URL=https://video-monetization-platform-chi.vercel.app
+ADMIN_WEB_URL=https://video-monetization-platform-admin.vercel.app
 
 SUPABASE_URL=…
 SUPABASE_ANON_KEY=…
@@ -182,7 +186,7 @@ would exhaust Postgres's limit within minutes of real traffic.
 Root directory `client`, framework preset **Vite**.
 
 ```
-VITE_API_URL=https://your-api.vercel.app
+VITE_API_URL=https://video-monetization-platform-server.vercel.app
 ```
 
 ### 3 · Control centre
@@ -190,7 +194,7 @@ VITE_API_URL=https://your-api.vercel.app
 Root directory `admin`, framework preset **Vite**.
 
 ```
-VITE_API_URL=https://your-api.vercel.app
+VITE_API_URL=https://video-monetization-platform-server.vercel.app
 ```
 
 Keep it on its own URL and do not link to it from the public site. It is not

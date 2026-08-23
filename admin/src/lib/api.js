@@ -6,21 +6,16 @@
  * never dumped back on the login screen halfway down it.
  */
 
-const PROD_API = 'https://video-monetization-platform-server.vercel.app'
-const LEGACY_API = 'https://video-monetization-platform-backend.vercel.app'
+import { DEPLOY } from './deployUrls'
 
 function resolveApiBase() {
   const fromEnv = import.meta.env.VITE_API_URL
   if (fromEnv) {
     const base = String(fromEnv).replace(/\/$/, '')
-    if (base === LEGACY_API) return PROD_API
+    if (base === DEPLOY.legacyApi) return DEPLOY.api
     return base
   }
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname
-    if (host !== 'localhost' && host !== '127.0.0.1') return PROD_API
-  }
-  return 'http://localhost:4000'
+  return DEPLOY.api
 }
 
 const BASE = resolveApiBase()

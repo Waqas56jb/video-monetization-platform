@@ -11,7 +11,7 @@
  *   npm run smoke                    (expects the API on :4000)
  *   API_URL=https://... npm run smoke
  */
-const API = (process.env.API_URL || 'http://localhost:4000').replace(/\/$/, '')
+const API = (process.env.API_URL || 'https://video-monetization-platform-server.vercel.app').replace(/\/$/, '')
 
 let passed = 0
 let failed = 0
