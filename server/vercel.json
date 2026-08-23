@@ -24,7 +24,7 @@
     },
     {
       "path": "/api/internal/share-cards/rebuild?stale=true",
-      "schedule": "*/15 * * * *"
+      "schedule": "15 3 * * *"
     }
   ]
 }
