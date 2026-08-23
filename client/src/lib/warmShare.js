@@ -10,13 +10,20 @@ const API =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
   DEPLOY.api
 
+function normalizeApi(url) {
+  if (/video-monetization-platform-backend\.vercel\.app/i.test(String(url))) return DEPLOY.api
+  return String(url || DEPLOY.api).replace(/\/$/, '')
+}
+
+const API_BASE = normalizeApi(API)
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
 function cardHeadUrl(slug, sourceKey) {
   const v = sourceKey ? `?v=${encodeURIComponent(sourceKey)}` : ''
-  return `${API}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
+  return `${API_BASE}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
 }
 
 async function headBuilt(slug, sourceKey) {
@@ -56,7 +63,7 @@ export async function prepareShareCard(slug, sourceKey) {
   if (pending) return pending
 
   const run = (async () => {
-    fetch(`${API}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
+    fetch(`${API_BASE}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
       credentials: 'omit',
     }).catch(() => {})
 

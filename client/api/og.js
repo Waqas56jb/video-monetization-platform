@@ -2,10 +2,9 @@
  * Legacy /og/card/:slug.jpg — proxy bytes from the API share-card endpoint.
  */
 
-const API =
-  process.env.VITE_API_URL ||
-  process.env.API_URL ||
-  'https://video-monetization-platform-server.vercel.app'
+import { apiOrigin } from './_lib/apiOrigin.js'
+
+const API = apiOrigin()
 
 export default async function handler(req, res) {
   const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')

@@ -10,19 +10,13 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { escapeAttr } from './_lib/ogDocument.js'
+import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
 import { startReport, settleReport } from './_lib/report.js'
 
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
-const API =
-  process.env.VITE_API_URL ||
-  process.env.API_URL ||
-  'https://video-monetization-platform-server.vercel.app'
-
-const WEB = (process.env.PUBLIC_WEB_URL || 'https://video-monetization-platform-chi.vercel.app').replace(
-  /\/$/,
-  ''
-)
+const API = apiOrigin()
+const WEB = publicWebOrigin()
 
 const SLUG_RE = /^[a-z0-9-]+$/
 const META_MEMO_MS = 5 * 60 * 1000

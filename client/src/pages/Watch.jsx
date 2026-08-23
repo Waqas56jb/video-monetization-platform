@@ -31,6 +31,13 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmSharePreview } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
+import { DEPLOY } from '@/lib/deployUrls'
+
+function apiBase() {
+  const raw = import.meta.env?.VITE_API_URL || DEPLOY.api
+  if (/video-monetization-platform-backend\.vercel\.app/i.test(String(raw))) return DEPLOY.api
+  return String(raw).replace(/\/$/, '')
+}
 
 /**
  * Watching a video.
@@ -145,7 +152,7 @@ export default function Watch() {
    */
   useEffect(() => {
     if (!v?.slug) return
-    fetch(`${import.meta.env.VITE_API_URL || 'https://video-monetization-platform-server.vercel.app'}/api/public/videos/${encodeURIComponent(v.slug)}/share-meta`)
+    fetch(`${apiBase()}/api/public/videos/${encodeURIComponent(v.slug)}/share-meta`)
       .then((r) => (r.ok ? r.json() : null))
       .then((meta) => warmSharePreview(v.slug, meta?.sourceKey))
       .catch(() => warmSharePreview(v.slug))
