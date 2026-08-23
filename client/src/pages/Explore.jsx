@@ -91,129 +91,140 @@ export default function Explore() {
       <Header />
 
       <section className="explore">
-        <div className="container">
-          {/* Reached from the creator/viewer menu as well as the public site,
-              so it always offers the matching way back. */}
-          <button className="explore-back" onClick={goBack}>
-            <ArrowLeft />
-            {/* Only name a destination when that is genuinely where this
-                goes — otherwise it is just "back", and it returns to
-                wherever they were. */}
-            {canGoBack ? 'Back' : authed ? 'Back to dashboard' : 'Back to home'}
-          </button>
+        <div className="container explore-stack">
+          <header className="explore-top">
+            {/* Reached from the creator/viewer menu as well as the public site,
+                so it always offers the matching way back. */}
+            <button className="explore-back" onClick={goBack}>
+              <ArrowLeft />
+              {canGoBack ? 'Back' : authed ? 'Back to dashboard' : 'Back to home'}
+            </button>
 
-          <div className="explore-head">
-            <h1>
-              Explore <span className="brand-accent">MTONYO+</span>
-            </h1>
-            <p>
-              Every Paid Premiere, Pay Once release and Free + Ads show on the platform. Watch
-              the free preview, pay your way, and it stays in your library.
-            </p>
-          </div>
-
-          <div className="explore-search">
-            <Search />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search videos, creators or categories…"
-              aria-label="Search the catalogue"
-            />
-            {query && (
-              <button className="es-clear" onClick={() => setQuery('')} aria-label="Clear search">
-                <X />
-              </button>
-            )}
-          </div>
-
-          {categoryChips.length > 1 && (
-            <div className="explore-filters" role="group" aria-label="Category">
-              {categoryChips.map((c) => (
-                <button
-                  key={c || 'all'}
-                  className={`chip ${category === c ? 'on' : ''}`.trim()}
-                  onClick={() => setCategory(c)}
-                  aria-pressed={category === c}
-                >
-                  {c || 'All'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="explore-filters second" role="group" aria-label="Access type">
-            <span className="ef-label">
-              <SlidersHorizontal />
-              Access
-            </span>
-            {ACCESS_FILTERS.map((a) => (
-              <button
-                key={a.label}
-                className={`chip chip-sm ${access === a.value ? 'on' : ''}`.trim()}
-                onClick={() => setAccess(a.value)}
-                aria-pressed={access === a.value}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="explore-filters second" role="group" aria-label="Sort order">
-            <span className="ef-label">Sort</span>
-            {SORTS.map((s) => (
-              <button
-                key={s.value}
-                className={`chip chip-sm ${sort === s.value ? 'on' : ''}`.trim()}
-                onClick={() => setSort(s.value)}
-                aria-pressed={sort === s.value}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="explore-count">
-            {results.loading ? 'Searching…' : `${total} ${total === 1 ? 'video' : 'videos'}`}
-            {filtered && (
-              <button className="link-btn" onClick={reset}>
-                Clear filters
-              </button>
-            )}
-          </div>
-
-          {results.loading ? (
-            <SkeletonCards count={8} />
-          ) : results.error ? (
-            <ErrorState error={results.error} onRetry={results.reload} />
-          ) : videos.length ? (
-            <div className="vid-grid">
-              {videos.map((v) => (
-                <VideoCard key={v.id} video={toCard(v)} onClick={() => navigate(videoLink(v))} />
-              ))}
-            </div>
-          ) : (
-            <div className="explore-empty">
-              <Search />
-              <b>{filtered ? 'Nothing matches that yet' : 'No videos published yet'}</b>
+            <div className="explore-head">
+              <h1>
+                Explore <span className="brand-accent">MTONYO+</span>
+              </h1>
               <p>
-                {filtered
-                  ? 'Try a different search, or clear the filters to see everything.'
-                  : 'Videos appear here as soon as creators upload them and the team approves them.'}
+                Every Paid Premiere, Pay Once release and Free + Ads show on the platform. Watch
+                the free preview, pay your way, and it stays in your library.
               </p>
-              {filtered ? (
-                <button className="btn btn-ghost" onClick={reset}>
-                  Clear filters
-                </button>
-              ) : (
-                <button className="btn btn-gold" onClick={() => navigate('/signup')}>
-                  <Rocket />
-                  Be the first creator
+            </div>
+          </header>
+
+          <div className="explore-panel">
+            <div className="explore-search">
+              <Search />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search videos, creators or categories…"
+                aria-label="Search the catalogue"
+              />
+              {query && (
+                <button className="es-clear" onClick={() => setQuery('')} aria-label="Clear search">
+                  <X />
                 </button>
               )}
             </div>
-          )}
+
+            {categoryChips.length > 1 && (
+              <div className="explore-filters explore-cats" role="group" aria-label="Category">
+                {categoryChips.map((c) => (
+                  <button
+                    key={c || 'all'}
+                    className={`chip ${category === c ? 'on' : ''}`.trim()}
+                    onClick={() => setCategory(c)}
+                    aria-pressed={category === c}
+                  >
+                    {c || 'All'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="explore-filter-groups">
+              <div className="explore-filters explore-filter-row" role="group" aria-label="Access type">
+                <span className="ef-label">
+                  <SlidersHorizontal />
+                  Access
+                </span>
+                <div className="explore-filter-chips">
+                  {ACCESS_FILTERS.map((a) => (
+                    <button
+                      key={a.label}
+                      className={`chip chip-sm ${access === a.value ? 'on' : ''}`.trim()}
+                      onClick={() => setAccess(a.value)}
+                      aria-pressed={access === a.value}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="explore-filters explore-filter-row" role="group" aria-label="Sort order">
+                <span className="ef-label">Sort</span>
+                <div className="explore-filter-chips">
+                  {SORTS.map((s) => (
+                    <button
+                      key={s.value}
+                      className={`chip chip-sm ${sort === s.value ? 'on' : ''}`.trim()}
+                      onClick={() => setSort(s.value)}
+                      aria-pressed={sort === s.value}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="explore-results">
+            <div className="explore-count">
+              <span>
+                {results.loading ? 'Searching…' : `${total} ${total === 1 ? 'video' : 'videos'}`}
+              </span>
+              {filtered && (
+                <button className="link-btn" onClick={reset}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            {results.loading ? (
+              <SkeletonCards count={8} />
+            ) : results.error ? (
+              <ErrorState error={results.error} onRetry={results.reload} />
+            ) : videos.length ? (
+              <div className="vid-grid">
+                {videos.map((v) => (
+                  <VideoCard key={v.id} video={toCard(v)} onClick={() => navigate(videoLink(v))} />
+                ))}
+              </div>
+            ) : (
+              <div className="explore-empty">
+                <Search />
+                <b>{filtered ? 'Nothing matches that yet' : 'No videos published yet'}</b>
+                <p>
+                  {filtered
+                    ? 'Try a different search, or clear the filters to see everything.'
+                    : 'Videos appear here as soon as creators upload them and the team approves them.'}
+                </p>
+                {filtered ? (
+                  <button className="btn btn-ghost" onClick={reset}>
+                    Clear filters
+                  </button>
+                ) : (
+                  <button className="btn btn-gold" onClick={() => navigate('/signup')}>
+                    <Rocket />
+                    Be the first creator
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

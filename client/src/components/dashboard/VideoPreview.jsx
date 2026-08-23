@@ -5,6 +5,14 @@ import StreamPlayer from '@/components/watch/StreamPlayer'
 import api, { mediaUrl } from '@/lib/api'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 
+const OVERLAY_STYLE = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 1000,
+  display: 'grid',
+  placeItems: 'center',
+}
+
 /**
  * A creator watching their own video.
  *
@@ -52,13 +60,14 @@ export default function VideoPreview({ video, open, onClose }) {
 
   const modal = (
     <div
-      className="modal open preview-modal"
+      className="video-preview-overlay"
+      style={OVERLAY_STYLE}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview ${video?.title || 'your video'}`}
     >
-      <div className="modal-bg" onClick={onClose} />
-      <div className="modal-card preview-card">
+      <div className="video-preview-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className="video-preview-dialog">
         <button className="modal-x" onClick={onClose} aria-label="Close preview">
           <X />
         </button>
