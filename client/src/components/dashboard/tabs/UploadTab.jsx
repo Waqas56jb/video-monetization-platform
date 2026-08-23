@@ -620,7 +620,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
               <CheckCircle2 />
               <span>
                 <b>{form.title}</b> is with the review team. You&apos;ll get a notification the
-                moment they decide. Use <b>Upload Video</b> at the top to add your next one.
+                moment they decide. Use <b>Upload next video</b> above to add another one.
               </span>
             </div>
           ) : (

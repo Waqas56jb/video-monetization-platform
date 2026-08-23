@@ -1304,12 +1304,6 @@
   margin-top: 2px;
   color: var(--gold, #f5c518);
 }
-.dash-upload-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
 @media (max-width: 720px) {
   .upload-toolbar {
     flex-direction: column;
