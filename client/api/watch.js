@@ -34,7 +34,7 @@ const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 const API =
   process.env.VITE_API_URL ||
   process.env.API_URL ||
-  'https://video-monetization-platform-backend.vercel.app'
+  'https://video-monetization-platform-server.vercel.app'
 
 const videoMemo = new Map()
 const VIDEO_MEMO_MS = 10 * 60 * 1000

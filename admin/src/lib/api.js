@@ -6,7 +6,19 @@
  * never dumped back on the login screen halfway down it.
  */
 
-const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '')
+const PROD_API = 'https://video-monetization-platform-server.vercel.app'
+
+function resolveApiBase() {
+  const fromEnv = import.meta.env.VITE_API_URL
+  if (fromEnv) return String(fromEnv).replace(/\/$/, '')
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host !== 'localhost' && host !== '127.0.0.1') return PROD_API
+  }
+  return 'http://localhost:4000'
+}
+
+const BASE = resolveApiBase()
 
 // Deliberately different keys from the public app: if both are ever served from
 // one origin, an admin session and a viewer session must not overwrite each

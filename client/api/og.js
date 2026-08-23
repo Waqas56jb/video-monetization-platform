@@ -17,7 +17,7 @@ const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 const API =
   process.env.VITE_API_URL ||
   process.env.API_URL ||
-  'https://video-monetization-platform-backend.vercel.app'
+  'https://video-monetization-platform-server.vercel.app'
 
 import { startReport, settleReport } from './_lib/report.js'
 

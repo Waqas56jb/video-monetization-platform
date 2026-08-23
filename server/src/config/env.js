@@ -14,22 +14,40 @@ const list = (v) =>
     .map((s) => s.trim())
     .filter(Boolean)
 
+/** Live Vercel addresses — used when production env still says localhost. */
+export const DEPLOY_URLS = {
+  api: 'https://video-monetization-platform-server.vercel.app',
+  publicApp: 'https://video-monetization-platform-chi.vercel.app',
+  adminApp: 'https://video-monetization-platform-admin.vercel.app',
+}
+
+const isLocalHost = (url = '') => /localhost|127\.0\.0\.1|\[::1\]/i.test(String(url))
+const isDeployed = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production'
+
+function webUrl(envKey, productionDefault, devDefault) {
+  const raw = (process.env[envKey] || '').replace(/\/$/, '')
+  if (isDeployed && (!raw || isLocalHost(raw))) return productionDefault
+  return raw || devDefault
+}
+
+function corsOrigins() {
+  const configured = list(process.env.CORS_ORIGINS)
+  if (!isDeployed) return configured
+
+  const live = [DEPLOY_URLS.publicApp, DEPLOY_URLS.adminApp]
+  const nonLocal = configured.filter((origin) => !isLocalHost(origin))
+  return [...new Set([...nonLocal, ...live])]
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
-  isProd: process.env.NODE_ENV === 'production',
+  isProd: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
   port: int(process.env.PORT, 4000),
-  corsOrigins: list(process.env.CORS_ORIGINS),
-  publicWebUrl: (() => {
-    const raw = (process.env.PUBLIC_WEB_URL || '').replace(/\/$/, '')
-    if (raw && !/localhost|127\.0\.0\.1/i.test(raw)) return raw
-    if (process.env.NODE_ENV === 'production') {
-      return 'https://video-monetization-platform-chi.vercel.app'
-    }
-    return raw || 'http://localhost:5173'
-  })(),
+  corsOrigins: corsOrigins(),
+  publicWebUrl: webUrl('PUBLIC_WEB_URL', DEPLOY_URLS.publicApp, 'http://localhost:5173'),
   // The admin app lives on its own origin; staff invitations must point there,
   // not at the public site, or the link lands somewhere with no admin login.
-  adminWebUrl: (process.env.ADMIN_WEB_URL || 'http://localhost:5174').replace(/\/$/, ''),
+  adminWebUrl: webUrl('ADMIN_WEB_URL', DEPLOY_URLS.adminApp, 'http://localhost:5174'),
 
   supabase: {
     url: process.env.SUPABASE_URL || '',

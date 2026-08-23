@@ -113,12 +113,12 @@ normal flow knows they exist. Add `-- --delete` to clear them.
 
 | | |
 | --- | --- |
-| API | https://video-monetization-platform-backend.vercel.app |
+| API | https://video-monetization-platform-server.vercel.app |
 | Public app | https://video-monetization-platform-chi.vercel.app |
 | Control centre | https://video-monetization-platform-admin.vercel.app |
 
 Check the API first if anything looks wrong:
-`https://video-monetization-platform-backend.vercel.app/health`
+`https://video-monetization-platform-server.vercel.app/health`
 
 ---
 
