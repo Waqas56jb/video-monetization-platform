@@ -97,6 +97,32 @@
   color: var(--gold); font-size: 12.5px; font-weight: 700;
 }
 
+@media (max-width: 900px) {
+  .notif-pop {
+    background: #151522;
+  }
+  .notif-pop-list li {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
+  .notif-pop-list b,
+  .notif-pop-list small {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .notif-pop-list li {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .notif-pop-list time {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .notif-ico {
   width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
   display: grid; place-items: center;

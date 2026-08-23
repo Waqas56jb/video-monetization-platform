@@ -548,9 +548,9 @@ input,select{font-family:inherit;outline:none}
   .tbl-cards .v-cell .v-thumb{width:100%;height:120px;border-radius:12px}
 }
 
-/* tablet: keep horizontal scroll tables usable */
-@media(min-width:641px) and (max-width:1024px){
-  .tbl{min-width:680px}
+/* tablet: keep horizontal scroll tables usable above the card breakpoint */
+@media(min-width:769px) and (max-width:1024px){
+  .tbl{min-width:640px}
   .stat-grid{grid-template-columns:repeat(2,1fr)}
 }
 
@@ -832,3 +832,213 @@ html.is-touch .btn:active{transform:scale(.97)}
    clipped. Everything this sits on is dark, which is the condition screen
    needs. */
 .sidebar .logo-img{mix-blend-mode:screen}
+
+/* =========================================================================
+   END-TO-END MOBILE / TABLET POLISH
+   Desktop layout unchanged. Phones and tablets get stacking, no sideways
+   scroll, and readable chrome across every admin tab.
+   ========================================================================= */
+
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+.screen, .shell, .main, .tab, .panel {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.chart-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  min-width: 0;
+}
+.chart-wrap svg { max-width: 100%; }
+
+/* sticky chrome on small screens so title + menu stay reachable */
+@media (max-width: 900px) {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: 10px;
+    background: rgba(10, 10, 18, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border2);
+  }
+  .main {
+    padding-top: 8px !important;
+  }
+  .notif-pop {
+    position: fixed;
+    top: calc(58px + env(safe-area-inset-top));
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(70dvh, 520px);
+    display: flex;
+    flex-direction: column;
+    z-index: 90;
+  }
+  .notif-pop-list {
+    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .panel-head > .filters {
+    flex: 1 1 auto;
+    width: 100%;
+    justify-content: stretch;
+  }
+  .filters .fselect,
+  .filters .searchbar,
+  .filters .btn,
+  .filters .date-filter {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+  .filters .fselect select,
+  .filters .date-filter {
+    width: 100%;
+  }
+  .actions,
+  .row-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack tables a bit earlier for large phones / small tablets in portrait */
+  .tbl-cards .tbl { min-width: 0 !important; width: 100%; }
+  .tbl-cards thead {
+    position: absolute;
+    width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .tbl-cards tbody tr {
+    display: block;
+    background: var(--card2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .tbl-cards tbody tr:hover { background: var(--card2); }
+  .tbl-cards tbody tr.blocked-row { opacity: .7; }
+  .tbl-cards tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    white-space: normal;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .tbl-cards tbody td:last-child { border-bottom: none; }
+  .tbl-cards tbody td::before {
+    content: attr(data-label);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    text-align: left;
+    flex-shrink: 0;
+    max-width: 42%;
+  }
+  .tbl-cards tbody td:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .tbl-cards tbody td:first-child::before { margin-bottom: 2px; max-width: none; }
+  .tbl-cards .empty-row td {
+    display: block;
+    text-align: center;
+    border: none;
+    padding: 22px 8px;
+  }
+  .tbl-cards .empty-row td::before { display: none; }
+  .tbl-cards .actions,
+  .tbl-cards .row-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .tbl-cards .u-cell,
+  .tbl-cards .v-cell { width: 100%; }
+  .tbl-cards .v-cell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tbl-cards .v-cell .v-thumb {
+    width: 100%;
+    height: 120px;
+    border-radius: 12px;
+  }
+  .tbl-cards .perm-chips {
+    max-width: none;
+    justify-content: flex-end;
+  }
+
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card { padding: 16px; }
+  .stat-card b { font-size: 18px; overflow-wrap: anywhere; }
+  .two-col { grid-template-columns: 1fr; gap: 16px; }
+  .app-facts { grid-template-columns: 1fr; }
+  .rv-terms { grid-template-columns: 1fr 1fr; }
+  .camp-form .check-row { flex-wrap: wrap; }
+  .legend { flex-wrap: wrap; justify-content: center; }
+  .feed-item { align-items: flex-start; }
+  .u-cell, .v-cell { min-width: 0; }
+  .u-cell > div, .v-cell > div { min-width: 0; }
+  .u-cell b, .v-cell b, .u-cell small { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 600px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .rv-terms { grid-template-columns: 1fr; }
+  .donut { width: min(180px, 70vw); height: min(180px, 70vw); }
+  .donut svg { width: 100%; height: 100%; }
+  .login-wrap {
+    align-items: flex-start;
+    padding-top: calc(28px + env(safe-area-inset-top));
+  }
+  .login-card { margin: 0 auto; }
+  .chip-row { gap: 6px; }
+  .chip { flex: 1 1 auto; text-align: center; justify-content: center; }
+  .app-decide input { min-width: 0; width: 100%; font-size: 16px; }
+  .modal-card { width: 100%; }
+  .btn-block, .modal-actions .btn { width: 100%; }
+  .panel { margin-bottom: 16px; }
+  .tab { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* tablet portrait: two-up stats, single column content */
+@media (min-width: 601px) and (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* avoid duplicate card rules fighting at 640 — keep scroll tables only above card breakpoint */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .tbl { min-width: 640px; }
+}
+

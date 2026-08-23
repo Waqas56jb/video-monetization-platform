@@ -12,6 +12,7 @@ import {
 import Panel from '@/components/ui/Panel'
 import Field from '@/components/ui/Field'
 import { Async } from '@/components/ui/States'
+import { TableWrap } from '@/components/ui/Table'
 import api from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -619,8 +620,7 @@ function TeamPanel() {
           hint: 'Invite someone above to help review content and handle withdrawals.',
         }}
       >
-        <div className="tbl-wrap">
-          <table className="tbl">
+        <TableWrap>
             <thead>
               <tr>
                 <th>Name</th>
@@ -695,8 +695,7 @@ function TeamPanel() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </TableWrap>
       </Async>
 
       {/**
