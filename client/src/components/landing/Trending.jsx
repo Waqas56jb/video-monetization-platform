@@ -53,15 +53,18 @@ export default function Trending() {
           </div>
         ) : (
           <div className="vid-grid">
-            {videos.map((v, i) => (
-              <VideoCard
-                key={v.id}
-                video={toCard(v)}
-                eager={i === 0}
-                /* This exact video, not a page listing everything. */
-                onClick={() => navigate(videoLink(v))}
-              />
-            ))}
+            {videos.map((v, i) => {
+              const card = toCard(v)
+              return (
+                <VideoCard
+                  key={v.id}
+                  video={card}
+                  to={videoLink(v)}
+                  state={{ preview: card }}
+                  eager={i === 0}
+                />
+              )
+            })}
           </div>
         )}
 

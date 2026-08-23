@@ -54,13 +54,17 @@ export default function LibraryTab() {
         />
       ) : (
         <div className="lib-grid">
-          {videos.map((v) => (
-            <VideoCard
-              key={v.id}
-              video={toCard(v, { owned: true })}
-              onClick={() => navigate(videoLink(v))}
-            />
-          ))}
+          {videos.map((v) => {
+            const card = toCard(v, { owned: true })
+            return (
+              <VideoCard
+                key={v.id}
+                video={card}
+                to={videoLink(v)}
+                state={{ preview: card }}
+              />
+            )
+          })}
         </div>
       )}
     </div>

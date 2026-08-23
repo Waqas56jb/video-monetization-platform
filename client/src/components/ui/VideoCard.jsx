@@ -1,14 +1,28 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import Icon from './Icon'
 import Reveal from './Reveal'
 import useInView from '@/hooks/useInView'
+import { prefetchWatch } from '@/lib/prefetchWatch'
+import { useProgress } from '@/context/ProgressContext'
 
 /**
  * The trending / library video card. Used on the landing grid and inside the
  * dashboard library, with the same hover-zoom + pulsing play button.
+ *
+ * Prefer `to` + `state` (real Link) so navigation is native and starts on the
+ * first tap. `onClick` remains for rare non-route actions.
  */
-export default function VideoCard({ video, onClick, reveal = false, delay = 0, eager = false }) {
+export default function VideoCard({
+  video,
+  to,
+  state,
+  onClick,
+  reveal = false,
+  delay = 0,
+  eager = false,
+}) {
   const {
     tag,
     thumb,
@@ -22,12 +36,20 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
     priceColor,
     views,
     action,
+    slug,
+    id,
   } = video
 
   const [imgOn, setImgOn] = useState(false)
   const [ref, inView] = useInView({ skip: eager })
   const showImg = eager || inView
   const imgLoading = eager ? 'eager' : 'lazy'
+  const { start } = useProgress()
+
+  const warm = () => {
+    start?.()
+    prefetchWatch(slug || id)
+  }
 
   const body = (
     <>
@@ -75,16 +97,37 @@ export default function VideoCard({ video, onClick, reveal = false, delay = 0, e
     </>
   )
 
+  const shared = {
+    className: 'vid-card',
+    onPointerDown: warm,
+    onTouchStart: warm,
+  }
+
   if (reveal) {
+    if (to) {
+      return (
+        <Reveal as={Link} to={to} state={state} delay={delay} {...shared}>
+          {body}
+        </Reveal>
+      )
+    }
     return (
-      <Reveal as="button" type="button" className="vid-card" delay={delay} onClick={onClick}>
+      <Reveal as="button" type="button" delay={delay} onClick={onClick} {...shared}>
         {body}
       </Reveal>
     )
   }
 
+  if (to) {
+    return (
+      <Link ref={ref} to={to} state={state} {...shared}>
+        {body}
+      </Link>
+    )
+  }
+
   return (
-    <button ref={ref} type="button" className="vid-card" onClick={onClick} style={{ contentVisibility: 'auto', containIntrinsicSize: '280px' }}>
+    <button ref={ref} type="button" onClick={onClick} {...shared}>
       {body}
     </button>
   )

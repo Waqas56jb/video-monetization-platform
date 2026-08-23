@@ -4,6 +4,8 @@ import TopProgress from '@/components/ui/TopProgress'
 const ProgressContext = createContext({
   active: false,
   setActive: () => {},
+  start: () => {},
+  stop: () => {},
 })
 
 export function useProgress() {

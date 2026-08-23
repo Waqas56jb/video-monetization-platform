@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, BadgeCheck, MapPin, Play } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -18,7 +18,6 @@ import useGoBack from '@/hooks/useGoBack'
  */
 export default function CreatorProfile() {
   const { creatorId } = useParams()
-  const navigate = useNavigate()
   const goBack = useGoBack('/explore')
 
   const profile = useApi(() => api.auth.creator(creatorId), [creatorId])
@@ -88,13 +87,17 @@ export default function CreatorProfile() {
             <p className="creator-empty">No published videos yet.</p>
           ) : (
             <div className="vid-grid">
-              {videos.map((v) => (
-                <VideoCard
-                  key={v.id}
-                  video={toCard(v)}
-                  onClick={() => navigate(videoLink(v))}
-                />
-              ))}
+              {videos.map((v) => {
+                const card = toCard(v)
+                return (
+                  <VideoCard
+                    key={v.id}
+                    video={card}
+                    to={videoLink(v)}
+                    state={{ preview: card }}
+                  />
+                )
+              })}
             </div>
           )}
 

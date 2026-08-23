@@ -22,7 +22,7 @@ import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
 import MoreLikeThis from '@/components/watch/MoreLikeThis'
 import BusyButton from '@/components/ui/BusyButton'
-import { ErrorState, Skeleton } from '@/components/ui/States'
+import { ErrorState } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
 import { resumePoint } from '@/lib/resumePoint'
@@ -32,6 +32,9 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
+import { takeWarmedVideo } from '@/lib/prefetchWatch'
+import { useProgress } from '@/context/ProgressContext'
+import WatchSkeleton from '@/components/watch/WatchSkeleton'
 
 /**
  * Watching a video.
@@ -48,6 +51,8 @@ export default function Watch() {
   const location = useLocation()
   const showToast = useToast()
   const goBack = useGoBack('/explore')
+  const { stop: stopProgress } = useProgress()
+  const routePreview = location.state?.preview
 
   const [payOpen, setPayOpen] = useState(false)
   const [previewOver, setPreviewOver] = useState(false)
@@ -97,9 +102,17 @@ export default function Watch() {
       : `00000000-0000-4000-8000-${String(Date.now()).padStart(12, '0').slice(-12)}`
   )
 
-  const video = useApi(() => api.videos.one(videoId), [videoId])
+  const video = useApi(
+    () => takeWarmedVideo(videoId) || api.videos.one(videoId),
+    [videoId]
+  )
   const playback = useApi(() => api.playback(videoId), [videoId])
   const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
+
+  /* Drop the top progress bar once this page has painted a shell. */
+  useEffect(() => {
+    stopProgress()
+  }, [stopProgress, videoId])
 
   const v = video.data?.video
   const share = shareLive ?? video.data?.share
@@ -412,15 +425,11 @@ export default function Watch() {
 
   const videoReady = v && videoRouteMatches(videoId, v)
 
-  if (video.loading || !videoReady) {
+  /* Paint from card data immediately — never a blank wait for the API. */
+  if ((video.loading || !videoReady) && !(video.error && !v)) {
     return (
       <Shell>
-        <div className="watch-wrap">
-          <div className="skeleton skeleton-player" />
-          <div className="watch-info">
-            <Skeleton rows={3} />
-          </div>
-        </div>
+        <WatchSkeleton preview={routePreview} />
       </Shell>
     )
   }

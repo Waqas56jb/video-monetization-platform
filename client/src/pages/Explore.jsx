@@ -14,6 +14,7 @@ import useGoBack, { hasHistory } from '@/hooks/useGoBack'
 import api from '@/lib/api'
 import { useRole } from '@/context/AuthContext'
 import { explorePageSize } from '@/lib/mobileUx'
+import { idlePrefetchWatch } from '@/lib/prefetchWatch'
 
 const ACCESS_FILTERS = [
   { label: 'All Access', value: '' },
@@ -53,6 +54,10 @@ export default function Explore() {
   const categoryChips = ['', ...CATEGORIES]
 
   useProgressBar(isRefetching)
+
+  useEffect(() => {
+    idlePrefetchWatch()
+  }, [])
 
   const fetchPage = useCallback(
     async (offset, { append = false, quiet = false } = {}) => {
@@ -120,10 +125,6 @@ export default function Explore() {
 
   const goBack = useGoBack(authed ? '/dashboard' : '/')
   const canGoBack = hasHistory()
-
-  const openVideo = (v) => {
-    navigate(videoLink(v), { state: { preview: toCard(v) } })
-  }
 
   return (
     <div className="page">
@@ -242,14 +243,18 @@ export default function Explore() {
             ) : videos.length ? (
               <>
                 <div className="vid-grid">
-                  {videos.map((v, i) => (
-                    <VideoCard
-                      key={v.id}
-                      video={toCard(v)}
-                      eager={i < 4}
-                      onClick={() => openVideo(v)}
-                    />
-                  ))}
+                  {videos.map((v, i) => {
+                    const card = toCard(v)
+                    return (
+                      <VideoCard
+                        key={v.id}
+                        video={card}
+                        to={videoLink(v)}
+                        state={{ preview: card }}
+                        eager={i < 4}
+                      />
+                    )
+                  })}
                 </div>
                 {nextOffset != null && (
                   <div className="explore-more" ref={sentinelRef}>

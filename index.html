@@ -111,13 +111,13 @@
       <div class="cell"><div class="lab">Prepared By</div><div class="val">Waqas</div></div>
     </div>
     <div class="row">
-      <div class="cell"><div class="lab">Revision</div><div class="val">Rev A — Issued for Review</div></div>
-      <div class="cell"><div class="lab">Date</div><div class="val">22 August 2026</div></div>
+      <div class="cell"><div class="lab">Revision</div><div class="val">Rev B — Issued for Approval</div></div>
+      <div class="cell"><div class="lab">Date</div><div class="val">23 August 2026</div></div>
       <div class="cell"><div class="lab">Status</div><div class="val" style="color:var(--amber);">FOR APPROVAL</div></div>
     </div>
   </div>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 01 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 01 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 2 : PRINCIPLES & SCOPE ============ -->
@@ -144,7 +144,7 @@
     <tr><th style="width:16%;">Module</th><th style="width:30%;">Name</th><th>Controls</th></tr>
     <tr><td class="code">M1</td><td><b>Subcontracts &amp; BOQ</b></td><td>Projects, packages, subcontract details, BOQ items, advance &amp; retention terms</td></tr>
     <tr><td class="code">M2</td><td><b>Progress Control</b></td><td>Planned vs Actual % from quantities, delay per subcontractor, S-curve</td></tr>
-    <tr><td class="code">M3</td><td><b>Certification &amp; Payments</b></td><td>Claim → verification → certified progress → payment certificate</td></tr>
+    <tr><td class="code">M3</td><td><b>Certification &amp; Payments</b></td><td>Claim → verification → certified progress → auto-generated payment certificate with proportional advance recovery</td></tr>
     <tr><td class="code">M4</td><td><b>Variations</b></td><td>Subcontractor VOs and client VOs, with recovery status</td></tr>
     <tr><td class="code">M5</td><td><b>Procurement &amp; Materials</b></td><td>POs, required-on-site dates, expected vs actual delivery, material status</td></tr>
     <tr><td class="code">M6</td><td><b>Cost Control</b></td><td>Budget, committed, certified, paid, expected final cost per package &amp; project</td></tr>
@@ -155,7 +155,7 @@
   commissioning, cost-plus billing, and advanced reporting. The data backbone is structured so these can be added
   later as plug-in modules without rework.</p></div>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 02 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 02 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 3 : SYSTEM ARCHITECTURE ============ -->
@@ -219,7 +219,7 @@
     <text x="0" y="552" font-size="9" letter-spacing="2" fill="#6B7A88" font-family="Courier New">FIG. 02-A — SYSTEM ARCHITECTURE OVERVIEW</text>
   </svg>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 03 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 03 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 4 : DATA BACKBONE ============ -->
@@ -265,7 +265,7 @@
   mapped one-to-one with the ERP references, so a certificate exported from the CPMS lands directly against the
   correct payable account — entered once, recognized in both systems.</p></div>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 04 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 04 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 5 : PROGRESS ENGINE ============ -->
@@ -314,7 +314,7 @@
     <text x="40" y="196" font-size="9" letter-spacing="2" fill="#6B7A88" font-family="Courier New">FIG. 04-A — PLANNED VS ACTUAL S-CURVE (AUTO-GENERATED)</text>
   </svg>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 05 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 05 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 6 : CERTIFICATION & VARIATIONS ============ -->
@@ -351,11 +351,12 @@
     <span class="op">−</span> Previously certified amount<br>
     <span class="op">+</span> Approved variations (this period)<br>
     <span class="op">−</span> Retention (per contract %)<br>
-    <span class="op">−</span> Advance recovery (per contract schedule)<br>
+    <span class="op">−</span> Advance allocated&nbsp; (Advance % × gross certified value — proportional per BOQ item)<br>
     <span class="op">−</span> Back charges / deductions<br>
     <span class="op">=</span> <b>NET AMOUNT DUE → exported to ERP payable</b>
   </div>
-  <p>Retention and advance balances are tracked automatically per subcontract across the full contract life.</p>
+  <p>Retention and advance balances are tracked automatically per subcontract across the full contract life.
+  The proportional advance method and the standard auto-generated certificate form are detailed on the next page.</p>
 
   <h3>M4 — Variations (Two Registers, One Link)</h3>
   <ul class="tick">
@@ -365,10 +366,69 @@
     <li>Approved VOs flow automatically into cost control and the expected final cost.</li>
   </ul>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 06 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 06 / 10</span></div>
 </div>
 
-<!-- ============ PAGE 7 : PROCUREMENT & COST ============ -->
+<!-- ============ PAGE 7 : ADVANCE + CERTIFICATE FORM ============ -->
+<div class="page">
+  <div class="eyebrow">Section 05-A · Module M3 — Addendum</div>
+  <h2>Advance Recovery &amp; Standard Payment Certificate</h2>
+  <div class="rule"></div>
+
+  <h3>Proportional Advance Recovery — Applied Per BOQ Item</h3>
+  <p>An advance (standard <b>20%</b>, configurable per subcontract) is treated as already paid
+  <b>proportionally against every BOQ item</b>. Whenever work is certified, the same percentage of the
+  gross certified value is automatically allocated to the advance — not deducted on a separate schedule.</p>
+  <div class="formula">
+    Advance Allocated (this certificate) <span class="op">=</span> Advance % <span class="op">×</span> Gross Certified Value<br>
+    Current Payable <span class="op">=</span> Gross Certified <span class="op">−</span> Advance Allocated <span class="op">−</span> Retention / Deductions <span class="op">−</span> Previously Paid
+  </div>
+  <table>
+    <tr><th style="width:55%;">Worked Example (per client instruction)</th><th>Value (SAR)</th></tr>
+    <tr><td>Subcontract value</td><td>1,000,000</td></tr>
+    <tr><td>Advance paid — 20%</td><td>200,000</td></tr>
+    <tr><td>BOQ item value · certified 100%, verified &amp; handed over</td><td>100,000</td></tr>
+    <tr><td>Advance allocated against this item (20% × 100,000)</td><td>20,000</td></tr>
+    <tr><td><b>Current payable for this item</b></td><td><b>80,000</b></td></tr>
+  </table>
+
+  <h3>Standard Payment Certificate — Fixed Format, System-Generated</h3>
+  <p>For every claim the system generates a numbered, dated certificate in one fixed format — never prepared
+  manually — with print / PDF export. Layout:</p>
+
+  <div style="border:2px solid var(--ink);margin-top:10px;">
+    <div style="background:var(--ink);color:#fff;padding:8px 12px;display:flex;justify-content:space-between;font-family:'Courier New',monospace;font-size:9.5px;letter-spacing:1.5px;">
+      <span>PAYMENT CERTIFICATE — CULINOVA CPMS</span><span>No. PC-ELE-007 &nbsp;·&nbsp; DATE: __ / __ / ____</span>
+    </div>
+    <div style="padding:8px 12px;font-size:10px;color:#33414E;border-bottom:1px solid var(--line);">
+      Project · Package · Subcontractor &nbsp;|&nbsp; <b>Contract Value:</b> 1,000,000 &nbsp;|&nbsp; <b>Advance Paid (20%):</b> 200,000
+    </div>
+    <table style="font-size:9.5px;">
+      <tr><th>BOQ Item</th><th>BOQ Value</th><th>Prev %</th><th>Curr %</th><th>Total Certified %</th><th>Gross Certified Value</th></tr>
+      <tr><td>Item 3.2 — LV Cabling</td><td>100,000</td><td>60%</td><td>40%</td><td>100%</td><td>100,000</td></tr>
+      <tr><td colspan="6" style="color:#6B7A88;">… one line per BOQ item in the claim, certified from verified quantities …</td></tr>
+    </table>
+    <table style="font-size:9.5px;">
+      <tr><td style="width:60%;">Gross certified value — this certificate</td><td>100,000</td></tr>
+      <tr><td>Less: Advance allocated / recovered (20%)</td><td>(20,000)</td></tr>
+      <tr><td>Less: Retention / deductions (if applicable)</td><td>(—)</td></tr>
+      <tr><td>Less: Previous payments</td><td>(—)</td></tr>
+      <tr><td style="background:#E8A020;color:#1C2733;"><b>CURRENT AMOUNT DUE</b></td><td style="background:#E8A020;"><b>80,000</b></td></tr>
+      <tr><td>Total paid to date (incl. advance)</td><td>280,000</td></tr>
+      <tr><td>Remaining contract balance</td><td>720,000</td></tr>
+    </table>
+    <div style="display:flex;border-top:1px solid var(--ink);font-family:'Courier New',monospace;font-size:8.5px;letter-spacing:1px;color:var(--muted);">
+      <div style="flex:1;padding:10px 12px;border-right:1px solid var(--line);">PREPARED BY (QS)<br><br>SIGN: __________</div>
+      <div style="flex:1;padding:10px 12px;border-right:1px solid var(--line);">VERIFIED BY (SITE ENGINEER)<br><br>SIGN: __________</div>
+      <div style="flex:1;padding:10px 12px;">APPROVED BY (MANAGEMENT)<br><br>SIGN: __________</div>
+    </div>
+  </div>
+  <div class="cap">Fig. 05-B — Certificate template (illustrative values). Approved certificates export to PDF and to the ERP payable.</div>
+
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 07 / 10</span></div>
+</div>
+
+<!-- ============ PAGE 8 : PROCUREMENT & COST ============ -->
 <div class="page">
   <div class="eyebrow">Section 06 · Modules M5 – M6</div>
   <h2>Procurement, Materials &amp; Cost Control</h2>
@@ -405,7 +465,7 @@
   <p>Because certified, paid and balance figures are live per subcontract, the project cash exposure —
   work certified but not yet paid, and advances not yet recovered — is always one click away for management.</p>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 07 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 08 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 8 : DASHBOARD ============ -->
@@ -454,7 +514,7 @@
     </ul></div>
   </div>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 08 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 09 / 10</span></div>
 </div>
 
 <!-- ============ PAGE 9 : ERP + NEXT STEPS ============ -->
@@ -507,7 +567,7 @@
     <div>REVIEWED / APPROVED: MOHAMMED B AMR — CULINOVA<br><br>SIGNATURE: ____________________</div>
   </div>
 
-  <div class="foot"><span>CUL-CPMS-ARC-001 · REV A</span><span>Page 09 / 09</span></div>
+  <div class="foot"><span>CUL-CPMS-ARC-001 · REV B</span><span>Page 10 / 10</span></div>
 </div>
 
 </div><!-- /doc -->
@@ -530,7 +590,7 @@ async function downloadPDF(){
       if (i > 0) pdf.addPage([794,1122], 'portrait');
       pdf.addImage(img, 'JPEG', 0, 0, 794, 1122);
     }
-    pdf.save('CULINOVA_CPMS_Architecture_RevA.pdf');
+    pdf.save('CULINOVA_CPMS_Architecture_RevB.pdf');
   }catch(e){
     alert('PDF generation failed. Please try again, or use Ctrl+P and choose "Save as PDF".');
   }
