@@ -900,6 +900,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    `.table-scroll` behave as the horizontal scroller it is meant to be.        */
 .dash > *,
 .two-col > *,
+.profile-layout > *,
 .stat-grid > *,
 .hero-grid > *,
 .hero-stats > *,
