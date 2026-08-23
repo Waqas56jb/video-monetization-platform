@@ -15,9 +15,7 @@ export function urlsFromShare(video, share, origin) {
   return { slug, sourceKey, cleanUrl, shareUrl, cardUrl }
 }
 
-export function shareMessageText(title, creator, shareUrl) {
-  const lines = []
-  if (title) lines.push(creator ? `${title} — ${creator}` : title)
-  if (shareUrl) lines.push(shareUrl)
-  return lines.join('\n')
+/** WhatsApp / copy message — URL only so the OG poster card renders cleanly. */
+export function shareMessageText(_title, _creator, shareUrl) {
+  return String(shareUrl || '').trim()
 }

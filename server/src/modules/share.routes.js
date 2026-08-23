@@ -98,9 +98,12 @@ router.get(
       }
     }
 
-    // URL alone. Extra caption text makes WhatsApp send a paragraph plus a
-    // tiny webpage icon instead of fetching the Open Graph poster card.
-    const encoded = encodeURIComponent(deepLink)
+    // URL alone — caption text makes WhatsApp show a paragraph plus a tiny icon
+    // instead of fetching the Open Graph poster card.
+    const shareLink = sourceKey
+      ? `${deepLink}?s=${encodeURIComponent(sourceKey)}`
+      : deepLink
+    const encoded = encodeURIComponent(shareLink)
 
     // Card must already exist at publish time; self-heal only via share-meta.
     if (!video.social_clip_uid) ensureClips(video.id).catch(() => {})
@@ -122,6 +125,7 @@ router.get(
       cardUrl,
       sourceKey,
       deepLink,
+      shareLink,
       title,
       text,
       clip,
@@ -130,13 +134,13 @@ router.get(
         native: {
           method: 'web-share',
           supportsFiles: Boolean(clip?.downloadUrl),
-          payload: { url: deepLink },
+          payload: { url: shareLink },
           note: 'Share the URL only so WhatsApp/Facebook/X fetch the Open Graph card',
         },
         whatsapp: { method: 'url', url: `https://wa.me/?text=${encoded}` },
         facebook: {
           method: 'url',
-          url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(deepLink)}`,
+          url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`,
         },
         x: { method: 'url', url: `https://twitter.com/intent/tweet?url=${encoded}` },
         instagram: {
@@ -147,7 +151,7 @@ router.get(
           method: 'native-only',
           note: 'TikTok has no web publishing API — share the clip through the OS sheet',
         },
-        copy: { method: 'clipboard', value: deepLink },
+        copy: { method: 'clipboard', value: shareLink },
       },
       // Consumed by the app (or an edge function) to render link previews.
       openGraph: {

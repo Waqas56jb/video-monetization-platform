@@ -29,7 +29,7 @@ import {
   tiktokHref,
 } from '@/lib/socialShare'
 import { warmShare, healShareCard } from '@/lib/warmShare'
-import { urlsFromShare, shareMessageText } from '@/lib/shareUrls'
+import { urlsFromShare } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
 
 function isMobileUa() {
@@ -147,7 +147,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
   const onWhatsApp = () => {
-    const text = shareMessageText(video?.title, creator, shareUrl)
+    const text = shareUrl
     const mobile = isMobileUa()
     const href = mobile
       ? `whatsapp://send?text=${encodeURIComponent(text)}`
@@ -288,7 +288,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
       if (busy) return
       setBusy(true)
       navigator
-        .share(nativeShareData(shareUrl, video?.title, creator))
+        .share(nativeShareData(shareUrl, video?.title))
         .then(() => onClose())
         .catch((err) => {
           if (err?.name !== 'AbortError') {

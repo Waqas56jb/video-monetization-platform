@@ -37,16 +37,11 @@ export function videoRouteMatches(idOrSlug, video) {
   return key === video.slug || key === video.id
 }
 
-export function whatsappShareText(watchUrl, title, creator) {
-  const url = String(watchUrl || '').trim()
-  if (!title) return url
-  const head = creator ? `${title} — ${creator}` : title
-  return `${head}\n${url}`
+export function whatsappShareText(watchUrl) {
+  return String(watchUrl || '').trim()
 }
 
-/** Native share payload — URL carries the rich card. */
-export function nativeShareData(watchUrl, title, creator) {
-  const url = String(watchUrl || '')
-  const text = creator ? `${title || 'MTONYO+'} — ${creator}` : title || ''
-  return { title: title || 'MTONYO+', text, url }
+/** Native share — URL carries the rich card; no caption text (duplicates OG). */
+export function nativeShareData(watchUrl, title) {
+  return { title: title || 'MTONYO+', url: String(watchUrl || '') }
 }

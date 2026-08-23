@@ -39,22 +39,22 @@ test('share URL adds cache-busting ?s= when sourceKey is set', () => {
   assert.equal(canonicalWatchUrl(video, ORIGIN), `${ORIGIN}/watch/studio-session-track-4`)
 })
 
-test('WhatsApp payload puts the URL on its own line after title', () => {
+test('WhatsApp payload is the share URL only — OG card supplies title and poster', () => {
   const url = `${ORIGIN}/watch/behind-the-fame-a-coast-documentary?s=abc`
-  const text = whatsappShareText(url, 'Behind the Fame', 'Yasmin Chali')
-  assert.equal(text, `Behind the Fame — Yasmin Chali\n${url}`)
+  const text = whatsappShareText(url)
+  assert.equal(text, url)
   assert.equal(text.endsWith('.mp4'), false)
 })
 
-test('More… payload includes title, text and url', () => {
+test('More… payload is title + url only (no caption text)', () => {
   const url = `${ORIGIN}/watch/live-at-arusha-full-set?s=x`
-  const data = nativeShareData(url, 'Live at Arusha', 'DJ Kibo')
+  const data = nativeShareData(url, 'Live at Arusha')
   assert.deepEqual(data, {
     title: 'Live at Arusha',
-    text: 'Live at Arusha — DJ Kibo',
     url,
   })
   assert.equal('files' in data, false)
+  assert.equal('text' in data, false)
 })
 
 test('login next stays on the same video and encodes nested unlock', () => {
