@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { Home, Menu, ShieldAlert } from 'lucide-react'
+import { Home, Menu, ShieldAlert, UploadCloud } from 'lucide-react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import OverviewTab from '@/components/dashboard/tabs/OverviewTab'
 import LibraryTab from '@/components/dashboard/tabs/LibraryTab'
@@ -68,6 +68,7 @@ export default function Dashboard() {
   const safeRole = dashRole(role)
   const [params, setParams] = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const uploadRef = useRef(null)
 
   /**
    * Which tab is open lives in the URL.
@@ -175,6 +176,17 @@ export default function Dashboard() {
             </div>
 
             <div className="dash-user">
+              {tab === 'upload' && (
+                <button
+                  type="button"
+                  className="btn btn-gold btn-sm dash-upload-cta"
+                  onClick={() => uploadRef.current?.startNewUpload()}
+                >
+                  <UploadCloud size={17} />
+                  <span className="btn-label-full">Upload Video</span>
+                  <span className="btn-label-short">Upload</span>
+                </button>
+              )}
               <NotificationBell />
               <div className="dash-avatar">
                 {user?.avatarUrl ? (
@@ -207,7 +219,7 @@ export default function Dashboard() {
             {tab === 'overview' && <OverviewTab />}
             {tab === 'library' && <LibraryTab />}
             {tab === 'purchases' && <PurchasesTab />}
-            {tab === 'upload' && <UploadTab />}
+            {tab === 'upload' && <UploadTab ref={uploadRef} />}
             {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
             {tab === 'earnings' && <EarningsTab />}
             {tab === 'become' && <BecomeCreatorTab />}

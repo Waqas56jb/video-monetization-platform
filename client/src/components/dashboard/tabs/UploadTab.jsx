@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Check,
@@ -69,7 +69,7 @@ const STEP = {
   failed: 'Something went wrong',
 }
 
-export default function UploadTab({ onSubmitted }) {
+export default forwardRef(function UploadTab({ onSubmitted }, ref) {
   const showToast = useToast()
   const uploadRef = useRef(null)
   const watchRef = useRef(null)
@@ -263,6 +263,7 @@ export default function UploadTab({ onSubmitted }) {
       showToast(res.message || 'Submitted for review')
       loadMine()
       onSubmitted?.()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -270,13 +271,18 @@ export default function UploadTab({ onSubmitted }) {
     }
   }
 
-  const reset = () => {
+  const busy = step === 'uploading' || step === 'encoding'
+
+  const reset = useCallback(() => {
+    uploadRef.current?.abort?.()
+    watchRef.current?.cancel?.()
     setVideo(null)
     setFile(null)
     setStep('idle')
     setProgress(0)
     setEncodeProgress(0)
     setSubmitted(false)
+    setRightsOk(false)
     setError(null)
     setForm({
       title: '',
@@ -285,16 +291,22 @@ export default function UploadTab({ onSubmitted }) {
       accessType: 'paid_premiere',
       priceTzs: 1000,
       premiereDays: 30,
-      /* Five minutes is the ceiling for a feature film, which makes it the
-         worst possible default for a three-minute song, and most first
-         uploads are short. 45 seconds suits those; anything longer can be
-         raised to whatever that video's own ceiling turns out to be. */
       previewValue: 45,
       previewUnit: 'seconds',
     })
-  }
+  }, [])
 
-  const busy = step === 'uploading' || step === 'encoding'
+  const startNewUpload = useCallback(() => {
+    if (busy) return
+    if (step !== 'idle' || submitted || video) reset()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    requestAnimationFrame(() => {
+      document.getElementById('creator-upload-file')?.click()
+    })
+  }, [busy, reset, step, submitted, video])
+
+  useImperativeHandle(ref, () => ({ startNewUpload, reset }), [startNewUpload, reset])
+
   const canSubmit = step === 'ready' && !submitted
 
   // Until the video is encoded we do not know its length, so allow anything
@@ -302,7 +314,24 @@ export default function UploadTab({ onSubmitted }) {
   const durationSeconds = Number(video?.durationSeconds) || 0
 
   return (
-    <div className="two-col">
+    <>
+      {submitted && (
+        <div className="upload-toolbar is-success">
+          <div className="upload-toolbar-msg">
+            <CheckCircle2 size={18} />
+            <span>
+              <b>{form.title}</b> is with the review team. Upload your next video whenever you are
+              ready.
+            </span>
+          </div>
+          <button type="button" className="btn btn-gold" onClick={startNewUpload}>
+            <UploadCloud size={16} />
+            Upload next video
+          </button>
+        </div>
+      )}
+
+      <div className="two-col">
       {/* ---- left column: file + details ---- */}
       <div>
         <Panel title="1 · Upload Your Video">
@@ -587,19 +616,13 @@ export default function UploadTab({ onSubmitted }) {
           </label>
 
           {submitted ? (
-            <>
-              <div className="notice">
-                <CheckCircle2 />
-                <span>
-                  <b>{form.title}</b> is with the review team. You&apos;ll get a notification the
-                  moment they decide.
-                </span>
-              </div>
-              <button className="btn btn-ghost btn-block" onClick={reset}>
-                <UploadCloud />
-                Upload another video
-              </button>
-            </>
+            <div className="notice">
+              <CheckCircle2 />
+              <span>
+                <b>{form.title}</b> is with the review team. You&apos;ll get a notification the
+                moment they decide. Use <b>Upload Video</b> at the top to add your next one.
+              </span>
+            </div>
           ) : (
             <button
               className="btn btn-gold btn-block"
@@ -702,9 +725,9 @@ export default function UploadTab({ onSubmitted }) {
         open={Boolean(previewing)}
         onClose={() => setPreviewing(null)}
       />
-    </div>
+    </>
   )
-}
+})
 
 /* ------------------------------------------------------------- helpers */
 
