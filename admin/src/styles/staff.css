@@ -36,7 +36,7 @@
 .field-note { margin: -4px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
 
 /* --- notification bell -------------------------------------------------- */
-.bell-wrap { position: relative; }
+.bell-wrap { position: relative; overflow: visible; z-index: 50; }
 .bell-badge {
   position: absolute; top: 2px; right: 2px;
   min-width: 17px; height: 17px; padding: 0 4px;
@@ -47,24 +47,24 @@
 
 .notif-pop {
   position: absolute; top: calc(100% + 10px); right: 0; z-index: 80;
-  width: min(380px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - 32px));
   background: var(--card2);
   border: 1px solid var(--border2);
   border-radius: 14px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.72);
   overflow: hidden;
   color: var(--text);
-  isolation: isolate;
 }
 .notif-pop-head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 12px 14px; border-bottom: 1px solid var(--border2);
 }
-.notif-pop-head b { font-size: 14px; }
+.notif-pop-head b { font-size: 14px; flex-shrink: 0; }
 .notif-pop-head button {
   display: inline-flex; align-items: center; gap: 5px;
   background: none; border: 0; cursor: pointer;
   color: var(--gold); font-size: 12px; font-weight: 600;
+  white-space: nowrap;
 }
 .notif-pop-head button:disabled { opacity: .4; cursor: default; }
 
@@ -76,7 +76,7 @@
 .notif-pop-list li:hover { background: rgba(255,255,255,.03); }
 .notif-pop-list li.unread { background: rgba(233,185,73,.06); }
 .notif-pop-list li > div { min-width: 0; }
-.notif-pop-list b { display: block; font-size: 13px; line-height: 1.4; }
+.notif-pop-list b { display: block; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
 .notif-pop-list small {
   display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -97,12 +97,26 @@
   color: var(--gold); font-size: 12.5px; font-weight: 700;
 }
 
-@media (max-width: 900px) {
+/**
+ * Same mobile fix as the viewer/creator inbox (client realdata.css):
+ * anchoring with `right: 0` on the bell hangs a ~360px panel off a button that
+ * sits left of the avatar, so the panel starts off-screen and the heading /
+ * body look cut in half. Pin to the viewport edges instead.
+ */
+@media (max-width: 600px) {
   .notif-pop {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+    z-index: 120;
     background: #151522;
   }
-  .notif-pop-list li {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
+  .notif-pop-list {
+    max-height: min(340px, 58vh);
+    -webkit-overflow-scrolling: touch;
   }
   .notif-pop-list b,
   .notif-pop-list small {
@@ -110,9 +124,6 @@
     overflow: visible;
     text-overflow: unset;
   }
-}
-
-@media (max-width: 480px) {
   .notif-pop-list li {
     grid-template-columns: 26px minmax(0, 1fr);
     gap: 8px;
@@ -120,6 +131,17 @@
   .notif-pop-list time {
     grid-column: 2;
     justify-self: start;
+  }
+  .notif-pop-head {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+  .notif-pop {
+    width: min(360px, calc(100vw - 48px));
+    right: 0;
+    left: auto;
   }
 }
 
@@ -160,6 +182,22 @@
 .notif-dot {
   position: absolute; top: 18px; right: 6px;
   width: 8px; height: 8px; border-radius: 50%; background: var(--gold);
+}
+
+@media (max-width: 600px) {
+  .notif {
+    padding: 14px 22px 14px 0;
+    gap: 10px;
+  }
+  .notif-body b,
+  .notif-body p {
+    overflow-wrap: anywhere;
+  }
+  .notif-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 /* --- announcements ------------------------------------------------------ */
