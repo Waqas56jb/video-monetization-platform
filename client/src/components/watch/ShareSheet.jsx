@@ -76,6 +76,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const [hint, setHint] = useState(null)
   const [clip, setClip] = useState(null)
   const [posterOn, setPosterOn] = useState(false)
+  const [cardFailed, setCardFailed] = useState(false)
   const closeRef = useRef(null)
   const cardRef = useRef(null)
   const copyTimer = useRef(null)
@@ -85,7 +86,9 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const { shareUrl, cleanUrl, cardUrl } = urlsFromShare(video, share)
   const slug = video?.slug || ''
   const still = mediaUrl(video?.thumbnailUrl)
-  const posterSrc = cardUrl || still
+  /** Server JPEG already has title, play, badge — no CSS overlays on top. */
+  const usingComposedCard = Boolean(cardUrl && !cardFailed)
+  const posterSrc = usingComposedCard ? cardUrl : still
   const creator = video?.creator?.name || share?.creator
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
@@ -97,8 +100,9 @@ export default function ShareSheet({ open, video, share, onClose }) {
   }
 
   useEffect(() => {
+    setCardFailed(false)
     setPosterOn(false)
-  }, [posterSrc])
+  }, [posterSrc, cardUrl, open])
 
   useEffect(() => {
     if (!open) return
@@ -323,7 +327,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
         </p>
 
         <div className="share-og" ref={cardRef}>
-          <div className="share-og-stage">
+          <div className={`share-og-stage${usingComposedCard ? ' is-composed' : ''}`}>
             {posterSrc ? (
               <>
                 {!posterOn && <span className="share-og-loading" aria-hidden="true" />}
@@ -336,7 +340,10 @@ export default function ShareSheet({ open, video, share, onClose }) {
                   fetchPriority="high"
                   className={posterOn ? 'is-on' : ''}
                   onLoad={() => setPosterOn(true)}
-                  onError={() => setPosterOn(true)}
+                  onError={() => {
+                    if (usingComposedCard) setCardFailed(true)
+                    setPosterOn(true)
+                  }}
                 />
               </>
             ) : (
@@ -344,39 +351,43 @@ export default function ShareSheet({ open, video, share, onClose }) {
                 <Film size={28} />
               </span>
             )}
-            <span className="share-og-veil" aria-hidden="true" />
-            <span className="share-og-badge">MTONYO+</span>
-            {video.durationSeconds > 0 && (
-              <span className="share-og-time">{duration(video.durationSeconds)}</span>
+            {!usingComposedCard && (
+              <>
+                <span className="share-og-veil" aria-hidden="true" />
+                <span className="share-og-badge">MTONYO+</span>
+                {video.durationSeconds > 0 && (
+                  <span className="share-og-time">{duration(video.durationSeconds)}</span>
+                )}
+                <span className="share-og-play" aria-hidden="true">
+                  <Play size={22} fill="currentColor" />
+                </span>
+                <div className="share-og-meta">
+                  {fresh && <span className="share-og-new">New release</span>}
+                  <b>{video.title}</b>
+                  {creator && (
+                    <small>
+                      {creator}
+                      {verified && <BadgeCheck size={13} />}
+                    </small>
+                  )}
+                  <em>Watch free preview</em>
+                </div>
+                <div className="share-og-stats">
+                  {video.views != null && (
+                    <span>
+                      <Eye size={12} />
+                      {compact(video.views)} views
+                    </span>
+                  )}
+                  {paid && (
+                    <span>
+                      <Lock size={12} />
+                      Pay to continue
+                    </span>
+                  )}
+                </div>
+              </>
             )}
-            <span className="share-og-play" aria-hidden="true">
-              <Play size={22} fill="currentColor" />
-            </span>
-            <div className="share-og-meta">
-              {fresh && <span className="share-og-new">New release</span>}
-              <b>{video.title}</b>
-              {creator && (
-                <small>
-                  {creator}
-                  {verified && <BadgeCheck size={13} />}
-                </small>
-              )}
-              <em>Watch free preview</em>
-            </div>
-            <div className="share-og-stats">
-              {video.views != null && (
-                <span>
-                  <Eye size={12} />
-                  {compact(video.views)} views
-                </span>
-              )}
-              {paid && (
-                <span>
-                  <Lock size={12} />
-                  Pay to continue
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
