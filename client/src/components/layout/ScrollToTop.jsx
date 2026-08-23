@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { scrollWhenReady } from '@/hooks/useSectionLink'
 
 /**
@@ -21,6 +21,13 @@ export default function ScrollToTop() {
     }
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [pathname, hash])
+
+  // Same route component, different /watch/:videoId — pathname alone does not change.
+  const { videoId } = useParams()
+  useEffect(() => {
+    if (!videoId) return
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [videoId])
 
   return null
 }

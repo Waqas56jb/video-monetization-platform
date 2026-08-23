@@ -4,6 +4,7 @@ import {
   canonicalWatchPath,
   canonicalWatchUrl,
   nativeShareData,
+  videoRouteMatches,
   whatsappShareText,
 } from './watchUrl.js'
 import { authUrl, safeNext } from './nextPath.js'
@@ -19,6 +20,13 @@ test('canonical URL is /watch/{slug} on the public origin', () => {
     `${ORIGIN}/watch/studio-session-track-4`
   )
   assert.equal(canonicalWatchPath({ id: video.id }), null)
+})
+
+test('route match accepts slug or id and rejects stale rows', () => {
+  const video = { slug: 'studio-session-track-4', id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' }
+  assert.equal(videoRouteMatches('studio-session-track-4', video), true)
+  assert.equal(videoRouteMatches(video.id, video), true)
+  assert.equal(videoRouteMatches('other-title', video), false)
 })
 
 test('WhatsApp payload is the watch URL only', () => {

@@ -21,6 +21,13 @@ export function canonicalWatchUrl(video, origin) {
   return `${base}${path}`
 }
 
+/** True when the loaded video is the one the /watch/:videoId route asked for. */
+export function videoRouteMatches(idOrSlug, video) {
+  if (!idOrSlug || !video) return false
+  const key = decodeURIComponent(String(idOrSlug))
+  return key === video.slug || key === video.id
+}
+
 /** The only text WhatsApp should send. */
 export function whatsappShareText(watchUrl) {
   return String(watchUrl || '').trim()

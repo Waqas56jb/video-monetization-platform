@@ -5,6 +5,12 @@ import useApi from '@/hooks/useApi'
 import { toCard, videoLink } from '@/lib/videoView'
 import api from '@/lib/api'
 
+function openVideo(navigate, video) {
+  const path = videoLink(video)
+  navigate(path)
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+}
+
 /**
  * Other titles under the one you are watching — same category first, then
  * more from this creator, then the rest of the catalogue.
@@ -51,7 +57,7 @@ export default function MoreLikeThis({ videoId }) {
           <VideoCard
             key={v.id}
             video={toCard(v)}
-            onClick={() => navigate(videoLink(v))}
+            onClick={() => openVideo(navigate, v)}
           />
         ))}
       </div>

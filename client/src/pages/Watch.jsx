@@ -30,6 +30,7 @@ import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmSharePreview } from '@/lib/warmShare'
+import { videoRouteMatches } from '@/lib/watchUrl'
 
 /**
  * Watching a video.
@@ -126,13 +127,17 @@ export default function Watch() {
    *
    * Shared /s/ links and old UUID links still open this page, then the bar
    * is replaced with the slug so Copy, Share and the address bar all agree.
+   *
+   * Only run once the loaded row matches the route — otherwise a click on
+   * "More like this" still has the previous video in memory and this effect
+   * would replace the new URL with the old slug before the fetch finishes.
    */
   useEffect(() => {
-    if (!v?.slug) return
+    if (!v?.slug || !videoRouteMatches(videoId, v)) return
     const shareAlias = location.pathname.startsWith('/s/')
     if (!shareAlias && videoId === v.slug) return
     navigate(`/watch/${v.slug}${location.search || ''}`, { replace: true })
-  }, [v?.slug, videoId, location.pathname, location.search, navigate])
+  }, [v?.slug, v?.id, videoId, location.pathname, location.search, navigate])
 
   /**
    * Build the WhatsApp/Facebook poster before anyone pastes the link.
@@ -377,7 +382,9 @@ export default function Watch() {
 
   /* ------------------------------------------------------------ shells */
 
-  if (video.loading) {
+  const videoReady = v && videoRouteMatches(videoId, v)
+
+  if (video.loading || !videoReady) {
     return (
       <Shell>
         <div className="watch-wrap">
