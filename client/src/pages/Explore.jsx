@@ -92,12 +92,12 @@ export default function Explore() {
 
       <section className="explore">
         <div className="container explore-stack">
-          <header className="explore-top">
-            {/* Reached from the creator/viewer menu as well as the public site,
-                so it always offers the matching way back. */}
-            <button className="explore-back" onClick={goBack}>
+          <header className="explore-hero">
+            <button className="explore-back" type="button" onClick={goBack} aria-label="Go back">
               <ArrowLeft />
-              {canGoBack ? 'Back' : authed ? 'Back to dashboard' : 'Back to home'}
+              <span className="explore-back-label">
+                {canGoBack ? 'Back' : authed ? 'Back to dashboard' : 'Back to home'}
+              </span>
             </button>
 
             <div className="explore-head">
