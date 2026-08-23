@@ -9,7 +9,8 @@ import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
-import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
+import { buildShareCard } from '../lib/buildShareCard.js'
+import { clampPreviewSql } from '../lib/preview.js'
 
 async function videoByKey(key) {
   return one(
@@ -328,9 +329,9 @@ router.post(
 
     // Generate the two derived assets once the source is ready.
     await ensureClips(video.id).catch(() => {})
-    import('./share.routes.js')
-      .then((m) => m.warmShareCardById(video.slug || video.id))
-      .catch(() => {})
+    if (video.is_published && video.review_status === 'approved') {
+      buildShareCard(video.id).catch(() => {})
+    }
     res.json({ ok: true, state: 'ready' })
   })
 )

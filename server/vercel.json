@@ -21,6 +21,10 @@
     {
       "path": "/api/jobs/premiere-expiry",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/share-cards/rebuild?stale=true",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

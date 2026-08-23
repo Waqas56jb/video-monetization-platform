@@ -8,12 +8,10 @@ import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 
 import { slugFallbacks } from '../lib/videoKey.js'
-import { brandShareCard } from '../lib/shareCard.js'
-import { cardSourceKey, readCachedCard, writeCachedCard, ensureShareCardTable } from '../lib/shareCardCache.js'
-import { uploadShareCardToStorage } from '../lib/shareCardStorage.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { shareSourceKey, shareCardUrl } from '../lib/shareMeta.js'
 import { handleShareCard } from '../lib/shareCardServe.js'
+import { buildShareCard, rebuildShareCards } from '../lib/buildShareCard.js'
 import { log } from '../lib/logger.js'
 
 const router = Router()
@@ -104,10 +102,7 @@ router.get(
     // tiny webpage icon instead of fetching the Open Graph poster card.
     const encoded = encodeURIComponent(deepLink)
 
-    // JPEG is composed while the share sheet waits on /og/card/{slug}.jpg.
-    // Do not block this JSON — crawlers also call this endpoint for title
-    // and an 8s timeout here used to drop the Open Graph document entirely.
-    composeShareCard(video).catch(() => {})
+    // Card must already exist at publish time; self-heal only via share-meta.
     if (!video.social_clip_uid) ensureClips(video.id).catch(() => {})
 
     res.json({
@@ -179,167 +174,40 @@ router.get(
  * `.jpg` on the path matters: WhatsApp often ignores an image URL that
  * looks like an API route.
  */
-async function fetchPosterBytes(url) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const img = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(8000) })
-      if (!img.ok) continue
-      const type = (img.headers.get('content-type') || '').split(';')[0]
-      if (!/^image\//i.test(type) && type !== 'application/octet-stream') continue
-      const buf = Buffer.from(await img.arrayBuffer())
-      if (buf.length < 1000) continue
-      return buf
-    } catch {
-      /* try again */
-    }
-  }
-  return null
-}
 
-const composing = new Map()
-
-function pingLinkPreview(slug) {
-  const watchUrl = `${env.publicWebUrl}/watch/${slug}`
-  fetch(`https://graph.facebook.com/?id=${encodeURIComponent(watchUrl)}&scrape=true`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(5000),
-  }).catch(() => {})
-}
-
-async function composeShareCard(video) {
-  const slug = video.slug || String(video.id)
-  const pending = composing.get(slug)
-  if (pending) return pending
-  const run = composeShareCardOnce(video).finally(() => composing.delete(slug))
-  composing.set(slug, run)
-  return run
-}
-
-async function composeShareCardOnce(video) {
-  const slug = video.slug || String(video.id)
-  const key = cardSourceKey(video)
-  const started = Date.now()
-  const cached = await readCachedCard(slug, key)
-  if (cached) {
-    pingLinkPreview(slug)
-    log.info(`og-card slug=${slug} cache=hit ms=${Date.now() - started} bytes=${cached.length}`)
-    return cached
-  }
-
-  let poster = null
-  if (video.custom_thumbnail_url && /^https?:\/\//i.test(video.custom_thumbnail_url)) {
-    poster = await fetchPosterBytes(video.custom_thumbnail_url)
-  }
-  if (!poster) {
-    const posterUid = video.preview_uid || video.cloudflare_uid
-    if (posterUid && capabilities.signedPlayback) {
-      const token = cf.signPlaybackToken(posterUid, { expiresInSeconds: 3600 })
-      const src = `https://videodelivery.net/${token}/thumbnails/thumbnail.jpg?time=15s&width=1200&height=630&fit=crop`
-      poster = await fetchPosterBytes(src)
-    }
-  }
-  if (!poster && video.thumbnail_url && /^https?:\/\//i.test(video.thumbnail_url)) {
-    poster = await fetchPosterBytes(video.thumbnail_url)
-  }
-  if (!poster) return null
-
-  const card = await brandShareCard(poster, {
-    title: video.title,
-    creator: video.creator_name,
-  })
-  await writeCachedCard(slug, video.id, key, card)
-  uploadShareCardToStorage(slug, key, card).catch(() => {})
-  pingLinkPreview(slug)
-  log.info(`og-card slug=${slug} cache=miss ms=${Date.now() - started} bytes=${card.length}`)
-  return card
-}
-
-/** Build and store the JPEG as soon as a poster exists — including drafts.
- * Creators share after upload/publish; the share sheet must not wait. */
+/** @deprecated use buildShareCard from ../lib/buildShareCard.js */
 export async function warmShareCardById(id) {
-  const video = await videoByKey(String(id || ''))
-  if (!video) return null
-  return composeShareCard(video)
+  const result = await buildShareCard(id)
+  return result.ok ? result : null
 }
 
-/** Same, but never block an admin/publish request for more than 15s. */
+/** Awaited build with a 15s ceiling for admin approve/publish. */
 export async function warmShareCardSoon(id) {
   try {
     await Promise.race([
-      warmShareCardById(id),
+      buildShareCard(id),
       new Promise((resolve) => setTimeout(resolve, 15000)),
     ])
-  } catch {
-    /* JPEG can still be composed on the first /og/card hit */
+  } catch (err) {
+    log.error(`warmShareCardSoon id=${id}:`, err.message)
   }
 }
 
-async function videosNeedingShareCards(limit = null) {
-  await ensureShareCardTable()
-  const sql = `
-    select v.*, coalesce(cp.display_name, p.full_name) as creator_name
-      from videos v
-      join profiles p on p.id = v.creator_id
-      left join creator_profiles cp on cp.user_id = v.creator_id
-      left join share_card_cache c on c.slug = v.slug
-     where v.deleted_at is null
-       and v.slug is not null
-       and v.slug <> ''
-       and (c.slug is null or octet_length(c.jpeg) < 1000)
-     order by v.is_published desc, v.published_at desc nulls last, v.created_at desc
-     ${limit ? 'limit $1' : ''}`
-  return limit ? many(sql, [limit]) : many(sql)
-}
-
-async function storeCardsFor(rows) {
-  let stored = 0
-  let failed = 0
-  for (const video of rows) {
-    try {
-      const card = await composeShareCard(video)
-      if (card) stored += 1
-      else failed += 1
-    } catch (err) {
-      log.warn(`og-card backfill slug=${video.slug}:`, err.message)
-      failed += 1
-    }
-  }
-  return { scanned: rows.length, stored, failed }
-}
-
-/** Fill Postgres for videos that have no JPEG yet. Safe to call often. */
-export async function warmMissingShareCards({ limit = 6 } = {}) {
-  const rows = await videosNeedingShareCards(limit)
-  if (!rows.length) return { scanned: 0, stored: 0, failed: 0 }
-  const result = await storeCardsFor(rows)
-  log.info(`og-card backfill stored=${result.stored} failed=${result.failed} scanned=${result.scanned}`)
-  return result
-}
-
-/** Every video with a slug — used by the CLI for existing catalogue. */
 export async function warmAllShareCards() {
-  await ensureShareCardTable()
-  const rows = await many(
-    `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
-       from videos v
-       join profiles p on p.id = v.creator_id
-       left join creator_profiles cp on cp.user_id = v.creator_id
-      where v.deleted_at is null
-        and v.slug is not null
-        and v.slug <> ''
-      order by v.is_published desc, v.created_at desc`
-  )
-  const result = await storeCardsFor(rows)
-  log.info(`og-card warm-all stored=${result.stored} failed=${result.failed} scanned=${result.scanned}`)
-  return result
+  const { scanned, results } = await rebuildShareCards({ all: true, concurrency: 3 })
+  const stored = results.filter((r) => r.status === 'built').length
+  const skipped = results.filter((r) => r.status === 'skipped').length
+  const failed = results.filter((r) => r.status === 'failed').length
+  log.info(`og-card warm-all stored=${stored} skipped=${skipped} failed=${failed} scanned=${scanned}`)
+  return { scanned, stored, skipped, failed }
 }
 
-let lastMissingWarm = 0
-export function queueMissingShareCards() {
-  const now = Date.now()
-  if (now - lastMissingWarm < 20_000) return
-  lastMissingWarm = now
-  warmMissingShareCards({ limit: 6 }).catch(() => {})
+export async function warmMissingShareCards({ limit = 6 } = {}) {
+  const { results } = await rebuildShareCards({ stale: true, concurrency: 3 })
+  const limited = limit ? results.slice(0, limit) : results
+  const stored = limited.filter((r) => r.status === 'built').length
+  const failed = limited.filter((r) => r.status === 'failed').length
+  return { scanned: limited.length, stored, failed }
 }
 
 async function legacyShareCard(req, res) {

@@ -15,6 +15,8 @@ import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails 
 import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
 import { capabilities, env } from '../config/env.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
+import { buildShareCard } from '../lib/buildShareCard.js'
+import { log } from '../lib/logger.js'
 
 const router = Router()
 
@@ -234,11 +236,12 @@ router.post(
       return rows[0]
     }, asAdmin(req))
 
-    // Cut the preview and promo clips now that it is live.
     ensureClips(video.id).catch(() => {})
-    await import('./share.routes.js')
-      .then((m) => m.warmShareCardSoon(video.slug || video.id))
-      .catch(() => {})
+    try {
+      await buildShareCard(updated.id)
+    } catch (err) {
+      log.error(`share card build on approve slug=${updated.slug}:`, err.message)
+    }
 
     await recordStaffAction(req, {
       action: 'APPROVED',
@@ -566,9 +569,11 @@ router.post(
       body: 'Your video is now visible to viewers.',
       actor: req.user, action: 'publish', entityType: 'video', entityId: video.id,
     })
-    await import('./share.routes.js')
-      .then((m) => m.warmShareCardSoon(updated.slug || updated.id))
-      .catch(() => {})
+    try {
+      await buildShareCard(updated.id)
+    } catch (err) {
+      log.error(`share card build on publish slug=${updated.slug}:`, err.message)
+    }
     res.json({ video: studioVideo(updated) })
   })
 )

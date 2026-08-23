@@ -9,6 +9,7 @@ import { storeImage, removeImage } from '../services/uploads.js'
 import { verifyPassword } from '../lib/authdb.js'
 import { notify, notifyMany } from '../services/notify.js'
 import { recordAudit, clientIp } from '../services/audit.js'
+import { rebuildShareCardsForCreator } from '../lib/buildShareCard.js'
 
 /**
  * Everything about *your own* account: who you are, how you are paid, what we
@@ -215,6 +216,10 @@ router.patch(
         body: 'If this was not you, change your password immediately and contact support.',
         action: 'payout_details',
       })
+    }
+
+    if (b.displayName != null) {
+      rebuildShareCardsForCreator(req.user.id).catch(() => {})
     }
 
     res.json(shape(profile, creator))

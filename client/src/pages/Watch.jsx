@@ -29,7 +29,7 @@ import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
-import { warmShareFromMeta } from '@/lib/warmShare'
+import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
 
 /**
@@ -52,6 +52,7 @@ export default function Watch() {
   const [previewOver, setPreviewOver] = useState(false)
   /* The share sheet — what is going out, shown before it goes. */
   const [sharing, setSharing] = useState(false)
+  const [shareLive, setShareLive] = useState(null)
   /* Reporting, from the video itself rather than an address on a policy page. */
   const [reporting, setReporting] = useState(false)
 
@@ -99,7 +100,7 @@ export default function Watch() {
   const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
 
   const v = video.data?.video
-  const share = video.data?.share
+  const share = shareLive ?? video.data?.share
   const p = playback.data
   /**
    * Only decide lock state after playback access is known.
@@ -140,14 +141,26 @@ export default function Watch() {
     navigate(`/watch/${v.slug}${location.search || ''}`, { replace: true })
   }, [v?.slug, v?.id, videoId, location.pathname, location.search, navigate])
 
+  useEffect(() => {
+    setShareLive(null)
+  }, [videoId])
+
+  useEffect(() => {
+    if (!video.data?.share) return
+    setShareLive(video.data.share)
+  }, [video.data?.share])
+
   /**
    * Build the WhatsApp/Facebook poster before anyone pastes the link.
-   * Laptop previews give up if the JPEG is still being composed.
+   * Cards are built at publish time; this only warms caches and self-heals rare misses.
    */
   useEffect(() => {
     if (!share?.watchUrl) return
     warmShareFromMeta(share)
-  }, [share])
+    if (share.cardStatus && share.cardStatus !== 'ready' && v?.slug) {
+      healShareCard(v.slug, (meta) => setShareLive((prev) => ({ ...prev, ...meta })))
+    }
+  }, [share, v?.slug])
 
   const primeShare = () => {
     if (share?.watchUrl) warmShareFromMeta(share)

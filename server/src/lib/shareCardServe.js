@@ -1,5 +1,6 @@
 import { one } from '../db/pool.js'
 import { recordCrawlerHit } from './crawlerLog.js'
+import { buildShareCard } from './buildShareCard.js'
 import { getFallbackShareCard } from './shareCardFallback.js'
 import { SLUG_RE } from './shareMeta.js'
 
@@ -37,8 +38,7 @@ function parseSlug(raw) {
 function queueBuild(slug) {
   if (building.has(slug)) return
   building.add(slug)
-  import('../modules/share.routes.js')
-    .then((m) => m.warmShareCardById(slug))
+  buildShareCard(slug)
     .catch(() => {})
     .finally(() => building.delete(slug))
 }

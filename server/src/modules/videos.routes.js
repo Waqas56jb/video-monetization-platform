@@ -18,12 +18,16 @@ import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { sharePayloadFromRow } from '../lib/shareMeta.js'
+import { buildShareCard } from '../lib/buildShareCard.js'
+import { log } from '../lib/logger.js'
 
-function queueShareCard(id) {
-  if (!id) return
-  import('./share.routes.js')
-    .then((m) => m.warmShareCardById(id))
-    .catch(() => {})
+async function maybeBuildShareCard(video) {
+  if (!video?.id || !(video.is_published && video.review_status === 'approved')) return
+  try {
+    await buildShareCard(video.id)
+  } catch (err) {
+    log.error(`share card build slug=${video.slug}:`, err.message)
+  }
 }
 
 const router = Router()
@@ -259,8 +263,6 @@ router.post(
       ]
     )
 
-    queueShareCard(video.slug || video.id)
-
     res.status(201).json({
       video: studioVideo(video),
       upload: upload
@@ -380,7 +382,7 @@ router.patch(
       ]
     )
 
-    if (b.title) queueShareCard(updated.slug || updated.id)
+    if (b.title) await maybeBuildShareCard(updated)
 
     res.json({
       video: studioVideo(updated),
@@ -471,8 +473,6 @@ router.post(
       ip: clientIp(req),
     }    )
 
-    queueShareCard(updated.slug || updated.id)
-
     res.json({
       video: studioVideo(updated),
       message: 'Submitted for review — the MTONYO+ team will approve it shortly',
@@ -520,7 +520,7 @@ router.post(
       removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
     }
 
-    queueShareCard(updated.slug || updated.id)
+    await maybeBuildShareCard(updated)
 
     res.json({ video: studioVideo(updated) })
   })
@@ -545,7 +545,7 @@ router.delete(
       removeImage({ bucket: 'thumbnails', url: previous, accessToken: req.accessToken }).catch(() => {})
     }
 
-    queueShareCard(updated.slug || updated.id)
+    await maybeBuildShareCard(updated)
 
     res.json({ video: studioVideo(updated) })
   })
@@ -616,7 +616,7 @@ router.get(
       )
       // Cut the free preview and the social promo now the source exists.
       ensureClips(video.id).catch(() => {})
-      queueShareCard(updated.slug || updated.id)
+      await maybeBuildShareCard(updated)
       return res.json({ state: 'ready', progress: 100, video: studioVideo(updated) })
     }
 
@@ -720,14 +720,9 @@ router.get(
     if (!(row.is_published && row.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
       throw notFound('Video not found')
     }
-    if (row.is_published && row.review_status === 'approved' && row.slug) {
-      import('./share.routes.js')
-        .then((m) => m.warmShareCardById(row.slug))
-        .catch(() => {})
-    }
     res.json({
       video: publicVideo(withCreatorName(row), access),
-      share: sharePayloadFromRow(row),
+      share: await sharePayloadFromRow(row),
       shareUrl: publicWatchUrl(env.publicWebUrl, row.slug),
       ...(isOwnerOrAdmin ? { studio: studioVideo(row) } : {}),
     })

@@ -2,6 +2,9 @@ import { createHash } from 'node:crypto'
 import { one } from '../db/pool.js'
 import { env, capabilities } from '../config/env.js'
 import { publicWatchUrl } from './publicWatchUrl.js'
+import { readCardStatus } from './buildShareCard.js'
+import { buildShareCard } from './buildShareCard.js'
+import { log } from './logger.js'
 
 export const SLUG_RE = /^[a-z0-9-]+$/
 
@@ -17,8 +20,8 @@ export function shareSourceKey(video) {
   return createHash('sha1').update(raw).digest('hex').slice(0, 10)
 }
 
-export function shareCardUrl(slug, sourceKey) {
-  if (capabilities.serviceRole) {
+export function shareCardUrl(slug, sourceKey, cardStatus = 'ready') {
+  if (cardStatus === 'ready' && capabilities.serviceRole) {
     const storage = publicStorageCardUrl(slug, sourceKey)
     if (storage) return storage
   }
@@ -33,16 +36,32 @@ export function publicStorageCardUrl(slug, sourceKey) {
   return `${env.supabase.url.replace(/\/$/, '')}/storage/v1/object/public/share-cards/${slug}-${sourceKey}.jpg`
 }
 
-export function sharePayloadFromRow(row) {
+function shareUrlWithSource(watchUrl, sourceKey) {
+  if (!watchUrl) return null
+  if (!sourceKey) return watchUrl
+  return `${watchUrl}${watchUrl.includes('?') ? '&' : '?'}s=${encodeURIComponent(sourceKey)}`
+}
+
+export async function sharePayloadFromRow(row) {
   if (!row?.slug || !(row.is_published && row.review_status === 'approved')) return null
   const sourceKey = shareSourceKey(row)
+  const watchUrl = publicWatchUrl(env.publicWebUrl, row.slug)
+  const cardStatus = await readCardStatus(row.slug, sourceKey)
+
+  if (cardStatus !== 'ready') {
+    log.error(`share card missing for approved video slug=${row.slug} status=${cardStatus}`)
+    buildShareCard(row.id || row.slug).catch(() => {})
+  }
+
   return {
     slug: row.slug,
     title: row.title,
     creator: row.creator_name || null,
     sourceKey,
-    cardUrl: shareCardUrl(row.slug, sourceKey),
-    watchUrl: publicWatchUrl(env.publicWebUrl, row.slug),
+    cardUrl: shareCardUrl(row.slug, sourceKey, cardStatus),
+    watchUrl,
+    shareUrl: shareUrlWithSource(watchUrl, sourceKey),
+    cardStatus,
   }
 }
 
@@ -65,6 +84,14 @@ export async function loadShareMeta(slug) {
   if (!(video.is_published && video.review_status === 'approved')) return null
 
   const sourceKey = shareSourceKey(video)
+  const watchUrl = publicWatchUrl(env.publicWebUrl, video.slug)
+  const cardStatus = await readCardStatus(video.slug, sourceKey)
+
+  if (cardStatus !== 'ready') {
+    log.error(`share card missing for approved video slug=${video.slug} status=${cardStatus}`)
+    buildShareCard(video.id).catch(() => {})
+  }
+
   return {
     slug: video.slug,
     title: video.title,
@@ -74,8 +101,10 @@ export async function loadShareMeta(slug) {
     durationSeconds: video.duration_seconds,
     freePreviewSeconds: video.free_preview_seconds,
     sourceKey,
-    cardUrl: shareCardUrl(video.slug, sourceKey),
-    watchUrl: publicWatchUrl(env.publicWebUrl, video.slug),
+    cardUrl: shareCardUrl(video.slug, sourceKey, cardStatus),
+    watchUrl,
+    shareUrl: shareUrlWithSource(watchUrl, sourceKey),
+    cardStatus,
     isPublic: true,
   }
 }

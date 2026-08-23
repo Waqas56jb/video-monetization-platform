@@ -4,6 +4,7 @@
  */
 
 const warmed = new Set()
+const healing = new Set()
 
 function warmUrl(u) {
   if (!u) return
@@ -19,35 +20,62 @@ export function warmShare(urls) {
   if (warmed.has(key)) return
   warmed.add(key)
 
-  const run = () => {
-    warmUrl(urls.shareUrl)
-    warmUrl(urls.cleanUrl)
-    if (urls.cardUrl) {
-      const img = new Image()
-      img.decoding = 'async'
-      img.src = urls.cardUrl
-      if (!document.querySelector(`link[rel="prefetch"][href="${urls.cardUrl}"]`)) {
-        const link = document.createElement('link')
-        link.rel = 'prefetch'
-        link.as = 'image'
-        link.href = urls.cardUrl
-        document.head.appendChild(link)
-      }
+  warmUrl(urls.shareUrl)
+  warmUrl(urls.cleanUrl)
+  if (urls.cardUrl) {
+    const img = new Image()
+    img.decoding = 'async'
+    img.src = urls.cardUrl
+    if (!document.querySelector(`link[rel="prefetch"][href="${urls.cardUrl}"]`)) {
+      const link = document.createElement('link')
+      link.rel = 'prefetch'
+      link.as = 'image'
+      link.href = urls.cardUrl
+      document.head.appendChild(link)
     }
   }
-
-  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1500 })
-  else setTimeout(run, 0)
 }
 
 /** Build warm URLs from share payload + optional overrides. */
 export function warmShareFromMeta(meta) {
   if (!meta?.watchUrl) return
   const cleanUrl = meta.watchUrl
-  const shareUrl = meta.sourceKey
-    ? `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}s=${encodeURIComponent(meta.sourceKey)}`
-    : cleanUrl
+  const shareUrl =
+    meta.shareUrl ||
+    (meta.sourceKey
+      ? `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}s=${encodeURIComponent(meta.sourceKey)}`
+      : cleanUrl)
   warmShare({ shareUrl, cleanUrl, cardUrl: meta.cardUrl })
+}
+
+/**
+ * Rare self-heal when cardStatus !== 'ready'. Never blocks share buttons.
+ * @param {string} slug
+ * @param {(meta: object) => void} [onRefresh]
+ */
+export function healShareCard(slug, onRefresh) {
+  if (!slug || typeof window === 'undefined') return
+  if (healing.has(slug)) return
+  healing.add(slug)
+
+  const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') ||
+    'https://video-monetization-platform-server.vercel.app'
+
+  fetch(`${apiBase}/api/share-card/${encodeURIComponent(slug)}/ensure`, { method: 'POST' })
+    .then(() =>
+      fetch(`${apiBase}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
+        headers: { Accept: 'application/json' },
+      })
+    )
+    .then((r) => (r.ok ? r.json() : null))
+    .then((meta) => {
+      if (meta) {
+        warmShareFromMeta(meta)
+        onRefresh?.(meta)
+      }
+    })
+    .catch(() => {})
+    .finally(() => healing.delete(slug))
 }
 
 /** @deprecated use warmShareFromMeta */

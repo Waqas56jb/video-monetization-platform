@@ -368,6 +368,8 @@ export const api = {
   share: {
     payload: (id) => get(`/api/share/${id}`, { auth: Boolean(getAccessToken()) }),
     generate: (id) => post(`/api/share/${id}/generate`),
+    meta: (slug) => get(`/api/public/videos/${slug}/share-meta`),
+    ensure: (slug) => post(`/api/share-card/${slug}/ensure`),
   },
 
   /**

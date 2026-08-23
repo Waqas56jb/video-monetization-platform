@@ -28,7 +28,7 @@ import {
   isTouchMobile,
   tiktokHref,
 } from '@/lib/socialShare'
-import { warmShare } from '@/lib/warmShare'
+import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare, shareMessageText } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
 
@@ -112,6 +112,9 @@ export default function ShareSheet({ open, video, share, onClose }) {
     setHint(null)
     setSaving(null)
     warm()
+    if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
+      healShareCard(slug)
+    }
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

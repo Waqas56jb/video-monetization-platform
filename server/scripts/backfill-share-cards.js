@@ -1,28 +1,32 @@
 #!/usr/bin/env node
 /**
- * Backfill share_card_cache for all approved+published videos.
+ * Backfill share_card_cache for approved+published videos (missing or stale source_key).
  *   node server/scripts/backfill-share-cards.js
  */
-import { warmAllShareCards } from '../src/modules/share.routes.js'
-import { many } from '../src/db/pool.js'
-import { uploadShareCardToStorage } from '../src/lib/shareCardStorage.js'
+import { rebuildShareCards } from '../src/lib/buildShareCard.js'
 import { closePool } from '../src/db/pool.js'
 import { log } from '../src/lib/logger.js'
 
-async function uploadExisting() {
-  const rows = await many('select slug, source_key, jpeg from share_card_cache')
-  let ok = 0
-  for (const row of rows) {
-    if (await uploadShareCardToStorage(row.slug, row.source_key, row.jpeg)) ok += 1
+function printTable(results) {
+  const header = `${'slug'.padEnd(36)} ${'status'.padEnd(8)} ${'ms'.padStart(6)} ${'bytes'.padStart(8)}`
+  console.log(header)
+  console.log('-'.repeat(header.length))
+  for (const row of results) {
+    console.log(
+      `${String(row.slug).padEnd(36)} ${String(row.status).padEnd(8)} ${String(row.ms).padStart(6)} ${String(row.bytes).padStart(8)}`
+    )
+    if (row.error) console.log(`  error: ${row.error}`)
   }
-  log.ok(`storage upload ok=${ok} total=${rows.length}`)
 }
 
 try {
-  const result = await warmAllShareCards()
-  log.ok(`backfill stored=${result.stored} failed=${result.failed} scanned=${result.scanned}`)
-  await uploadExisting()
-  process.exitCode = result.failed && !result.stored ? 1 : 0
+  const { scanned, results } = await rebuildShareCards({ stale: true, concurrency: 3 })
+  printTable(results)
+  const built = results.filter((r) => r.status === 'built').length
+  const skipped = results.filter((r) => r.status === 'skipped').length
+  const failed = results.filter((r) => r.status === 'failed').length
+  log.ok(`backfill scanned=${scanned} built=${built} skipped=${skipped} failed=${failed}`)
+  process.exitCode = failed && !built ? 1 : 0
 } catch (err) {
   log.error('backfill failed:', err.message)
   process.exitCode = 1
