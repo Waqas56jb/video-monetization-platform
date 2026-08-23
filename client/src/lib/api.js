@@ -9,10 +9,15 @@ import { getItem, setItem, removeItem } from './safeStorage'
  */
 
 const PROD_API = 'https://video-monetization-platform-server.vercel.app'
+const LEGACY_API = 'https://video-monetization-platform-backend.vercel.app'
 
 function resolveApiBase() {
   const fromEnv = import.meta.env.VITE_API_URL
-  if (fromEnv) return String(fromEnv).replace(/\/$/, '')
+  if (fromEnv) {
+    const base = String(fromEnv).replace(/\/$/, '')
+    if (base === LEGACY_API) return PROD_API
+    return base
+  }
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
     if (host !== 'localhost' && host !== '127.0.0.1') return PROD_API
