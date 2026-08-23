@@ -6,10 +6,63 @@
  * takes longer than WhatsApp waits. We wait on a real 200 JPEG — not a
  * one-second timer — then hand WhatsApp a warm URL.
  */
+import { DEPLOY } from '@/lib/deployUrls'
+
 const inflight = new Map()
+
+const API =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+  DEPLOY.api
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+function kickServerCompose(slug) {
+  if (!slug) return Promise.resolve()
+  return Promise.allSettled([
+    fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'omit',
+    }),
+    fetch(`${API}/api/share/${encodeURIComponent(slug)}/card.jpg`, {
+      credentials: 'omit',
+    }),
+  ])
+}
+
+async function probeCard(slug) {
+  if (!slug || typeof window === 'undefined') return false
+  const origin = window.location.origin
+  const card = `${origin}/og/card/${encodeURIComponent(slug)}.jpg`
+  const page = `${origin}/watch/${encodeURIComponent(slug)}`
+
+  const [imgRes, pageRes] = await Promise.all([
+    fetch(card, { mode: 'cors', credentials: 'omit' }),
+    fetch(page, { mode: 'cors', credentials: 'omit' }),
+  ])
+  if (!imgRes.ok) return false
+  const type = imgRes.headers.get('content-type') || ''
+  const bytes = await imgRes.arrayBuffer()
+  const html = pageRes.ok ? await pageRes.text() : ''
+  const jpegReady = bytes.byteLength > 2000 && /image\/jpeg/i.test(type)
+  const tagsReady = /property=["']og:image["']/i.test(html)
+  if (!jpegReady || !tagsReady) return false
+
+  await new Promise((resolve) => {
+    const im = new Image()
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
+      resolve()
+    }
+    im.onload = finish
+    im.onerror = finish
+    im.src = card
+    setTimeout(finish, 8000)
+  })
+  return true
 }
 
 export async function prepareShareCard(slug) {
@@ -18,55 +71,15 @@ export async function prepareShareCard(slug) {
   if (pending) return pending
 
   const run = (async () => {
-    const origin = window.location.origin
-    const card = `${origin}/og/card/${encodeURIComponent(slug)}.jpg`
-    const page = `${origin}/watch/${encodeURIComponent(slug)}`
+    kickServerCompose(slug)
 
-    /**
-     * Bounded, and it no longer throws away the warm copy on the way in.
-     *
-     * The first attempt used to pass `cache: 'reload'`, which deliberately
-     * bypasses the CDN -- so pressing Share forced the server to recompose the
-     * poster even though a finished one was sitting at the edge. Sixteen
-     * attempts at 400ms plus a slow fetch each is how a background warm-up
-     * became a minute of waiting when anything upstream was unwell.
-     *
-     * The poster is built once and cached now (the card endpoint reports
-     * `X-Og-Cache: hit`), so the normal path succeeds on the first attempt and
-     * this loop only ever runs for a video whose clip is still being made.
-     */
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       try {
-        const [imgRes, pageRes] = await Promise.all([
-          fetch(card, { mode: 'cors', credentials: 'omit' }),
-          fetch(page, { mode: 'cors', credentials: 'omit' }),
-        ])
-        if (!imgRes.ok) throw new Error('jpeg not ready')
-        const type = imgRes.headers.get('content-type') || ''
-        const bytes = await imgRes.arrayBuffer()
-        const html = pageRes.ok ? await pageRes.text() : ''
-        const jpegReady = bytes.byteLength > 2000 && /image\/jpeg/i.test(type)
-        const tagsReady = /property=["']og:image["']/i.test(html)
-        if (jpegReady && tagsReady) {
-          await new Promise((resolve) => {
-            const im = new Image()
-            let done = false
-            const finish = () => {
-              if (done) return
-              done = true
-              resolve()
-            }
-            im.onload = finish
-            im.onerror = finish
-            im.src = card
-            // Hang protection only — success is onload, not this timer.
-            setTimeout(finish, 8000)
-          })
-          return true
-        }
+        if (await probeCard(slug)) return true
       } catch {
         /* retry until the Postgres-backed JPEG exists */
       }
+      if (i === 2 || i === 5) kickServerCompose(slug)
       await sleep(400)
     }
     return false

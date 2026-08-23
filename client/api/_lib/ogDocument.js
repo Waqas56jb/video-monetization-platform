@@ -121,6 +121,8 @@ export function crawlerDocument({ canonical, title, description, image }) {
 <meta property="og:title" content="${escapeAttr(title)}">
 <meta property="og:description" content="${escapeAttr(description)}">
 <meta property="og:url" content="${escapeAttr(canonical)}">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="sw_TZ">
 ${img}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeAttr(title)}">

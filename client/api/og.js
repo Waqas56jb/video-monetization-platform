@@ -40,23 +40,46 @@ async function fetchPoster(slug) {
     `${API}/api/share/${encodeURIComponent(slug)}/card.jpg`,
     `${API}/api/share/${encodeURIComponent(slug)}/card`,
   ]
-  for (const url of urls) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const r = await fetch(url, { signal: AbortSignal.timeout(12000) })
-        if (!r.ok) continue
-        const type = (r.headers.get('content-type') || '').split(';')[0]
-        if (!/^image\/(jpeg|jpg|webp)/i.test(type) && type !== 'application/octet-stream') continue
-        const buf = Buffer.from(await r.arrayBuffer())
-        if (buf.length < 1000) continue
-        const poster = { buf, type: type.startsWith('image/') ? type : 'image/jpeg' }
-        posterMemo.set(slug, { poster, at: Date.now() })
-        return poster
-      } catch {
-        /* retry */
+
+  const tryFetch = async () => {
+    for (const url of urls) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const r = await fetch(url, { signal: AbortSignal.timeout(12000) })
+          if (!r.ok) continue
+          const type = (r.headers.get('content-type') || '').split(';')[0]
+          if (!/^image\/(jpeg|jpg|webp)/i.test(type) && type !== 'application/octet-stream') continue
+          const buf = Buffer.from(await r.arrayBuffer())
+          if (buf.length < 1000) continue
+          const poster = { buf, type: type.startsWith('image/') ? type : 'image/jpeg' }
+          posterMemo.set(slug, { poster, at: Date.now() })
+          return poster
+        } catch {
+          /* retry */
+        }
       }
     }
+    return null
   }
+
+  let poster = await tryFetch()
+  if (poster) return poster
+
+  try {
+    await fetch(`${API}/api/share/${encodeURIComponent(slug)}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    })
+  } catch {
+    /* compose may still start */
+  }
+
+  for (let i = 0; i < 5; i++) {
+    await new Promise((r) => setTimeout(r, 500))
+    poster = await tryFetch()
+    if (poster) return poster
+  }
+
   return hit?.poster || null
 }
 

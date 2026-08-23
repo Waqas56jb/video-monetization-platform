@@ -2221,8 +2221,17 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .share-kicker{
   display:flex;align-items:center;justify-content:flex-start;gap:7px;margin:0 0 10px;
   font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;
+  flex-wrap:wrap;
 }
 .share-kicker svg{flex-shrink:0}
+.share-ready-pill{
+  margin-left:auto;
+  padding:4px 9px;border-radius:99px;
+  background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.28);
+  color:#86efac;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+}
+.share-wa:disabled{opacity:.78;cursor:wait}
+.share-target:disabled{opacity:.78;cursor:wait}
 .share-og{
   border:1px solid var(--border2);border-radius:18px;overflow:hidden;
   background:#0a0a12;margin-bottom:16px;text-align:left;
