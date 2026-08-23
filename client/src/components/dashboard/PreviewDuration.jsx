@@ -79,7 +79,7 @@ export default function PreviewDuration({
   }
 
   return (
-    <div className="field">
+    <div className="field preview-duration">
       <label htmlFor={id}>Free preview</label>
 
       <div className="dur-row">

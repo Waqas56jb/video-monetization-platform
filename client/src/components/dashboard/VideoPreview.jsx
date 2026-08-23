@@ -67,25 +67,35 @@ export default function VideoPreview({ video, open, onClose }) {
           <small>Only you can see this until it is approved</small>
         </div>
 
-        {state.status === 'loading' && <div className="skeleton preview-frame" />}
+        {state.status === 'loading' && (
+          <div className="preview-player">
+            <div className="skeleton preview-frame" />
+          </div>
+        )}
 
         {state.status === 'ready' && (
-          <StreamPlayer
-            src={state.src}
-            poster={mediaUrl(video?.thumbnailUrl)}
-            title={video?.title}
-          />
+          <div className="preview-player">
+            <StreamPlayer
+              src={state.src}
+              poster={mediaUrl(video?.thumbnailUrl)}
+              title={video?.title}
+              autoplay
+              playOnReady
+            />
+          </div>
         )}
 
         {(state.status === 'empty' || state.status === 'error') && (
-          <div className="state-block">
-            <AlertTriangle />
-            <b>{state.status === 'error' ? 'Could not load it' : 'Not ready yet'}</b>
-            <p>{state.note}</p>
-            <button className="btn btn-ghost" type="button" onClick={() => setAttempt((n) => n + 1)}>
-              <RefreshCw size={14} />
-              Try again
-            </button>
+          <div className="preview-player">
+            <div className="state-block">
+              <AlertTriangle />
+              <b>{state.status === 'error' ? 'Could not load it' : 'Not ready yet'}</b>
+              <p>{state.note}</p>
+              <button className="btn btn-ghost" type="button" onClick={() => setAttempt((n) => n + 1)}>
+                <RefreshCw size={14} />
+                Try again
+              </button>
+            </div>
           </div>
         )}
       </div>
