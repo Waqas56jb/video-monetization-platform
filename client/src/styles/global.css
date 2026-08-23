@@ -560,11 +560,12 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 }
 .input-wrap>svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted2);pointer-events:none}
 .input-wrap input,.input-wrap select{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:14px;padding:15px 16px 15px 48px;color:#fff;font-size:14.5px;transition:.3s;outline:none}
+.input-wrap:not(:has(>svg)) input,.input-wrap:not(:has(>svg)) select{padding-left:16px}
 .input-wrap input:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}
 .input-wrap .eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted2)}
 .input-wrap .eye svg{width:18px;height:18px}
 .input-wrap select:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}
-.input-wrap select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:44px}
+.input-wrap select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:44px;text-overflow:ellipsis}
 /* The native option list paints itself, and on Windows it inherits white-on-white
    against this dark card unless it is told otherwise. */
 .input-wrap select option{background:var(--card);color:#fff}
@@ -663,6 +664,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .upload-zone p{font-size:13px;color:var(--muted)}
 .upload-zone p b{color:var(--gold)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.form-grid > .field:only-child{grid-column:1 / -1}
 .sell-opts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:6px;width:100%}
 .sell-opt{border:1.5px solid var(--border2);border-radius:16px;padding:20px;cursor:pointer;transition:.3s;position:relative;text-align:left;width:100%;background:none;min-width:0}
 .sell-opt:hover{border-color:var(--border)}
@@ -2060,7 +2062,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 
 /* Explains a limit the creator did not choose — e.g. the preview ceiling
    that only becomes knowable once Cloudflare reports the running time. */
-.field-hint { margin: -6px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--muted2); }
+.field-hint{margin:10px 0 0;font-size:12.5px;line-height:1.6;color:var(--muted2)}
 .verified-note{
   display:flex;align-items:center;gap:8px;margin:0 0 16px;
   font-size:13px;line-height:1.5;color:var(--gold);font-weight:600;

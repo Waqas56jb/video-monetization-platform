@@ -957,18 +957,25 @@
 }
 
 /* ---------- how much of the video is free ------------------------------- */
-.dur-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
-.dur-value { flex: 1 1 120px; min-width: 0; }
-.dur-units {
-  display: flex; gap: 4px; padding: 4px; border-radius: 12px;
-  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+.dur-row{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
+.dur-value{flex:1 1 140px;min-width:0}
+.dur-value input{padding-left:16px}
+.dur-units{
+  display:flex;flex:1 1 200px;gap:4px;padding:4px;border-radius:12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);min-width:0;
 }
-.dur-units button {
-  padding: 0 13px; border-radius: 9px; cursor: pointer; white-space: nowrap;
-  background: transparent; border: 0; color: var(--muted);
-  font: inherit; font-size: 12.5px; font-weight: 600;
+.dur-units button{
+  flex:1 1 0;min-width:0;padding:12px 10px;border-radius:9px;cursor:pointer;
+  white-space:nowrap;background:transparent;border:0;color:var(--muted);
+  font:inherit;font-size:12.5px;font-weight:600;text-align:center;
 }
-.dur-units button.on { background: rgba(245,197,24,.16); color: var(--gold); }
+.dur-units button.on{background:rgba(245,197,24,.16);color:var(--gold)}
+@media(max-width:720px){
+  .dur-row{flex-direction:column;gap:10px}
+  .dur-value{flex:1 1 auto;width:100%}
+  .dur-units{width:100%}
+  .dur-units button{padding:12px 8px;font-size:12px}
+}
 
 /* ---------- the cover image --------------------------------------------- */
 .thumb-picker { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
