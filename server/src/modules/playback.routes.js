@@ -316,7 +316,7 @@ router.post(
     }
 
     const duration = Math.floor(body.duration || 0) || null
-    const thumbnail = body.thumbnail || null
+    const thumbnail = body.thumbnail || (uid ? cf.cloudflareThumbnail({ uid, thumbnail: body.thumbnail }) : null)
 
     await query(
       `update videos set state = 'ready', duration_seconds = coalesce($2, duration_seconds),

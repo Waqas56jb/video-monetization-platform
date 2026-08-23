@@ -1,6 +1,6 @@
 import { one } from '../db/pool.js'
 import { mintThumbnailKey } from '../lib/mediaToken.js'
-import { signedThumbnailUrl } from '../lib/cloudflare.js'
+import { signedThumbnailUrl, playbackUrls } from '../lib/cloudflare.js'
 import { capabilities } from '../config/env.js'
 import { clampFreePreviewSeconds } from '../lib/preview.js'
 
@@ -121,7 +121,7 @@ export function studioVideo(v) {
       * and a creator's own list. Their posters are not public, and an <img>
       * cannot authenticate, so the key rides in the URL.
       */
-    thumbnailUrl: thumbnailFor(v),
+    thumbnailUrl: studioThumbnailFor(v),
     reviewStatus: v.review_status,
     rejectionReason: v.rejection_reason,
     submittedAt: v.submitted_at,
@@ -223,4 +223,34 @@ export function thumbnailFor(v) {
      through this API, where the key in the URL is what authorises it. */
   const key = mintThumbnailKey(v.id)
   return key ? `${path}?k=${encodeURIComponent(key)}` : path
+}
+
+/**
+ * Poster for the creator studio, review queue, and submissions list.
+ *
+ * Unpublished videos cannot use a bare `/api/playback/.../thumbnail` in an
+ * `<img>` — the browser sends no session. A signed key in the query string is
+ * the normal path; when that cannot be minted we fall back to a short-lived
+ * signed Cloudflare still so the auto frame from the upload always appears.
+ */
+export function studioThumbnailFor(v) {
+  if (v.custom_thumbnail_url) return v.custom_thumbnail_url
+
+  const path = `/api/playback/${v.id}/thumbnail`
+  const key = mintThumbnailKey(v.id)
+  if (key) return `${path}?k=${encodeURIComponent(key)}`
+
+  const uid = v.preview_uid || v.cloudflare_uid
+  if (uid && capabilities.signedPlayback) {
+    try {
+      return signedThumbnailUrl(uid, { height: 720 })
+    } catch {
+      /* signing unavailable — try stored URL below */
+    }
+  }
+
+  if (v.thumbnail_url && /^https?:\/\//i.test(v.thumbnail_url)) return v.thumbnail_url
+  if (uid) return playbackUrls(uid).thumbnail
+
+  return null
 }

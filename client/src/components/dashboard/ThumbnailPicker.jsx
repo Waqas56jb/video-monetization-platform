@@ -70,7 +70,7 @@ export default function ThumbnailPicker({ video, onChange, disabled = false }) {
     <div className="thumb-picker">
       <div className={`tp-preview ${busy ? 'busy' : ''}`.trim()}>
         {shown ? (
-          <img src={shown} alt="" />
+          <img key={shown} src={shown} alt="" />
         ) : (
           <span className="tp-empty">
             <ImageIcon size={22} />

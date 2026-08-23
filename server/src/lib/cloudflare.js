@@ -272,6 +272,13 @@ export function playbackUrls(uidOrToken, { posterAt = POSTER_AT, thumbnailHeight
   }
 }
 
+/** Best thumbnail URL Cloudflare exposes for a just-encoded video. */
+export function cloudflareThumbnail(remote) {
+  if (remote?.thumbnail) return remote.thumbnail
+  if (remote?.uid) return playbackUrls(remote.uid).thumbnail
+  return null
+}
+
 /**
  * A poster a browser can fetch directly, with no round trip through this API.
  *

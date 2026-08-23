@@ -611,7 +611,7 @@ router.get(
                 thumbnail_url    = coalesce($3, thumbnail_url),
                 free_preview_seconds = ${clampPreviewSql('coalesce($2, duration_seconds)')}
           where id = $1 returning *`,
-        [video.id, Math.floor(remote.duration || 0) || null, remote.thumbnail || null]
+        [video.id, Math.floor(remote.duration || 0) || null, cf.cloudflareThumbnail(remote)]
       )
       // Cut the free preview and the social promo now the source exists.
       ensureClips(video.id).catch(() => {})

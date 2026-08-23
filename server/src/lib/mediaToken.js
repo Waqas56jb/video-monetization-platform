@@ -25,15 +25,21 @@ const DEFAULT_TTL = 6 * 60 * 60 // six hours: long enough for a working session
 let warned = false
 
 function secret() {
-  const value = env.mediaTokenSecret || env.cronSecret
-  if (!value && !warned) {
+  if (env.mediaTokenSecret) return env.mediaTokenSecret
+  if (env.cronSecret) return env.cronSecret
+  // Stable fallback so creator-studio posters still render when only DB keys are set.
+  const stable = env.supabase.serviceRoleKey || env.databaseUrl
+  if (stable) {
+    return crypto.createHash('sha256').update(`mtonyo-thumb:${stable}`).digest('hex')
+  }
+  if (!warned) {
     warned = true
     log.warn(
       'MEDIA_TOKEN_SECRET (or CRON_SECRET) is not set — posters for unpublished ' +
         'videos cannot be signed, so they will not render for creators or staff.'
     )
   }
-  return value || ''
+  return ''
 }
 
 const sign = (payload) =>
