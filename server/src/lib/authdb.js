@@ -260,3 +260,68 @@ export async function consumeResetToken(raw, newPassword) {
     { actorRole: 'admin' }
   )
 }
+
+/* ------------------------------------------------------- account sides */
+
+/**
+ * Which doors this login may open.
+ *
+ * Create = a creator_profiles row (or a staff role that always has studio access).
+ * Watch  = profiles.viewer_enabled.
+ */
+export async function getSides(userId) {
+  const row = await one(
+    `select p.role,
+            p.viewer_enabled,
+            (cp.user_id is not null) as has_creator
+       from profiles p
+       left join creator_profiles cp on cp.user_id = p.id
+      where p.id = $1`,
+    [userId]
+  )
+  if (!row) return { creator: false, viewer: false }
+  const staff = row.role === 'admin' || row.role === 'sub_admin'
+  return {
+    creator: Boolean(row.has_creator) || row.role === 'creator' || staff,
+    viewer: Boolean(row.viewer_enabled) || staff,
+  }
+}
+
+/** Open the Watch side on an existing login. Idempotent. */
+export async function enableViewerSide(userId) {
+  await query(`update profiles set viewer_enabled = true, updated_at = now() where id = $1`, [userId])
+  return getSides(userId)
+}
+
+/**
+ * Open the Create side on an existing login.
+ * Returns { profile, created } so callers can tell attach from no-op.
+ */
+export async function ensureCreatorSide(profile, { fullName, phone } = {}) {
+  const display = fullName || profile.full_name || profile.email || 'Creator'
+  const payout = phone || profile.phone || null
+  const keepRole = profile.role === 'admin' || profile.role === 'sub_admin'
+
+  const existing = await one('select user_id from creator_profiles where user_id = $1', [profile.id])
+  if (existing) {
+    const fresh = await one('select * from profiles where id = $1', [profile.id])
+    return { profile: fresh, created: false }
+  }
+
+  await transaction(
+    async (client) => {
+      if (!keepRole && profile.role !== 'creator') {
+        await client.query(`update profiles set role = 'creator' where id = $1`, [profile.id])
+      }
+      await client.query(
+        `insert into creator_profiles (user_id, display_name, payout_phone)
+         values ($1,$2,$3)
+         on conflict (user_id) do nothing`,
+        [profile.id, display, payout]
+      )
+    },
+    { actorRole: 'admin' }
+  )
+  const fresh = await one('select * from profiles where id = $1', [profile.id])
+  return { profile: fresh, created: true }
+}

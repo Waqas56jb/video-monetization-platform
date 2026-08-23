@@ -10,9 +10,12 @@ import {
   consumeResetToken,
   verifyPassword,
   setAuthPassword,
+  getSides,
+  enableViewerSide,
+  ensureCreatorSide,
 } from '../lib/authdb.js'
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
-import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../lib/errors.js'
+import { asyncHandler, badRequest, conflict, forbidden, notFound, unauthorized } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { requireAuth, permissionsFor, hasCreatorAccess } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
@@ -34,6 +37,7 @@ const registerSchema = z.object({
     .optional()
     .or(z.literal('')),
   role: z.enum(['viewer', 'creator']).default('viewer'),
+  side: z.enum(['viewer', 'creator']).optional(),
 })
 
 const loginSchema = z.object({
@@ -46,31 +50,15 @@ function canOpenCreatorSide(role) {
   return role === 'creator' || role === 'admin' || role === 'sub_admin'
 }
 
-async function profileHasCreatorSide(profile) {
-  if (canOpenCreatorSide(profile.role)) return true
-  const row = await one('select user_id from creator_profiles where user_id = $1', [profile.id])
-  return Boolean(row)
+function isStaff(role) {
+  return role === 'admin' || role === 'sub_admin'
 }
 
-async function ensureCreatorSide(profile, { fullName, phone } = {}) {
-  const display = fullName || profile.full_name || profile.email || 'Creator'
-  const payout = phone || profile.phone || null
-  const keepRole = profile.role === 'admin' || profile.role === 'sub_admin'
-  await transaction(
-    async (client) => {
-      if (!keepRole && profile.role !== 'creator') {
-        await client.query(`update profiles set role = 'creator' where id = $1`, [profile.id])
-      }
-      await client.query(
-        `insert into creator_profiles (user_id, display_name, payout_phone)
-         values ($1,$2,$3)
-         on conflict (user_id) do nothing`,
-        [profile.id, display, payout]
-      )
-    },
-    { actorRole: 'admin' }
-  )
-  return one('select * from profiles where id = $1', [profile.id])
+function existingSideLabel(sides) {
+  if (sides.creator && !sides.viewer) return 'creator'
+  if (sides.viewer && !sides.creator) return 'viewer'
+  if (sides.creator && sides.viewer) return 'both'
+  return 'none'
 }
 
 async function trySignIn(email, password) {
@@ -114,59 +102,112 @@ router.post(
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
     const { password, fullName, phone } = req.body
-    const wanted = req.body.role === 'creator' ? 'creator' : 'viewer'
+    const wanted =
+      req.body.side === 'creator' || req.body.role === 'creator' ? 'creator' : 'viewer'
 
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
     /**
-     * One login, two sides. Watch and Create share the same email and password.
-     * Signing up on the other side with the same password opens that side
-     * instead of rejecting the address as taken.
+     * One auth user per email. Sides are independent:
+     *   Watch  → profiles.viewer_enabled
+     *   Create → creator_profiles row
+     * Same-side signup again → 409. Other side + correct password → attach.
+     * Wrong password → 401 (do not reveal which sides exist).
      */
     const existingAuth = await findAuthUserByEmail(email)
     if (existingAuth) {
       const passwordOk = await verifyPassword(existingAuth.id, password)
       if (!passwordOk) {
-        throw conflict('These details do not match an account.')
+        throw unauthorized(
+          'This email is already registered. Enter your existing password, or reset it.',
+          { code: 'EMAIL_IN_USE_WRONG_PASSWORD' }
+        )
       }
 
       let profile = await one('select * from profiles where id = $1', [existingAuth.id])
       if (!profile) {
         profile = await one(
-          `insert into profiles (id, email, full_name, phone, role)
-           values ($1,$2,$3,$4,$5) returning *`,
-          [existingAuth.id, email, fullName, phone || null, wanted]
+          `insert into profiles (id, email, full_name, phone, role, viewer_enabled)
+           values ($1,$2,$3,$4,$5,$6) returning *`,
+          [
+            existingAuth.id,
+            email,
+            fullName,
+            phone || null,
+            wanted === 'creator' ? 'creator' : 'viewer',
+            wanted === 'viewer',
+          ]
         )
-      }
-      if (profile.status === 'blocked') throw forbidden('This account has been blocked')
-      if (wanted === 'creator') {
-        profile = await ensureCreatorSide(profile, { fullName, phone })
+        if (wanted === 'creator') {
+          const ensured = await ensureCreatorSide(profile, { fullName, phone })
+          profile = ensured.profile
+        }
+        const sides = await getSides(profile.id)
+        const { session, signInNote } = await trySignIn(email, password)
+        return res.status(200).json({
+          ...shape(profile, session),
+          side: wanted,
+          sides,
+          attached: true,
+          created: false,
+          needsEmailConfirmation: false,
+          ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
+        })
       }
 
+      if (profile.status === 'blocked') throw forbidden('This account has been blocked')
+
+      const sidesBefore = await getSides(profile.id)
+      if (wanted === 'creator' ? sidesBefore.creator : sidesBefore.viewer) {
+        throw conflict(
+          wanted === 'creator'
+            ? 'This email already has a Creator account. Please log in.'
+            : 'This email already has a Watch account. Please log in.',
+          { code: 'ALREADY_REGISTERED', details: { side: wanted } }
+        )
+      }
+
+      if (wanted === 'creator') {
+        const ensured = await ensureCreatorSide(profile, { fullName, phone })
+        profile = ensured.profile
+      } else {
+        await enableViewerSide(profile.id)
+        profile = await one('select * from profiles where id = $1', [profile.id])
+      }
+
+      const sides = await getSides(profile.id)
       const { session, signInNote } = await trySignIn(email, password)
       return res.status(200).json({
         ...shape(profile, session),
         side: wanted,
+        sides,
         attached: true,
+        created: false,
         needsEmailConfirmation: false,
         ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
       })
     }
 
     /**
-     * The account and its profile are created in one transaction: either both
-     * exist or neither does. Half a registration — an auth record with no
-     * profile — is what leaves someone able to sign in but not use anything.
+     * Fresh email: create auth user + profile in one transaction.
+     * Viewer signups set viewer_enabled; creator signups leave it false.
      */
     const { profile } = await transaction(
       async (client) => {
         const authUser = await createAuthUser({ email, password, fullName, phone }, client)
 
         const { rows } = await client.query(
-          `insert into profiles (id, email, full_name, phone, role)
-           values ($1,$2,$3,$4,$5) returning *`,
-          [authUser.id, email, fullName, phone || null, wanted]
+          `insert into profiles (id, email, full_name, phone, role, viewer_enabled)
+           values ($1,$2,$3,$4,$5,$6) returning *`,
+          [
+            authUser.id,
+            email,
+            fullName,
+            phone || null,
+            wanted === 'creator' ? 'creator' : 'viewer',
+            wanted === 'viewer',
+          ]
         )
         if (wanted === 'creator') {
           await client.query(
@@ -181,11 +222,14 @@ router.post(
       { actorRole: 'system' }
     )
 
+    const sides = await getSides(profile.id)
     const { session, signInNote } = await trySignIn(email, password)
     res.status(201).json({
       ...shape(profile, session),
       side: wanted,
+      sides,
       attached: false,
+      created: true,
       needsEmailConfirmation: false,
       ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
     })
@@ -204,36 +248,34 @@ router.post(
 
     let profile = await one('select * from profiles where id = $1', [user.id])
     if (!profile) {
-      // Auth user created outside this API (e.g. straight in Supabase) — heal it.
       profile = await one(
-        `insert into profiles (id, email, full_name, role)
-         values ($1,$2,$3,'viewer') returning *`,
+        `insert into profiles (id, email, full_name, role, viewer_enabled)
+         values ($1,$2,$3,'viewer', true) returning *`,
         [user.id, user.email, user.user_metadata?.full_name || null]
       )
     }
     if (profile.status === 'blocked') throw forbidden('This account has been blocked')
 
-    const hasCreator = await profileHasCreatorSide(profile)
-    const staff = profile.role === 'admin' || profile.role === 'sub_admin'
+    const sides = await getSides(profile.id)
+    const staff = isStaff(profile.role)
 
-    if (side === 'creator' && !hasCreator) {
-      throw forbidden('No creator account is registered with this email.')
-    }
-
-    /**
-     * Watch and Create are separate doors.
-     *
-     * A creator who logs in on Watch still had a valid session, but the
-     * dashboard opened on the library before the Create side had been chosen —
-     * which reads as "creator credentials opened the viewer panel". Pure viewers
-     * and staff are the only ones who may use the Watch login.
-     */
-    if (side === 'viewer' && hasCreator && !staff) {
-      throw forbidden('This email is registered as a creator account. Log in on the Create side.')
+    if (!staff) {
+      if (side === 'creator' && !sides.creator) {
+        throw forbidden(
+          'This email is a Watch account. Log in on Watch, or sign up on Create to add a creator side.',
+          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides) } }
+        )
+      }
+      if (side === 'viewer' && !sides.viewer) {
+        throw forbidden(
+          'This email is a Creator account. Log in on Create, or sign up on Watch to add a viewer side.',
+          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides) } }
+        )
+      }
     }
 
     let creator = null
-    if (hasCreator) {
+    if (sides.creator) {
       creator = await one(
         `select display_name, verified, payout_phone, payout_method
            from creator_profiles where user_id = $1`,
@@ -244,6 +286,7 @@ router.post(
     res.json({
       ...shape(profile, session),
       side,
+      sides,
       creator: creator
         ? {
             displayName: creator.display_name,
@@ -293,7 +336,8 @@ router.get(
      * server, and that check is what actually decides.
      */
     const permissions = await permissionsFor(req.user)
-    res.json({ ...shape(req.user, null), creator, permissions })
+    const sides = await getSides(req.user.id)
+    res.json({ ...shape(req.user, null), creator, permissions, sides })
   })
 )
 
@@ -376,7 +420,10 @@ router.post(
  */
 router.post(
   '/forgot-password',
-  validate(z.object({ email: z.string().email('Enter a valid email address') })),
+  validate(z.object({
+    email: z.string().email('Enter a valid email address'),
+    side: z.enum(['viewer', 'creator']).optional(),
+  })),
   asyncHandler(async (req, res) => {
     const email = req.body.email.trim().toLowerCase()
     const identical = {
@@ -408,7 +455,8 @@ router.post(
       ip: clientIp(req),
     })
 
-    const url = `${env.publicWebUrl}/reset?token=${encodeURIComponent(token)}`
+    const side = req.body.side === 'creator' ? 'creator' : 'viewer'
+    const url = `${env.publicWebUrl}/reset?token=${encodeURIComponent(token)}&side=${side}`
     const tpl = passwordResetEmail({ name: profile.full_name, url, minutes })
 
     try {

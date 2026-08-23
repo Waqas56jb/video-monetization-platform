@@ -6,15 +6,21 @@ import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
-import { dashboardPath, sideFromSearch } from '@/lib/accountSide'
+import { dashboardPath, sideFromSearch, sideLabel } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
 function signupErrorMessage(err) {
+  if (err?.code === 'ALREADY_REGISTERED') {
+    return err.message || 'This email already has an account on this side. Please log in.'
+  }
+  if (err?.code === 'EMAIL_IN_USE_WRONG_PASSWORD') {
+    return (
+      err.message ||
+      'This email is already registered. Enter your existing password, or reset it.'
+    )
+  }
   const raw = String(err?.message || '').trim()
   if (/staff/i.test(raw)) {
-    return 'These details do not match an account.'
-  }
-  if (/already registered|already used|already exists/i.test(raw)) {
     return 'These details do not match an account.'
   }
   if (/blocked/i.test(raw)) {
@@ -37,8 +43,10 @@ export default function Signup() {
   const [role, setRole] = useState(() => sideFromSearch(location.search) || 'viewer')
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState(null)
+  const [errorCode, setErrorCode] = useState(null)
   const [busy, setBusy] = useState(false)
   const [confirmSent, setConfirmSent] = useState(false)
+  const [attachedOk, setAttachedOk] = useState(null)
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -66,6 +74,7 @@ export default function Signup() {
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setError(null)
+    setErrorCode(null)
   }
 
   const onSubmit = async (e) => {
@@ -81,17 +90,25 @@ export default function Signup() {
     }
     setBusy(true)
     setError(null)
+    setErrorCode(null)
     try {
       const postedRole = String(posted.get('role') || '').trim()
       const wanted =
         postedRole === 'creator' || role === 'creator' ? 'creator' : 'viewer'
-      const result = await signUp({ ...form, fullName, phone, email, password, role: wanted })
+      const result = await signUp({ ...form, fullName, phone, email, password, role: wanted, side: wanted })
 
       const afterSignup = next || dashboardPath(wanted)
 
       if (result.needsEmailConfirmation) {
         setConfirmSent(true)
         setBusy(false)
+        return
+      }
+
+      if (result.attached) {
+        setAttachedOk(wanted)
+        setBusy(false)
+        timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 1600)
         return
       }
 
@@ -112,8 +129,43 @@ export default function Signup() {
       timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
     } catch (err) {
       setError(signupErrorMessage(err))
+      setErrorCode(err?.code || null)
       setBusy(false)
     }
+  }
+
+  if (attachedOk) {
+    return (
+      <AuthLayout
+        side={{
+          badge: (
+            <>
+              <Crown style={{ width: 14, height: 14 }} />
+              SIDE ADDED
+            </>
+          ),
+          heading: <>You already had a login.</>,
+          text: 'Same email, same password — the new side is now open on this account.',
+        }}
+        back={{ to: authUrl('login', next, { side: attachedOk }), label: 'Back to login' }}
+        title="Side added to your account"
+        subtitle={`Opening your ${sideLabel(attachedOk)} dashboard…`}
+      >
+        <div className="notice">
+          <span>
+            You already had a MTONYO+ login — the <b>{sideLabel(attachedOk)}</b> side has been added
+            to it. Same email, same password.
+          </span>
+        </div>
+        <button
+          className="btn btn-gold btn-block"
+          type="button"
+          onClick={() => navigate(next || dashboardPath(attachedOk), { replace: true })}
+        >
+          Continue
+        </button>
+      </AuthLayout>
+    )
   }
 
   if (confirmSent) {
@@ -199,7 +251,23 @@ export default function Signup() {
         <input type="hidden" name="role" value={role} />
         {error && (
           <div className="form-error" role="alert">
-            {error}
+            <span>{error}</span>
+            {errorCode === 'ALREADY_REGISTERED' && (
+              <Link
+                to={authUrl('login', next, { side: role, email: form.email })}
+                style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
+              >
+                Log in instead
+              </Link>
+            )}
+            {errorCode === 'EMAIL_IN_USE_WRONG_PASSWORD' && (
+              <Link
+                to={`/forgot-password?side=${role}&email=${encodeURIComponent(form.email || '')}`}
+                style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
+              >
+                Reset password
+              </Link>
+            )}
           </div>
         )}
 

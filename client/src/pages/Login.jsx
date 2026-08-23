@@ -6,19 +6,19 @@ import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
-import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch } from '@/lib/accountSide'
+import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch, sideLabel } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
 function loginErrorMessage(err) {
+  if (err?.code === 'WRONG_SIDE') {
+    return err.message
+  }
   const raw = String(err?.message || '').trim()
   if (/staff/i.test(raw)) {
     return 'These details do not match an account. Check your email and password.'
   }
-  if (/does not have a creator|creator account yet|no creator account|registered as a creator|create side/i.test(raw)) {
-    if (/registered as a creator|create side/i.test(raw)) {
-      return 'This email is registered as a creator account. Choose Create above, then log in again.'
-    }
-    return 'No creator account is registered with this email. Choose Watch, or sign up on the Create side.'
+  if (/does not have a creator|creator account yet|no creator account|registered as a creator|create side|watch account|creator account/i.test(raw)) {
+    return raw
   }
   if (/incorrect|invalid login|invalid credentials/i.test(raw)) {
     return 'These details do not match an account. Check your email and password.'
@@ -44,8 +44,13 @@ export default function Login() {
   const { signIn, authed, loading: authLoading, setAccountSide, user, isCreator } = useAuth()
 
   const [side, setSide] = useState(() => sideFromSearch(location.search) || getAccountSide())
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState(() => {
+    const email = new URLSearchParams(location.search || '').get('email') || ''
+    return { email, password: '' }
+  })
   const [error, setError] = useState(null)
+  const [errorCode, setErrorCode] = useState(null)
+  const [wrongSide, setWrongSide] = useState(null)
   const [busy, setBusy] = useState(false)
 
   /**
@@ -72,6 +77,8 @@ export default function Login() {
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setError(null)
+    setErrorCode(null)
+    setWrongSide(null)
   }
 
   const onSubmit = async (e) => {
@@ -97,6 +104,8 @@ export default function Login() {
 
     setBusy(true)
     setError(null)
+    setErrorCode(null)
+    setWrongSide(null)
     try {
       const result = await signIn({ email, password, side })
       const panel = panelRoleFor(result.user?.role, result.side, Boolean(result.creator))
@@ -104,6 +113,11 @@ export default function Login() {
       navigate(next || dashboardPath(panel === 'creator' ? 'creator' : 'viewer'), { replace: true })
     } catch (err) {
       setError(loginErrorMessage(err))
+      setErrorCode(err?.code || null)
+      if (err?.code === 'WRONG_SIDE') {
+        const existing = err?.details?.existingSide
+        setWrongSide(existing === 'creator' ? 'creator' : existing === 'viewer' ? 'viewer' : side === 'creator' ? 'viewer' : 'creator')
+      }
       setBusy(false)
     }
   }
@@ -155,7 +169,22 @@ export default function Login() {
         )}
         {error && (
           <div className="form-error" role="alert">
-            {error}
+            <span>{error}</span>
+            {errorCode === 'WRONG_SIDE' && wrongSide && (
+              <button
+                type="button"
+                className="link-btn"
+                style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
+                onClick={() => {
+                  setSide(wrongSide)
+                  setError(null)
+                  setErrorCode(null)
+                  setWrongSide(null)
+                }}
+              >
+                Switch to {sideLabel(wrongSide)} login
+              </button>
+            )}
           </div>
         )}
 
@@ -187,7 +216,11 @@ export default function Login() {
             <input type="checkbox" defaultChecked />
             Remember me
           </label>
-          <Link to="/forgot-password">Forgot password?</Link>
+          <Link
+            to={`/forgot-password?side=${side}${form.email ? `&email=${encodeURIComponent(form.email)}` : ''}`}
+          >
+            Forgot password?
+          </Link>
         </div>
 
         <button className="btn btn-gold btn-block" type="submit" disabled={busy}>

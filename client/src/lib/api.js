@@ -309,7 +309,7 @@ export const api = {
     updateProfile: (body) => patch('/api/auth/me', body),
     becomeCreator: () => post('/api/auth/become-creator'),
     logout: () => post('/api/auth/logout'),
-    forgotPassword: (email) => post('/api/auth/forgot-password', { email }, { auth: false }),
+    forgotPassword: (emailOrBody) => post('/api/auth/forgot-password', typeof emailOrBody === 'string' ? { email: emailOrBody } : emailOrBody, { auth: false }),
     checkResetToken: (token) =>
       get(`/api/auth/reset-token?token=${encodeURIComponent(token)}`, { auth: false }),
     resetPassword: (body) => post('/api/auth/reset-password', body, { auth: false }),

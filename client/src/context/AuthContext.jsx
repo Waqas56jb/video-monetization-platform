@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api, { saveSession, clearSession, getAccessToken, onSessionExpired } from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
-import { getAccountSide, setAccountSide as persistAccountSide, panelRoleFor, hasCreatorStudio } from '@/lib/accountSide'
+import { getAccountSide, setAccountSide as persistAccountSide, panelRoleFor, hasCreatorStudio, parseSides } from '@/lib/accountSide'
 
 /**
  * The real signed-in user, from the backend.
@@ -45,6 +45,7 @@ export function useRole() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [creator, setCreator] = useState(null)
+  const [sides, setSides] = useState({ creator: false, viewer: false })
   const [accountSide, setSideState] = useState(() => getAccountSide())
   const [loading, setLoading] = useState(Boolean(getAccessToken()))
   const navigate = useNavigate()
@@ -62,6 +63,7 @@ export function AuthProvider({ children }) {
     if (!getAccessToken()) {
       setUser(null)
       setCreator(null)
+      setSides({ creator: false, viewer: false })
       setLoading(false)
       return null
     }
@@ -69,6 +71,7 @@ export function AuthProvider({ children }) {
       const data = await api.auth.me()
       setUser(data.user)
       setCreator(data.creator || null)
+      setSides(parseSides(data.sides))
       return data.user
     } catch (err) {
       /**
@@ -79,6 +82,7 @@ export function AuthProvider({ children }) {
       if (err?.status === 401 && !getAccessToken()) {
         setUser(null)
         setCreator(null)
+        setSides({ creator: false, viewer: false })
       }
       return null
     } finally {
@@ -96,6 +100,7 @@ export function AuthProvider({ children }) {
       onSessionExpired(() => {
         setUser(null)
         setCreator(null)
+        setSides({ creator: false, viewer: false })
         const here = `${window.location.pathname}${window.location.search}`
         if (here.startsWith('/login') || here.startsWith('/signup')) return
         showToast('Your session ended. Sign in again to continue.')
@@ -120,24 +125,39 @@ export function AuthProvider({ children }) {
       setSideState(resolved)
       setUser(data.user)
       setCreator(data.creator || null)
-      return { user: data.user, side: resolved, creator: data.creator || null }
+      setSides(parseSides(data.sides))
+      return {
+        user: data.user,
+        side: resolved,
+        creator: data.creator || null,
+        sides: parseSides(data.sides),
+      }
     } finally {
       setLoading(false)
     }
   }, [])
 
-  const signUp = useCallback(async ({ email, password, fullName, phone, role }) => {
-    const wanted = role === 'creator' ? 'creator' : 'viewer'
-    const data = await api.auth.register({ email, password, fullName, phone, role: wanted })
+  const signUp = useCallback(async ({ email, password, fullName, phone, role, side }) => {
+    const wanted = side === 'creator' || role === 'creator' ? 'creator' : 'viewer'
+    const data = await api.auth.register({
+      email,
+      password,
+      fullName,
+      phone,
+      role: wanted,
+      side: wanted,
+    })
     if (data.session) {
       saveSession(data.session)
       const resolved = data.side === 'creator' ? 'creator' : wanted
       persistAccountSide(resolved)
       setSideState(resolved)
+      setSides(parseSides(data.sides))
       await reload()
     } else {
       persistAccountSide(data.side === 'creator' ? 'creator' : wanted)
       setSideState(data.side === 'creator' ? 'creator' : wanted)
+      setSides(parseSides(data.sides))
     }
     return data
   }, [reload])
@@ -151,6 +171,7 @@ export function AuthProvider({ children }) {
     clearSession()
     setUser(null)
     setCreator(null)
+    setSides({ creator: false, viewer: false })
   }, [])
 
   const becomeCreator = useCallback(async () => {
@@ -167,13 +188,14 @@ export function AuthProvider({ children }) {
   }, [])
 
   const accountRole = user?.role || 'viewer'
-  const studioAccess = hasCreatorStudio(accountRole, creator)
-  const panelRole = panelRoleFor(accountRole, accountSide, Boolean(creator))
+  const studioAccess = hasCreatorStudio(accountRole, creator) || Boolean(sides.creator)
+  const panelRole = panelRoleFor(accountRole, accountSide, Boolean(creator) || sides.creator)
 
   const value = useMemo(
     () => ({
       user,
       creator,
+      sides,
       loading,
       authed: Boolean(user),
       role: panelRole,
@@ -192,6 +214,7 @@ export function AuthProvider({ children }) {
     [
       user,
       creator,
+      sides,
       loading,
       panelRole,
       accountRole,

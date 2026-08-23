@@ -5,6 +5,7 @@ import AuthLayout from '@/components/auth/AuthLayout'
 import { PasswordField } from '@/components/ui/Field'
 import api from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
+import { authUrl } from '@/lib/nextPath'
 
 /**
  * Step 2 of a password reset: choose the new password.
@@ -33,6 +34,10 @@ export default function Reset() {
   const [token] = useState(() =>
     typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('token')
   )
+  const [loginSide] = useState(() => {
+    if (typeof window === 'undefined') return 'viewer'
+    return new URLSearchParams(window.location.search).get('side') === 'creator' ? 'creator' : 'viewer'
+  })
 
   const [state, setState] = useState({ status: 'checking' })
   const [password, setPassword] = useState('')
@@ -66,6 +71,8 @@ export default function Reset() {
     }
   }, [token])
 
+  const loginHref = authUrl('login', null, { side: loginSide })
+
   const onSubmit = async (e) => {
     e.preventDefault()
     if (password !== confirm) return setError('The two passwords do not match')
@@ -77,7 +84,7 @@ export default function Reset() {
       await api.auth.resetPassword({ token: state.token, password })
       setDone(true)
       showToast('Password updated — sign in with your new password')
-      setTimeout(() => navigate('/login', { replace: true }), 1600)
+      setTimeout(() => navigate(loginHref, { replace: true }), 1600)
     } catch (err) {
       setError(err.message)
       setBusy(false)
@@ -108,10 +115,10 @@ export default function Reset() {
     ),
     text: invite
       ? 'Only you will ever know this password — nobody at MTONYO+ can see it.'
-      : 'Your purchases, library and earnings are untouched — only the password changes.',
+      : 'This updates the password for your MTONYO+ login (Watch and Create). Your purchases and earnings are untouched.',
   }
 
-  const back = { to: '/login', label: 'Back to login' }
+  const back = { to: loginHref, label: 'Back to login' }
 
   /* ---- still checking the link ---- */
   if (state.status === 'checking') {
@@ -143,7 +150,7 @@ export default function Reset() {
           Request a new link
         </Link>
         <div className="auth-alt">
-          Remembered it? <Link to="/login">Log in</Link>
+          Remembered it? <Link to={loginHref}>Log in</Link>
         </div>
       </AuthLayout>
     )
@@ -155,9 +162,12 @@ export default function Reset() {
       <AuthLayout side={side} back={back} title="Password updated" subtitle="Taking you to the login page…">
         <div className="notice">
           <CheckCircle2 />
-          <span>Your password has been changed. Sign in with the new one.</span>
+          <span>
+            Your password has been changed. It applies to both Watch and Create. Sign in with the
+            new one.
+          </span>
         </div>
-        <Link className="btn btn-gold btn-block" to="/login">
+        <Link className="btn btn-gold btn-block" to={loginHref}>
           Go to login
         </Link>
       </AuthLayout>

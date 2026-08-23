@@ -40,3 +40,15 @@ export function sideFromSearch(search) {
   const value = new URLSearchParams(search || '').get('side')
   return value === 'creator' ? 'creator' : value === 'viewer' ? 'viewer' : null
 }
+
+/** Normalize sides payload from login/register/me. */
+export function parseSides(raw) {
+  return {
+    creator: Boolean(raw?.creator),
+    viewer: Boolean(raw?.viewer),
+  }
+}
+
+export function sideLabel(side) {
+  return side === 'creator' ? 'Creator' : 'Watch'
+}
