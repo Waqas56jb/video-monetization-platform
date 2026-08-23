@@ -29,9 +29,9 @@ export default function RevenueTab() {
 
   const totals = data?.totals
   const stats = [
-    { icon: 'coins', tone: 'gold', label: 'Gross Revenue', value: tzs(totals?.gross) },
-    { icon: 'users', label: 'Paid to Creators', value: tzs(totals?.creators) },
-    { icon: 'landmark', label: 'Platform Share', value: tzs(totals?.platform) },
+    { icon: 'coins', tone: 'gold', label: 'Gross Revenue (recorded)', value: tzs(totals?.gross) },
+    { icon: 'users', label: 'Paid to Creators (recorded)', value: tzs(totals?.creators) },
+    { icon: 'landmark', label: 'Platform Share (recorded)', value: tzs(totals?.platform) },
     { icon: 'megaphone', label: 'From Advertising', value: tzs(totals?.from_ads) },
   ]
 

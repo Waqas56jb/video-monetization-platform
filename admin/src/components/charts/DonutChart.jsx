@@ -1,9 +1,9 @@
 /**
- * How the money actually divided.
+ * How money already recorded divided between creators and the platform.
  *
- * The arc lengths come from real earnings, not from the headline split
- * percentage — a creator on a custom split moves this, and the picture should
- * show what was paid rather than what the default says ought to be paid.
+ * Arc lengths come from summed earnings rows, not from the live Global Split
+ * setting. Changing the setting only affects new sales; this chart stays a
+ * picture of history until enough new volume moves the mix.
  */
 const R = 71
 const CIRC = 2 * Math.PI * R
@@ -24,6 +24,7 @@ export default function DonutChart({ creatorTzs = 0, platformTzs = 0 }) {
   const platformPct = total ? 100 - creatorPct : 0
 
   const creatorLen = total ? (creators / total) * CIRC : 0
+  const platformLen = CIRC - creatorLen
 
   return (
     <div className="donut-wrap">
@@ -33,7 +34,7 @@ export default function DonutChart({ creatorTzs = 0, platformTzs = 0 }) {
           height="180"
           viewBox="0 0 180 180"
           role="img"
-          aria-label={`Revenue split: creators ${creatorPct}%, platform ${platformPct}%`}
+          aria-label={`Historical revenue: creators ${creatorPct}%, platform ${platformPct}%`}
         >
           <defs>
             <linearGradient id="dg1" x1="0" y1="0" x2="1" y2="1">
@@ -42,8 +43,6 @@ export default function DonutChart({ creatorTzs = 0, platformTzs = 0 }) {
             </linearGradient>
           </defs>
           <circle className="track" cx="90" cy="90" r={R} />
-          {/* The two arcs are set here rather than in CSS so they can follow
-              the real numbers instead of a fixed 70/30. */}
           <circle
             className="seg1"
             cx="90"
@@ -56,12 +55,15 @@ export default function DonutChart({ creatorTzs = 0, platformTzs = 0 }) {
             cx="90"
             cy="90"
             r={R}
-            style={{ strokeDasharray: `${CIRC - creatorLen} ${CIRC}`, strokeDashoffset: -creatorLen }}
+            style={{
+              strokeDasharray: `${platformLen} ${CIRC}`,
+              strokeDashoffset: -creatorLen,
+            }}
           />
         </svg>
         <div className="donut-center">
           <b>{short(total)}</b>
-          <small>Total Revenue</small>
+          <small>Total recorded</small>
         </div>
       </div>
       <div className="legend">

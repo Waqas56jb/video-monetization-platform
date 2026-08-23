@@ -109,8 +109,29 @@ export default function OverviewTab() {
           </Async>
         </Panel>
 
-        <Panel title="Revenue Breakdown">
+        <Panel
+          title="Historical Revenue Breakdown"
+          action={
+            revenue.data?.defaultSplitPercent != null ? (
+              <Link className="link" to="/revenue">
+                Current {revenue.data.defaultSplitPercent}/{100 - Number(revenue.data.defaultSplitPercent)}
+              </Link>
+            ) : null
+          }
+        >
           <Async loading={revenue.loading} error={revenue.error} onRetry={revenue.reload} rows={4}>
+            {revenue.data?.defaultSplitPercent != null && (
+              <div className="split-now">
+                <span className="pill ok">
+                  Current Global Split · {revenue.data.defaultSplitPercent}% Creator /{' '}
+                  {100 - Number(revenue.data.defaultSplitPercent)}% Platform
+                </span>
+                <p className="field-note" style={{ margin: '10px 0 0' }}>
+                  New sales use this split. The chart below is from earnings already recorded —
+                  older sales keep the split they were paid at.
+                </p>
+              </div>
+            )}
             {revenue.data?.totals?.gross ? (
               <DonutChart
                 creatorTzs={revenue.data.totals.creators}
