@@ -719,6 +719,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
           )}
         </Panel>
       </div>
+      </div>
 
       <VideoPreview
         video={previewing}
