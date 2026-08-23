@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle, RefreshCw, X } from 'lucide-react'
 import StreamPlayer from '@/components/watch/StreamPlayer'
 import api, { mediaUrl } from '@/lib/api'
@@ -49,7 +50,7 @@ export default function VideoPreview({ video, open, onClose }) {
 
   if (!open) return null
 
-  return (
+  const modal = (
     <div
       className="modal open preview-modal"
       role="dialog"
@@ -101,4 +102,6 @@ export default function VideoPreview({ video, open, onClose }) {
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
