@@ -15,6 +15,17 @@ export function isPhone() {
   return /Android/i.test(ua()) || /iPhone|iPod/i.test(ua())
 }
 
+/** Phone or iPad — devices where a tap should try the native app first. */
+export function isTouchMobile() {
+  if (typeof navigator === 'undefined') return false
+  const u = ua()
+  if (/Android/i.test(u) || /iPhone|iPod/i.test(u)) return true
+  return (
+    /iPad/i.test(u) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
 function isAndroid() {
   return /Android/i.test(ua())
 }
@@ -26,14 +37,14 @@ function androidIntent(hostPath, pkg, fallback) {
 export function instagramHref() {
   const web = 'https://www.instagram.com/'
   if (isAndroid()) return androidIntent('instagram.com/', 'com.instagram.android', web)
-  if (isPhone()) return 'instagram://app'
+  if (isTouchMobile()) return 'instagram://app'
   return web
 }
 
 export function tiktokHref() {
   const web = 'https://www.tiktok.com/'
   if (isAndroid()) return androidIntent('www.tiktok.com/', 'com.zhiliaoapp.musically', web)
-  if (isPhone()) return 'tiktok://'
+  if (isTouchMobile()) return 'tiktok://'
   return web
 }
 
@@ -47,12 +58,12 @@ export function facebookHref(watchUrl) {
 }
 
 export function socialTarget() {
-  return isPhone() ? '_self' : '_blank'
+  return isTouchMobile() ? '_self' : '_blank'
 }
 
 /** If the app never came forward, open the https fallback. */
 export function appFallback(webUrl) {
-  if (!isPhone() || !webUrl) return () => {}
+  if (!isTouchMobile() || !webUrl) return () => {}
   return () => {
     let left = false
     const onHide = () => {

@@ -27,23 +27,27 @@ import {
   copyWatchUrl,
   facebookHref,
   instagramHref,
+  isTouchMobile,
   socialTarget,
   tiktokHref,
 } from '@/lib/socialShare'
-import { prepareShareCard, warmSharePreview } from '@/lib/warmShare'
+import { prepareShareCard, waitForShareCard } from '@/lib/warmShare'
 import { canonicalWatchUrl, nativeShareData } from '@/lib/watchUrl'
+import { whatsappIsPhone } from '@/lib/whatsappShare'
 
-async function ensureCardReady(slug, setHint) {
+async function warmBeforeSend(slug, setHint, setCardReady) {
+  if (!slug) return false
   setHint?.('Preparing your share card…')
-  const ready = await prepareShareCard(slug)
-  if (ready) {
+  const ok = await waitForShareCard(slug, 4000)
+  if (ok) {
+    setCardReady?.(true)
     setHint?.('Share card ready — recipients see the poster, title and preview button.')
   } else {
     setHint?.(
       'Link is ready. If the poster does not appear right away, wait a few seconds after pasting or sending.'
     )
   }
-  return ready
+  return ok
 }
 
 
@@ -122,11 +126,16 @@ export default function ShareSheet({ open, video, onClose }) {
   const ogCard = video ? `${window.location.origin}/og/card/${encodeURIComponent(slug)}.jpg` : ''
   /* Film frame + overlays, as in the client's mock — not the burned JPEG. */
   const still = mediaUrl(video?.thumbnailUrl)
+  const posterSrc = cardReady && ogCard ? ogCard : still
   const creator = video?.creator?.name
   const verified = Boolean(video?.creator?.verified)
   const paid = Number(video?.priceTzs || 0) > 0
   const fresh =
     video?.publishedAt && Date.now() - new Date(video.publishedAt).getTime() < 1000 * 60 * 60 * 24 * 21
+
+  useEffect(() => {
+    setPosterOn(false)
+  }, [posterSrc])
 
   useEffect(() => {
     if (!open) return
@@ -153,11 +162,6 @@ export default function ShareSheet({ open, video, onClose }) {
     return () => {
       stop = true
     }
-  }, [open, slug])
-
-  useEffect(() => {
-    if (!open || !slug) return
-    warmSharePreview(slug)
   }, [open, slug])
 
   useEffect(() => {
@@ -201,13 +205,14 @@ export default function ShareSheet({ open, video, onClose }) {
   const copy = async () => {
     setProblem(null)
     try {
-      await ensureCardReady(slug, setHint)
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      setCardReady(true)
       setHint('Link copied. Paste in WhatsApp or Facebook — the poster card is on this link.')
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2400)
+      waitForShareCard(slug, 5000).then((ok) => {
+        if (ok) setCardReady(true)
+      })
     } catch {
       setProblem('Could not copy automatically. Long-press the link and copy it.')
     }
@@ -218,8 +223,7 @@ export default function ShareSheet({ open, video, onClose }) {
     setWaBusy(true)
     setProblem(null)
     try {
-      await ensureCardReady(slug, setHint)
-      setCardReady(true)
+      await warmBeforeSend(slug, setHint, setCardReady)
       await navigator.clipboard.writeText(url).catch(() => {})
       const href = whatsappHref(url)
       const target = whatsappTarget()
@@ -227,6 +231,11 @@ export default function ShareSheet({ open, video, onClose }) {
         window.location.href = href
       } else {
         window.open(href, '_blank', 'noopener,noreferrer')
+        if (!whatsappIsPhone()) {
+          setHint(
+            'WhatsApp Web is opening. Wait until the poster preview appears in the message box, then send.'
+          )
+        }
       }
       whatsappFallback(url)()
     } finally {
@@ -239,8 +248,7 @@ export default function ShareSheet({ open, video, onClose }) {
     setFbBusy(true)
     setProblem(null)
     try {
-      await ensureCardReady(slug, setHint)
-      setCardReady(true)
+      await warmBeforeSend(slug, setHint, setCardReady)
       await copyWatchUrl(url)
       window.open(facebookHref(url), socialTarget(), 'noopener,noreferrer')
       setHint('Facebook is opening — the link includes the poster card preview.')
@@ -249,11 +257,30 @@ export default function ShareSheet({ open, video, onClose }) {
     }
   }
 
-  const primeSocialClip = async (where) => {
-    await ensureCardReady(slug, setHint)
-    setCardReady(true)
+  const launchSocial = (where) => {
     copyWatchUrl(url)
-    saveClip(where)
+    waitForShareCard(slug, 2000).then((ok) => {
+      if (ok) setCardReady(true)
+    })
+    if (!saving) void saveClip(where)
+    const href = where === 'instagram' ? instagramHref() : tiktokHref()
+    const fallback =
+      where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
+    const open = () => {
+      if (isTouchMobile()) {
+        window.location.href = href
+        appFallback(fallback)()
+      } else {
+        window.open(href, '_blank', 'noopener,noreferrer')
+        setHint(
+          where === 'instagram'
+            ? 'Instagram is opening in a new tab. The watch link is copied — paste it in your caption for the poster card.'
+            : 'TikTok is opening in a new tab. The watch link is copied — paste it in your caption for the poster card.'
+        )
+      }
+    }
+    if (isTouchMobile()) window.setTimeout(open, 180)
+    else open()
   }
 
   const saveClip = async (where) => {
@@ -355,8 +382,9 @@ export default function ShareSheet({ open, video, onClose }) {
       setBusy(true)
       setProblem(null)
       try {
-        await ensureCardReady(slug, setHint)
-        setCardReady(true)
+        waitForShareCard(slug, 3000).then((ok) => {
+          if (ok) setCardReady(true)
+        })
         await navigator.share(nativeShareData(url))
         onClose()
       } catch (err) {
@@ -395,25 +423,21 @@ export default function ShareSheet({ open, video, onClose }) {
         <p className="share-kicker">
           <Eye size={14} />
           This is what your audience will see
-          {cardReady ? <span className="share-ready-pill">Card ready</span> : null}
+          {cardReady ? (
+            <span className="share-ready-pill">Card ready</span>
+          ) : (
+            <span className="share-ready-pill is-wait">Preparing card…</span>
+          )}
         </p>
 
         <div className="share-og" ref={cardRef}>
           <div className="share-og-stage">
-            {still ? (
+            {posterSrc ? (
               <>
-                {/* A quiet shimmer while the poster arrives, and no words.
-                    It used to say "Building your preview…", which reads as if
-                    the card is being made to order — it is not, it is a
-                    picture being fetched — and the client asked for it gone.
-                    The shimmer stays so the frame is never simply empty. */}
                 {!posterOn && <span className="share-og-loading" aria-hidden="true" />}
                 <img
-                  src={still}
+                  src={posterSrc}
                   alt=""
-                  /* Not lazy: this is the whole point of the sheet and it is
-                     already on screen. Lazy loading delayed the one image the
-                     person opened this to look at. */
                   decoding="async"
                   className={posterOn ? 'is-on' : ''}
                   onLoad={() => setPosterOn(true)}
@@ -492,30 +516,26 @@ export default function ShareSheet({ open, video, onClose }) {
         </button>
 
         <div className="share-targets">
-          <a
+          <button
             className="share-target is-ig"
-            href={instagramHref()}
-            target={socialTarget()}
-            rel="noopener noreferrer"
-            onPointerDown={() => primeSocialClip('instagram')}
-            onClick={appFallback('https://www.instagram.com/')}
+            type="button"
+            onClick={() => launchSocial('instagram')}
+            disabled={saving === 'instagram'}
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
             <small>Clip + link card</small>
-          </a>
-          <a
+          </button>
+          <button
             className="share-target is-tt"
-            href={tiktokHref()}
-            target={socialTarget()}
-            rel="noopener noreferrer"
-            onPointerDown={() => primeSocialClip('tiktok')}
-            onClick={appFallback('https://www.tiktok.com/')}
+            type="button"
+            onClick={() => launchSocial('tiktok')}
+            disabled={saving === 'tiktok'}
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
             <small>Clip + link card</small>
-          </a>
+          </button>
           <button
             className="share-target is-fb"
             type="button"

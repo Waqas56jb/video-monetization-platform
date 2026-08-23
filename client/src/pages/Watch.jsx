@@ -721,7 +721,11 @@ export default function Watch() {
                   <span className="ob-short">{accessReason.short}</span>
                 </span>
               )}
-              <button className="btn btn-ghost btn-sm" onClick={() => setSharing(true)}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onPointerEnter={() => v?.slug && warmSharePreview(v.slug)}
+                onClick={() => setSharing(true)}
+              >
                 <Share2 />
                 <span className="btn-label">Share</span>
               </button>

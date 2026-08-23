@@ -9,6 +9,7 @@
 import { DEPLOY } from '@/lib/deployUrls'
 
 const inflight = new Map()
+const ready = new Set()
 
 const API =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
@@ -16,6 +17,11 @@ const API =
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+/** True when a recent probe found JPEG + OG tags for this slug. */
+export function isShareCardReady(slug) {
+  return Boolean(slug && ready.has(slug))
 }
 
 function kickServerCompose(slug) {
@@ -67,6 +73,7 @@ async function probeCard(slug) {
 
 export async function prepareShareCard(slug) {
   if (!slug || slug === 'undefined' || typeof window === 'undefined') return false
+  if (ready.has(slug)) return true
   const pending = inflight.get(slug)
   if (pending) return pending
 
@@ -75,7 +82,10 @@ export async function prepareShareCard(slug) {
 
     for (let i = 0; i < 10; i++) {
       try {
-        if (await probeCard(slug)) return true
+        if (await probeCard(slug)) {
+          ready.add(slug)
+          return true
+        }
       } catch {
         /* retry until the Postgres-backed JPEG exists */
       }
@@ -93,6 +103,21 @@ export async function prepareShareCard(slug) {
   }
 }
 
+/**
+ * Wait up to maxMs for the poster card. Used when the person taps Share on
+ * WhatsApp — not when the sheet opens, which must stay instant.
+ */
+export async function waitForShareCard(slug, maxMs = 4000) {
+  if (!slug || typeof window === 'undefined') return false
+  if (ready.has(slug)) return true
+  const pending = inflight.get(slug) || prepareShareCard(slug)
+  return Promise.race([
+    pending,
+    sleep(maxMs).then(() => ready.has(slug)),
+  ])
+}
+
 export function warmSharePreview(slug) {
+  if (!slug || ready.has(slug)) return
   prepareShareCard(slug).catch(() => {})
 }
