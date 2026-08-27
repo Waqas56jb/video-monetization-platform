@@ -371,16 +371,23 @@ export const DASH_TITLES = {
     "Here's how your content is performing today.",
   ],
   library: () => ['My Library', 'Every video in your library — yours to watch any time.'],
-  upload: () => ['Upload New Video', 'Upload, price and submit for review — we approve within hours.'],
-  videos: () => ['My Videos', 'Manage your published content and premieres.'],
-  earnings: () => ['Earnings', 'Your money, transparent and withdrawable anytime.'],
+  upload: () => ['Uploads', 'Upload, price and submit for review — we approve within hours.'],
+  videos: (_name, filter) =>
+    filter === 'drafts'
+      ? ['Drafts', 'Uploads that are not live yet — including anything waiting on review.']
+      : filter === 'published'
+        ? ['Published content', 'Everything currently live on your public page.']
+        : filter === 'review'
+          ? ['In review', 'Submitted videos waiting on the team.']
+          : ['My content', 'Drafts, reviews and published videos.'],
+  earnings: () => ['Revenue & Payouts', 'Sales, advertising, and getting paid out.'],
   purchases: () => ['My Purchases', 'Every video you have paid for, and how you paid.'],
   become: () => [
     'Apply to become a creator',
     'Tell us about your work. Creator tools open only after the team approves you.',
   ],
   inbox: () => ['Notifications', 'Announcements and news about your account.'],
-  analytics: () => ['Analytics', 'How your videos and your spending are actually doing.'],
-  profile: () => ['My Profile', 'Your name, your photo, and how people find you.'],
+  analytics: () => ['Analytics', 'Views, sales and what is actually working.'],
+  profile: () => ['Profile settings', 'Your photo, name, bio, category and how people find you.'],
   settings: () => ['Settings', 'Your password, your email preferences, and your account.'],
 }

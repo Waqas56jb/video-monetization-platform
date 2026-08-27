@@ -22,13 +22,20 @@ import VideoPreview from '@/components/dashboard/VideoPreview'
  * somebody may have paid for the video — their purchase must not vanish
  * because the creator changed their mind.
  */
-export default function MyVideosTab({ onNewUpload }) {
+export default function MyVideosTab({ onNewUpload, filter = '', onFilter }) {
   const showToast = useToast()
   const notify = useNotify()
   const [previewing, setPreviewing] = useState(null)
   const [openingId, setOpeningId] = useState(null)
   const { data, loading, error, reload } = useApi(() => api.videos.mine(), [])
   const videos = data?.videos || []
+  const FILTERS = [
+    { key: '', label: 'All' },
+    { key: 'drafts', label: 'Drafts' },
+    { key: 'review', label: 'In review' },
+    { key: 'published', label: 'Published' },
+  ]
+  const visible = videos.filter((v) => matchesFilter(v, filter))
 
   const openPreview = (v) => {
     if (v.state === 'processing') {
@@ -135,23 +142,42 @@ export default function MyVideosTab({ onNewUpload }) {
 
   return (
     <Panel
-      title="My Videos"
+      title="My content"
       action={
-        <button className="btn btn-gold btn-sm" onClick={onNewUpload}>
-          <Plus />
-          <span className="btn-label">New Upload</span>
-        </button>
+        <div className="chip-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {FILTERS.map((f) => (
+            <button
+              key={f.key || 'all'}
+              type="button"
+              className={`chip ${filter === f.key ? 'on' : ''}`.trim()}
+              onClick={() => onFilter?.(f.key)}
+            >
+              {f.label}
+              {f.key
+                ? ` (${videos.filter((v) => matchesFilter(v, f.key)).length})`
+                : ` (${videos.length})`}
+            </button>
+          ))}
+          <button className="btn btn-gold btn-sm" onClick={onNewUpload}>
+            <Plus />
+            <span className="btn-label">New Upload</span>
+          </button>
+        </div>
       }
     >
       {loading ? (
         <Skeleton rows={4} />
       ) : error ? (
         <ErrorState error={error} onRetry={reload} />
-      ) : !videos.length ? (
+      ) : !visible.length ? (
         <EmptyState
           icon={Film}
-          title="You haven't uploaded anything yet"
-          message="Upload your first video and set your own price. Every upload is reviewed before it goes live."
+          title={filter ? 'Nothing in this list' : "You haven't uploaded anything yet"}
+          message={
+            filter
+              ? 'Try another filter, or upload a new video.'
+              : 'Upload your first video and set your own price. Every upload is reviewed before it goes live.'
+          }
           action={
             <button className="btn btn-gold" onClick={onNewUpload}>
               <Plus />
@@ -173,7 +199,7 @@ export default function MyVideosTab({ onNewUpload }) {
             </tr>
           </thead>
           <tbody>
-            {videos.map((v) => {
+            {visible.map((v) => {
               const st = statusOf(v)
               return (
                 <tr key={v.id}>
@@ -374,6 +400,21 @@ export default function MyVideosTab({ onNewUpload }) {
       />
     </Panel>
   )
+}
+
+function bucketOf(v) {
+  if (v.isPublished) return 'published'
+  if (v.reviewStatus === 'pending_review') return 'review'
+  return 'drafts'
+}
+
+function matchesFilter(v, filter) {
+  if (!filter) return true
+  const bucket = bucketOf(v)
+  if (filter === 'published') return bucket === 'published'
+  if (filter === 'review') return bucket === 'review'
+  if (filter === 'drafts') return bucket === 'drafts' || bucket === 'review'
+  return true
 }
 
 function statusOf(v) {

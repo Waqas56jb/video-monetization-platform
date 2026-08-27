@@ -1801,11 +1801,28 @@ router.post(
         if (approving) {
           await client.query(`update profiles set role = 'creator' where id = $1`, [app.user_id])
           await client.query(
-            `insert into creator_profiles (user_id, display_name, payout_phone)
-             values ($1,$2,$3)
+            `insert into creator_profiles
+               (user_id, display_name, payout_phone, bio, location, category, socials)
+             values ($1,$2,$3,$4,$5,$6,$7::jsonb)
              on conflict (user_id) do update
-               set display_name = coalesce(creator_profiles.display_name, excluded.display_name)`,
-            [app.user_id, app.stage_name, app.phone]
+               set display_name = coalesce(creator_profiles.display_name, excluded.display_name),
+                   bio = coalesce(creator_profiles.bio, excluded.bio),
+                   location = coalesce(creator_profiles.location, excluded.location),
+                   category = coalesce(creator_profiles.category, excluded.category),
+                   socials = case
+                     when creator_profiles.socials is null or creator_profiles.socials = '[]'::jsonb
+                     then excluded.socials
+                     else creator_profiles.socials
+                   end`,
+            [
+              app.user_id,
+              app.stage_name,
+              app.phone,
+              app.bio || app.description || null,
+              app.location || null,
+              app.category && app.category !== 'Not stated' ? app.category : null,
+              JSON.stringify(app.socials || []),
+            ]
           )
         }
 

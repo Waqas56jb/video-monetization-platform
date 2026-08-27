@@ -26,7 +26,8 @@ export default function OverviewTab() {
     { icon: 'wallet', tone: 'gold', label: 'Available Balance', value: tzs(e?.balance?.availableTzs) },
     { icon: 'coins', label: 'Lifetime Earnings', value: tzs(e?.balance?.lifetimeTzs) },
     { icon: 'eye', label: 'Total Views', value: compact(e?.stats?.totalViews) },
-    { icon: 'ticket', label: 'Paid Unlocks', value: compact(e?.stats?.paidUnlocks) },
+    { icon: 'ticket', label: 'Sales', value: compact(e?.stats?.paidUnlocks) },
+    { icon: 'clapperboard', label: 'Published', value: compact(e?.stats?.publishedVideos) },
   ]
 
   return (

@@ -651,6 +651,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .pill{font-size:11px;font-weight:800;padding:5px 12px;border-radius:99px;letter-spacing:.4px;display:inline-block}
 .pill.ok{background:rgba(34,197,94,.13);color:var(--green)}
 .pill.pend{background:rgba(245,197,24,.12);color:var(--gold)}
+.pill.gold{background:rgba(245,197,24,.14);color:var(--gold)}
 .pill.free{background:rgba(124,58,237,.15);color:var(--purple2)}
 .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:20px}
 .donut{position:relative;width:190px;height:190px}
@@ -3109,20 +3110,52 @@ a.creator-row:hover{border-color:var(--purple)}
 .creator-hero{
   display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;
   background:var(--card);border:1px solid var(--border2);border-radius:22px;
-  padding:22px 24px;margin:12px 0 28px;
+  padding:22px 24px;margin:12px 0 22px;
 }
 .creator-hero-avatar{
-  width:88px;height:88px;border-radius:22px;object-fit:cover;border:2px solid var(--purple);flex-shrink:0;
+  width:112px;height:112px;border-radius:24px;object-fit:cover;border:2px solid var(--purple);flex-shrink:0;
 }
 .creator-hero-avatar.is-initials{
-  display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:32px;font-weight:800;
+  display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:40px;font-weight:800;
   background:rgba(124,58,237,.18);color:#fff;
 }
-.creator-hero-copy h1{margin:0 0 8px;font-size:clamp(22px,3vw,32px);display:flex;align-items:center;gap:8px}
-.creator-hero-loc,.creator-hero-meta{
-  display:flex;align-items:center;gap:6px;margin:0 0 8px;color:var(--muted2);font-size:13.5px;
+.creator-hero-copy{min-width:0;flex:1}
+.creator-hero-copy h1{margin:0 0 10px;font-size:clamp(24px,3.2vw,34px);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.creator-hero-tags{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px;color:var(--muted2);font-size:13.5px}
+.creator-hero-tags span{display:inline-flex;align-items:center;gap:6px}
+.creator-hero-meta{
+  display:flex;flex-wrap:wrap;gap:14px 18px;margin:0 0 14px;color:var(--muted2);font-size:13.5px;
 }
-.creator-hero-bio{margin:0 0 10px;color:var(--muted);line-height:1.7;max-width:62ch}
-.creator-grid-title{font-size:18px;margin:0 0 16px}
+.creator-hero-meta span{display:inline-flex;align-items:center;gap:6px}
+.creator-socials{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0}
+.creator-socials a{
+  display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--purple2);
+  border:1px solid var(--border);border-radius:999px;padding:6px 12px;
+}
+.creator-socials a:hover{color:#fff;border-color:var(--purple2)}
+.creator-socials svg{width:14px;height:14px}
+.creator-about,.creator-section{margin:0 0 28px}
+.creator-about h2,.creator-section h2{font-size:18px;margin:0 0 14px}
+.creator-about p{margin:0;color:var(--muted);line-height:1.75;max-width:68ch;white-space:pre-wrap}
+.creator-featured{
+  display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:center;
+  background:var(--card);border:1px solid var(--border2);border-radius:20px;overflow:hidden;
+  text-decoration:none;color:inherit;
+}
+.creator-featured img{width:100%;height:260px;object-fit:cover;display:block}
+.creator-featured div{padding:8px 22px 8px 4px}
+.creator-featured small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.creator-featured h3{margin:0 0 8px;font-size:22px;line-height:1.3}
+.creator-featured p{
+  margin:0 0 12px;color:var(--muted);line-height:1.65;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.creator-featured span{color:var(--muted2);font-size:13px}
 .creator-empty,.creator-foot{color:var(--muted);font-size:14px}
 .creator-foot{margin-top:28px}
+@media(max-width:800px){
+  .creator-featured{grid-template-columns:1fr}
+  .creator-featured img{height:200px}
+  .creator-featured div{padding:16px 18px 20px}
+  .creator-hero-avatar{width:88px;height:88px}
+}

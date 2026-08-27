@@ -98,7 +98,8 @@ export default function Dashboard() {
 
   // Greet the person who is actually signed in, not a name from a data file.
   const firstName = (user?.fullName || '').split(' ')[0]
-  const [title, subtitle] = (DASH_TITLES[tab] || DASH_TITLES.library)(firstName)
+  const contentFilter = params.get('filter') || ''
+  const [title, subtitle] = (DASH_TITLES[tab] || DASH_TITLES.library)(firstName, contentFilter)
 
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
@@ -122,10 +123,12 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', onKey)
   }, [drawerOpen])
 
-  const selectTab = (next) => {
+  const selectTab = (next, extras = {}) => {
     // A push, not a replace — each tab is somewhere the person went, and Back
     // should return them to the last one.
-    setParams({ tab: next })
+    const nextParams = { tab: next }
+    if (extras.filter) nextParams.filter = extras.filter
+    setParams(nextParams)
     setDrawerOpen(false)
     window.scrollTo({ top: 0 })
   }
@@ -148,6 +151,7 @@ export default function Dashboard() {
         <Sidebar
           open={drawerOpen}
           activeTab={tab}
+          activeFilter={contentFilter}
           onTab={selectTab}
           onClose={() => setDrawerOpen(false)}
         />
@@ -212,7 +216,13 @@ export default function Dashboard() {
                 <UploadTab />
               </div>
             )}
-            {tab === 'videos' && <MyVideosTab onNewUpload={() => selectTab('upload')} />}
+            {tab === 'videos' && (
+              <MyVideosTab
+                onNewUpload={() => selectTab('upload')}
+                filter={contentFilter}
+                onFilter={(f) => selectTab('videos', f ? { filter: f } : {})}
+              />
+            )}
             {tab === 'earnings' && <EarningsTab />}
             {tab === 'become' && <BecomeCreatorTab />}
             {tab === 'analytics' && <AnalyticsTab />}

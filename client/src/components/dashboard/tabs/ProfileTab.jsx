@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, BadgeCheck, Camera, Check, Save, Trash2, User } from 'lucide-react'
 import Panel from '../Panel'
-import Field, { PasswordField } from '@/components/ui/Field'
+import Field, { PasswordField, SelectField } from '@/components/ui/Field'
+import { CATEGORIES } from '@/data/copy'
+import { Link } from 'react-router-dom'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { shortDate } from '@/hooks/useApi'
 import api from '@/lib/api'
@@ -41,6 +43,8 @@ export default function ProfileTab() {
       location: c?.location ?? u.location ?? '',
       website: u.website || '',
       displayName: c?.displayName || '',
+      category: c?.category || '',
+      socials: Array.isArray(c?.socials) && c.socials.length ? c.socials.join('\n') : u.website || '',
     })
   }, [data])
 
@@ -58,6 +62,13 @@ export default function ProfileTab() {
       return setFormError('A web address needs to start with https://')
     }
 
+    const socials = isCreator
+      ? String(form.socials || '')
+          .split(/[\n,]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+
     setSaving(true)
     try {
       await api.account.update({
@@ -67,6 +78,7 @@ export default function ProfileTab() {
         location: form.location.trim(),
         website: form.website.trim(),
         ...(isCreator && form.displayName.trim() ? { displayName: form.displayName.trim() } : {}),
+        ...(isCreator ? { category: form.category || '', socials } : {}),
       })
       await reloadAuth() // the header shows this name
       reload({ quiet: true })
@@ -175,6 +187,18 @@ export default function ProfileTab() {
                     on this form.
                   </p>
                 )}
+                <SelectField
+                  id="pf-category"
+                  label="Creator category"
+                  icon="tag"
+                  placeholder="Main category on your public page"
+                  options={CATEGORIES}
+                  value={form.category}
+                  onChange={set('category')}
+                />
+                <p className="field-hint">
+                  <Link to={`/creator/${u.id}`}>View your public creator page</Link>
+                </p>
               </>
             )}
 
@@ -220,13 +244,27 @@ export default function ProfileTab() {
 
             <Field
               id="pf-website"
-              label="Website or social link"
+              label={isCreator ? 'Website' : 'Website or social link'}
               icon="link"
               type="url"
-              placeholder="https://instagram.com/you"
+              placeholder="https://yoursite.com"
               value={form.website}
               onChange={set('website')}
             />
+
+            {isCreator && (
+              <div className="field">
+                <label htmlFor="pf-socials">Social links</label>
+                <textarea
+                  id="pf-socials"
+                  rows={3}
+                  placeholder={'https://instagram.com/you\nhttps://tiktok.com/@you'}
+                  value={form.socials}
+                  onChange={set('socials')}
+                />
+                <p className="field-hint">One full web address per line. Shown on your public page.</p>
+              </div>
+            )}
 
             <button className="btn btn-gold" type="submit" disabled={saving}>
               {saving ? <Check /> : <Save />}

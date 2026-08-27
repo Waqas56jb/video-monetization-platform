@@ -143,7 +143,7 @@ export default function EarningsTab() {
             ))}
           </div>
 
-          <Panel title="Where the money came from">
+          <Panel title="Sales">
             <div className="earn-sources">
               {sources.map((s) => (
                 <div className="earn-source" key={s.label}>
@@ -161,7 +161,7 @@ export default function EarningsTab() {
         </>
       )}
 
-      <Panel title="Request a withdrawal">
+      <Panel title="Payouts">
         <form onSubmit={request} noValidate>
             {error && (
               <div className="form-error" role="alert">
@@ -238,7 +238,7 @@ export default function EarningsTab() {
         </form>
       </Panel>
 
-      <Panel title="Withdrawal history">
+      <Panel title="Payout history">
         {withdrawals.loading ? (
           <Skeleton rows={3} />
         ) : withdrawals.error ? (

@@ -60,6 +60,8 @@ const shape = (p, creator) => ({
         location: creator.location,
         verified: creator.verified,
         followers: creator.followers,
+        category: creator.category || '',
+        socials: Array.isArray(creator.socials) ? creator.socials : [],
         revenueSplitPercent: creator.revenue_split_percent,
         payoutPhone: creator.payout_phone,
         payoutMethod: creator.payout_method,
@@ -88,6 +90,14 @@ const profileSchema = z
 
     // creator-only, ignored for anyone else
     displayName: z.string().trim().min(2).max(120).optional(),
+    category: z
+      .string()
+      .trim()
+      .max(60)
+      .optional()
+      .or(z.literal(''))
+      .refine((v) => !v || isKnownCategory(v), 'Choose a category from the list'),
+    socials: z.array(z.string().trim().url('Each link must be a full web address')).max(6).optional(),
     payoutPhone: z.string().trim().regex(/^[0-9+\s-]{9,15}$/, 'Enter a valid mobile money number').optional().or(z.literal('')),
     payoutMethod: z.enum(['mpesa', 'airtel']).optional(),
 
@@ -177,7 +187,9 @@ router.patch(
                bio           = case when $3::text is null then bio      when $3 = '' then null else $3 end,
                location      = case when $4::text is null then location when $4 = '' then null else $4 end,
                payout_phone  = case when $5::text is null then payout_phone when $5 = '' then null else $5 end,
-               payout_method = coalesce($6, payout_method)
+               payout_method = coalesce($6, payout_method),
+               category      = case when $7::text is null then category when $7 = '' then null else $7 end,
+               socials       = coalesce($8::jsonb, socials)
              where user_id = $1 returning *`,
             [
               req.user.id,
@@ -186,6 +198,8 @@ router.patch(
               clearable(b.location),
               clearable(b.payoutPhone),
               b.payoutMethod ?? null,
+              b.category === undefined ? null : b.category,
+              b.socials === undefined ? null : JSON.stringify(b.socials),
             ]
           )
           creatorRow = upd.rows[0] || null

@@ -29,10 +29,11 @@ const GROUPS = [
     roles: ['creator'],
     items: [
       { tab: 'overview', icon: 'layout-dashboard', label: 'Dashboard', roles: ['creator'] },
-      { tab: 'upload', icon: 'upload-cloud', label: 'Upload Video', roles: ['creator'] },
-      { tab: 'videos', icon: 'clapperboard', label: 'My Videos', roles: ['creator'] },
-      { tab: 'earnings', icon: 'wallet', label: 'Earnings', roles: ['creator'] },
+      { tab: 'upload', icon: 'upload-cloud', label: 'Uploads', roles: ['creator'] },
+      { tab: 'videos', filter: 'drafts', icon: 'hourglass', label: 'Drafts', roles: ['creator'] },
+      { tab: 'videos', filter: 'published', icon: 'clapperboard', label: 'Published', roles: ['creator'] },
       { tab: 'analytics', icon: 'bar-chart-3', label: 'Analytics', roles: ['creator'] },
+      { tab: 'earnings', icon: 'wallet', label: 'Revenue & Payouts', roles: ['creator'] },
     ],
   },
   {
@@ -44,13 +45,13 @@ const GROUPS = [
     label: 'Account',
     roles: ['viewer', 'creator'],
     items: [
-      { tab: 'profile', icon: 'user-cog', label: 'My Profile', roles: ['viewer', 'creator'] },
+      { tab: 'profile', icon: 'user-cog', label: 'Profile settings', roles: ['viewer', 'creator'] },
       { tab: 'settings', icon: 'settings', label: 'Settings', roles: ['viewer', 'creator'] },
     ],
   },
 ]
 
-export default function Sidebar({ open, activeTab, onTab, onClose }) {
+export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
   const { role, signOut, isCreator, accountSide, setAccountSide, accountRole } = useRole()
@@ -105,7 +106,7 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
     .filter((g) => g.items.length > 0)
 
   const activate = (item) => {
-    if (item.tab) return onTab(item.tab)
+    if (item.tab) return onTab(item.tab, item.filter ? { filter: item.filter } : {})
     if (item.to) {
       onClose()
       return navigate(item.to)
@@ -131,16 +132,22 @@ export default function Sidebar({ open, activeTab, onTab, onClose }) {
         {visible.map((group) => (
           <Fragment key={group.label}>
             <div className="side-label">{group.label}</div>
-            {group.items.map((item) => (
+            {group.items.map((item) => {
+              const on =
+                item.tab &&
+                item.tab === activeTab &&
+                (item.filter || '') === (item.tab === 'videos' ? activeFilter || '' : '')
+              return (
               <button
                 key={item.label}
-                className={`side-link ${item.tab && item.tab === activeTab ? 'on' : ''}`.trim()}
+                className={`side-link ${on ? 'on' : ''}`.trim()}
                 onClick={() => activate(item)}
               >
                 <Icon name={item.icon} />
                 {item.label}
               </button>
-            ))}
+              )
+            })}
           </Fragment>
         ))}
 

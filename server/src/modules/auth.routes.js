@@ -22,6 +22,7 @@ import { recordAudit, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
 import { log } from '../lib/logger.js'
 import { env, capabilities } from '../config/env.js'
+import { creatorStorefront } from '../lib/creatorStorefront.js'
 
 const router = Router()
 
@@ -618,27 +619,9 @@ router.post('/logout', requireAuth(), (req, res) => res.json({ ok: true }))
 router.get(
   '/creators/:id',
   asyncHandler(async (req, res) => {
-    const row = await one(
-      `select p.id, p.full_name, p.avatar_url,
-              cp.display_name, cp.bio, cp.location, cp.verified, cp.followers,
-              (select count(*) from videos v
-                where v.creator_id = p.id and v.is_published and v.deleted_at is null) as video_count
-         from profiles p
-         join creator_profiles cp on cp.user_id = p.id
-        where p.id = $1 and p.status <> 'blocked'`,
-      [req.params.id]
-    )
-    if (!row) throw notFound('Creator not found')
-    res.json({
-      id: row.id,
-      name: row.display_name || row.full_name,
-      avatarUrl: row.avatar_url,
-      bio: row.bio,
-      location: row.location,
-      verified: row.verified,
-      followers: Number(row.followers),
-      videoCount: Number(row.video_count),
-    })
+    const page = await creatorStorefront(req.params.id)
+    if (!page) throw notFound('Creator not found')
+    res.json(page)
   })
 )
 
