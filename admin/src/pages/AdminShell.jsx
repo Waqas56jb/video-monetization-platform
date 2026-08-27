@@ -16,7 +16,7 @@ const PAGE_META = {
   '/notifications': ['Notifications', 'Everything your team has done'],
   '/users': ['User Management', 'View, block or restore any account'],
   '/creators': ['Creator Management', 'Verify creators and set their revenue split'],
-  '/creator-applications': ['Creator Applications', 'People waiting to publish on the platform'],
+  '/creator-applications': ['Creator Applications', 'Approve, decline, suspend or revoke who publishes on MTONYO+'],
   '/videos': ['Video Library', 'Every video on the platform'],
   '/review': ['Content Review', 'Nothing goes live until it passes through here'],
   '/moderation': ['Moderation', 'Reports and removal requests'],

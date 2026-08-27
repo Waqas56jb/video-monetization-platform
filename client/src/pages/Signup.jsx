@@ -60,13 +60,15 @@ export default function Signup() {
   }, [location.search])
 
   /**
-   * Already signed in: open the side they picked if they already have it.
-   * A viewer opening Create stays on the form so the same email can attach
-   * the creator side.
+   * Already signed in: Watch goes to the library. Create without studio access
+   * goes to the application — nobody gets a creator dashboard from this page.
    */
   useEffect(() => {
     if (authLoading || !authed) return
-    if (role === 'creator' && !isCreator) return
+    if (role === 'creator' && !isCreator) {
+      navigate(dashboardPath('become'), { replace: true })
+      return
+    }
     setAccountSide(role)
     navigate(next || dashboardPath(role), { replace: true })
   }, [authed, authLoading, isCreator, navigate, next, role, setAccountSide])
@@ -97,11 +99,20 @@ export default function Signup() {
         postedRole === 'creator' || role === 'creator' ? 'creator' : 'viewer'
       const result = await signUp({ ...form, fullName, phone, email, password, role: wanted, side: wanted })
 
-      const afterSignup = next || dashboardPath(wanted)
+      const afterSignup =
+        wanted === 'creator' || result.needsCreatorApplication
+          ? dashboardPath('become')
+          : next || dashboardPath('viewer')
 
       if (result.needsEmailConfirmation) {
         setConfirmSent(true)
         setBusy(false)
+        return
+      }
+
+      if (result.needsCreatorApplication) {
+        showToast('Account created. Complete your application so the team can review you.')
+        timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
         return
       }
 
@@ -115,7 +126,7 @@ export default function Signup() {
       if (result.signInFailed || !result.session) {
         showToast('Account created. Please sign in to continue.')
         timer.current = setTimeout(
-          () => navigate(authUrl('login', afterSignup, { side: wanted }), { replace: true }),
+          () => navigate(authUrl('login', afterSignup, { side: 'viewer' }), { replace: true }),
           900
         )
         return
@@ -123,7 +134,7 @@ export default function Signup() {
 
       showToast(
         wanted === 'creator'
-          ? 'Your creator account is ready.'
+          ? 'Account created. Complete your application so the team can review you.'
           : 'Your viewer account is ready.'
       )
       timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
@@ -211,9 +222,9 @@ export default function Signup() {
         heading: (
           role === 'creator' ? (
             <>
-              Get paid before
+              Apply first.
               <br />
-              you go free.
+              Then you publish.
             </>
           ) : (
             <>
@@ -225,24 +236,27 @@ export default function Signup() {
         ),
         text:
           role === 'creator'
-            ? 'Create your studio, upload your first video, set your price — and start receiving payments.'
-            : 'Create a free viewer account. The same email can open a creator studio later.',
+            ? 'Create a free account, tell us about your work, and the team reviews you. Creator tools open only after approval.'
+            : 'Create a free viewer account. The same email can apply to publish later.',
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={
         <>
-          Create your <span className="brand-accent">{role === 'creator' ? 'creator' : 'viewer'} account</span>
+          Create your <span className="brand-accent">{role === 'creator' ? 'creator application' : 'viewer'} account</span>
         </>
       }
-      subtitle="Watch and Create are different sides. The same email can open both."
+      subtitle={
+        role === 'creator'
+          ? 'Signing up does not open the studio. You apply, we review, then you publish.'
+          : 'Watch and Create are different sides. The same email can apply to publish later.'
+      }
     >
       <RoleToggle options={ROLES} value={role} onChange={setRole} />
 
       {authed && !isCreator && role === 'creator' && (
         <div className="notice" style={{ marginBottom: 18 }}>
           <span>
-            You are signed in as <b>{user?.email}</b>. Use the same password to open the
-            creator side on this email.
+            You are signed in as <b>{user?.email}</b>. Opening the application form…
           </span>
         </div>
       )}
@@ -335,13 +349,7 @@ export default function Signup() {
 
         <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           <Rocket />
-          {busy
-            ? role === 'creator'
-              ? 'Opening your studio…'
-              : 'Creating your account…'
-            : role === 'creator'
-              ? 'Create Creator Account'
-              : 'Create Viewer Account'}
+          {busy ? 'Creating your account…' : role === 'creator' ? 'Create account & apply' : 'Create Viewer Account'}
         </button>
       </form>
 

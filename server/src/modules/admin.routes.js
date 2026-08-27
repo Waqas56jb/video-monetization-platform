@@ -17,6 +17,7 @@ import { capabilities, env } from '../config/env.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
 import { log } from '../lib/logger.js'
+import { shapeApplication } from '../lib/creatorApplication.js'
 
 const router = Router()
 
@@ -1700,10 +1701,23 @@ router.delete(
 router.get(
   '/creator-applications',
   asyncHandler(async (req, res) => {
-    const status = ['pending', 'approved', 'rejected'].includes(req.query.status)
-      ? req.query.status
-      : null
+    const filter = String(req.query.status || '')
+    const allowed = ['pending', 'approved', 'rejected', 'suspended', 'revoked']
+    const status = allowed.includes(filter) ? filter : null
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100))
+
+    const where =
+      status === 'pending'
+        ? `a.status = 'pending'`
+        : status === 'approved'
+          ? `a.status = 'approved' and p.role = 'creator' and p.status = 'active' and a.access_ended_at is null`
+          : status === 'rejected'
+            ? `a.status = 'rejected'`
+            : status === 'suspended'
+              ? `a.status = 'approved' and p.role = 'creator' and p.status <> 'active' and a.access_ended_at is null`
+              : status === 'revoked'
+                ? `a.access_ended_at is not null or (a.status = 'approved' and p.role <> 'creator')`
+                : 'true'
 
     const rows = await many(
       `select a.*, p.role::text as current_role, p.status::text as account_status,
@@ -1711,38 +1725,42 @@ router.get(
          from creator_applications a
          join profiles p on p.id = a.user_id
          left join profiles d on d.id = a.decided_by
-        where ($1::text is null or a.status::text = $1)
+        where ${where}
         order by case when a.status = 'pending' then 0 else 1 end,
                  a.created_at desc
-        limit $2`,
-      [status, limit]
+        limit $1`,
+      [limit]
     )
 
-    const counts = await many(
-      `select status::text as status, count(*)::int as n from creator_applications group by 1`
+    const counts = await one(
+      `select
+          count(*) filter (where a.status = 'pending')::int as pending,
+          count(*) filter (where a.status = 'approved' and p.role = 'creator'
+                           and p.status = 'active' and a.access_ended_at is null)::int as approved,
+          count(*) filter (where a.status = 'rejected')::int as rejected,
+          count(*) filter (where a.status = 'approved' and p.role = 'creator'
+                           and p.status <> 'active' and a.access_ended_at is null)::int as suspended,
+          count(*) filter (where a.access_ended_at is not null
+                           or (a.status = 'approved' and p.role <> 'creator'))::int as revoked
+         from creator_applications a
+         join profiles p on p.id = a.user_id`
     )
 
     res.json({
       applications: rows.map((r) => ({
-        id: r.id,
+        ...shapeApplication(r),
         userId: r.user_id,
-        fullName: r.full_name,
-        stageName: r.stage_name,
-        email: r.email,
-        phone: r.phone,
-        category: r.category,
-        description: r.description,
-        socials: r.socials || [],
-        termsAcceptedAt: r.terms_accepted_at,
-        status: r.status,
         currentRole: r.current_role,
         accountStatus: r.account_status,
-        decisionNote: r.decision_note,
-        decidedAt: r.decided_at,
         decidedByEmail: r.decided_by_email,
-        createdAt: r.created_at,
       })),
-      counts: Object.fromEntries(counts.map((c) => [c.status, c.n])),
+      counts: {
+        pending: counts?.pending || 0,
+        approved: counts?.approved || 0,
+        rejected: counts?.rejected || 0,
+        suspended: counts?.suspended || 0,
+        revoked: counts?.revoked || 0,
+      },
     })
   })
 )
@@ -1842,13 +1860,16 @@ router.post(
 
     await transaction(
       async (client) => {
-        await client.query(`update profiles set role = 'viewer' where id = $1`, [target.id])
+        await client.query(
+          `update profiles set role = 'viewer', viewer_enabled = true where id = $1`,
+          [target.id]
+        )
         await client.query(
           `update creator_applications
-              set status = 'rejected', decision_note = $2, decided_by = $3,
-                  decided_at = now(), updated_at = now()
-            where user_id = $1 and status = 'approved'`,
-          [target.id, req.body.note || 'Creator access revoked', req.user.id]
+              set access_ended_at = now(), access_ended_by = $2, access_end_note = $3,
+                  updated_at = now()
+            where user_id = $1 and status = 'approved' and access_ended_at is null`,
+          [target.id, req.user.id, req.body.note || 'Creator access revoked']
         )
       },
       { actorRole: 'admin', actorId: req.user.id }
@@ -1872,6 +1893,84 @@ router.post(
     }).catch(() => {})
 
     res.json({ ok: true })
+  })
+)
+
+/**
+ * Pause a creator without taking the role away. They can still sign in and
+ * their videos stay up; they cannot upload or change anything until restored.
+ */
+router.post(
+  '/creators/:id/suspend',
+  validate(z.object({ note: z.string().trim().max(1000).optional() })),
+  asyncHandler(async (req, res) => {
+    const target = await one(
+      `select id, email, role::text as role, status::text as status from profiles where id = $1`,
+      [req.params.id]
+    )
+    if (!target) throw notFound('Account not found')
+    if (target.role !== 'creator') throw conflict('That account is not a creator')
+    if (target.status === 'blocked') throw conflict('That account is blocked — restore it from Users')
+
+    const updated = await one(`update profiles set status = 'suspended' where id = $1 returning *`, [
+      target.id,
+    ])
+
+    await recordAudit({
+      actorId: req.user.id,
+      action: 'CREATOR_SUSPENDED',
+      entityType: 'profile',
+      entityId: target.id,
+      summary: `${who(req)} suspended creator ${target.email}`,
+      ip: clientIp(req),
+    })
+
+    await notify({
+      userId: target.id,
+      kind: 'account',
+      title: 'Your creator account is suspended',
+      body:
+        req.body.note ||
+        'You can still sign in, but you cannot upload or change anything until the team restores you.',
+      actor: req.user,
+    }).catch(() => {})
+
+    res.json({ ok: true, status: updated.status })
+  })
+)
+
+router.post(
+  '/creators/:id/restore',
+  asyncHandler(async (req, res) => {
+    const target = await one(
+      `select id, email, role::text as role, status::text as status from profiles where id = $1`,
+      [req.params.id]
+    )
+    if (!target) throw notFound('Account not found')
+    if (target.role !== 'creator') throw conflict('That account is not a creator')
+
+    const updated = await one(`update profiles set status = 'active' where id = $1 returning *`, [
+      target.id,
+    ])
+
+    await recordAudit({
+      actorId: req.user.id,
+      action: 'CREATOR_RESTORED',
+      entityType: 'profile',
+      entityId: target.id,
+      summary: `${who(req)} restored creator ${target.email}`,
+      ip: clientIp(req),
+    })
+
+    await notify({
+      userId: target.id,
+      kind: 'account',
+      title: 'Your creator account has been restored',
+      body: 'You can upload and manage your videos again.',
+      actor: req.user,
+    }).catch(() => {})
+
+    res.json({ ok: true, status: updated.status })
   })
 )
 

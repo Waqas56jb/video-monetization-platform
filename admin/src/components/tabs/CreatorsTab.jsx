@@ -149,7 +149,7 @@ export default function CreatorsTab() {
             hint:
               query || filter
                 ? 'Try a different search.'
-                : 'Anyone who signs up as a creator, or upgrades later, appears here.',
+                : 'Anyone approved to publish appears here.',
           }}
         >
           <TableWrap>

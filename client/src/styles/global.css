@@ -3044,6 +3044,11 @@ html.is-touch .btn:active{transform:scale(.97)}
 
 .apply-form{display:block}
 .apply-form .btn-block{margin-top:6px}
+.apply-section{
+  margin:22px 0 10px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted2);font-weight:700;
+}
+.apply-section:first-child{margin-top:0}
 
 /* The agreement is a decision, so it gets a target worth tapping rather than a
    14px checkbox next to a wall of text. */

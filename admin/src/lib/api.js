@@ -336,6 +336,8 @@ export const api = {
     decideCreatorApplication: (id, body) =>
       post(`/api/admin/creator-applications/${id}/decide`, body),
     revokeCreator: (id, body) => post(`/api/admin/creators/${id}/revoke`, body),
+    suspendCreator: (id, body) => post(`/api/admin/creators/${id}/suspend`, body),
+    restoreCreator: (id) => post(`/api/admin/creators/${id}/restore`, {}),
     verifyCreator: (id, verified) => post(`/api/admin/creators/${id}/verify`, { verified }),
     setCreatorSplit: (id, splitPercent) => post(`/api/admin/creators/${id}/split`, { splitPercent }),
 

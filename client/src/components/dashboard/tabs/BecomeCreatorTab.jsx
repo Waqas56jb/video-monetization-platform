@@ -2,71 +2,78 @@ import { useEffect, useState } from 'react'
 import { Clock, Send, ShieldCheck, XCircle } from 'lucide-react'
 import Panel from '../Panel'
 import Icon from '@/components/ui/Icon'
-import Field from '@/components/ui/Field'
+import Field, { SelectField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
-import { CATEGORIES } from '@/data/copy'
+import { CATEGORIES, CONTENT_TYPES } from '@/data/copy'
 
-const PERKS = [
-  {
-    icon: 'banknote',
-    title: 'Sell your way',
-    text: 'Pay Once, or a Paid Premiere that becomes Free + Ads when your paid period ends and keeps earning.',
-  },
-  {
-    icon: 'timer',
-    title: 'You set the free preview',
-    text: 'Decide exactly how long viewers watch before the paywall appears.',
-  },
-  {
-    icon: 'hand-coins',
-    title: 'Keep 70% of every sale',
-    text: 'Paid out to your M-Pesa or Airtel Money — withdraw whenever you like.',
-  },
-  {
-    icon: 'clapperboard',
-    title: 'Auto social previews',
-    text: 'Every upload gets a 60-second clip you can save for Instagram and TikTok.',
-  },
-]
+const linksFrom = (text) =>
+  String(text || '')
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 
 /**
  * Applying to sell on MTONYO+.
  *
- * This was one button that made the account a creator on the spot. The
- * platform decides who publishes on it, so it is an application somebody
- * reads — and submitting grants nothing. The account stays a viewer, with a
- * viewer's tabs, until an administrator approves it.
- *
- * The three states below are the three honest things this screen can be
- * saying: you have not applied, we have your application, or we answered.
+ * Submitting grants nothing. The account stays a viewer until an administrator
+ * approves the application. The form collects what the review actually needs:
+ * who they are, what they make, proof of an audience, and why they want in.
  */
 export default function BecomeCreatorTab() {
   const showToast = useToast()
   const status = useApi(() => api.account.creatorApplication(), [])
   const application = status.data?.application || null
   const terms = status.data?.terms || ''
+  const stats = useApi(() => api.stats.platform(), [])
+  const creatorShare = stats.data?.creatorSplitPercent ?? 70
+
+  const PERKS = [
+    {
+      icon: 'banknote',
+      title: 'Sell your way',
+      text: 'Pay Once, or a Paid Premiere that becomes Free + Ads when your paid period ends and keeps earning.',
+    },
+    {
+      icon: 'timer',
+      title: 'You set the free preview',
+      text: 'Decide exactly how long viewers watch before the paywall appears.',
+    },
+    {
+      icon: 'hand-coins',
+      title: `Keep ${creatorShare}% of every sale`,
+      text: 'Paid out to your M-Pesa or Airtel Money — withdraw whenever you like.',
+    },
+    {
+      icon: 'clapperboard',
+      title: 'Auto social previews',
+      text: 'Every upload gets a 60-second clip you can save for Instagram and TikTok.',
+    },
+  ]
 
   const [form, setForm] = useState({
     fullName: '',
     stageName: '',
     email: '',
     phone: '',
+    location: '',
+    contentType: '',
     category: '',
+    bio: '',
     description: '',
+    whyJoin: '',
+    followers: '',
+    engagement: '',
     socials: '',
+    sampleWork: '',
     acceptTerms: false,
   })
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
-  /* Start from what the account already knows rather than asking twice. */
   const me = useApi(() => api.account.get(), [])
   useEffect(() => {
-    // The endpoint answers { user }, not { account }. Reading the wrong key
-    // filled nothing, so the form posted an empty name, email and phone and
-    // the server refused it — with the form still looking complete.
     const a = me.data?.user
     if (!a) return
     setForm((f) => ({
@@ -94,18 +101,21 @@ export default function BecomeCreatorTab() {
     if (!/^[0-9+\s-]{9,15}$/.test(form.phone.trim())) {
       return setError('Enter the phone number we can reach you on')
     }
-    if (!form.category) return setError('Choose what you make')
-    if (!form.acceptTerms) return setError('You must accept the Creator Terms to apply')
+    if (!form.location.trim()) return setError('Enter your city or country')
+    if (!form.contentType) return setError('Choose the type of content you make')
+    if (!form.category) return setError('Choose your main category')
+    if (form.bio.trim().length < 30) return setError('Write a short bio — a sentence or two about who you are')
     if (form.description.trim().length < 30) {
       return setError('Tell us a little more about what you will publish — a sentence or two')
     }
-
-    // One per line, blank lines dropped. Nobody should have to think about
-    // commas versus newlines when pasting three links.
-    const socials = form.socials
-      .split(/[\n,]/)
-      .map((s) => s.trim())
-      .filter(Boolean)
+    if (form.whyJoin.trim().length < 30) return setError('Tell us why you want to join MTONYO+')
+    if (!form.followers.trim()) return setError('Tell us your follower count')
+    if (!form.engagement.trim()) return setError('Tell us how your audience engages')
+    const socials = linksFrom(form.socials)
+    if (!socials.length) return setError('Add at least one social link')
+    const sampleWork = linksFrom(form.sampleWork)
+    if (!sampleWork.length) return setError('Add at least one link to sample work')
+    if (!form.acceptTerms) return setError('You must accept the Creator Terms to apply')
 
     setBusy(true)
     try {
@@ -114,9 +124,16 @@ export default function BecomeCreatorTab() {
         stageName: form.stageName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
+        location: form.location.trim(),
+        contentType: form.contentType,
         category: form.category,
+        bio: form.bio.trim(),
         description: form.description.trim(),
+        whyJoin: form.whyJoin.trim(),
+        followers: form.followers.trim(),
+        engagement: form.engagement.trim(),
         socials,
+        sampleWork,
         acceptTerms: true,
       })
       showToast('Application sent — the team will review it')
@@ -128,7 +145,6 @@ export default function BecomeCreatorTab() {
     }
   }
 
-  /* ---------------------------------------------------------- pending --- */
   if (application?.status === 'pending') {
     return (
       <div>
@@ -150,8 +166,16 @@ export default function BecomeCreatorTab() {
               <b>{application.stageName}</b>
             </div>
             <div>
+              <small>Type</small>
+              <b>{application.contentType || '—'}</b>
+            </div>
+            <div>
               <small>Category</small>
               <b>{application.category}</b>
+            </div>
+            <div>
+              <small>Location</small>
+              <b>{application.location || '—'}</b>
             </div>
             <div>
               <small>Sent</small>
@@ -166,7 +190,6 @@ export default function BecomeCreatorTab() {
     )
   }
 
-  /* --------------------------------------------------------- the form --- */
   const declined = application?.status === 'rejected'
 
   return (
@@ -180,9 +203,9 @@ export default function BecomeCreatorTab() {
           Start earning from the videos <span className="brand-accent">you already make.</span>
         </h2>
         <p>
-          MTONYO+ reviews everyone who sells on the platform. Tell us who you are and what you
-          intend to publish, and the team will come back to you. Your library and purchases stay
-          exactly as they are either way.
+          MTONYO+ reviews everyone who sells on the platform. Tell us who you are, what you
+          make, and why you want in. Creator tools open only after the team approves you. Your
+          library and purchases stay exactly as they are either way.
         </p>
       </Panel>
 
@@ -207,6 +230,7 @@ export default function BecomeCreatorTab() {
             </div>
           )}
 
+          <p className="apply-section">Who you are</p>
           <div className="form-grid">
             <Field
               id="ap-name"
@@ -244,18 +268,51 @@ export default function BecomeCreatorTab() {
               onChange={set('phone')}
               required
             />
+            <Field
+              id="ap-location"
+              label="Location"
+              icon="compass"
+              placeholder="City, country"
+              value={form.location}
+              onChange={set('location')}
+              required
+            />
+          </div>
+
+          <p className="apply-section">Your work</p>
+          <div className="form-grid">
+            <SelectField
+              id="ap-type"
+              label="Type of content"
+              icon="clapperboard"
+              placeholder="Choose a format"
+              options={CONTENT_TYPES}
+              value={form.contentType}
+              onChange={set('contentType')}
+              required
+            />
+            <SelectField
+              id="ap-category"
+              label="Main category"
+              icon="tag"
+              placeholder="Choose a category"
+              options={CATEGORIES}
+              value={form.category}
+              onChange={set('category')}
+              required
+            />
           </div>
 
           <div className="field">
-            <label htmlFor="ap-category">What do you make?</label>
-            <select id="ap-category" value={form.category} onChange={set('category')} required>
-              <option value="">Choose a category</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <label htmlFor="ap-bio">Bio</label>
+            <textarea
+              id="ap-bio"
+              rows={3}
+              placeholder="Who you are, in a sentence or two."
+              value={form.bio}
+              onChange={set('bio')}
+              required
+            />
           </div>
 
           <div className="field">
@@ -263,28 +320,71 @@ export default function BecomeCreatorTab() {
             <textarea
               id="ap-about"
               rows={4}
-              placeholder="A sentence or two about the kind of content you intend to sell here."
+              placeholder="The kind of content you intend to sell here."
               value={form.description}
               onChange={set('description')}
               required
             />
-            <span className="field-hint">
-              {form.description.trim().length < 30
-                ? `${30 - form.description.trim().length} more characters`
-                : 'Thank you — that is enough to review.'}
-            </span>
           </div>
 
           <div className="field">
-            <label htmlFor="ap-socials">Instagram, TikTok, YouTube or other links</label>
+            <label htmlFor="ap-samples">Sample work</label>
+            <textarea
+              id="ap-samples"
+              rows={3}
+              placeholder={'https://youtube.com/watch?v=...\nhttps://tiktok.com/@you/video/...'}
+              value={form.sampleWork}
+              onChange={set('sampleWork')}
+              required
+            />
+            <span className="field-hint">Links to existing videos. One per line.</span>
+          </div>
+
+          <p className="apply-section">Your audience</p>
+          <div className="field">
+            <label htmlFor="ap-socials">Social links</label>
             <textarea
               id="ap-socials"
               rows={3}
               placeholder={'https://instagram.com/yourname\nhttps://tiktok.com/@yourname'}
               value={form.socials}
               onChange={set('socials')}
+              required
             />
-            <span className="field-hint">One per line. Optional, but it helps the review.</span>
+            <span className="field-hint">One per line. Full web addresses.</span>
+          </div>
+          <div className="form-grid">
+            <Field
+              id="ap-followers"
+              label="Followers"
+              icon="users"
+              placeholder="e.g. 12,000 on Instagram, 4,000 on TikTok"
+              value={form.followers}
+              onChange={set('followers')}
+              required
+            />
+            <Field
+              id="ap-engagement"
+              label="Engagement"
+              icon="trending-up"
+              placeholder="e.g. 4% average, 8k typical views"
+              value={form.engagement}
+              onChange={set('engagement')}
+              required
+            />
+          </div>
+
+          <p className="apply-section">Why MTONYO+</p>
+          <div className="field">
+            <label htmlFor="ap-why">Why do you want to join MTONYO+?</label>
+            <textarea
+              id="ap-why"
+              rows={3}
+              placeholder="What you want from the platform, and what you will bring."
+              value={form.whyJoin}
+              onChange={set('whyJoin')}
+              required
+            />
           </div>
 
           <label className="apply-terms">

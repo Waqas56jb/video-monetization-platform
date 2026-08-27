@@ -23,6 +23,12 @@ test('admin and staff can open Watch or Create on the same email', () => {
   assert.equal(panelRoleFor('admin', 'creator'), 'creator')
 })
 
+test('signup to Create opens the application, not the studio', () => {
+  assert.equal(dashboardPath('become'), '/dashboard?tab=become')
+  assert.equal(dashboardPath('apply'), '/dashboard?tab=become')
+  assert.equal(dashboardPath('viewer'), '/dashboard?tab=library')
+})
+
 test('signup and login read the Watch or Create side from the URL', () => {
   assert.equal(sideFromSearch('?side=creator'), 'creator')
   assert.equal(sideFromSearch('?side=viewer'), 'viewer')

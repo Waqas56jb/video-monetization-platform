@@ -114,7 +114,7 @@ export default function ForCreators() {
 
           <button className="btn btn-gold" onClick={() => navigate('/signup?side=creator')}>
             <ArrowRight />
-            Start Earning Today
+            Apply to start earning
           </button>
         </div>
       </div>

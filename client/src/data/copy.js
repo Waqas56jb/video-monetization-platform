@@ -174,6 +174,17 @@ export const CATEGORIES = [
 /** The same list, under the name the landing page has always called it. */
 export const CONTENT_KINDS = CATEGORIES
 
+/** Format of work — distinct from the ten-item category taxonomy. */
+export const CONTENT_TYPES = [
+  'Long-form video',
+  'Series / episodic',
+  'Short-form clips',
+  'Live recordings',
+  'Audio / podcasts',
+  'Music videos',
+  'Mixed / other',
+]
+
 /**
  * How long a Paid Premiere stays paid.
  *
@@ -364,7 +375,10 @@ export const DASH_TITLES = {
   videos: () => ['My Videos', 'Manage your published content and premieres.'],
   earnings: () => ['Earnings', 'Your money, transparent and withdrawable anytime.'],
   purchases: () => ['My Purchases', 'Every video you have paid for, and how you paid.'],
-  become: () => ['Become a Creator', 'Start selling your own videos on MTONYO+.'],
+  become: () => [
+    'Apply to become a creator',
+    'Tell us about your work. Creator tools open only after the team approves you.',
+  ],
   inbox: () => ['Notifications', 'Announcements and news about your account.'],
   analytics: () => ['Analytics', 'How your videos and your spending are actually doing.'],
   profile: () => ['My Profile', 'Your name, your photo, and how people find you.'],

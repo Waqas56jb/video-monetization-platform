@@ -10,6 +10,8 @@ import { verifyPassword } from '../lib/authdb.js'
 import { notify, notifyMany } from '../services/notify.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 import { rebuildShareCardsForCreator } from '../lib/buildShareCard.js'
+import { isKnownCategory } from '../lib/categories.js'
+import { isKnownContentType, shapeApplication } from '../lib/creatorApplication.js'
 
 /**
  * Everything about *your own* account: who you are, how you are paid, what we
@@ -464,22 +466,50 @@ router.post(
 const CREATOR_TERMS =
   'I confirm I hold the rights to the content I publish on MTONYO+ and accept the MTONYO+ Creator Terms.'
 
+const urlList = (label, { min, max }) =>
+  z
+    .array(z.string().trim().url(`Each ${label} must be a full web address`))
+    .min(min, `Add at least one ${label}`)
+    .max(max)
+
 const applicationSchema = z.object({
   fullName: z.string().trim().min(2, 'Enter your full name').max(120),
   stageName: z.string().trim().min(2, 'Enter your creator or business name').max(120),
-  email: z.string().trim().email('Enter a valid email address'),
+  email: z.string().trim().email('Enter an email address'),
   phone: z
     .string()
     .trim()
     .regex(/^[0-9+\s-]{9,15}$/, 'Enter the phone number we can reach you on'),
-  category: z.string().trim().min(2, 'Choose what you make').max(60),
+  location: z.string().trim().min(2, 'Enter your city or country').max(120),
+  contentType: z
+    .string()
+    .trim()
+    .min(2, 'Choose the type of content you make')
+    .refine(isKnownContentType, 'Choose a type of content from the list'),
+  category: z
+    .string()
+    .trim()
+    .min(2, 'Choose your main category')
+    .refine(isKnownCategory, 'Choose a category from the list'),
+  bio: z
+    .string()
+    .trim()
+    .min(30, 'Tell us who you are — a short bio, at least a sentence or two')
+    .max(1000),
   description: z
     .string()
     .trim()
-    .min(30, 'Tell us a little more — at least a sentence or two about what you will publish')
+    .min(30, 'Tell us a little more about what you will publish')
     .max(2000),
-  // One link is enough; four is fine. Whatever they have.
-  socials: z.array(z.string().trim().url('Each link must be a full web address')).max(6).default([]),
+  whyJoin: z
+    .string()
+    .trim()
+    .min(30, 'Tell us why you want to join MTONYO+')
+    .max(1000),
+  followers: z.string().trim().min(1, 'Tell us your follower count').max(200),
+  engagement: z.string().trim().min(1, 'Tell us how your audience engages').max(500),
+  socials: urlList('social link', { min: 1, max: 6 }),
+  sampleWork: urlList('sample', { min: 1, max: 6 }),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: 'You must accept the Creator Terms to apply' }),
   }),
@@ -490,8 +520,11 @@ router.get(
   '/creator-application',
   asyncHandler(async (req, res) => {
     const row = await one(
-      `select id, status::text as status, category, stage_name, description,
-              decision_note, decided_at, created_at
+      `select id, status::text as status, full_name, stage_name, email, phone,
+              location, content_type, category, bio, description, why_join,
+              followers, engagement, socials, sample_work, decision_note,
+              decided_at, created_at, terms_accepted_at, access_ended_at,
+              access_end_note
          from creator_applications
         where user_id = $1
         order by created_at desc
@@ -502,18 +535,7 @@ router.get(
     res.json({
       role: req.user.role,
       terms: CREATOR_TERMS,
-      application: row
-        ? {
-            id: row.id,
-            status: row.status,
-            category: row.category,
-            stageName: row.stage_name,
-            description: row.description,
-            decisionNote: row.decision_note,
-            decidedAt: row.decided_at,
-            createdAt: row.created_at,
-          }
-        : null,
+      application: shapeApplication(row),
     })
   })
 )
@@ -536,9 +558,10 @@ router.post(
     const b = req.body
     const row = await one(
       `insert into creator_applications
-         (user_id, full_name, stage_name, email, phone, category, description,
-          socials, terms_accepted_at, terms_statement)
-       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb, now(), $9)
+         (user_id, full_name, stage_name, email, phone, location, content_type,
+          category, bio, description, why_join, followers, engagement, socials,
+          sample_work, terms_accepted_at, terms_statement)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15::jsonb, now(), $16)
        returning id, status::text as status, created_at`,
       [
         req.user.id,
@@ -546,9 +569,16 @@ router.post(
         b.stageName,
         b.email.toLowerCase(),
         b.phone,
+        b.location,
+        b.contentType,
         b.category,
+        b.bio,
         b.description,
+        b.whyJoin,
+        b.followers,
+        b.engagement,
         JSON.stringify(b.socials || []),
+        JSON.stringify(b.sampleWork || []),
         CREATOR_TERMS,
       ]
     )

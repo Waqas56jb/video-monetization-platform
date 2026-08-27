@@ -38,7 +38,7 @@ const GROUPS = [
   {
     label: 'Start Selling',
     roles: ['viewer'],
-    items: [{ tab: 'become', icon: 'rocket', label: 'Become a Creator', roles: ['viewer'] }],
+    items: [{ tab: 'become', icon: 'rocket', label: 'Apply to become a Creator', roles: ['viewer'] }],
   },
   {
     label: 'Account',

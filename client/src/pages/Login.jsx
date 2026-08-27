@@ -148,8 +148,8 @@ export default function Login() {
         ),
         text:
           side === 'creator'
-            ? 'Log in on the Create side to upload, price, and earn. The same email also has a Watch side.'
-            : 'Every video you have purchased stays in your library. The same email can also open a creator studio.',
+            ? 'Log in on the Create side after we have approved your application. Until then, use Watch.'
+            : 'Every video you have purchased stays in your library. The same email can apply to publish later.',
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={
@@ -171,19 +171,29 @@ export default function Login() {
           <div className="form-error" role="alert">
             <span>{error}</span>
             {errorCode === 'WRONG_SIDE' && wrongSide && (
-              <button
-                type="button"
-                className="link-btn"
-                style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
-                onClick={() => {
-                  setSide(wrongSide)
-                  setError(null)
-                  setErrorCode(null)
-                  setWrongSide(null)
-                }}
-              >
-                Switch to {sideLabel(wrongSide)} login
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="link-btn"
+                  style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
+                  onClick={() => {
+                    setSide(wrongSide)
+                    setError(null)
+                    setErrorCode(null)
+                    setWrongSide(null)
+                  }}
+                >
+                  Switch to {sideLabel(wrongSide)} login
+                </button>
+                {side === 'creator' && (
+                  <Link
+                    to={authUrl('signup', '/dashboard?tab=become', { side: 'creator' })}
+                    style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
+                  >
+                    Apply to become a creator
+                  </Link>
+                )}
+              </>
             )}
           </div>
         )}

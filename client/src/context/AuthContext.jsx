@@ -147,16 +147,17 @@ export function AuthProvider({ children }) {
       role: wanted,
       side: wanted,
     })
+    const asApplicant = Boolean(data.needsCreatorApplication)
+    const resolved = asApplicant ? 'viewer' : data.side === 'creator' ? 'creator' : wanted
     if (data.session) {
       saveSession(data.session)
-      const resolved = data.side === 'creator' ? 'creator' : wanted
       persistAccountSide(resolved)
       setSideState(resolved)
       setSides(parseSides(data.sides))
       await reload()
     } else {
-      persistAccountSide(data.side === 'creator' ? 'creator' : wanted)
-      setSideState(data.side === 'creator' ? 'creator' : wanted)
+      persistAccountSide(resolved)
+      setSideState(resolved)
       setSides(parseSides(data.sides))
     }
     return data

@@ -295,6 +295,10 @@ export async function enableViewerSide(userId) {
 
 /**
  * Open the Create side on an existing login.
+ *
+ * Do not call this from register or login. Creator access is granted only
+ * when an administrator approves an application (admin.routes.js). This
+ * helper is leftover for staff tooling that already checked permission.
  * Returns { profile, created } so callers can tell attach from no-op.
  */
 export async function ensureCreatorSide(profile, { fullName, phone } = {}) {

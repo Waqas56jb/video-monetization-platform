@@ -33,6 +33,7 @@ export function homeTabFor(panel) {
 }
 
 export function dashboardPath(panel) {
+  if (panel === 'apply' || panel === 'become') return '/dashboard?tab=become'
   return `/dashboard?tab=${homeTabFor(panel)}`
 }
 
