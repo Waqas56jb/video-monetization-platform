@@ -801,7 +801,10 @@ async function seed() {
 
   /* ----------------------------------------- one waiting to be reviewed --- */
   const pendingTitle = 'Nyerere Day — Rehearsals (awaiting review)'
-  const pendingExists = await one('select id from videos where title = $1', [pendingTitle])
+  const pendingExists = await one(
+    'select id, review_status, is_published from videos where title = $1',
+    [pendingTitle]
+  )
   if (!pendingExists) {
     process.stdout.write(`  fetching "${pendingTitle}" … `)
     const creator = creators.juma
@@ -830,6 +833,27 @@ async function seed() {
       ]
     )
     console.log('done')
+  } else if (pendingExists.is_published || pendingExists.review_status === 'approved') {
+    /**
+     * This row exists so the admin review queue is not empty. If it was
+     * approved later, Explore would show a title that still says
+     * "awaiting review". Put it back in the queue — never on the public grid.
+     */
+    await transaction(
+      async (client) => {
+        await client.query(
+          `update videos
+              set is_published = false,
+                  published_at = null,
+                  review_status = 'pending_review',
+                  state = 'ready'
+            where id = $1`,
+          [pendingExists.id]
+        )
+      },
+      { actorRole: 'admin', actorId: admin.id }
+    )
+    log.info(`"${pendingTitle}" stays in review — not on Explore`)
   }
 
   const RIGHTS =

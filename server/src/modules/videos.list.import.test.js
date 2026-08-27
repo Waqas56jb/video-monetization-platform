@@ -13,3 +13,10 @@ test('Explore catalogue is only approved published videos', () => {
 test('category filter matches the stored upload category', () => {
   assert.match(src, /if \(category\) \{ params\.push\(category\); where\.push\(`v\.category = \$\$\{params\.length\}`\) \}/)
 })
+
+test('demo Nyerere sample is forced back to pending review if it was published', () => {
+  const demo = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../cli/demo.js'), 'utf8')
+  assert.match(demo, /Nyerere Day — Rehearsals \(awaiting review\)/)
+  assert.match(demo, /stays in review — not on Explore/)
+  assert.match(demo, /review_status = 'pending_review'/)
+})

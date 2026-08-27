@@ -3,7 +3,7 @@ import { Flame, LayoutGrid } from 'lucide-react'
 import VideoCard from '@/components/ui/VideoCard'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import useApi from '@/hooks/useApi'
-import { toCard, videoLink } from '@/lib/videoView'
+import { toCard, videoLink, isPublicCatalogueVideo } from '@/lib/videoView'
 import api from '@/lib/api'
 
 /**
@@ -24,7 +24,7 @@ export default function Trending() {
     () => api.videos.list({ sort: 'trending', limit: 8 }),
     []
   )
-  const videos = data?.videos || []
+  const videos = (data?.videos || []).filter(isPublicCatalogueVideo)
 
   return (
     <section className="section section-trending" id="trending">

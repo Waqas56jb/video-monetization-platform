@@ -55,5 +55,14 @@ export function toCard(v, { owned = false } = {}) {
   }
 }
 
+/** Public Explore / homepage: never show a draft or a video still in review. */
+export function isPublicCatalogueVideo(v) {
+  if (!v?.id) return false
+  if (v.isPublished === false) return false
+  const review = v.reviewStatus || v.review_status
+  if (review && review !== 'approved') return false
+  return true
+}
+
 /** In-app navigation. Public shares never use this UUID fallback. */
 export const videoLink = (v) => canonicalWatchPath(v) || (v?.id ? `/watch/${v.id}` : '/explore')

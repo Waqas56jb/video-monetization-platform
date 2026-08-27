@@ -8,7 +8,7 @@ import BusyButton from '@/components/ui/BusyButton'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import { useDebounced } from '@/hooks/useApi'
 import { useProgressBar } from '@/context/ProgressContext'
-import { toCard, videoLink } from '@/lib/videoView'
+import { toCard, videoLink, isPublicCatalogueVideo } from '@/lib/videoView'
 import { CATEGORIES } from '@/data/copy'
 import useGoBack, { hasHistory } from '@/hooks/useGoBack'
 import api from '@/lib/api'
@@ -78,7 +78,7 @@ export default function Explore() {
           limit: PAGE_SIZE,
           offset,
         })
-        const rows = res?.videos || []
+        const rows = (res?.videos || []).filter(isPublicCatalogueVideo)
         setVideos((prev) => (append ? [...prev, ...rows] : rows))
         setTotal(res?.total ?? 0)
         setNextOffset(res?.nextOffset ?? null)

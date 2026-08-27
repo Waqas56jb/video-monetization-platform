@@ -8,6 +8,7 @@ coverage
 
 # scratch space for one-off probes and live tests
 tmp/
+tmp-player-audit/
 
 # Vercel
 .vercel
