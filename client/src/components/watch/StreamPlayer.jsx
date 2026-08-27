@@ -427,6 +427,7 @@ export default function StreamPlayer({
         src={iframeSrc}
         title={title}
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+        referrerPolicy="origin"
         allowFullScreen
       />
 

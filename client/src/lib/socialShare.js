@@ -57,6 +57,11 @@ export function facebookHref(watchUrl) {
   return web
 }
 
+/** Universal WhatsApp share — opens the app on a phone, WhatsApp Web on a laptop. */
+export function whatsappHref(watchUrl) {
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(String(watchUrl || '').trim())}`
+}
+
 export function socialTarget() {
   return isTouchMobile() ? '_self' : '_blank'
 }

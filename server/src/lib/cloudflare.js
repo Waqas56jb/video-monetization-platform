@@ -77,8 +77,12 @@ async function cf(pathname, { method = 'GET', body, headers = {} } = {}) {
  * So this is built from where the apps actually live, and — the important part
  * — it refuses to produce a localhost-only list in production. An unrestricted
  * video is a small risk; a permanently unplayable one is a dead product.
+ *
+ * Localhost is included alongside the live hosts so the same Cloudflare assets
+ * can be verified on Vite. A stolen playback token still expires; this does
+ * not unlock a paid film.
  */
-function embedOrigins() {
+export function embedOrigins() {
   const hostOf = (url) => {
     try {
       return new URL(url).host
@@ -94,10 +98,19 @@ function embedOrigins() {
 
   const unique = [...new Set(hosts)]
   const isLocal = (h) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h)
+  for (const h of [
+    'localhost:5173',
+    'localhost:4173',
+    'localhost:5174',
+    '127.0.0.1:5173',
+    '127.0.0.1:4173',
+  ]) {
+    if (!unique.includes(h)) unique.push(h)
+  }
 
   // In production, a list of nothing but localhost would brick every video it
   // touched. Leave it open rather than lock it to a machine nobody can reach.
-  if (env.isProd && unique.every(isLocal)) {
+  if (env.isProd && unique.filter((h) => !isLocal(h)).length === 0) {
     log.warn(
       'Refusing to restrict video embedding to localhost in production — ' +
         'set PUBLIC_WEB_URL and ADMIN_WEB_URL. Uploads will be unrestricted until then.'

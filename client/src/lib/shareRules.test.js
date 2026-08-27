@@ -8,6 +8,7 @@ import {
   videoRouteMatches,
   whatsappShareText,
 } from './watchUrl.js'
+import { whatsappHref } from './socialShare.js'
 import { authUrl, safeNext } from './nextPath.js'
 import { adCanSkip, adSkipRules } from './adSkip.js'
 
@@ -44,6 +45,14 @@ test('WhatsApp payload is the share URL only — OG card supplies title and post
   const text = whatsappShareText(url)
   assert.equal(text, url)
   assert.equal(text.endsWith('.mp4'), false)
+})
+
+test('WhatsApp opens the official send URL with only the watch link', () => {
+  const url = `${ORIGIN}/watch/studio-session-track-4`
+  const href = whatsappHref(url)
+  assert.equal(href.startsWith('https://api.whatsapp.com/send?text='), true)
+  assert.ok(href.includes(encodeURIComponent(url)))
+  assert.equal(href.includes('.mp4'), false)
 })
 
 test('More… payload is title + url only (no caption text)', () => {

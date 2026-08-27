@@ -161,7 +161,7 @@ router.get(
           : 'WATCH FREE PREVIEW · MTONYO+',
         'og:image': cardUrl,
         'og:url': deepLink,
-        'og:type': 'video.other',
+        'og:type': 'website',
       },
     })
   })

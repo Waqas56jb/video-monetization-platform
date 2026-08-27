@@ -122,6 +122,94 @@ const run = async () => {
   console.log('OK   Creator login is blocked until approval')
   console.log('OK   Application is pending with assessment fields')
   console.log(`id   ${app.id}`)
+
+  const adminEmail = process.env.UI_ADMIN_EMAIL || 'admin@mtonyo.tz'
+  const adminPassword = process.env.UI_ADMIN_PASSWORD || 'Mtonyo!Admin2026'
+  const adminLogin = await req('POST', '/api/auth/login', {
+    body: { email: adminEmail, password: adminPassword, side: 'viewer' },
+  })
+
+  const moderatorLogin = await req('POST', '/api/auth/login', {
+    body: { email: 'demo.moderator@mtonyo.demo', password: 'DemoPass123!', side: 'viewer' },
+  })
+  if (moderatorLogin.status === 200 && moderatorLogin.json?.session?.accessToken) {
+    const steal = await req('POST', `/api/admin/creator-applications/${app.id}/decide`, {
+      token: moderatorLogin.json.session.accessToken,
+      body: { decision: 'approve', note: 'should be refused' },
+    })
+    if (steal.status < 400) fail('reviewer must not approve creator applications', steal)
+    console.log('OK   Reviewer cannot approve creator applications')
+  }
+
+  if (adminLogin.status !== 200 || !adminLogin.json?.session?.accessToken) {
+    console.log('SKIP admin approve/decline (staff password is not the documented demo one in this environment)')
+    return
+  }
+  const adminToken = adminLogin.json.session.accessToken
+  const adminRole = adminLogin.json.user?.role
+  if (adminRole !== 'admin' && adminRole !== 'sub_admin') {
+    fail('admin role', adminLogin.json.user)
+  }
+
+  const queue = await req('GET', '/api/admin/creator-applications?status=pending', {
+    token: adminToken,
+  })
+  if (queue.status !== 200) fail('admin pending queue', queue)
+  const pendingList = queue.json?.applications || []
+  if (!pendingList.some((row) => row.id === app.id)) {
+    fail('pending application visible to admin', { id: app.id, pending: pendingList.length })
+  }
+
+  const decided = await req('POST', `/api/admin/creator-applications/${app.id}/decide`, {
+    token: adminToken,
+    body: { decision: 'approve', note: 'Milestone 2 audit — approve test account' },
+  })
+  if (decided.status !== 200) fail('admin approve', decided)
+  if (decided.json?.application?.status !== 'approved') fail('approve status', decided.json)
+
+  const creatorOk = await req('POST', '/api/auth/login', {
+    body: { email, password, side: 'creator' },
+  })
+  if (creatorOk.status !== 200) fail('creator login after approve', creatorOk)
+  if (creatorOk.json.user?.role !== 'creator') fail('role is creator after approve', creatorOk.json.user)
+  if (!creatorOk.json.sides?.creator) fail('creator side open after approve', creatorOk.json)
+
+  const declinedUser = `applytest.decline.${stamp}@gmail.com`
+  const declinedReg = await req('POST', '/api/auth/register', {
+    body: {
+      email: declinedUser,
+      password,
+      fullName: 'Bora Test',
+      phone: '0712345679',
+      role: 'creator',
+      side: 'creator',
+    },
+  })
+  if (declinedReg.status !== 201 && declinedReg.status !== 200) fail('decline-case register', declinedReg)
+  const declinedToken = declinedReg.json.session?.accessToken
+  const declinedApp = await req('POST', '/api/account/creator-application', {
+    token: declinedToken,
+    body: { ...application, email: declinedUser, stageName: 'Bora Live', fullName: 'Bora Test' },
+  })
+  if (declinedApp.status !== 201) fail('decline-case apply', declinedApp)
+  const declineId = declinedApp.json.application?.id
+  const rejected = await req('POST', `/api/admin/creator-applications/${declineId}/decide`, {
+    token: adminToken,
+    body: { decision: 'reject', note: 'Milestone 2 audit — decline path' },
+  })
+  if (rejected.status !== 200 && rejected.status !== 201) fail('admin decline', rejected)
+  const stillViewer = await req('GET', '/api/auth/me', { token: declinedToken })
+  if (stillViewer.json.user?.role !== 'viewer') fail('declined stays viewer', stillViewer.json.user)
+  const stillBlocked = await req('POST', '/api/auth/login', {
+    body: { email: declinedUser, password, side: 'creator' },
+  })
+  if (stillBlocked.status !== 403 || stillBlocked.json?.error?.code !== 'WRONG_SIDE') {
+    fail('declined creator login still blocked', stillBlocked)
+  }
+
+  console.log('OK   Admin can see the pending application')
+  console.log('OK   Approve opens creator access')
+  console.log('OK   Decline leaves the account as a viewer')
 }
 
 run().catch((err) => {

@@ -110,13 +110,14 @@ export function crawlerDocument({ canonical, title, description, image }) {
 <link rel="image_src" href="${escapeAttr(image)}">`
     : ''
 
+  // website + JPEG poster. video.other without og:video made WhatsApp send a bare URL.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeAttr(title)} - MTONYO+</title>
 <meta name="description" content="${escapeAttr(description)}">
-<meta property="og:type" content="video.other">
+<meta property="og:type" content="website">
 <meta property="og:site_name" content="MTONYO+">
 <meta property="og:title" content="${escapeAttr(title)}">
 <meta property="og:description" content="${escapeAttr(description)}">

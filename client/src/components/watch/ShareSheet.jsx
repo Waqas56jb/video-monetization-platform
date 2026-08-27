@@ -28,15 +28,12 @@ import {
   instagramHref,
   isTouchMobile,
   tiktokHref,
+  whatsappHref,
 } from '@/lib/socialShare'
 import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
 import { idle, cancelIdle } from '@/lib/mobileUx'
-
-function isMobileUa() {
-  return /Android|iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')
-}
 
 function IconLink({ size = 22 }) {
   return (
@@ -74,6 +71,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const notify = useNotify()
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [waBusy, setWaBusy] = useState(false)
   const [saving, setSaving] = useState(null)
   const [problem, setProblem] = useState(null)
   const [hint, setHint] = useState(null)
@@ -159,21 +157,34 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
-  const onWhatsApp = () => {
-    const text = shareUrl
-    const mobile = isMobileUa()
-    const href = mobile
-      ? `whatsapp://send?text=${encodeURIComponent(text)}`
-      : `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`
-    if (mobile) {
-      window.location.href = href
-      setTimeout(() => {
-        if (!document.hidden) {
-          window.location.href = `https://wa.me/?text=${encodeURIComponent(text)}`
-        }
-      }, 1200)
-    } else {
-      window.open(href, '_blank', 'noopener,noreferrer')
+  const onWhatsApp = async () => {
+    if (waBusy) return
+    setWaBusy(true)
+    try {
+      if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
+        healShareCard(slug)
+      }
+      if (cardUrl) {
+        await new Promise((resolve) => {
+          const img = new Image()
+          const done = () => resolve()
+          img.onload = done
+          img.onerror = done
+          img.src = cardUrl
+          setTimeout(done, 2000)
+        })
+      }
+      if (shareUrl) {
+        fetch(shareUrl, { mode: 'no-cors', cache: 'reload', keepalive: true }).catch(() => {})
+      }
+    } finally {
+      const href = whatsappHref(shareUrl)
+      if (isTouchMobile()) {
+        window.location.href = href
+      } else {
+        window.open(href, '_blank', 'noopener,noreferrer')
+      }
+      setWaBusy(false)
     }
     warm()
   }
@@ -349,8 +360,8 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
         <h3 id="share-title">Share this video</h3>
         <p className="share-sub">
-          Help people discover this amazing content. They watch the free preview, then <b>pay</b> to
-          continue.
+          WhatsApp and Facebook show this poster card. The film itself plays on
+          MTONYO+ after they tap through — it is not sent as a file in the chat.
         </p>
 
         <p className="share-kicker">
@@ -446,11 +457,15 @@ export default function ShareSheet({ open, video, share, onClose }) {
           </p>
         )}
 
-        <button className="share-wa" type="button" onClick={onWhatsApp}>
-          <IconWhatsApp size={26} />
+        <button className="share-wa" type="button" onClick={onWhatsApp} disabled={waBusy}>
+          {waBusy ? <Loader2 size={26} className="spin" /> : <IconWhatsApp size={26} />}
           <span className="share-wa-copy">
-            <b>Share on WhatsApp</b>
-            <small>Share privately or in groups</small>
+            <b>{waBusy ? 'Preparing card…' : 'Share on WhatsApp'}</b>
+            <small>
+              {isTouchMobile()
+                ? 'Opens WhatsApp with the poster card'
+                : 'Wait for the preview card in the box, then send'}
+            </small>
           </span>
         </button>
 

@@ -14,24 +14,15 @@
  * what --fix does.
  */
 import { env, capabilities } from '../config/env.js'
+import { embedOrigins } from '../lib/cloudflare.js'
 import { log } from '../lib/logger.js'
 
 const shouldFix = process.argv.includes('--fix')
 const API = `https://api.cloudflare.com/client/v4/accounts/${env.cloudflare.accountId}/stream`
 const headers = { Authorization: `Bearer ${env.cloudflare.apiToken}`, 'Content-Type': 'application/json' }
 
-const hostOf = (url) => {
-  try {
-    return new URL(url).host
-  } catch {
-    return String(url).replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-  }
-}
 const isLocal = (h) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h)
-
-const wanted = [
-  ...new Set([env.publicWebUrl, env.adminWebUrl, ...env.corsOrigins].filter(Boolean).map(hostOf)),
-]
+const wanted = embedOrigins()
 
 console.log('\n\x1b[35m  MTONYO+ \x1b[0m video embed permissions\n')
 

@@ -9,7 +9,12 @@
 
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { escapeAttr } from './_lib/ogDocument.js'
+import {
+  crawlerDocument,
+  escapeAttr,
+  isLinkPreviewBot,
+  previewCopy,
+} from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
 import { startReport, settleReport } from './_lib/report.js'
 
@@ -105,7 +110,7 @@ function buildMetaBlock({ canonical, title, creator, description, cardUrl }) {
 
   return `<title>${escapeAttr(title)} — ${escapeAttr(creator || 'MTONYO+')} | MTONYO+</title>
 <meta name="description" content="${escapeAttr(description)}">
-<meta property="og:type" content="video.other">
+<meta property="og:type" content="website">
 <meta property="og:site_name" content="MTONYO+">
 <meta property="og:url" content="${escapeAttr(canonical)}">
 <meta property="og:title" content="${escapeAttr(title)}">
@@ -146,6 +151,35 @@ export default async function handler(req, res) {
   const cardUrl =
     meta?.cardUrl ||
     (slug ? `${API}/api/share-card/${encodeURIComponent(slug)}.jpg` : `${API}/api/share-card/fallback.jpg`)
+
+  /**
+   * WhatsApp / Facebook fetch this HTML server-side and never run JavaScript.
+   * A 2 KB Open Graph document is what they can turn into a poster card.
+   * `video.other` without an og:video file made them drop the card and send
+   * a plain URL — the share the client kept reporting.
+   */
+  if (isLinkPreviewBot(ua)) {
+    const copy = previewCopy({ title, creator: { name: creator } })
+    const html = crawlerDocument({
+      canonical,
+      title: copy.title,
+      description: copy.description,
+      image: cardUrl,
+    })
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
+    res.setHeader('Vary', 'User-Agent, Accept-Encoding')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('X-Build', BUILD)
+    res.setHeader('X-Crawler', crawler)
+    res.status(200)
+    res.end(html)
+    console.log(
+      `og-html slug=${slug || 'none'} status=200 ms=${Date.now() - started} crawler=${crawler} bytes=${html.length}`
+    )
+    await settleReport(pending)
+    return
+  }
 
   let shell = loadShell()
   if (!shell) {
@@ -188,7 +222,7 @@ export default async function handler(req, res) {
   )
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800')
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
   res.setHeader('Vary', 'Accept-Encoding')
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Build', BUILD)

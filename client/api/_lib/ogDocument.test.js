@@ -38,7 +38,8 @@ test('crawler HTML is per-video and never /s/', () => {
     image: cardFor(ORIGIN, b, b.slug),
   })
 
-  assert.match(htmlA, /og:type" content="video.other"/)
+  assert.match(htmlA, /og:type" content="website"/)
+  assert.doesNotMatch(htmlA, /video\.other/)
   assert.match(htmlA, /og:site_name" content="MTONYO\+"/)
   assert.match(htmlA, /WATCH FREE PREVIEW · Juma Kileo Live · MTONYO\+/)
   assert.match(htmlA, /\/watch\/studio-session-track-4/)
