@@ -317,7 +317,6 @@ export default function Watch() {
   }, [ads, p?.access?.showsAds])
 
   const adFinished = useCallback(() => {
-    // Coming back from a mid-roll, pick the film up where it was interrupted.
     if (activeAd?.placement === 'mid_roll' && mainProgress.current > 0) {
       setResumeHint(mainProgress.current)
     }
@@ -413,9 +412,6 @@ export default function Watch() {
     const t = setTimeout(() => setContinueReady(true), 3500)
     return () => clearTimeout(t)
   }, [justPaid, continueReady])
-
-  /** Autoplay the full film only — never remount the preview clip after Pay. */
-  const autoContinue = justPaid && p?.playback?.kind === 'full'
 
   /**
    * Sharing moved into its own sheet.
@@ -601,8 +597,8 @@ export default function Watch() {
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
                 startAt={resumeAt}
-                autoplay={autoContinue}
-                playOnReady={autoContinue}
+                autoplay
+                playOnReady
                 /**
                  * Where the free preview ends, enforced by the player itself.
                  *

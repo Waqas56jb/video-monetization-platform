@@ -20,7 +20,11 @@ function check(name, cond, detail = '') {
 }
 
 async function run() {
-  const browser = await chromium.launch({ channel: 'msedge', headless: true })
+  const browser = await chromium.launch({
+    channel: 'msedge',
+    headless: true,
+    args: ['--autoplay-policy=no-user-gesture-required'],
+  })
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   page.setDefaultTimeout(40000)
   await page.addInitScript(() => {
@@ -65,6 +69,9 @@ async function run() {
   if (await adStage.count()) {
     const state0 = await adStage.getAttribute('data-ad-state')
     check('skip clock not ready on black screen', state0 !== 'skippable', `state=${state0}`)
+    const tap = page.locator('.ad-stage .stream-tap')
+    if (await tap.count()) await tap.click({ force: true }).catch(() => {})
+    await page.waitForTimeout(800)
 
     const skipReady0 = page.locator('.ad-skip.is-ready')
     check('Skip is not available before airtime', (await skipReady0.count()) === 0)
@@ -125,11 +132,19 @@ async function run() {
     }
   }
 
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(800)
+  const contentTap = page.locator('.player .stream-tap')
+  if (await contentTap.count()) await contentTap.click({ force: true }).catch(() => {})
+  await page.waitForSelector('.player .stream-shell.is-ready', { timeout: 15000 }).catch(() => {})
+
   const adGone = (await page.locator('.ad-stage').count()) === 0
   const contentFrame = page.locator('.player iframe.stream-frame, .player .stream-shell')
   check('ad stage closed', adGone)
   check('content player is on screen', (await contentFrame.count()) > 0)
+  check(
+    'content actually started (not a paused Play overlay)',
+    (await page.locator('.player .stream-shell.is-ready').count()) > 0
+  )
   check('no page crash', errors.length === 0, errors.slice(0, 2).join(' | '))
 
   await browser.close()

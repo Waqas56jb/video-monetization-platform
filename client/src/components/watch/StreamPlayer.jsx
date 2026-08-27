@@ -28,20 +28,19 @@ function loadSdk() {
   return sdkPromise
 }
 
-function buildSrc(src, poster, autoplay, startAt, controls) {
+function buildSrc(src, startAt, controls) {
   try {
     const url = new URL(src)
-    if (poster) url.searchParams.set('poster', poster)
-    if (autoplay) {
-      url.searchParams.set('autoplay', 'true')
-      url.searchParams.set('muted', 'true')
-    }
-    // Where the full video should pick up — see `startAt` on the component.
+    // Always ask for muted autoplay. A paused Stream iframe with no parent
+    // tap target is the giant Play button the client cannot start — especially
+    // with controls=false, where that button lives in a cross-origin frame.
+    url.searchParams.set('autoplay', 'true')
+    url.searchParams.set('muted', 'true')
+    // Do not put a signed poster on this URL. It doubled the JWT, aborted the
+    // embed (net::ERR_ABORTED), and left the same dead Play overlay.
     if (startAt > 0) url.searchParams.set('startTime', `${Math.floor(startAt)}s`)
-    // An advert is not something the viewer drives.
     if (controls === false) url.searchParams.set('controls', 'false')
     url.searchParams.set('preload', 'auto')
-    // Keep the letterbox black so Stream never flashes a white canvas.
     url.searchParams.set('letterboxColor', '000000')
     return url.toString()
   } catch {
@@ -132,6 +131,10 @@ export default function StreamPlayer({
   const [needsGesture, setNeedsGesture] = useState(false)
   const requireAirtimeRef = useRef(requireAirtime)
   requireAirtimeRef.current = requireAirtime
+  const playOnReadyRef = useRef(playOnReady)
+  playOnReadyRef.current = playOnReady
+  const autoplayRef = useRef(autoplay)
+  autoplayRef.current = autoplay
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
   const [boot, setBoot] = useState(0)
   /**
@@ -149,10 +152,19 @@ export default function StreamPlayer({
   }
   const resumeAt = pin.current.startAt
   const iframeSrc = useMemo(
-    () => (src ? buildSrc(src, poster, autoplay || playOnReady, resumeAt, controls) : null),
-    [src, poster, autoplay, playOnReady, resumeAt, controls]
+    () => (src ? buildSrc(src, resumeAt, controls) : null),
+    [src, resumeAt, controls]
   )
 
+  const kickFromGesture = () => {
+    const player = playerRef.current
+    try {
+      if (player && 'muted' in player) player.muted = true
+      player?.play?.()
+    } catch {
+      /* overlay stays until time actually moves */
+    }
+  }
   const markReady = () => setReady(true)
   const retry = () => {
     if (onRetry && (!src || !iframeSrc)) {
@@ -172,15 +184,9 @@ export default function StreamPlayer({
 
     const timer = setTimeout(() => {
       setTimedOut(true)
-    }, 10000)
-    const gesture = requireAirtime
-      ? setTimeout(() => setNeedsGesture(true), 2500)
-      : null
-    return () => {
-      clearTimeout(timer)
-      if (gesture) clearTimeout(gesture)
-    }
-  }, [iframeSrc, boot, requireAirtime])
+    }, 12000)
+    return () => clearTimeout(timer)
+  }, [iframeSrc, boot])
 
   useEffect(() => {
     if (!iframeSrc) return
@@ -221,6 +227,7 @@ export default function StreamPlayer({
         player.addEventListener('timeupdate', haltIfDue)
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
+        let unmutedAt = 0
         const shown = () => {
           if (aired) return
           aired = true
@@ -229,24 +236,31 @@ export default function StreamPlayer({
           onPlayingRef.current?.()
         }
         const noteIfAiring = (t = Number(player.currentTime) || 0) => {
-          if (requireAirtimeRef.current && t < AD_AIRTIME_FLOOR) return
+          const floor = requireAirtimeRef.current ? AD_AIRTIME_FLOOR : 0.1
+          if (t < floor) return
           const first = !aired
           shown()
-          // Ads stay muted. Unmuting here is what paused them on a black
-          // frame and froze the skip clock at "Skip in 5". Sound is one tap.
-          if (first && requireAirtimeRef.current && alive) setSilent(true)
+          if (!first || !alive) return
+          try {
+            setSilent(Boolean(player.muted))
+          } catch {
+            /* ignore */
+          }
+          if (requireAirtimeRef.current) return
+          if (!playOnReadyRef.current && !autoplayRef.current) return
+          try {
+            if ('muted' in player) {
+              player.muted = false
+              unmutedAt = Date.now()
+              setTimeout(() => {
+                if (alive) setSilent(Boolean(player.muted))
+              }, 1200)
+            }
+          } catch {
+            /* stay muted; tap-for-sound still covers it */
+          }
         }
-        // After a purchase, keep the poster up until play actually starts.
-        // loadeddata / iframe onLoad used to drop it early and leave Stream's
-        // giant play button — the extra "Watch Now" after paying.
-        // Ads wait for media time — a black buffer is not "ready".
-        if (!playOnReady && !requireAirtimeRef.current) {
-          player.addEventListener('loadeddata', markReady)
-          player.addEventListener('canplay', markReady)
-        }
-        player.addEventListener('play', () => {
-          if (!requireAirtimeRef.current) shown()
-        })
+        // Never uncover on loadeddata — that is Stream's paused Play button.
         player.addEventListener('playing', () => noteIfAiring())
         player.addEventListener('timeupdate', () => noteIfAiring())
 
@@ -272,32 +286,16 @@ export default function StreamPlayer({
           player.addEventListener('canplay', seek)
         }
 
-        if (playOnReady) {
+        {
           /**
-           * Keep it playing, whatever the browser decides.
+           * Kick muted playback from THIS page, every time.
            *
-           * The sequence here used to start muted — which every browser
-           * allows — and then unmute a moment later. Chrome and Safari treat
-           * unmuting a video the page started by itself as a fresh request for
-           * permission, refuse it, and pause the element. The recovery read
-           * `player.paused` to notice, but that is the SDK's copy of a value
-           * carried by postMessage from another origin, so it still reported
-           * "playing" and nothing ever restarted it.
-           *
-           * The viewer was left looking at the full film, parked on exactly
-           * the right second, paused. That is the "I still have to press PLAY
-           * again" in the client's report: measured on a phone-sized Chrome,
-           * currentTime stopped dead at 8.0s with paused=true and no overlay
-           * to explain it.
-           *
-           * So nothing here trusts the mirrored flag, and nothing accepts a
-           * stall. Progress is read from timeupdate — the one signal that
-           * means frames are actually moving — and anything that stops gets
-           * muted and started again. Playing without sound is a poor result;
-           * paused after paying is a broken one.
+           * Stream's own Play button lives inside a cross-origin iframe.
+           * Tapping it is not a gesture our page can use, and on Safari it
+           * often does nothing. play() from the parent, muted, is the one
+           * start that browsers allow without a tap — and the overlay below
+           * is the tap when they refuse even that.
            */
-          let started = false
-          let unmutedAt = 0
           let lastTime = -1
           let lastProgressAt = Date.now()
           let attempts = 0
@@ -313,38 +311,14 @@ export default function StreamPlayer({
           }
 
           const start = async () => {
-            if (!alive || started) return
-            started = true
-            // Muted first: this is the one form of autoplay nothing blocks, so
-            // the film is already running before sound is even asked for.
+            if (!alive) return
             if (!(await play(true))) {
-              started = false
+              setNeedsGesture(true)
               return
             }
             noteIfAiring()
-            // Ads stay muted so the browser cannot snatch playback away.
-            // The film still asks for sound — they watched the preview with it.
-            if (requireAirtimeRef.current) return
-            try {
-              if ('muted' in player) {
-                player.muted = false
-                unmutedAt = Date.now()
-                // If it survives a second unmuted, sound is genuinely on.
-                setTimeout(() => {
-                  if (alive) setSilent(Boolean(player.muted))
-                }, 1200)
-              }
-            } catch {
-              /* some embeds ignore unmute */
-            }
           }
 
-          /**
-           * A pause within a moment of that unmute is the browser taking
-           * playback away, not the viewer reaching for the controls. Put the
-           * sound back and carry on. A pause any later is a person pressing
-           * pause, and they are left alone.
-           */
           const onPause = () => {
             if (!alive || !unmutedAt || Date.now() - unmutedAt > 2000) return
             play(true)
@@ -362,34 +336,22 @@ export default function StreamPlayer({
           player.addEventListener('loadeddata', start)
           player.addEventListener('pause', onPause)
           player.addEventListener('timeupdate', onTime)
-          kickTimer = setTimeout(start, 350)
+          kickTimer = setTimeout(start, 200)
 
-          /**
-           * The watchdog, which is what actually makes this reliable.
-           *
-           * It does not care why the video is not moving — a refused unmute, a
-           * stalled buffer, a policy this browser has and the last one did
-           * not. If no frame has advanced for a couple of seconds it mutes and
-           * plays again. Sound is worth one attempt; after that, playing
-           * silently beats sitting still.
-           */
           watchdog = setInterval(() => {
-            if (!alive) return
-            if (Date.now() - lastProgressAt < 2500) return
-            if (attempts >= 6) {
+            if (!alive || aired) return
+            if (Date.now() - lastProgressAt < 2000) return
+            if (attempts >= 8) {
               clearInterval(watchdog)
               watchdog = null
-              if (!requireAirtimeRef.current) shown()
-              else setNeedsGesture(true)
+              setNeedsGesture(true)
               return
             }
             attempts += 1
             lastProgressAt = Date.now()
-            // Sound is worth one attempt. After that, playing silently beats
-            // sitting still, and the chip below offers it back in one tap.
-            play(attempts > 1)
-            if (attempts > 1 && alive) setSilent(true)
-          }, 1200)
+            play(true)
+            if (alive) setSilent(true)
+          }, 900)
         }
       } catch {
         /* iframe still plays */
@@ -446,25 +408,15 @@ export default function StreamPlayer({
         />
       )}
       {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
-      {!ready && !timedOut && !needsGesture && (
+      {!ready && !timedOut && (
         <p className="stream-boot-msg">Connecting to player…</p>
       )}
-      {needsGesture && !ready && (
-        <button
-          type="button"
-          className="stream-gesture"
-          onClick={() => {
-            const player = playerRef.current
-            try {
-              if (player && 'muted' in player) player.muted = true
-              player?.play?.()
-            } catch {
-              /* retry overlay still covers a dead embed */
-            }
-          }}
-        >
-          <Play size={18} />
-          Tap to play
+      {!ready && !timedOut && (
+        <button type="button" className="stream-tap" onClick={kickFromGesture}>
+          <span className="stream-tap-hit">
+            <Play size={22} />
+            Tap to play
+          </span>
         </button>
       )}
 
@@ -476,13 +428,6 @@ export default function StreamPlayer({
         title={title}
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
-        onLoad={() => {
-          // After pay, do not uncover Stream's play button before playback
-          // starts. Otherwise the viewer pays, then taps Watch, then taps again.
-          // Ads wait for real media time — uncovering here is a black screen.
-          if (playOnReady || requireAirtime) return
-          setTimeout(markReady, 450)
-        }}
       />
 
       {silent && (
