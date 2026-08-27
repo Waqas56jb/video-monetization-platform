@@ -29,6 +29,10 @@ async function ensureTable(client) {
       hash       text not null,
       applied_at timestamptz not null default now()
     )`)
+  await client.query('alter table _migrations enable row level security')
+  await client.query(
+    'revoke all on table _migrations from anon, authenticated, public'
+  )
 }
 
 /** Which migrations have run, and whether any changed since. */

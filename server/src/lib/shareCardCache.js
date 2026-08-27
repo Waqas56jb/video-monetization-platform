@@ -20,6 +20,10 @@ export async function ensureShareCardTable() {
         built_at   timestamptz not null default now(),
         source_key text not null
       )`)
+    // Runtime create must not re-open PostgREST. 021 missed this; 025 is the
+    // schema lock. Keep the same close here if this runs before migrate.
+    await query('alter table share_card_cache enable row level security')
+    await query('revoke all on table share_card_cache from anon, authenticated, public')
     tableReady = true
     return true
   } catch (err) {
