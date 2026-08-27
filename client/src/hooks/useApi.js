@@ -27,7 +27,7 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
  * Fetch from the API and keep the three states that always come with it:
  * loading, error, and the data.
  */
-export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false } = {}) {
+export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false, timeoutMs = FETCH_TIMEOUT_MS } = {}) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(!skip)
   const [isRefetching, setIsRefetching] = useState(false)
@@ -45,7 +45,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
       if (!quiet && !hasPrevious) setLoading(true)
       if (hasPrevious) setIsRefetching(true)
       try {
-        const res = await withTimeout(ref.current())
+        const res = await withTimeout(ref.current(), timeoutMs)
         setData(res)
         setError(null)
         return res
@@ -58,7 +58,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [skip, keepPreviousData, ...deps]
+    [skip, keepPreviousData, timeoutMs, ...deps]
   )
 
   const reload = useCallback(
@@ -79,7 +79,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
     if (!hasPrevious) setLoading(true)
     else setIsRefetching(true)
 
-    withTimeout(ref.current())
+    withTimeout(ref.current(), timeoutMs)
       .then((res) => {
         if (!alive) return
         setData(res)
@@ -96,7 +96,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skip, keepPreviousData, ...deps])
+  }, [skip, keepPreviousData, timeoutMs, ...deps])
 
   return { data, loading, error, isRefetching, reload, setData }
 }

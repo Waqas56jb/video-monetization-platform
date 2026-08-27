@@ -36,7 +36,7 @@
     "share:warm": "node src/cli/share-cards.js",
     "share:backfill": "node scripts/backfill-share-cards.js",
     "demo:clear": "node src/cli/demo.js clear",
-    "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js src/services/entitlement.thumbnail.test.js"
+    "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js src/services/entitlement.thumbnail.test.js src/modules/playback.import.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

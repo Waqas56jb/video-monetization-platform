@@ -106,7 +106,7 @@ export default function Watch() {
     () => takeWarmedVideo(videoId) || api.videos.one(videoId),
     [videoId]
   )
-  const playback = useApi(() => api.playback(videoId), [videoId])
+  const playback = useApi(() => api.playback(videoId), [videoId], { timeoutMs: 20_000 })
   const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
 
   /* Drop the top progress bar once this page has painted a shell. */
@@ -562,7 +562,11 @@ export default function Watch() {
             <div className="player-empty">
               <AlertTriangle />
               <b>This video could not start</b>
-              <p>Check your connection and try again. Nothing was charged.</p>
+              <p>
+                {playback.error && playback.error !== 'Something went wrong'
+                  ? playback.error
+                  : 'Check your connection and try again. Nothing was charged.'}
+              </p>
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
                 Try again
               </button>

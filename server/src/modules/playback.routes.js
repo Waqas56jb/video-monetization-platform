@@ -10,7 +10,7 @@ import { capabilities } from '../config/env.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
-import { clampPreviewSql } from '../lib/preview.js'
+import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 
 async function videoByKey(key) {
   return one(
@@ -140,13 +140,18 @@ router.get(
       })
     }
 
-    // Locked: recut the preview file if it is still the old 5:00 clip, then
-    // hand back only that asset. The number on screen and the last frame
-    // have to be the same second.
-    await Promise.race([
-      ensureClips(video.id).catch(() => {}),
-      new Promise((resolve) => setTimeout(resolve, 8000)),
-    ])
+    // Locked: only the preview clip is signed and returned.
+    // Recut in the background when a clip already exists so this request
+    // cannot sit on Cloudflare for ~8s and trip the client's 10s timeout.
+    // Wait only when there is nothing to play yet.
+    if (video.preview_uid) {
+      ensureClips(video.id).catch(() => {})
+    } else {
+      await Promise.race([
+        ensureClips(video.id).catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 8000)),
+      ])
+    }
     const fresh = await one('select preview_uid from videos where id = $1', [video.id])
     const previewUid = fresh?.preview_uid || video.preview_uid || null
     if (!previewUid) {
