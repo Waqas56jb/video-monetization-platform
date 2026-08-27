@@ -289,16 +289,22 @@
 .stream-shell {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  /* Padding-top, not only aspect-ratio: with an absolutely-filled iframe the
+     box used to collapse to 0px in Edge, so the advert was "there" but
+     invisible — a black screen that still started the skip clock. */
+  height: 0;
+  padding-top: 56.25%;
   background: #000;
   overflow: hidden;
   isolation: isolate;
 }
 .stream-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
-  aspect-ratio: 16 / 9;
   border: 0;
   background: #000;
   color-scheme: dark;
@@ -320,6 +326,40 @@
 .stream-poster-fallback {
   background: radial-gradient(ellipse at 50% 40%, #1a1228 0%, #000 70%);
 }
+.stream-boot-msg {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 3;
+  margin: 0;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(8, 8, 14, .72);
+  color: rgba(255, 255, 255, .82);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.stream-gesture {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gold, #f5c518);
+  color: #100c02;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .continue-veil {
   position: absolute;
   inset: 0;
@@ -336,10 +376,6 @@
 .continue-veil .pay-dots { margin: 0 0 10px }
 .continue-veil b { font-size: 16px; letter-spacing: .01em }
 .continue-veil small { color: rgba(255,255,255,.78); font-size: 13px; line-height: 1.45; max-width: 280px }
-.stream-frame {
-  position: relative;
-  z-index: 1;
-}
 .stream-fallback {
   display: grid;
   place-items: center;

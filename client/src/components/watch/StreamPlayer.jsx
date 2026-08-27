@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, RefreshCw, Volume2 } from 'lucide-react'
+import { AlertTriangle, Play, RefreshCw, Volume2 } from 'lucide-react'
+import { AD_AIRTIME_FLOOR } from '@/lib/adSkip'
 
 /**
  * Cloudflare Stream iframe player.
@@ -90,6 +91,14 @@ export default function StreamPlayer({
   title = 'Video player',
   onRetry,
   onPlaying,
+  /**
+   * Do not treat the player as started until media time is actually advancing.
+   *
+   * Ads use this so a black buffer, an iframe load, or Stream's `play` event
+   * cannot start the skip clock. The film itself still uncovers on the usual
+   * ready events.
+   */
+  requireAirtime = false,
   /** Fired once when `stopAt` is reached, after playback has been paused. */
   onStopReached,
 }) {
@@ -108,6 +117,10 @@ export default function StreamPlayer({
   const frame = useRef(null)
   const onPlayingRef = useRef(onPlaying)
   onPlayingRef.current = onPlaying
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  onTimeUpdateRef.current = onTimeUpdate
+  const onEndedRef = useRef(onEnded)
+  onEndedRef.current = onEnded
   /* Read through refs: the listener is attached once per source, and must not
      be torn down and rebuilt every time the page re-renders. */
   const stopAtRef = useRef(0)
@@ -116,6 +129,9 @@ export default function StreamPlayer({
   onStopReachedRef.current = onStopReached
   const [ready, setReady] = useState(false)
   const [timedOut, setTimedOut] = useState(false)
+  const [needsGesture, setNeedsGesture] = useState(false)
+  const requireAirtimeRef = useRef(requireAirtime)
+  requireAirtimeRef.current = requireAirtime
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
   const [boot, setBoot] = useState(0)
   /**
@@ -151,16 +167,20 @@ export default function StreamPlayer({
   useEffect(() => {
     setReady(false)
     setTimedOut(false)
+    setNeedsGesture(false)
     if (!iframeSrc) return
 
     const timer = setTimeout(() => {
-      setTimedOut((was) => {
-        // If still not ready after 10s, show help — but don't leave white.
-        return true
-      })
+      setTimedOut(true)
     }, 10000)
-    return () => clearTimeout(timer)
-  }, [iframeSrc, boot])
+    const gesture = requireAirtime
+      ? setTimeout(() => setNeedsGesture(true), 2500)
+      : null
+    return () => {
+      clearTimeout(timer)
+      if (gesture) clearTimeout(gesture)
+    }
+  }, [iframeSrc, boot, requireAirtime])
 
   useEffect(() => {
     if (!iframeSrc) return
@@ -175,7 +195,7 @@ export default function StreamPlayer({
       try {
         player = Stream(frame.current)
         playerRef.current = player
-        player.addEventListener('ended', () => onEnded?.())
+        player.addEventListener('ended', () => onEndedRef.current?.())
         let stopped = false
         const haltIfDue = () => {
           if (!alive || !player) return
@@ -183,7 +203,7 @@ export default function StreamPlayer({
           const at = Number(player.currentTime) || 0
           if (!(limit > 0) || at < limit - 0.15) {
             if (limit > 0 && at < limit - 0.15) stopped = false
-            if (!(limit > 0 && at >= limit - 0.15)) onTimeUpdate?.(at, player.duration)
+            if (!(limit > 0 && at >= limit - 0.15)) onTimeUpdateRef.current?.(at, player.duration)
             return
           }
           try {
@@ -196,23 +216,39 @@ export default function StreamPlayer({
             stopped = true
             onStopReachedRef.current?.()
           }
-          onTimeUpdate?.(limit, player.duration)
+          onTimeUpdateRef.current?.(limit, player.duration)
         }
         player.addEventListener('timeupdate', haltIfDue)
         stopPoll = setInterval(haltIfDue, 200)
+        let aired = false
         const shown = () => {
+          if (aired) return
+          aired = true
           markReady()
+          setNeedsGesture(false)
           onPlayingRef.current?.()
+        }
+        const noteIfAiring = (t = Number(player.currentTime) || 0) => {
+          if (requireAirtimeRef.current && t < AD_AIRTIME_FLOOR) return
+          const first = !aired
+          shown()
+          // Ads stay muted. Unmuting here is what paused them on a black
+          // frame and froze the skip clock at "Skip in 5". Sound is one tap.
+          if (first && requireAirtimeRef.current && alive) setSilent(true)
         }
         // After a purchase, keep the poster up until play actually starts.
         // loadeddata / iframe onLoad used to drop it early and leave Stream's
         // giant play button — the extra "Watch Now" after paying.
-        if (!playOnReady) {
+        // Ads wait for media time — a black buffer is not "ready".
+        if (!playOnReady && !requireAirtimeRef.current) {
           player.addEventListener('loadeddata', markReady)
           player.addEventListener('canplay', markReady)
         }
-        player.addEventListener('play', shown)
-        player.addEventListener('playing', shown)
+        player.addEventListener('play', () => {
+          if (!requireAirtimeRef.current) shown()
+        })
+        player.addEventListener('playing', () => noteIfAiring())
+        player.addEventListener('timeupdate', () => noteIfAiring())
 
         // Seek once, and only if the URL parameter did not already land us
         // there. Seeking again on every metadata event would fight the viewer
@@ -285,8 +321,10 @@ export default function StreamPlayer({
               started = false
               return
             }
-            shown()
-            // Then ask for sound, because they watched the preview with it.
+            noteIfAiring()
+            // Ads stay muted so the browser cannot snatch playback away.
+            // The film still asks for sound — they watched the preview with it.
+            if (requireAirtimeRef.current) return
             try {
               if ('muted' in player) {
                 player.muted = false
@@ -341,7 +379,8 @@ export default function StreamPlayer({
             if (attempts >= 6) {
               clearInterval(watchdog)
               watchdog = null
-              shown()
+              if (!requireAirtimeRef.current) shown()
+              else setNeedsGesture(true)
               return
             }
             attempts += 1
@@ -407,8 +446,26 @@ export default function StreamPlayer({
         />
       )}
       {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
-      {!ready && !timedOut && (
+      {!ready && !timedOut && !needsGesture && (
         <p className="stream-boot-msg">Connecting to player…</p>
+      )}
+      {needsGesture && !ready && (
+        <button
+          type="button"
+          className="stream-gesture"
+          onClick={() => {
+            const player = playerRef.current
+            try {
+              if (player && 'muted' in player) player.muted = true
+              player?.play?.()
+            } catch {
+              /* retry overlay still covers a dead embed */
+            }
+          }}
+        >
+          <Play size={18} />
+          Tap to play
+        </button>
       )}
 
       <iframe
@@ -422,7 +479,8 @@ export default function StreamPlayer({
         onLoad={() => {
           // After pay, do not uncover Stream's play button before playback
           // starts. Otherwise the viewer pays, then taps Watch, then taps again.
-          if (playOnReady) return
+          // Ads wait for real media time — uncovering here is a black screen.
+          if (playOnReady || requireAirtime) return
           setTimeout(markReady, 450)
         }}
       />

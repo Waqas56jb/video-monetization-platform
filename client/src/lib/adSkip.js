@@ -2,8 +2,17 @@
  * When Skip may appear on an in-stream ad.
  *
  * `0` means non-skippable. Otherwise Skip waits until the ad has actually
- * been playing for that many seconds — not until the panel has been mounted.
+ * been playing for that many seconds — not until the panel has been mounted,
+ * and not while the stage is still a black buffer.
  */
+
+/** First media second that counts as the advert actually being on screen. */
+export const AD_AIRTIME_FLOOR = 0.25
+
+export function adAirtimeStarted(currentTime) {
+  return Number(currentTime) >= AD_AIRTIME_FLOOR
+}
+
 export function adSkipRules(skipAfterSeconds) {
   const configured = Number(skipAfterSeconds)
   const skippable = Number.isFinite(configured) ? configured > 0 : true

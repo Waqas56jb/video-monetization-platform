@@ -2,17 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { SkipForward } from 'lucide-react'
 import StreamPlayer from './StreamPlayer'
 import api from '@/lib/api'
-import { adSkipRules } from '@/lib/adSkip'
+import { adAirtimeStarted, adCanSkip, adSkipRules } from '@/lib/adSkip'
 
 /**
  * An advert playing in the place of the video.
  *
  * Skip is not a courtesy that appears with the panel. It is earned after the
- * advert has actually been playing for the campaign's seconds — or it is
- * never offered, if the campaign is non-skippable (`skipAfterSeconds` 0).
+ * advert has actually been playing — frames moving — for the campaign's
+ * seconds. A black buffer, a stalled iframe, or the panel merely being mounted
+ * must never start that clock.
  *
  * A frozen advert must not trap the film: if nothing has started after a
- * while we get out of the way. That is a failed load, not a skip.
+ * while we get out of the way. That is a failed load, not a skip, and it is
+ * not billed as airtime.
  */
 export default function AdBreak({ ad, videoId, playId, onFinished }) {
   const [elapsed, setElapsed] = useState(0)
@@ -21,17 +23,16 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
   const watched = useRef(0)
 
   const { skippable, skipAfter } = adSkipRules(ad?.skipAfterSeconds)
-  const canSkip = skippable && playing && elapsed >= skipAfter
+  const canSkip = adCanSkip(ad?.skipAfterSeconds, elapsed, playing)
   const remaining = Math.max(0, Math.ceil(skipAfter - elapsed))
 
-  useEffect(() => {
-    if (!ad || !playing) return
-    const from = Date.now()
-    const tick = setInterval(() => {
-      setElapsed((was) => Math.max(was, (Date.now() - from) / 1000))
-    }, 250)
-    return () => clearInterval(tick)
-  }, [ad?.campaignId, playing])
+  const noteAirtime = (current) => {
+    const t = Number(current) || 0
+    watched.current = Math.max(watched.current, t)
+    if (!adAirtimeStarted(t)) return
+    setPlaying(true)
+    setElapsed(watched.current)
+  }
 
   const finish = (completed) => {
     if (done.current) return
@@ -43,7 +44,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         campaignId: ad.campaignId,
         placement: ad.placement,
         playId,
-        secondsWatched: Math.round(Math.max(watched.current, elapsed)),
+        secondsWatched: Math.round(watched.current),
         completed,
       })
       .catch(() => {})
@@ -76,18 +77,17 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
   if (!ad?.iframe) return null
 
   return (
-    <div className="ad-stage">
+    <div className="ad-stage" data-ad-state={playing ? (canSkip ? 'skippable' : 'playing') : 'loading'}>
       <StreamPlayer
         src={ad.iframe}
+        poster={ad.thumbnail || undefined}
         title={`Advertisement — ${ad.advertiser || ad.name}`}
         autoplay
+        playOnReady
+        requireAirtime
         controls={false}
         onEnded={() => finish(true)}
-        onPlaying={() => setPlaying(true)}
-        onTimeUpdate={(current) => {
-          watched.current = Math.max(watched.current, current || 0)
-          if (current > 0.2) setPlaying(true)
-        }}
+        onTimeUpdate={noteAirtime}
       />
 
       <div className="ad-badge">
@@ -101,6 +101,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
           onClick={() => canSkip && finish(false)}
           disabled={!canSkip}
           hidden={!playing}
+          type="button"
         >
           {canSkip ? (
             <>
@@ -113,7 +114,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         </button>
       )}
 
-      {!playing && <p className="ad-loading-note">Advert playing…</p>}
+      {!playing && <p className="ad-loading-note">Advert loading…</p>}
 
       <p className="ad-note">
         This video is free because of adverts like this one — the creator earns from it.

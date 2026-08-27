@@ -325,13 +325,16 @@ export default function Watch() {
   }, [activeAd?.placement])
 
   // The pre-roll goes before anything else, once we know the video plays freely.
+  // Wait until the breaks request has finished — otherwise the film starts, then
+  // an advert interrupts it a moment later, which looks like a broken player.
   useEffect(() => {
     if (!p?.access?.showsAds) return
+    if (adBreaks.loading) return
     if (!ads.length || activeAd) return
     if (!accessReady || !p?.playback?.iframe) return
     runBreak('pre_roll')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ads.length, accessReady, p?.playback?.iframe, p?.access?.showsAds])
+  }, [adBreaks.loading, ads.length, accessReady, p?.playback?.iframe, p?.access?.showsAds])
 
   // Owned / free videos must never keep a leftover "preview over" lock state.
   useEffect(() => {
@@ -557,6 +560,20 @@ export default function Watch() {
               ) : (
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
               )}
+            </div>
+          ) : p?.access?.showsAds && adBreaks.loading && !activeAd ? (
+            <div className="stream-shell is-booting">
+              {v.thumbnailUrl ? (
+                <img
+                  className="stream-poster"
+                  src={mediaUrl(v.thumbnailUrl)}
+                  alt=""
+                  draggable={false}
+                />
+              ) : (
+                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
+              <p className="stream-boot-msg">Loading advert…</p>
             </div>
           ) : playback.error && !p?.playback?.iframe ? (
             <div className="player-empty">
