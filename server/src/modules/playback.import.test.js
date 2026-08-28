@@ -40,3 +40,11 @@ test('missing preview does not loop forever when the Cloudflare source cannot pl
   assert.match(src, /This video is unavailable/)
   assert.match(src, /inspectCloudflareSource/)
 })
+
+test('ready webhook stores source width and height', () => {
+  const dir = dirname(fileURLToPath(import.meta.url))
+  const src = readFileSync(join(dir, 'playback.routes.js'), 'utf8')
+  assert.match(src, /width = coalesce\(\$4, width\)/)
+  assert.match(src, /height = coalesce\(\$5, height\)/)
+  assert.match(src, /dimensionsFromCloudflare/)
+})

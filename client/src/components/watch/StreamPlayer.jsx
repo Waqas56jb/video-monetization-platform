@@ -92,6 +92,11 @@ export default function StreamPlayer({
   onPlaying,
   onReady,
   /**
+   * Pixel size of the file, when the API did not already know it.
+   * Watch uses this so a portrait film is not stuck in a 16:9 box.
+   */
+  onMediaSize,
+  /**
    * Do not treat the player as started until media time is actually advancing.
    *
    * Ads use this so a black buffer, an iframe load, or Stream's `play` event
@@ -124,6 +129,8 @@ export default function StreamPlayer({
   onPlayingRef.current = onPlaying
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
+  const onMediaSizeRef = useRef(onMediaSize)
+  onMediaSizeRef.current = onMediaSize
   const onTimeUpdateRef = useRef(onTimeUpdate)
   onTimeUpdateRef.current = onTimeUpdate
   const onEndedRef = useRef(onEnded)
@@ -298,6 +305,14 @@ export default function StreamPlayer({
         player.addEventListener('canplay', uncoverFilm)
         player.addEventListener('playing', () => noteIfAiring())
         player.addEventListener('timeupdate', () => noteIfAiring())
+        const reportSize = () => {
+          if (!onMediaSizeRef.current) return
+          const w = Number(player.videoWidth || 0)
+          const h = Number(player.videoHeight || 0)
+          if (w > 0 && h > 0) onMediaSizeRef.current({ width: w, height: h })
+        }
+        player.addEventListener('loadedmetadata', reportSize)
+        player.addEventListener('loadeddata', reportSize)
 
         // Seek once, and only if the URL parameter did not already land us
         // there. Seeking again on every metadata event would fight the viewer

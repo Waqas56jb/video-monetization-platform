@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { studioThumbnailFor, thumbnailFor } from './entitlement.js'
+import { studioThumbnailFor, thumbnailFor, publicVideo } from './entitlement.js'
 
 const draft = {
   id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
@@ -31,4 +31,21 @@ test('public listing still uses the playback route', () => {
     review_status: 'approved',
   })
   assert.match(url, /^\/api\/playback\//)
+})
+
+test('public video carries source size so Watch can size the player', () => {
+  const json = publicVideo({
+    id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    slug: 'phone-clip',
+    title: 'Phone clip',
+    duration_seconds: 12,
+    width: 1080,
+    height: 1920,
+    access_type: 'ppv_forever',
+    price_tzs: 1000,
+    free_preview_seconds: 4,
+  })
+  assert.equal(json.width, 1080)
+  assert.equal(json.height, 1920)
+  assert.equal(json.orientation, 'portrait')
 })

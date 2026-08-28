@@ -3,6 +3,7 @@ import { mintThumbnailKey } from '../lib/mediaToken.js'
 import { signedThumbnailUrl, playbackUrls } from '../lib/cloudflare.js'
 import { capabilities } from '../config/env.js'
 import { clampFreePreviewSeconds } from '../lib/preview.js'
+import { videoOrientation } from '../lib/videoShape.js'
 
 /**
  * What may this viewer actually watch of this video?
@@ -91,6 +92,9 @@ export function publicVideo(v, access = null) {
      */
     thumbnailUrl: thumbnailFor(v),
     durationSeconds: v.duration_seconds,
+    width: v.width || null,
+    height: v.height || null,
+    orientation: videoOrientation(v.width, v.height),
     accessType: v.access_type,
     priceTzs: v.price_tzs,
     freePreviewSeconds: clampFreePreviewSeconds(v.free_preview_seconds, v.duration_seconds),

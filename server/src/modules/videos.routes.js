@@ -16,6 +16,7 @@ import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
+import { dimensionsFromCloudflare } from '../lib/videoShape.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { sharePayloadFromRow } from '../lib/shareMeta.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
@@ -611,14 +612,23 @@ router.get(
        * is not a setting anybody chose, and left alone it would block the
        * creator's next save.
        */
+      const size = dimensionsFromCloudflare(remote)
       const updated = await one(
         `update videos
             set state = 'ready',
                 duration_seconds = coalesce($2, duration_seconds),
                 thumbnail_url    = coalesce($3, thumbnail_url),
+                width            = coalesce($4, width),
+                height           = coalesce($5, height),
                 free_preview_seconds = ${clampPreviewSql('coalesce($2, duration_seconds)')}
           where id = $1 returning *`,
-        [video.id, Math.floor(remote.duration || 0) || null, cf.cloudflareThumbnail(remote)]
+        [
+          video.id,
+          Math.floor(remote.duration || 0) || null,
+          cf.cloudflareThumbnail(remote),
+          size.width,
+          size.height,
+        ]
       )
       // Cut the free preview and the social promo now the source exists.
       // Awaited so Watch never has to wait on clip generation at Play time.

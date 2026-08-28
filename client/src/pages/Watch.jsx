@@ -32,6 +32,7 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches, playbackRouteMatches } from '@/lib/watchUrl'
+import { videoShape } from '@/lib/videoShape'
 import { takeWarmedVideo, takeWarmedPlayback, takeWarmedAds, dropWarmedWatch } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
@@ -93,6 +94,8 @@ export default function Watch() {
   const [justPaidFor, setJustPaidFor] = useState(null)
   /* Full video has actually started after purchase — overlay can drop. */
   const [continueReady, setContinueReady] = useState(false)
+  /** Pixel size from the player when the row has none yet. */
+  const [measured, setMeasured] = useState(null)
 
   /**
    * Advertising on a Free + Ads video.
@@ -232,6 +235,7 @@ export default function Watch() {
     setJustPaidFor(null)
     setContinueReady(false)
     setResumeHint(0)
+    setMeasured(null)
     lastReported.current = 0
     watchedTo.current = 0
     previewRanOut.current = false
@@ -559,6 +563,7 @@ export default function Watch() {
   })()
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(0, Number(v.durationSeconds || 0) - previewSeconds)
+  const shape = videoShape(v.width || measured?.width, v.height || measured?.height)
   /** After preview: cinematic lock on the player — payment sheet only on tap. */
   const showLockGate =
     needsPayment &&
@@ -591,7 +596,13 @@ export default function Watch() {
   return (
     <Shell>
       <div className="watch-wrap">
-        <div className={`player ${showLockGate ? 'is-gated' : ''}`.trim()}>
+        <div
+          className={`player ${showLockGate ? 'is-gated' : ''} is-${shape.orientation}`.trim()}
+          style={{
+            '--player-aspect': shape.aspect,
+            '--player-ratio': String(shape.ratio),
+          }}
+        >
           {/* Somebody who opened this on a shared link has nothing of ours
               behind them, and a bare navigate(-1) would take them off the site
               — back to WhatsApp, usually. Explore is the useful destination
@@ -660,6 +671,11 @@ export default function Watch() {
                 autoplay={!activeAd}
                 playOnReady={!activeAd}
                 paused={Boolean(activeAd) || (Boolean(p?.access?.showsAds && p?.preroll?.enabled) && adBreaks.loading)}
+                onMediaSize={
+                  v.width && v.height
+                    ? undefined
+                    : (size) => setMeasured((was) => was || size)
+                }
                 /**
                  * Where the free preview ends, enforced by the player itself.
                  *

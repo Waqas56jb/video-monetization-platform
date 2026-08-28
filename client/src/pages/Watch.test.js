@@ -29,6 +29,8 @@ test('StreamPlayer uncovers the film on canplay, ads still wait for airtime', ()
   const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
   assert.match(src, /player\.addEventListener\('loadeddata', uncoverFilm\)/)
   assert.match(src, /player\.addEventListener\('canplay', uncoverFilm\)/)
+  assert.match(src, /player\.videoWidth/)
+  assert.match(src, /onMediaSizeRef/)
   assert.match(src, /onReadyRef\.current\?\.\(\)/)
   assert.match(src, /if \(requireAirtimeRef\.current\) return/)
   assert.match(src, /if \(!alive \|\| aired \|\| pausedRef\.current\)/)
@@ -41,6 +43,19 @@ test('Watch keeps the film mounted under a pre-roll so Play is not a second boot
   assert.match(src, /takeWarmedAds/)
   assert.match(src, /player-ad-layer/)
   assert.match(src, /paused=\{Boolean\(activeAd\)/)
+})
+
+test('Watch sizes the player to the file, not a forced 16:9 box', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /videoShape/)
+  assert.match(src, /is-\$\{shape\.orientation\}/)
+  assert.match(src, /--player-aspect/)
+  assert.match(src, /onMediaSize/)
+
+  const css = readFileSync(join(dir, '../styles/realdata.css'), 'utf8')
+  assert.match(css, /--player-aspect/)
+  assert.match(css, /\.watch-wrap \.player\.is-portrait/)
+  assert.match(css, /min\(80dvh, 820px\)/)
 })
 
 test('a purchase of A remounts Watch and cannot unlock B', () => {

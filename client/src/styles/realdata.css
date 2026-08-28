@@ -54,6 +54,36 @@
 .watch-wrap .player .stream-poster {
   max-height: min(56.25vw, 62dvh);
 }
+/* Size the Watch stage to the file, not a forced 16:9. Portrait / square
+   films used to sit as a thin strip inside that box. */
+.watch-wrap .player .stream-shell {
+  height: auto;
+  padding-top: 0;
+  aspect-ratio: var(--player-aspect, 16 / 9);
+}
+.watch-wrap .player.is-portrait,
+.watch-wrap .player.is-square {
+  display: flex;
+  justify-content: center;
+  max-height: min(80dvh, 820px);
+  background: #000;
+}
+.watch-wrap .player.is-portrait .stream-shell,
+.watch-wrap .player.is-square .stream-shell {
+  width: min(100%, calc(min(80dvh, 820px) * var(--player-ratio, 0.5625)));
+  max-width: 100%;
+  height: auto;
+  max-height: min(80dvh, 820px);
+  padding-top: 0;
+  aspect-ratio: var(--player-aspect, 9 / 16);
+  margin-inline: auto;
+}
+.watch-wrap .player.is-portrait .stream-frame,
+.watch-wrap .player.is-portrait .stream-poster,
+.watch-wrap .player.is-square .stream-frame,
+.watch-wrap .player.is-square .stream-poster {
+  max-height: min(80dvh, 820px);
+}
 @media (max-width: 720px) {
   /* 16:9 of the full width is short enough here; the cap only gets in the way. */
   .watch-wrap .player,
@@ -61,6 +91,18 @@
   .watch-wrap .player .stream-frame,
   .watch-wrap .player .stream-poster {
     max-height: none;
+  }
+  .watch-wrap .player.is-portrait,
+  .watch-wrap .player.is-square {
+    max-height: min(80dvh, 820px);
+  }
+  .watch-wrap .player.is-portrait .stream-shell,
+  .watch-wrap .player.is-square .stream-shell,
+  .watch-wrap .player.is-portrait .stream-frame,
+  .watch-wrap .player.is-portrait .stream-poster,
+  .watch-wrap .player.is-square .stream-frame,
+  .watch-wrap .player.is-square .stream-poster {
+    max-height: min(80dvh, 820px);
   }
 }
 /* Landscape phones are all width and no height — there the cap is the only

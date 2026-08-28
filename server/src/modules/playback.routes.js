@@ -12,6 +12,7 @@ import { slugFallbacks, isUuidKey } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
+import { dimensionsFromCloudflare } from '../lib/videoShape.js'
 
 function videoKeyParams(key) {
   const k = String(key || '').trim()
@@ -437,13 +438,20 @@ router.post(
 
     const duration = Math.floor(body.duration || 0) || null
     const thumbnail = body.thumbnail || (uid ? cf.cloudflareThumbnail({ uid, thumbnail: body.thumbnail }) : null)
+    let size = dimensionsFromCloudflare(body)
+    if ((!size.width || !size.height) && capabilities.cloudflareStream) {
+      const remote = await cf.getVideo(uid).catch(() => null)
+      size = dimensionsFromCloudflare(remote)
+    }
 
     await query(
       `update videos set state = 'ready', duration_seconds = coalesce($2, duration_seconds),
                          thumbnail_url = coalesce($3, thumbnail_url),
+                         width = coalesce($4, width),
+                         height = coalesce($5, height),
                          free_preview_seconds = ${clampPreviewSql('coalesce($2, duration_seconds)')}
         where id = $1`,
-      [video.id, duration, thumbnail]
+      [video.id, duration, thumbnail, size.width, size.height]
     )
 
     // Generate the two derived assets once the source is ready.
