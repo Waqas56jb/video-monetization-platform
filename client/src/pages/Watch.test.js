@@ -211,3 +211,30 @@ test('nothing unmutes the film without a person asking', () => {
   assert.match(src, /setSilent\(Boolean\(player\.muted\)\)/)
   assert.match(src, /addEventListener\('volumechange'/)
 })
+
+test('the position is captured at the paywall and at checkout, from the player', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  assert.match(src, /const capturePosition = useCallback\(/)
+  // The player's clock leads the page's copy.
+  assert.match(src, /Math\.floor\(Number\(livePosition\.current\) \|\| 0\)/)
+  assert.match(src, /Math\.max\(live, watchedTo\.current, recallProgress\(videoId\)\)/)
+
+  // Both moments, and BEFORE anything else happens to the page.
+  assert.match(src, /if \(!needsPayment\) return\s*\n\s*\/\* Take the position BEFORE[\s\S]*?const at = capturePosition\(\)/)
+  assert.match(src, /onStopReached=\{\(\) => \{\s*\n\s*capturePosition\(\)/)
+
+  // It is what resumePoint is given first.
+  assert.match(src, /captured: capturePosition\(\)/)
+
+  // Per video, like everything else here.
+  assert.match(src, /paywallAt\.current = 0/)
+})
+
+test('after payment the film is nudged by seek, never by a new start second', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /nonce: `paid:\$\{v\?\.id \|\| videoId\}:\$\{at\}`/)
+  assert.match(src, /p\?\.playback\?\.kind !== 'full'/)
+  // And the viewer is told where they are being put back.
+  assert.match(src, /Resuming from \$\{duration\(Math\.floor\(resumeAt\)\)\}/)
+})

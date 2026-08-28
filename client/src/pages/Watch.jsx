@@ -257,6 +257,7 @@ export default function Watch() {
        title part-way through, at a second nobody watching it has reached. */
     startFrom.current = { key: null, value: 0 }
     livePosition.current = 0
+    paywallAt.current = 0
     setSeekTo(null)
     setActiveAd(null)
     playedBreaks.current = new Set()
@@ -308,6 +309,26 @@ export default function Watch() {
     },
     [signedIn, v?.id, videoId]
   )
+
+  /**
+   * The furthest second we can prove this viewer reached, taken on demand.
+   *
+   * Called at the paywall and again the instant checkout opens, because those
+   * are the two moments the number is about to be needed and the last moment it
+   * is still knowable. The player's own clock leads the page's copy — a halted
+   * preview stops reporting, and the payment sheet then sits on screen through
+   * a whole mobile-money round trip — so asking late is asking a page that has
+   * already stopped being told.
+   */
+  const paywallAt = useRef(0)
+  const capturePosition = useCallback(() => {
+    const live = Math.floor(Number(livePosition.current) || 0)
+    const best = Math.max(live, watchedTo.current, recallProgress(videoId))
+    if (best > watchedTo.current) watchedTo.current = best
+    if (best > paywallAt.current) paywallAt.current = best
+    if (best > 0) rememberProgress(videoId, best, { force: true })
+    return paywallAt.current
+  }, [videoId])
 
   /**
    * Hand a position recorded before signing in over to the account.
@@ -462,6 +483,7 @@ export default function Watch() {
        written down as a test. Keeping it there means the behaviour they
        disputed cannot be changed by accident. */
     const from = resumePoint({
+      captured: capturePosition(),
       watchedTo: watchedTo.current,
       remembered: recallProgress(videoId),
       stopsAt: Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0),
@@ -514,6 +536,26 @@ export default function Watch() {
     const t = setTimeout(() => setContinueReady(true), 3500)
     return () => clearTimeout(t)
   }, [justPaid, continueReady])
+
+  /**
+   * Belt and braces on the resume after payment.
+   *
+   * The full film's iframe URL already carries `startTime`, so in the ordinary
+   * case it opens at the right second and this asks for nothing: a seek is only
+   * performed when the player turns out to be more than two seconds away from
+   * where it should be. That covers the one thing the URL cannot — Stream
+   * having already buffered from zero by the time it honours the parameter.
+   *
+   * A seek, deliberately, and not a different `startAt`: moving the start
+   * second would re-navigate the iframe and restart the film, which is the
+   * fault all of this exists to stop.
+   */
+  useEffect(() => {
+    if (!justPaid || p?.playback?.kind !== 'full') return
+    const at = Math.floor(Number(resumeHint) || 0)
+    if (at < 2) return
+    setSeekTo({ seconds: at, nonce: `paid:${v?.id || videoId}:${at}` })
+  }, [justPaid, p?.playback?.kind, resumeHint, v?.id, videoId])
 
   /**
    * Sharing moved into its own sheet.
@@ -632,6 +674,8 @@ export default function Watch() {
 
   const openCheckout = () => {
     if (!needsPayment) return
+    /* Take the position BEFORE anything else happens to the page. */
+    const at = capturePosition()
     if (!signedIn) {
       /**
        * Send them to sign in, and remember both where they were and what they
@@ -645,7 +689,7 @@ export default function Watch() {
        * Their position in the preview is already in session storage, so the
        * video also resumes where it stopped.
        */
-      rememberProgress(videoId, watchedTo.current)
+      rememberProgress(videoId, at, { force: true })
       /* `unlock=1` belongs INSIDE the destination, not beside it: the login page
          navigates to `next` and anything sitting next to it is left behind. */
       navigate(authUrl('login', `/watch/${videoId}?unlock=1`))
@@ -750,6 +794,7 @@ export default function Watch() {
                  */
                 stopAt={p.playback.kind === 'preview' ? previewSeconds : 0}
                 onStopReached={() => {
+                  capturePosition()
                   watchedTo.current = Math.max(watchedTo.current, previewSeconds)
                   rememberProgress(videoId, watchedTo.current, { force: true })
                   previewRanOut.current = true
@@ -835,7 +880,11 @@ export default function Watch() {
                 <span />
               </span>
               <b>Unlocked</b>
-              <small>Continuing from where the preview stopped…</small>
+              <small>
+                {resumeAt > 2
+                  ? `Resuming from ${duration(Math.floor(resumeAt))}`
+                  : 'Continuing from where the preview stopped…'}
+              </small>
             </div>
           )}
 

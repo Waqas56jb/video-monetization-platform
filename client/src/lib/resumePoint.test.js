@@ -33,3 +33,45 @@ test('nonsense in never produces a negative or NaN seek', () => {
     assert.ok(Number.isFinite(at) && at >= 0, `got ${at} for ${String(bad)}`)
   }
 })
+
+test('the player\'s own clock is taken first, because the page stops being told', () => {
+  // A halted preview reports 0 and stops firing timeupdate, so watchedTo and
+  // sessionStorage can both be behind at exactly the moment it matters.
+  assert.equal(
+    resumePoint({ captured: 214, watchedTo: 180, remembered: 120, stopsAt: 217 }),
+    214
+  )
+  // A captured 0 must not drag a good position down.
+  assert.equal(
+    resumePoint({ captured: 0, watchedTo: 180, remembered: 120, stopsAt: 217 }),
+    180
+  )
+})
+
+test('the preview end is a fallback for a lost position, never the largest number', () => {
+  // The preview asset resets to 0 when it ends, so a lost position plus the
+  // ended flag is the case this exists for.
+  assert.equal(
+    resumePoint({ captured: 0, watchedTo: 0, remembered: 0, stopsAt: 217, previewEnded: true }),
+    217
+  )
+  // But a real position is never promoted to the end, even when the flag is
+  // set — 200 is where they got to, and 217 would be 17 seconds they did not see.
+  assert.equal(
+    resumePoint({ captured: 0, watchedTo: 120, remembered: 200, stopsAt: 217, previewEnded: true }),
+    200
+  )
+})
+
+test('paying without watching still starts at the beginning', () => {
+  // The one thing a broader rule would have broken: never skip a viewer past
+  // film they have not seen.
+  assert.equal(
+    resumePoint({ captured: 0, watchedTo: 0, remembered: 0, stopsAt: 217, previewEnded: false }),
+    0
+  )
+  assert.equal(
+    resumePoint({ captured: 1, watchedTo: 1, remembered: 0, stopsAt: 217, previewEnded: false }),
+    1
+  )
+})
