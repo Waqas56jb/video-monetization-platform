@@ -32,3 +32,11 @@ test('watch playback loads video and active purchase in one query, never id::tex
   assert.match(src, /id = \$1::uuid/)
   assert.match(src, /purchase,/)
 })
+
+test('missing preview does not loop forever when the Cloudflare source cannot play', () => {
+  const dir = dirname(fileURLToPath(import.meta.url))
+  const src = readFileSync(join(dir, 'playback.routes.js'), 'utf8')
+  assert.match(src, /unavailable: true/)
+  assert.match(src, /This video is unavailable/)
+  assert.match(src, /inspectCloudflareSource/)
+})

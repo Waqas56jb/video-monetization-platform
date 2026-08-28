@@ -77,6 +77,35 @@ const router = Router()
 const FULL_TOKEN_TTL = 60 * 60 // 1 hour
 const PREVIEW_TOKEN_TTL = 15 * 60 // 15 minutes
 
+function sourceIsEncoding(remote) {
+  const state = remote?.status?.state
+  return Boolean(remote) && remote.readyToStream !== true && state !== 'error' && state !== 'ready'
+}
+
+function sourceIsPlayable(remote) {
+  return Boolean(remote?.readyToStream) && remote?.status?.state !== 'error'
+}
+
+/** Rare path: only when a preview clip is missing and we would otherwise loop. */
+async function inspectCloudflareSource(uid) {
+  if (!uid || !capabilities.cloudflareStream) return { playable: false, encoding: false }
+  try {
+    const remote = await cf.getVideo(uid)
+    return { playable: sourceIsPlayable(remote), encoding: sourceIsEncoding(remote) }
+  } catch {
+    return { playable: false, encoding: false }
+  }
+}
+
+function unavailablePayload(payload) {
+  return {
+    ...payload,
+    playback: null,
+    unavailable: true,
+    note: 'This video is unavailable',
+  }
+}
+
 /** Don't resume from the first breath of a video, or from its dying seconds. */
 const RESUME_MIN_SECONDS = 1
 const RESUME_END_MARGIN = 15
@@ -221,6 +250,18 @@ router.get(
     // Cloudflare here — clip generation belongs at encode/approve time.
     const previewUid = video.preview_uid || null
     if (!previewUid) {
+      const previewEnd = clampFreePreviewSeconds(
+        video.free_preview_seconds,
+        video.duration_seconds
+      )
+      const src = await inspectCloudflareSource(video.cloudflare_uid)
+      // Encoding: a clip may still appear. Error / missing / too short to clip:
+      // "Preview is being prepared" would never finish.
+      if (!src.encoding && (!src.playable || previewEnd <= 0)) {
+        trace.mark('unavailable')
+        trace.done()
+        return res.json(unavailablePayload(payload))
+      }
       ensureClips(video.id).catch(() => {})
       trace.mark('preview-pending')
       trace.done()

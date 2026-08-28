@@ -12,6 +12,8 @@ test('Watch does not block the film iframe on ad-break loading', () => {
   assert.doesNotMatch(src, /adBreaks\.loading && !activeAd/)
   assert.match(src, /takeWarmedPlayback/)
   assert.match(src, /Preview is being prepared/)
+  assert.match(src, /unavailable/)
+  assert.match(src, /This video is unavailable/)
 })
 
 test('StreamPlayer uncovers the film on canplay, ads still wait for airtime', () => {

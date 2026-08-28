@@ -223,7 +223,7 @@ export default function Watch() {
    * asset, ask again a few times while Cloudflare cuts it in the background.
    */
   useEffect(() => {
-    if (!p?.previewPending || p?.playback?.iframe) return
+    if (!p?.previewPending || p?.unavailable || p?.playback?.iframe) return
     if (previewAttempt >= 5) return
     const t = setTimeout(() => {
       playback.reload({ quiet: true })
@@ -528,7 +528,7 @@ export default function Watch() {
   /** After preview: cinematic lock on the player — payment sheet only on tap. */
   const showLockGate =
     needsPayment &&
-    (previewOver || (accessReady && !p?.playback?.iframe && !p?.previewPending))
+    (previewOver || (accessReady && !p?.playback?.iframe && !p?.previewPending && !p?.unavailable))
 
   const openCheckout = () => {
     if (!needsPayment) return
@@ -578,6 +578,12 @@ export default function Watch() {
               ) : (
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
               )}
+            </div>
+          ) : p?.unavailable && !p?.playback?.iframe ? (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>This video is unavailable</b>
+              <p>The file is not ready to play. Try another title.</p>
             </div>
           ) : p?.previewPending && !p?.playback?.iframe ? (
             <div className="stream-shell is-booting">
