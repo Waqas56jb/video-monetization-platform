@@ -5,6 +5,7 @@ import { asyncHandler, badRequest, conflict, notFound } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
 import { requireAuth, requireStaff, requireAdmin, requirePermission } from '../middleware/auth.js'
 import { getSettings, updateSettings, invalidateSettingsCache, applySplit, splitPercentFor } from '../services/settings.js'
+import { invalidateProfileCache } from '../lib/profileCache.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
 import { notify, notifyMany } from '../services/notify.js'
 import { studioVideo, thumbnailFor } from '../services/entitlement.js'
@@ -872,6 +873,7 @@ router.post(
       req.body.status,
     ])
     if (!updated) throw notFound('User not found')
+    invalidateProfileCache(updated.id)
 
     await recordStaffAction(req, {
       action: req.body.status.toUpperCase(), entityType: 'profile', entityId: updated.id,
@@ -1835,6 +1837,7 @@ router.post(
       },
       { actorRole: 'admin', actorId: req.user.id }
     )
+    invalidateProfileCache(app.user_id)
 
     await recordAudit({
       actorId: req.user.id,
@@ -1896,6 +1899,7 @@ router.post(
       },
       { actorRole: 'admin', actorId: req.user.id }
     )
+    invalidateProfileCache(target.id)
 
     await recordAudit({
       actorId: req.user.id,
@@ -1937,6 +1941,7 @@ router.post(
     const updated = await one(`update profiles set status = 'suspended' where id = $1 returning *`, [
       target.id,
     ])
+    invalidateProfileCache(target.id)
 
     await recordAudit({
       actorId: req.user.id,
@@ -1974,6 +1979,7 @@ router.post(
     const updated = await one(`update profiles set status = 'active' where id = $1 returning *`, [
       target.id,
     ])
+    invalidateProfileCache(target.id)
 
     await recordAudit({
       actorId: req.user.id,

@@ -9,6 +9,7 @@ import { storeImage, removeImage } from '../services/uploads.js'
 import { verifyPassword } from '../lib/authdb.js'
 import { notify, notifyMany } from '../services/notify.js'
 import { recordAudit, clientIp } from '../services/audit.js'
+import { invalidateProfileCache } from '../lib/profileCache.js'
 import { rebuildShareCardsForCreator } from '../lib/buildShareCard.js'
 import { isKnownCategory } from '../lib/categories.js'
 import { isKnownContentType, shapeApplication } from '../lib/creatorApplication.js'
@@ -451,6 +452,7 @@ router.post(
       (c) => c.query(`update profiles set status = 'blocked', updated_at = now() where id = $1`, [req.user.id]),
       { actorRole: 'admin', actorId: req.user.id }
     )
+    invalidateProfileCache(req.user.id)
 
     await recordAudit({
       actorId: req.user.id,

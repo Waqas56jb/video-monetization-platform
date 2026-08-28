@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { createRemoteJWKSet } from 'jose'
 import { env, capabilities } from '../config/env.js'
 import { serviceUnavailable, unauthorized, conflict, badRequest } from './errors.js'
+import { resolveAuthUser } from './accessToken.js'
 
 /**
  * Two clients, deliberately.
@@ -17,6 +19,16 @@ import { serviceUnavailable, unauthorized, conflict, badRequest } from './errors
 
 let anon = null
 let admin = null
+let jwks = null
+
+function supabaseJwks() {
+  const base = (env.supabase.url || '').replace(/\/$/, '')
+  if (!base) return null
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(`${base}/auth/v1/.well-known/jwks.json`))
+  }
+  return jwks
+}
 
 export function anonClient() {
   if (!env.supabase.url || !env.supabase.anonKey) {
@@ -57,9 +69,15 @@ export function userClient(accessToken) {
 
 /** Resolve a bearer token to a Supabase user, or throw 401. */
 export async function userFromToken(token) {
-  const { data, error } = await anonClient().auth.getUser(token)
-  if (error || !data?.user) throw unauthorized('Your session has expired — please sign in again')
-  return data.user
+  return resolveAuthUser(token, {
+    jwtSecret: env.supabase.jwtSecret,
+    jwks: supabaseJwks(),
+    remoteGetUser: async (t) => {
+      const { data, error } = await anonClient().auth.getUser(t)
+      if (error || !data?.user) throw unauthorized('Your session has expired — please sign in again')
+      return data.user
+    },
+  })
 }
 
 /**

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { query, one, transaction } from '../db/pool.js'
 import { conflict, badRequest, notFound } from './errors.js'
+import { invalidateProfileCache } from './profileCache.js'
 
 /**
  * Account records, written straight into the auth schema.
@@ -327,5 +328,6 @@ export async function ensureCreatorSide(profile, { fullName, phone } = {}) {
     { actorRole: 'admin' }
   )
   const fresh = await one('select * from profiles where id = $1', [profile.id])
+  invalidateProfileCache(profile.id)
   return { profile: fresh, created: true }
 }

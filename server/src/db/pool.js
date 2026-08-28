@@ -90,7 +90,7 @@ export function getPool() {
     // the Supabase root cert, which we do not ship. Encryption is still on.
     ssl: { rejectUnauthorized: false },
     max: 3,
-    idleTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
     allowExitOnIdle: true,
     keepAlive: true,

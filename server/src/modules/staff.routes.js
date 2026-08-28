@@ -13,6 +13,7 @@ import {
 import { createAuthUser, issueResetToken, setAuthEmail, deleteAuthUser, verifyPassword } from '../lib/authdb.js'
 import { sendMail, staffInviteEmail, announcementEmail } from '../lib/mailer.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
+import { invalidateProfileCache } from '../lib/profileCache.js'
 import { notify, notifyMany, listNotifications, unreadCount, markRead, shapeNotification } from '../services/notify.js'
 import { env, capabilities } from '../config/env.js'
 import { log } from '../lib/logger.js'
@@ -539,6 +540,7 @@ router.post(
       },
       { actorRole: 'admin', actorId: req.user.id }
     )
+    invalidateProfileCache(p.id)
 
     await recordStaffAction(req, {
       action: 'SUB_ADMIN_STATUS_CHANGED',

@@ -1,6 +1,7 @@
 import { userFromToken } from '../lib/supabase.js'
 import { one, many } from '../db/pool.js'
 import { unauthorized, forbidden } from '../lib/errors.js'
+import { loadProfileCached } from '../lib/profileCache.js'
 
 const bearer = (req) => {
   const h = req.headers.authorization || ''
@@ -10,7 +11,8 @@ const bearer = (req) => {
 /**
  * Resolve the caller from their Supabase access token and attach their
  * profile. The profile — not the token — is the source of truth for role and
- * account status, so blocking someone takes effect on their very next request.
+ * account status. Status is still checked on every request; the row is cached
+ * 60s per userId and dropped when admin block/suspend/revoke/role routes run.
  */
 export async function attachUser(req) {
   const token = bearer(req)
@@ -21,11 +23,13 @@ export async function attachUser(req) {
   req.accessToken = token
 
   const authUser = await userFromToken(token)
-  const profile = await one(
-    `select id, email, full_name, phone, role, status, avatar_url, created_at,
-            bio, location, website, email_announcements, email_account_news
-       from profiles where id = $1`,
-    [authUser.id]
+  const profile = await loadProfileCached(authUser.id, (id) =>
+    one(
+      `select id, email, full_name, phone, role, status, avatar_url, created_at,
+              bio, location, website, email_announcements, email_account_news
+         from profiles where id = $1`,
+      [id]
+    )
   )
   if (!profile) throw unauthorized('Your account is not set up yet')
   return profile

@@ -51,6 +51,9 @@ export const env = {
     url: process.env.SUPABASE_URL || '',
     anonKey: process.env.SUPABASE_ANON_KEY || '',
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    // Dashboard → Project Settings → API → JWT Secret. Verifies access
+    // tokens locally so Watch does not round-trip to Auth on every Play.
+    jwtSecret: (process.env.SUPABASE_JWT_SECRET || '').trim(),
   },
 
   databaseUrl: process.env.DATABASE_URL || '',
