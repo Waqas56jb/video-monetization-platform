@@ -20,10 +20,6 @@
   ],
   "crons": [
     {
-      "path": "/api/jobs/keep-warm",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/jobs/premiere-expiry",
       "schedule": "0 2 * * *"
     },

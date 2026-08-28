@@ -9,8 +9,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
 test('API functions run in Dublin, next to eu-west-1', () => {
   const src = readFileSync(join(root, 'vercel.json'), 'utf8')
   assert.match(src, /"regions":\s*\[\s*"dub1"\s*\]/)
-  assert.match(src, /\/api\/jobs\/keep-warm/)
-  assert.match(src, /\*\/5 \* \* \* \*/)
+  assert.doesNotMatch(src, /\*\/5 \* \* \* \*/)
 })
 
 test('share-meta does not load Sharp on the public GET path', () => {
