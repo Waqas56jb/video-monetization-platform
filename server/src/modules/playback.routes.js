@@ -8,16 +8,67 @@ import * as cf from '../lib/cloudflare.js'
 import { verifyThumbnailKey } from '../lib/mediaToken.js'
 import { env, capabilities } from '../config/env.js'
 import { log } from '../lib/logger.js'
-import { slugFallbacks } from '../lib/videoKey.js'
+import { slugFallbacks, isUuidKey } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 
+function videoKeyParams(key) {
+  const k = String(key || '').trim()
+  return {
+    uuid: isUuidKey(k) ? k : null,
+    slugs: slugFallbacks(k),
+  }
+}
+
 async function videoByKey(key) {
+  const { uuid, slugs } = videoKeyParams(key)
   return one(
-    `select * from videos where (id::text = $1 or slug = any($2::text[])) and deleted_at is null`,
-    [key, slugFallbacks(key)]
+    `select * from videos
+      where deleted_at is null
+        and (($1::uuid is not null and id = $1::uuid) or slug = any($2::text[]))`,
+    [uuid, slugs]
   )
+}
+
+/**
+ * Watch Play: video + active purchase + resume in one round trip.
+ *
+ * Casting id to text forced a scan of every live row. Typed uuid
+ * or slug uses the PK / unique slug index; the purchase join uses
+ * purchases_unique_active.
+ */
+async function loadWatchContext(key, userId) {
+  const { uuid, slugs } = videoKeyParams(key)
+  const row = await one(
+    `select v.*,
+            p.id as _purchase_id,
+            p.purchased_at as _purchased_at,
+            wp.seconds as _resume_seconds
+       from videos v
+       left join purchases p
+         on $3::uuid is not null
+        and p.video_id = v.id
+        and p.user_id = $3::uuid
+        and p.status = 'active'
+       left join watch_progress wp
+         on $3::uuid is not null
+        and wp.video_id = v.id
+        and wp.user_id = $3::uuid
+      where v.deleted_at is null
+        and (($1::uuid is not null and v.id = $1::uuid) or v.slug = any($2::text[]))
+      limit 1`,
+    [uuid, slugs, userId || null]
+  )
+  if (!row) return null
+  const purchase = row._purchase_id
+    ? { id: row._purchase_id, purchased_at: row._purchased_at }
+    : null
+  const resumeSeconds = Number(row._resume_seconds || 0)
+  delete row._purchase_id
+  delete row._purchased_at
+  delete row._resume_seconds
+  return { video: row, purchase, resumeSeconds }
 }
 
 const router = Router()
@@ -59,22 +110,16 @@ function playbackTrace(id) {
  * asked for — and because it lives in the database rather than the page, it
  * survives the reload that happens after payment.
  */
-async function resumePointFor({ videoId, userId, durationSeconds, capAt = null }) {
-  if (!userId) return 0
-
-  const row = await one(
-    'select seconds from watch_progress where user_id = $1 and video_id = $2',
-    [userId, videoId]
-  )
-  let seconds = Number(row?.seconds || 0)
-  if (seconds < RESUME_MIN_SECONDS) return 0
+function resumeFromStored(seconds, { durationSeconds, capAt = null } = {}) {
+  let value = Number(seconds || 0)
+  if (value < RESUME_MIN_SECONDS) return 0
 
   const total = Number(durationSeconds || 0)
-  if (total > 0 && seconds > total - RESUME_END_MARGIN) return 0
+  if (total > 0 && value > total - RESUME_END_MARGIN) return 0
 
   // A preview must never be told to start beyond its own end.
-  if (capAt != null) seconds = Math.min(seconds, Math.max(0, Number(capAt) - 3))
-  return seconds < RESUME_MIN_SECONDS ? 0 : Math.floor(seconds)
+  if (capAt != null) value = Math.min(value, Math.max(0, Number(capAt) - 3))
+  return value < RESUME_MIN_SECONDS ? 0 : Math.floor(value)
 }
 
 /**
@@ -91,24 +136,28 @@ router.get(
   asyncHandler(async (req, res) => {
     const trace = playbackTrace(req.params.id)
 
-    let video = await videoByKey(req.params.id)
-    if (!video) throw notFound('Video not found')
+    const ctx = await loadWatchContext(req.params.id, req.user?.id)
+    if (!ctx) throw notFound('Video not found')
+    let { video, purchase } = ctx
     trace.mark('lookup')
 
-    video = await expireIfDue(video)
+    if (video.access_type === 'paid_premiere') {
+      video = await expireIfDue(video)
+    }
     trace.mark('expire')
 
     const isOwnerOrAdmin = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
 
-    const [access, settings, resumeRaw] = await Promise.all([
-      resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role }),
-      getSettings(),
-      resumePointFor({
-        videoId: video.id,
-        userId: req.user?.id,
-        durationSeconds: video.duration_seconds,
-      }),
-    ])
+    const access = await resolveAccess({
+      video,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      purchase,
+    })
+    const settings = await getSettings()
+    const resumeRaw = resumeFromStored(ctx.resumeSeconds, {
+      durationSeconds: video.duration_seconds,
+    })
     trace.mark('access+settings+resume')
 
     /**

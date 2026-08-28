@@ -2,9 +2,14 @@ import { one, query } from '../db/pool.js'
 
 let cache = null
 let cachedAt = 0
-const TTL_MS = 15_000
+const TTL_MS = 60_000
 
-/** Platform settings, lightly cached — they are read on nearly every request. */
+export function invalidateSettingsCache() {
+  cache = null
+  cachedAt = 0
+}
+
+/** Platform settings, cached for 60s — they rarely change and sit on every watch request. */
 export async function getSettings({ fresh = false } = {}) {
   if (!fresh && cache && Date.now() - cachedAt < TTL_MS) return cache
   cache = await one('select * from platform_settings where id = 1')
@@ -37,7 +42,7 @@ export async function updateSettings(patch) {
   const sets = entries.map(([k], i) => `${k} = $${i + 1}`).join(', ')
   const values = entries.map(([, v]) => v)
   await query(`update platform_settings set ${sets} where id = 1`, values)
-  cache = null
+  invalidateSettingsCache()
   return getSettings({ fresh: true })
 }
 

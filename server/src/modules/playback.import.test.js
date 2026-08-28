@@ -20,6 +20,15 @@ test('playback never waits on clip generation and never hands unpaid viewers the
   assert.doesNotMatch(src, /Promise\.race/)
   assert.doesNotMatch(src, /setTimeout\(resolve, 8000\)/)
   assert.match(src, /previewPending: true/)
-  assert.match(src, /Promise\.all/)
   assert.match(src, /ensureClips\(video\.id\)\.catch/)
+})
+
+test('watch playback loads video and active purchase in one query, never id::text', () => {
+  const dir = dirname(fileURLToPath(import.meta.url))
+  const src = readFileSync(join(dir, 'playback.routes.js'), 'utf8')
+  assert.doesNotMatch(src, /id::text\s*=/)
+  assert.match(src, /left join purchases p/)
+  assert.match(src, /p\.status = 'active'/)
+  assert.match(src, /id = \$1::uuid/)
+  assert.match(src, /purchase,/)
 })

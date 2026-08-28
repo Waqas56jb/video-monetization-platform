@@ -4,7 +4,7 @@ import { one, many, query, transaction } from '../db/pool.js'
 import { asyncHandler, badRequest, conflict, notFound } from '../lib/errors.js'
 import { validate, validateQuery } from '../middleware/validate.js'
 import { requireAuth, requireStaff, requireAdmin, requirePermission } from '../middleware/auth.js'
-import { getSettings, updateSettings, applySplit, splitPercentFor } from '../services/settings.js'
+import { getSettings, updateSettings, invalidateSettingsCache, applySplit, splitPercentFor } from '../services/settings.js'
 import { recordAudit, recordStaffAction, clientIp } from '../services/audit.js'
 import { notify, notifyMany } from '../services/notify.js'
 import { studioVideo, thumbnailFor } from '../services/entitlement.js'
@@ -1292,6 +1292,7 @@ router.patch(
     })
   ),
   asyncHandler(async (req, res) => {
+    invalidateSettingsCache()
     const settings = await updateSettings(req.body)
     await recordStaffAction(req, {
       action: 'CHANGED_SETTINGS', entityType: 'settings', entityId: '1',

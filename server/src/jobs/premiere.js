@@ -68,6 +68,9 @@ async function switchOne(v, settings, actorId) {
  * the moment the window ends, not the next morning when cron runs.
  */
 export async function expireIfDue(video, { actorId = null } = {}) {
+  // Fast path: no round trip unless this title is a paid premiere whose
+  // window has already closed. Watch hits this on every Play.
+  if (!video || video.access_type !== 'paid_premiere') return video
   if (!isDue(video)) return video
   const settings = await getSettings({ fresh: true })
   if (!settings.auto_premiere_to_free) return video

@@ -10,16 +10,19 @@ import { clampFreePreviewSeconds } from '../lib/preview.js'
  * This is the single place the paywall is decided, so the player, the signed
  * URL endpoint and the share preview all agree.
  */
-export async function resolveAccess({ video, userId, userRole = null }) {
+export async function resolveAccess({ video, userId, userRole = null, purchase: knownPurchase } = {}) {
   const free = video.access_type === 'free_with_ads'
 
-  let purchase = null
-  if (userId) {
-    purchase = await one(
-      `select id, purchased_at from purchases
+  let purchase = knownPurchase
+  if (purchase === undefined) {
+    purchase = null
+    if (userId) {
+      purchase = await one(
+        `select id, purchased_at from purchases
         where user_id = $1 and video_id = $2 and status = 'active'`,
-      [userId, video.id]
-    )
+        [userId, video.id]
+      )
+    }
   }
 
   const owned = Boolean(purchase)
