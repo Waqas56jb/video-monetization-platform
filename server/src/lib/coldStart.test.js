@@ -45,3 +45,7 @@ test('nodemailer is not imported at mailer boot', () => {
   assert.doesNotMatch(src, /^import nodemailer from 'nodemailer'/m)
   assert.match(src, /await import\('nodemailer'\)/)
 })
+
+test('routes/index.js is valid ESM (block comments must not contain */)', async () => {
+  await import('../routes/index.js')
+})

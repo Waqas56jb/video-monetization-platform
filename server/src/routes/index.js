@@ -107,7 +107,7 @@ router.get('/jobs/premiere-expiry', cronHandler)
  * Low traffic otherwise cold-starts almost every visit. Hits `select 1` and
  * fetches Supabase JWKS. Same secret as premiere-expiry.
  *
- * Vercel Hobby only runs crons once a day; `*/5 * * * *` needs Pro.
+ * Vercel Hobby only runs crons once a day; a 5-minute schedule needs Pro.
  */
 const keepWarmHandler = asyncHandler(async (req, res) => {
   assertCronSecret(req)
