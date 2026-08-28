@@ -63,15 +63,37 @@ export function warmPlayback(idOrSlug) {
   return cacheGet(playbackCache, idOrSlug, (id) => api.playback(id))
 }
 
-/** Promise already warming, or null. */
-export function takeWarmedVideo(idOrSlug) {
+function takeFrom(map, idOrSlug) {
   if (!idOrSlug) return null
-  return videoCache.get(String(idOrSlug)) || null
+  const key = String(idOrSlug)
+  const p = map.get(key) || null
+  if (p) map.delete(key)
+  return p
+}
+
+/** Promise already warming, or null. Consumed so a later reload cannot reuse it. */
+export function takeWarmedVideo(idOrSlug) {
+  return takeFrom(videoCache, idOrSlug)
 }
 
 export function takeWarmedPlayback(idOrSlug) {
-  if (!idOrSlug) return null
-  return playbackCache.get(String(idOrSlug)) || null
+  return takeFrom(playbackCache, idOrSlug)
+}
+
+/** Drop a warmed payload so the next fetch is live (full film after payment). */
+export function dropWarmedPlayback(idOrSlug) {
+  if (!idOrSlug) return
+  playbackCache.delete(String(idOrSlug))
+}
+
+export function dropWarmedVideo(idOrSlug) {
+  if (!idOrSlug) return
+  videoCache.delete(String(idOrSlug))
+}
+
+export function dropWarmedWatch(idOrSlug) {
+  dropWarmedPlayback(idOrSlug)
+  dropWarmedVideo(idOrSlug)
 }
 
 /** Chunk + video + signed playback — call from card pointerdown / Explore. */

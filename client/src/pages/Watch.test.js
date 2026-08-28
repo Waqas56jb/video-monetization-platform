@@ -16,6 +16,15 @@ test('Watch does not block the film iframe on ad-break loading', () => {
   assert.match(src, /This video is unavailable/)
 })
 
+test('after payment Watch drops the warmed preview and waits for the full film', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /dropWarmedWatch/)
+  assert.match(src, /key=\{`\$\{v\.id\}-\$\{p\.playback\.kind\}`\}/)
+  assert.doesNotMatch(src, /justPaid \? 'paid'/)
+  assert.match(src, /justPaid && p\.playback\.kind !== 'full'/)
+  assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? previewSeconds : 0\}/)
+})
+
 test('StreamPlayer uncovers the film on canplay, ads still wait for airtime', () => {
   const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
   assert.match(src, /player\.addEventListener\('loadeddata', uncoverFilm\)/)

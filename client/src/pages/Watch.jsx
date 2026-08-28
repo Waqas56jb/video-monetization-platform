@@ -32,7 +32,7 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
-import { takeWarmedVideo, takeWarmedPlayback } from '@/lib/prefetchWatch'
+import { takeWarmedVideo, takeWarmedPlayback, dropWarmedWatch } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
 
@@ -79,6 +79,8 @@ export default function Watch() {
    */
   const lastReported = useRef(0)
   const watchedTo = useRef(0)
+  /** Stays true once the free clip has run out — `previewOver` is cleared on pay. */
+  const previewRanOut = useRef(false)
   const [resumeHint, setResumeHint] = useState(0)
   const [justPaid, setJustPaid] = useState(false)
   /* Full video has actually started after purchase — overlay can drop. */
@@ -212,6 +214,7 @@ export default function Watch() {
     setResumeHint(0)
     lastReported.current = 0
     watchedTo.current = 0
+    previewRanOut.current = false
     setActiveAd(null)
     playedBreaks.current = new Set()
     mainProgress.current = 0
@@ -372,7 +375,10 @@ export default function Watch() {
     const stopsAt = Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0)
     if (!stopsAt) return
 
-    const timer = setTimeout(() => setPreviewOver(true), (stopsAt + 8) * 1000)
+    const timer = setTimeout(() => {
+      previewRanOut.current = true
+      setPreviewOver(true)
+    }, (stopsAt + 8) * 1000)
     return () => clearTimeout(timer)
   }, [needsPayment, previewOver, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds])
 
@@ -391,10 +397,15 @@ export default function Watch() {
       watchedTo: watchedTo.current,
       remembered: recallProgress(videoId),
       stopsAt: Number(p?.playback?.stopsAtSeconds || v?.freePreviewSeconds || 0),
-      previewEnded: previewOver,
+      previewEnded: previewOver || previewRanOut.current,
     })
     watchedTo.current = from
     rememberProgress(videoId, from, { force: true })
+
+    /* Prefetch cached the unpaid preview. Reload must not reuse that iframe. */
+    dropWarmedWatch(videoId)
+    dropWarmedWatch(v?.id)
+    dropWarmedWatch(v?.slug)
 
     setJustPaid(true)
     setContinueReady(false)
@@ -416,12 +427,15 @@ export default function Watch() {
           /* local hint still holds this tab */
         }
       }
+      dropWarmedWatch(videoId)
+      dropWarmedWatch(v?.id)
+      dropWarmedWatch(v?.slug)
       playback.reload({ quiet: true })
       video.reload({ quiet: true })
     }
     saveThenReload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id, previewOver, videoId])
+  }, [playback, video, showToast, p?.playback?.stopsAtSeconds, v?.freePreviewSeconds, v?.id, v?.slug, previewOver, videoId])
 
   /**
    * Paying is the decision. Do not leave a veil up if autoplay is blocked —
@@ -617,7 +631,7 @@ export default function Watch() {
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer
-                key={`${v.id}-${justPaid ? 'paid' : p.playback.kind}-${Math.floor(resumeAt)}`}
+                key={`${v.id}-${p.playback.kind}`}
                 src={p.playback.iframe}
                 poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
@@ -636,19 +650,26 @@ export default function Watch() {
                  * previews were five minutes long, so a video stating 3:37
                  * kept playing underneath the paywall until 5:00.
                  */
-                stopAt={needsPayment ? previewSeconds : 0}
+                stopAt={p.playback.kind === 'preview' ? previewSeconds : 0}
                 onStopReached={() => {
                   watchedTo.current = Math.max(watchedTo.current, previewSeconds)
                   rememberProgress(videoId, watchedTo.current, { force: true })
+                  previewRanOut.current = true
                   setPreviewOver(true)
                   reportProgress(previewSeconds, { force: true })
                 }}
-                onPlaying={() => setContinueReady(true)}
+                onPlaying={() => {
+                  /* Preview clip firing play must not drop the "Unlocked" veil
+                     or the full film never remounts at the resume second. */
+                  if (justPaid && p.playback.kind !== 'full') return
+                  setContinueReady(true)
+                }}
                 onRetry={() => playback.reload()}
                 onEnded={() => {
                   if (needsPayment) {
                     watchedTo.current = Math.max(watchedTo.current, previewSeconds)
                     rememberProgress(videoId, watchedTo.current, { force: true })
+                    previewRanOut.current = true
                     setPreviewOver(true)
                     reportProgress(previewSeconds, { force: true })
                     return
@@ -666,6 +687,7 @@ export default function Watch() {
 
                   if (needsPayment && previewSeconds && current >= previewSeconds - 0.4) {
                     watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                    previewRanOut.current = true
                     setPreviewOver(true)
                     reportProgress(previewSeconds, { force: true })
                   }
