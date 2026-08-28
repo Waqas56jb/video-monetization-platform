@@ -102,11 +102,25 @@ export async function readCardStatus(slug, sourceKey) {
   if (!slug || !sourceKey) return 'fallback'
   try {
     await ensureShareCardTable()
-    const row = await one('select source_key, jpeg from share_card_cache where slug = $1', [slug])
+    /**
+     * Ask Postgres for the size. Do not fetch the picture to measure it.
+     *
+     * This selected the whole `jpeg` column — a 1200×630 social card, 60–250 KB
+     * — serialised out of the database, across the pool and into the function,
+     * on every call, to compute one integer that was then thrown away. And this
+     * runs inside the share meta on `GET /api/videos/:id`, which is the request
+     * the watch page waits on before it can build the player: a sixth of a
+     * megabyte of JPEG on the path to the first frame of every video.
+     *
+     * `octet_length` answers the same question from the row header.
+     */
+    const row = await one(
+      'select source_key, octet_length(jpeg) as bytes from share_card_cache where slug = $1',
+      [slug]
+    )
     if (!row) return 'fallback'
     if (row.source_key !== sourceKey) return 'building'
-    const jpeg = Buffer.isBuffer(row.jpeg) ? row.jpeg : Buffer.from(row.jpeg || [])
-    if (jpeg.length < 1000) return 'fallback'
+    if (Number(row.bytes || 0) < 1000) return 'fallback'
     return 'ready'
   } catch {
     return 'fallback'
