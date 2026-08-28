@@ -271,6 +271,9 @@ export default function StreamPlayer({
     setTimedOut(false)
     setNeedsGesture(false)
     if (!iframeSrc) return
+    /* Autoplay means most viewers never tap anything, so a tap is not a
+       boundary we can measure from. This one always happens. */
+    markPerf('playerBoot')
 
     const timer = setTimeout(() => {
       setTimedOut(true)
@@ -373,6 +376,7 @@ export default function StreamPlayer({
           aired = true
           markReady()
           measurePerf('playClick', 'play-to-first-frame')
+          measurePerf('playerBoot', 'boot-to-first-frame')
           onPlayingRef.current?.()
           if (watchdog) {
             clearInterval(watchdog)

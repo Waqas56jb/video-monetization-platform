@@ -238,3 +238,80 @@ test('after payment the film is nudged by seek, never by a new start second', ()
   // And the viewer is told where they are being put back.
   assert.match(src, /Resuming from \$\{duration\(Math\.floor\(resumeAt\)\)\}/)
 })
+
+test('a Play tap issues no request and cannot move the iframe URL', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // Nothing in the player may reach the network at all: no token is minted on
+  // Play, so there is nothing to wait for between the tap and the frame.
+  assert.doesNotMatch(src, /\bfetch\s*\(/)
+  assert.doesNotMatch(src, /from '@\/lib\/api'/)
+  assert.doesNotMatch(src, /api\.(videos|playback|ads)\b/)
+
+  // The two Play paths do exactly two things each.
+  const kick = src.slice(src.indexOf('const kickFromGesture'), src.indexOf('const markReady'))
+  assert.match(kick, /player\?\.play\?\.\(\)/)
+  assert.doesNotMatch(kick, /setBoot|onRetry|iframeSrc|pin\.current/)
+
+  // And the URL is derived from nothing a tap can touch.
+  assert.match(src, /const iframeSrc = useMemo\(\s*\n?\s*\(\) => \(src \? buildSrc\(src, resumeAt, controls\) : null\),\s*\n?\s*\[src, resumeAt, controls\]/)
+  assert.match(src, /const resumeAt = pin\.current\.startAt/)
+
+  // Only the explicit retry controls may rebuild, and they are not Play.
+  const boots = src.match(/setBoot\(\(n\)/g) || []
+  assert.equal(boots.length, 1, 'there is exactly one place that rebuilds the iframe')
+  const retry = src.slice(src.indexOf('const retry = ()'), src.indexOf('useEffect', src.indexOf('const retry = ()')))
+  assert.match(retry, /setBoot\(\(n\) => n \+ 1\)/, 'and it is retry()')
+})
+
+test('the halted preview reports once, not five times a second forever', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // The 200ms poll runs whether or not anything changed. With the report
+  // outside the guard, a viewer sitting on the paywall produced five forced
+  // progress reports a second — five sessionStorage writes and five PUTs — for
+  // as long as they stayed there, against an API allowing 120 a minute.
+  const halt = src.slice(src.indexOf('const haltIfDue'), src.indexOf("player.addEventListener('timeupdate', haltIfDue)"))
+  const guard = halt.indexOf('if (!stopped) {')
+  const report = halt.lastIndexOf('onTimeUpdateRef.current?.(limit, player.duration)')
+  assert.ok(guard >= 0 && report > guard, 'the stop report must sit inside the !stopped guard')
+
+  // And a scrub back out of the halt re-arms it.
+  assert.match(halt, /stopped = false/)
+})
+
+test('a missing Stream SDK uncovers the player instead of hiding it forever', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // Everything that lifts the poster used to live behind `if (!Stream) return`,
+  // while the iframe played on underneath it — audible, never visible.
+  assert.doesNotMatch(src, /if \(!alive \|\| !Stream \|\| !frame\.current\) return/)
+  assert.match(src, /if \(!alive \|\| !frame\.current\) return/)
+  assert.match(src, /if \(!Stream\) \{\s*\n\s*setReady\(true\)/)
+})
+
+test('opening a video does not fetch the share card or two SPA shells', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // warmShareFromMeta pulls two lambda-rendered /watch/:slug documents and a
+  // 1200x630 JPEG, and it was firing in the same tick as the first segment.
+  const effects = src.slice(0, src.indexOf('const primeShare'))
+  assert.doesNotMatch(effects, /^\s*warmShareFromMeta\(share\)/m)
+  // Intent still warms it — the Share button, well before the sheet can open.
+  assert.match(src, /const primeShare = \(\) => \{\s*\n\s*if \(share\?\.watchUrl\) warmShareFromMeta\(share\)/)
+  assert.match(src, /onPointerEnter=\{primeShare\}/)
+
+  const warm = readFileSync(join(dir, '../lib/warmShare.js'), 'utf8')
+  // The heal guard is never released: releasing it in a .finally landed before
+  // React flushed the effect its own setState scheduled, so it re-entered.
+  assert.doesNotMatch(warm, /finally\(\(\) => healing\.delete/)
+  assert.match(warm, /healing\.add\(slug\)/)
+})
+
+test('the origin that actually serves the media is the one warmed', () => {
+  const html = readFileSync(join(dir, '../../index.html'), 'utf8')
+  // The manifest, the segments and the player bundle all come from here.
+  assert.match(html, /rel="preconnect" href="https:\/\/cloudflarestream\.com"/)
+  // videodelivery.net stays — it is the poster host Watch fetches first-party.
+  assert.match(html, /rel="preconnect" href="https:\/\/videodelivery\.net"/)
+})
