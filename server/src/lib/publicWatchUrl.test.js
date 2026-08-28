@@ -1,5 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   isPublicSlug,
   publicOgCardUrl,
@@ -34,6 +37,12 @@ test('OG card URL is same-origin /og/card/{slug}.jpg', () => {
     publicOgCardUrl(origin, 'studio-session-track-4'),
     publicOgCardUrl(origin, 'behind-the-fame-a-coast-documentary')
   )
+})
+
+test('share-meta points WhatsApp at /og/card, not the API host', () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'shareMeta.js'), 'utf8')
+  assert.match(src, /publicOgCardUrl/)
+  assert.doesNotMatch(src, /\/api\/share-card\//)
 })
 
 test('production origin does not stay on localhost', () => {

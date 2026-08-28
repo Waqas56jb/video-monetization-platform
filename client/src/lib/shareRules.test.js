@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   canonicalWatchPath,
   canonicalWatchUrl,
@@ -88,6 +89,11 @@ test('login next rejects open redirects', () => {
   assert.equal(safeNext('//evil.example'), null)
   assert.equal(safeNext('/\\evil.example'), null)
   assert.equal(safeNext('/watch/studio-session-track-4'), '/watch/studio-session-track-4')
+})
+
+test('WhatsApp tap does not wait two seconds before opening', () => {
+  const src = readFileSync(new URL('../components/watch/ShareSheet.jsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(src, /setTimeout\(done, 2000\)/)
 })
 
 test('ad skip: 0 is non-skippable, 10 waits for 10s of playback', () => {

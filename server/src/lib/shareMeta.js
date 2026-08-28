@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { one } from '../db/pool.js'
-import { env, capabilities } from '../config/env.js'
-import { publicWatchUrl } from './publicWatchUrl.js'
+import { env } from '../config/env.js'
+import { publicOgCardUrl, publicWatchUrl } from './publicWatchUrl.js'
 import { readCardStatus } from './buildShareCard.js'
 import { buildShareCard } from './buildShareCard.js'
 import { log } from './logger.js'
@@ -20,14 +20,16 @@ export function shareSourceKey(video) {
   return createHash('sha1').update(raw).digest('hex').slice(0, 10)
 }
 
-export function shareCardUrl(slug, sourceKey, cardStatus = 'ready') {
-  if (cardStatus === 'ready' && capabilities.serviceRole) {
-    const storage = publicStorageCardUrl(slug, sourceKey)
-    if (storage) return storage
-  }
-  const base = String(env.serverPublicUrl || env.publicWebUrl).replace(/\/$/, '')
-  const v = sourceKey ? `?v=${encodeURIComponent(sourceKey)}` : ''
-  return `${base}/api/share-card/${encodeURIComponent(slug)}.jpg${v}`
+/**
+ * WhatsApp drops images whose URL looks like an API route (`/api/...`).
+ * The public site serves the same JPEG at `/og/card/{slug}.jpg`, which
+ * looks like a file, sits on the same origin as og:url, and is cached
+ * at the CDN after the first fetch.
+ */
+export function shareCardUrl(slug, sourceKey, _cardStatus = 'ready') {
+  const url = publicOgCardUrl(env.publicWebUrl, slug)
+  if (!url) return null
+  return sourceKey ? `${url}?v=${encodeURIComponent(sourceKey)}` : url
 }
 
 /** Public Supabase Storage URL when bucket is configured. */

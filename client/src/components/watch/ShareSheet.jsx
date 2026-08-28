@@ -157,36 +157,20 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
   useEffect(() => () => clearTimeout(copyTimer.current), [])
 
-  const onWhatsApp = async () => {
+  const onWhatsApp = () => {
     if (waBusy) return
     setWaBusy(true)
-    try {
-      if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
-        healShareCard(slug)
-      }
-      if (cardUrl) {
-        await new Promise((resolve) => {
-          const img = new Image()
-          const done = () => resolve()
-          img.onload = done
-          img.onerror = done
-          img.src = cardUrl
-          setTimeout(done, 2000)
-        })
-      }
-      if (shareUrl) {
-        fetch(shareUrl, { mode: 'no-cors', cache: 'reload', keepalive: true }).catch(() => {})
-      }
-    } finally {
-      const href = whatsappHref(shareUrl)
-      if (isTouchMobile()) {
-        window.location.href = href
-      } else {
-        window.open(href, '_blank', 'noopener,noreferrer')
-      }
-      setWaBusy(false)
+    if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
+      healShareCard(slug)
     }
     warm()
+    const href = whatsappHref(shareUrl)
+    if (isTouchMobile()) {
+      window.location.href = href
+    } else {
+      window.open(href, '_blank', 'noopener,noreferrer')
+    }
+    setWaBusy(false)
   }
 
   const onFacebook = () => {

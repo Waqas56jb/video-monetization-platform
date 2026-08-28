@@ -1,10 +1,18 @@
 /**
- * /watch/:slug — one HTML for everyone (crawlers and browsers).
+ * /watch/:slug — Open Graph HTML for crawlers, SPA shell for browsers.
  *
- * WhatsApp / Facebook do not run JavaScript. They read the first HTML response.
- * User-Agent sniffing used to send crawlers a tiny document and browsers the SPA
- * shell with generic og:title="MTONYO+" — exactly the broken card the client saw.
- * Now every request gets the SPA shell with per-video Open Graph tags injected.
+ * WhatsApp / Facebook do not run JavaScript. They read the first HTML
+ * response, then fetch og:image. Two things used to turn that into a plain
+ * link:
+ *
+ *   1. og:image pointed at `/api/share-card/...` on the API host. WhatsApp
+ *      often ignores URLs that look like API routes.
+ *   2. This function waited 1.5s on share-meta (API cold start) before
+ *      sending HTML, and cached a failed fetch for five minutes. The
+ *      crawler timed out, or got a generic title, and showed a URL.
+ *
+ * Crawlers now get a 2 KB document with a same-origin `/og/card/{slug}.jpg`
+ * immediately. share-meta is a short race for the real title, never a gate.
  */
 
 import { readFileSync, existsSync } from 'node:fs'
@@ -13,6 +21,7 @@ import {
   crawlerDocument,
   escapeAttr,
   isLinkPreviewBot,
+  isUnfurlFetch,
   previewCopy,
 } from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
@@ -25,6 +34,8 @@ const WEB = publicWebOrigin()
 
 const SLUG_RE = /^[a-z0-9-]+$/
 const META_MEMO_MS = 5 * 60 * 1000
+const CRAWLER_META_MS = 600
+const BROWSER_META_MS = 1500
 const metaMemo = new Map()
 
 let shellCache = null
@@ -69,7 +80,21 @@ function detectCrawler(ua) {
   return 'human'
 }
 
-async function loadShareMeta(slug) {
+function titleFromSlug(slug) {
+  const words = String(slug || '')
+    .split('-')
+    .filter(Boolean)
+  if (!words.length) return 'MTONYO+'
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+function ogCardUrl(slug, sourceKey) {
+  if (!slug) return null
+  const base = `${WEB}/og/card/${encodeURIComponent(slug)}.jpg`
+  return sourceKey ? `${base}?v=${encodeURIComponent(sourceKey)}` : base
+}
+
+async function loadShareMeta(slug, timeoutMs) {
   const hit = metaMemo.get(slug)
   if (hit && Date.now() - hit.at < META_MEMO_MS) return hit.meta
 
@@ -77,14 +102,14 @@ async function loadShareMeta(slug) {
   try {
     const r = await fetch(`${API}/api/public/videos/${encodeURIComponent(slug)}/share-meta`, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (r.ok) meta = await r.json()
   } catch {
-    /* branded fallback below */
+    /* crawler HTML still goes out with the slug card URL */
   }
 
-  metaMemo.set(slug, { meta, at: Date.now() })
+  if (meta) metaMemo.set(slug, { meta, at: Date.now() })
   return meta
 }
 
@@ -100,6 +125,7 @@ function stripHeadMeta(html) {
 function buildMetaBlock({ canonical, title, creator, description, cardUrl }) {
   const img = cardUrl
     ? `<meta property="og:image" content="${escapeAttr(cardUrl)}">
+<meta property="og:image:url" content="${escapeAttr(cardUrl)}">
 <meta property="og:image:secure_url" content="${escapeAttr(cardUrl)}">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
@@ -124,11 +150,11 @@ ${img}
 <link rel="canonical" href="${escapeAttr(canonical)}">`
 }
 
-function fallbackHtml({ slug, started }) {
+function fallbackHtml({ slug }) {
   const canonical = slug ? `${WEB}/watch/${slug}` : WEB
-  const title = 'MTONYO+'
+  const title = slug ? titleFromSlug(slug) : 'MTONYO+'
   const description = 'WATCH FREE PREVIEW · MTONYO+'
-  const cardUrl = `${API}/api/share-card/fallback.jpg?v=generic`
+  const cardUrl = ogCardUrl(slug)
   const block = buildMetaBlock({ canonical, title, creator: '', description, cardUrl })
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">${block}</head><body><h1>${escapeAttr(title)}</h1></body></html>`
 }
@@ -138,27 +164,22 @@ export default async function handler(req, res) {
   const slug = parseSlug(req)
   const ua = req.headers['user-agent'] || ''
   const crawler = detectCrawler(ua)
+  const previewBot = isLinkPreviewBot(ua) || isUnfurlFetch(req)
 
   const pending = startReport(API, req, { asset: 'html', slug })
 
-  const meta = slug ? await loadShareMeta(slug) : null
-  const title = meta?.title || 'MTONYO+'
+  const meta = slug
+    ? await loadShareMeta(slug, previewBot ? CRAWLER_META_MS : BROWSER_META_MS)
+    : null
+  const title = meta?.title || (slug ? titleFromSlug(slug) : 'MTONYO+')
   const creator = meta?.creator || ''
   const description = creator
     ? `WATCH FREE PREVIEW · ${creator} · MTONYO+`
     : 'WATCH FREE PREVIEW · MTONYO+'
   const canonical = slug ? `${WEB}/watch/${slug}` : WEB
-  const cardUrl =
-    meta?.cardUrl ||
-    (slug ? `${API}/api/share-card/${encodeURIComponent(slug)}.jpg` : `${API}/api/share-card/fallback.jpg`)
+  const cardUrl = ogCardUrl(slug, meta?.sourceKey)
 
-  /**
-   * WhatsApp / Facebook fetch this HTML server-side and never run JavaScript.
-   * A 2 KB Open Graph document is what they can turn into a poster card.
-   * `video.other` without an og:video file made them drop the card and send
-   * a plain URL — the share the client kept reporting.
-   */
-  if (isLinkPreviewBot(ua)) {
+  if (previewBot) {
     const copy = previewCopy({ title, creator: { name: creator } })
     const html = crawlerDocument({
       canonical,
@@ -201,7 +222,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, s-maxage=60')
     res.setHeader('X-Build', BUILD)
     res.status(200)
-    res.end(fallbackHtml({ slug, started }))
+    res.end(fallbackHtml({ slug }))
     await settleReport(pending)
     return
   }
