@@ -81,7 +81,6 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     <div className="ad-stage" data-ad-state={playing ? (canSkip ? 'skippable' : 'playing') : 'loading'}>
       <StreamPlayer
         src={ad.iframe}
-        poster={ad.thumbnail || undefined}
         title={`Advertisement — ${ad.advertiser || ad.name}`}
         autoplay
         playOnReady

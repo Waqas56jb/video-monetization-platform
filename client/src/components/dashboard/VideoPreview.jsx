@@ -107,7 +107,6 @@ export default function VideoPreview({ video, open, onClose }) {
           {state.status === 'ready' && (
             <StreamPlayer
               src={state.src}
-              poster={poster}
               title={video?.title}
               autoplay={!touch}
               playOnReady={!touch}

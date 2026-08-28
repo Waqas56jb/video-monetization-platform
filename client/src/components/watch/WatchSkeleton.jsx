@@ -22,7 +22,6 @@ export default function WatchSkeleton({ preview } = {}) {
         ) : (
           <div className="skeleton skeleton-player" />
         )}
-        <span className="watch-preview-spin" aria-hidden="true" />
         <p className="watch-preview-msg">Loading video…</p>
       </div>
       <div className="watch-info">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Play, RefreshCw, Volume2 } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Volume2 } from 'lucide-react'
 import { AD_AIRTIME_FLOOR } from '@/lib/adSkip'
 import { ensureStreamSdk } from '@/lib/prefetchWatch'
 import { markPerf, measurePerf } from '@/lib/perfLog'
@@ -7,9 +7,18 @@ import { markPerf, measurePerf } from '@/lib/perfLog'
 /**
  * Cloudflare Stream iframe player.
  *
- * The iframe paints white for a beat before Stream's player boots. We cover
- * that with the video poster (black underneath) until playback is actually
- * ready — so the user never sees a blank white flash.
+ * There is no loading state here, deliberately. This used to paint our own
+ * poster over the iframe and hold it there behind a connecting message until the SDK relayed an event — so the viewer was shown a still
+ * image for as long as it took us to notice a player that had, in most cases,
+ * been ready and painting its own poster the whole time. Every failure mode of
+ * that cover was a video that looked broken while it worked: a blocked SDK
+ * script left it up for ever, and a twelve second timer replaced it with an
+ * error over a film that was already playing underneath.
+ *
+ * So the iframe is mounted the moment there is a source and nothing of ours is
+ * ever drawn on top of it. Cloudflare's player has a poster, a spinner and a
+ * play button of its own; they are better than ours because they know what the
+ * player is actually doing. The only thing we still say is that it failed.
  */
 
 function buildSrc(src, startAt, controls) {
@@ -34,7 +43,6 @@ function buildSrc(src, startAt, controls) {
 
 export default function StreamPlayer({
   src,
-  poster,
   autoplay = false,
   onEnded,
   onTimeUpdate,
@@ -145,9 +153,15 @@ export default function StreamPlayer({
   stopAtRef.current = Math.max(0, Number(stopAt) || 0)
   const onStopReachedRef = useRef(null)
   onStopReachedRef.current = onStopReached
-  const [ready, setReady] = useState(false)
-  const [timedOut, setTimedOut] = useState(false)
-  const [needsGesture, setNeedsGesture] = useState(false)
+  /**
+   * The player failed outright — not "is still loading".
+   *
+   * There is no loading state here any more. Cloudflare's own player paints its
+   * poster and its controls the moment the iframe exists, so anything of ours
+   * on top of it is a worse version of what is already there, shown for longer.
+   * The only thing worth saying is that it broke.
+   */
+  const [failed, setFailed] = useState(false)
   const requireAirtimeRef = useRef(requireAirtime)
   requireAirtimeRef.current = requireAirtime
   const playOnReadyRef = useRef(playOnReady)
@@ -245,40 +259,21 @@ export default function StreamPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs only
   }, [seekNonce, seekSeconds])
 
-  const kickFromGesture = () => {
-    markPerf('playClick')
-    const player = playerRef.current
-    try {
-      if (player && 'muted' in player) player.muted = true
-      player?.play?.()
-    } catch {
-      /* overlay stays until time actually moves */
-    }
-  }
-  const markReady = () => setReady(true)
   const retry = () => {
     if (onRetry && (!src || !iframeSrc)) {
       onRetry()
       return
     }
-    setReady(false)
-    setTimedOut(false)
+    setFailed(false)
     setBoot((n) => n + 1)
   }
 
   useEffect(() => {
-    setReady(false)
-    setTimedOut(false)
-    setNeedsGesture(false)
+    setFailed(false)
     if (!iframeSrc) return
     /* Autoplay means most viewers never tap anything, so a tap is not a
        boundary we can measure from. This one always happens. */
     markPerf('playerBoot')
-
-    const timer = setTimeout(() => {
-      setTimedOut(true)
-    }, 12000)
-    return () => clearTimeout(timer)
   }, [iframeSrc, boot])
 
   useEffect(() => {
@@ -297,7 +292,7 @@ export default function StreamPlayer({
        * Everything that lifts the poster lives inside this callback, and the
        * poster sits opaque on top of the frame. So an ad blocker, a DNS filter
        * or one dropped request for the embed script left every video on the
-       * site as a still image with "Connecting to player…", then a twelve
+       * site as a still image with a connecting message, then a twelve
        * second timeout, then a Try again that did the same thing — while the
        * film played behind it, audible if the viewer had sound on.
        *
@@ -305,8 +300,6 @@ export default function StreamPlayer({
        * it and let Cloudflare's player be the player.
        */
       if (!Stream) {
-        setReady(true)
-        setNeedsGesture(false)
         onReadyRef.current?.()
         return
       }
@@ -366,16 +359,8 @@ export default function StreamPlayer({
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
         const shown = () => {
-          /* Before the `aired` guard, deliberately. A film that is running
-             needs no tap — and the tap can be handed back long after the first
-             frame, when a resume from an advert is refused. If this sat below
-             the guard, that overlay would never come down again. React drops a
-             set to the value it already holds, so the repeat costs nothing. */
-          setNeedsGesture(false)
           if (aired) return
           aired = true
-          markReady()
-          measurePerf('playClick', 'play-to-first-frame')
           measurePerf('playerBoot', 'boot-to-first-frame')
           onPlayingRef.current?.()
           if (watchdog) {
@@ -415,21 +400,25 @@ export default function StreamPlayer({
             /* the player's own control is still there */
           }
         }
-        const uncoverFilm = () => {
-          /* Drop the boot overlay as soon as Stream has a frame. Ads still
-             wait for real airtime before Skip / billing — that lives in
-             noteIfAiring, not on this cover. */
-          markReady()
-          setNeedsGesture(false)
+        /**
+         * Stream has media. Tell the page — there is nothing to uncover.
+         *
+         * This used to lift our poster off the iframe. Nothing of ours sits on
+         * top of the player any more, so all that is left is the announcement
+         * that anything depending on the player being usable was waiting for.
+         */
+        const announceReady = () => {
           onReadyRef.current?.()
           if (requireAirtimeRef.current) return
           onPlayingRef.current?.()
         }
-        // The film uncovers as soon as Stream has a frame, so
-        // "Connecting to player…" does not sit for 20–30s.
-        player.addEventListener('loadedmetadata', uncoverFilm)
-        player.addEventListener('loadeddata', uncoverFilm)
-        player.addEventListener('canplay', uncoverFilm)
+        player.addEventListener('loadedmetadata', announceReady)
+        player.addEventListener('loadeddata', announceReady)
+        player.addEventListener('canplay', announceReady)
+        /* The one thing still worth saying on screen. */
+        player.addEventListener('error', () => {
+          if (alive) setFailed(true)
+        })
         player.addEventListener('playing', () => noteIfAiring())
         player.addEventListener('timeupdate', () => noteIfAiring())
         const reportSize = () => {
@@ -508,10 +497,10 @@ export default function StreamPlayer({
 
           const start = async () => {
             if (!alive || aired || pausedRef.current) return
-            if (!(await play(true))) {
-              setNeedsGesture(true)
-              return
-            }
+            /* Refused. Cloudflare's own play button is already sitting there
+               in the middle of the frame — the viewer taps that. We do not put
+               a second one over the top of it. */
+            if (!(await play(true))) return
             noteIfAiring()
           }
 
@@ -541,7 +530,6 @@ export default function StreamPlayer({
             if (attempts >= 8) {
               clearInterval(watchdog)
               watchdog = null
-              setNeedsGesture(true)
               return
             }
             attempts += 1
@@ -620,8 +608,8 @@ export default function StreamPlayer({
         if (alive) setSilent(true)
         return
       }
-      /* Nothing script is allowed to do. Hand the tap back. */
-      if (alive) setNeedsGesture(true)
+      /* Nothing script is allowed to do — and nothing needs to be. The film
+         is paused on a frame with Cloudflare's own controls over it. */
     })()
 
     return () => {
@@ -658,38 +646,17 @@ export default function StreamPlayer({
   }
 
   return (
-    <div className={`stream-shell ${ready ? 'is-ready' : 'is-booting'}`.trim()}>
-      {/* Poster covers the white iframe boot flash */}
-      {poster && (
-        <img
-          className={`stream-poster ${ready ? 'is-hidden' : ''}`.trim()}
-          src={poster}
-          alt=""
-          draggable={false}
-        />
-      )}
-      {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
-      {!paused && !ready && !timedOut && !needsGesture && (
-        <p className="stream-boot-msg">Connecting to player…</p>
-      )}
-      {!paused && needsGesture && !timedOut && (
-        <button type="button" className="stream-tap" onClick={kickFromGesture}>
-          <span className="stream-tap-hit">
-            <Play size={22} />
-            Tap to play
-          </span>
-        </button>
-      )}
-
+    <div className="stream-shell is-live">
       <iframe
         key={boot}
         ref={frame}
-        className={`stream-frame ${ready ? 'is-playing' : ''}`.trim()}
+        className="stream-frame is-playing"
         src={iframeSrc}
         title={title}
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         referrerPolicy="origin"
         allowFullScreen
+        onError={() => setFailed(true)}
         onLoad={() => {
           const player = playerRef.current
           if (!player || pausedRef.current) return
@@ -722,12 +689,10 @@ export default function StreamPlayer({
         </button>
       )}
 
-      {timedOut && !ready && (
-        <div className="stream-fallback stream-fallback-overlay" role="status">
+      {failed && (
+        <div className="stream-fallback stream-fallback-error" role="alert">
           <AlertTriangle size={22} />
-          <p>
-            The player is taking longer than usual. Check your connection, then try again.
-          </p>
+          <p>This video could not be played. Check your connection and try again.</p>
           <button className="btn btn-ghost btn-sm" type="button" onClick={retry}>
             <RefreshCw size={14} />
             Try again

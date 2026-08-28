@@ -328,9 +328,6 @@
   pointer-events: none;
   transition: opacity .28s ease;
 }
-.stream-poster.is-hidden {
-  opacity: 0;
-}
 .stream-poster-fallback {
   background: radial-gradient(ellipse at 50% 40%, #1a1228 0%, #000 70%);
 }
@@ -349,30 +346,6 @@
   font-weight: 600;
   pointer-events: none;
   white-space: nowrap;
-}
-.stream-tap {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.stream-tap-hit {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  border-radius: 999px;
-  background: var(--gold, #f5c518);
-  color: #100c02;
-  font-size: 14px;
-  font-weight: 800;
-  pointer-events: none;
 }
 .stream-gesture {
   position: absolute;
@@ -421,12 +394,13 @@
 .stream-fallback svg { color: var(--gold); }
 .stream-fallback p { margin: 0; max-width: 360px; font-size: 13.5px; line-height: 1.55; }
 .stream-fallback .btn { pointer-events: auto; }
-.stream-fallback-overlay {
+/* Shown over the frame only when the player actually failed — there is no
+   loading state to cover any more, so this is the single overlay left. */
+.stream-fallback-error {
   position: absolute;
   inset: 0;
-  aspect-ratio: auto;
-  background: rgba(8, 8, 14, 0.92);
-  z-index: 4;
+  z-index: 5;
+  background: rgba(6, 6, 10, .92);
 }
 .player { position: relative; }
 

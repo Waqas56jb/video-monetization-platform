@@ -25,18 +25,56 @@ test('after payment Watch drops the warmed preview and waits for the full film',
   assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? previewSeconds : 0\}/)
 })
 
-test('StreamPlayer uncovers the film on canplay, ads still wait for airtime', () => {
+test('nothing of ours is ever drawn over the Cloudflare player', () => {
   const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
-  assert.match(src, /player\.addEventListener\('loadeddata', uncoverFilm\)/)
-  assert.match(src, /player\.addEventListener\('canplay', uncoverFilm\)/)
+
+  // Our poster held the frame behind "Connecting to player…" until the SDK
+  // relayed an event — a still image over a player that was, in most cases,
+  // already painting its own poster. Every failure of that cover looked like a
+  // broken video: a blocked SDK script left it up for ever, and a 12s timer put
+  // an error over a film that was playing underneath it.
+  for (const gone of ['stream-poster', 'stream-boot-msg', 'stream-tap', 'Connecting to player', 'taking longer than usual']) {
+    assert.ok(!src.includes(gone), `${gone} must be gone from the player`)
+  }
+  assert.doesNotMatch(src, /setReady|setTimedOut|setNeedsGesture|markReady/)
+
+  // The iframe is the whole shell, mounted the moment there is a source.
+  assert.match(src, /<div className="stream-shell is-live">/)
+  assert.match(src, /className="stream-frame is-playing"/)
+
+  // What depended on our cover now fires on the SDK's own events.
+  assert.match(src, /const announceReady = \(\) => \{/)
+  assert.match(src, /player\.addEventListener\('loadeddata', announceReady\)/)
+  assert.match(src, /player\.addEventListener\('canplay', announceReady\)/)
+  assert.match(src, /onReadyRef\.current\?\.\(\)/)
   assert.match(src, /player\.videoWidth/)
   assert.match(src, /onMediaSizeRef/)
-  assert.match(src, /onReadyRef\.current\?\.\(\)/)
+
+  // Ads still refuse to count a black buffer as airtime.
   assert.match(src, /if \(requireAirtimeRef\.current\) return/)
+  assert.match(src, /AD_AIRTIME_FLOOR/)
   assert.match(src, /if \(!alive \|\| aired \|\| pausedRef\.current\)/)
-  assert.match(src, /needsGesture && !timedOut/)
   assert.match(src, /ensureStreamSdk/)
-  assert.doesNotMatch(src, /!ready && !timedOut && \(\s*<button type="button" className="stream-tap"/)
+})
+
+test('the only overlay left is a real failure', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // Nothing time-based. Only the SDK saying error, or the iframe failing.
+  assert.match(src, /player\.addEventListener\('error', \(\) => \{/)
+  assert.match(src, /onError=\{\(\) => setFailed\(true\)\}/)
+  assert.match(src, /\{failed && \(/)
+  assert.ok(!src.includes('12000'), 'no timeout may decide the player is broken')
+
+  // A plain message with Try again — no spinner.
+  const panel = src.slice(src.indexOf('{failed && ('))
+  assert.match(panel, /Try again/)
+  assert.doesNotMatch(panel, /spin|Loading|Connecting/)
+})
+
+test('the ad layer exists only while an advert is on screen', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /\{activeAd && \(\s*\n\s*<div className="player-ad-layer">/)
 })
 
 test('Watch keeps the film mounted under a pre-roll so Play is not a second boot', () => {
@@ -122,15 +160,11 @@ test('an advert can never leave the film frozen with no way back', () => {
   assert.doesNotMatch(src, /else if \(playOnReady \|\| autoplay\) player\.play\?\.\(\)/)
   assert.doesNotMatch(src, /overlay \/ watchdog still cover a refused play/)
 
-  // Refused unmuted -> retry muted -> and only then hand the tap back.
-  assert.match(src, /if \(alive\) setNeedsGesture\(true\)/)
-
-  // The tap must be able to disappear again, which means clearing it cannot sit
-  // behind the `aired` guard.
-  const shown = src.slice(src.indexOf('const shown = () => {'))
-  const guard = shown.indexOf('if (aired) return')
-  const clear = shown.indexOf('setNeedsGesture(false)')
-  assert.ok(clear >= 0 && clear < guard, 'needsGesture must clear before the aired guard')
+  // Refused unmuted -> retry muted. If even that is refused the film is paused
+  // on a frame with Cloudflare's own controls over it, and that is the tap —
+  // we no longer put a second play button on top of theirs.
+  assert.match(src, /if \(alive\) setSilent\(true\)/)
+  assert.doesNotMatch(src, /setNeedsGesture/)
 })
 
 test('a torn-down player is not left reachable', () => {
@@ -248,10 +282,10 @@ test('a Play tap issues no request and cannot move the iframe URL', () => {
   assert.doesNotMatch(src, /from '@\/lib\/api'/)
   assert.doesNotMatch(src, /api\.(videos|playback|ads)\b/)
 
-  // The two Play paths do exactly two things each.
-  const kick = src.slice(src.indexOf('const kickFromGesture'), src.indexOf('const markReady'))
-  assert.match(kick, /player\?\.play\?\.\(\)/)
-  assert.doesNotMatch(kick, /setBoot|onRetry|iframeSrc|pin\.current/)
+  // There is no Play control of ours left to audit. Cloudflare's own button is
+  // the one the viewer presses, and it cannot reach our code at all — so the
+  // strongest statement available is that the file has no network in it.
+  assert.doesNotMatch(src, /kickFromGesture/)
 
   // And the URL is derived from nothing a tap can touch.
   assert.match(src, /const iframeSrc = useMemo\(\s*\n?\s*\(\) => \(src \? buildSrc\(src, resumeAt, controls\) : null\),\s*\n?\s*\[src, resumeAt, controls\]/)
@@ -280,14 +314,17 @@ test('the halted preview reports once, not five times a second forever', () => {
   assert.match(halt, /stopped = false/)
 })
 
-test('a missing Stream SDK uncovers the player instead of hiding it forever', () => {
+test('a missing Stream SDK costs nothing, because nothing was covering the film', () => {
   const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
 
-  // Everything that lifts the poster used to live behind `if (!Stream) return`,
-  // while the iframe played on underneath it — audible, never visible.
+  // Everything that lifted the poster used to live behind `if (!Stream) return`,
+  // while the iframe played on underneath it — audible, never visible. There is
+  // no cover to lift now, so the worst a blocked SDK can do is cost us the
+  // paywall halt, and the film itself is unaffected.
   assert.doesNotMatch(src, /if \(!alive \|\| !Stream \|\| !frame\.current\) return/)
   assert.match(src, /if \(!alive \|\| !frame\.current\) return/)
-  assert.match(src, /if \(!Stream\) \{\s*\n\s*setReady\(true\)/)
+  assert.match(src, /if \(!Stream\) \{\s*\n\s*onReadyRef\.current\?\.\(\)/)
+  assert.doesNotMatch(src, /const \[ready, setReady\]/)
 })
 
 test('opening a video does not fetch the share card or two SPA shells', () => {

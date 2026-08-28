@@ -777,7 +777,6 @@ export default function Watch() {
               <StreamPlayer
                 key={`${v.id}-${p.playback.kind}`}
                 src={p.playback.iframe}
-                poster={mediaUrl(v.thumbnailUrl)}
                 title={v.title}
                 /* The server's stored position is the authority; the local hint
                    only covers the moment straight after payment, before the
