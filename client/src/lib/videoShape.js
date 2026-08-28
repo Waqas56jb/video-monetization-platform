@@ -29,3 +29,12 @@ export function videoShape(width, height) {
     ratio: w / h,
   }
 }
+
+/** CSS width of the Watch stage: min(wrap, maxHeight × width/height). */
+export function playerStageWidth(ratio, maxHeight, wrapWidth) {
+  const r = Number(ratio) || 16 / 9
+  const h = Number(maxHeight) || 0
+  const wrap = Number(wrapWidth) || 0
+  if (!(h > 0 && wrap > 0)) return wrap
+  return Math.min(wrap, h * r)
+}

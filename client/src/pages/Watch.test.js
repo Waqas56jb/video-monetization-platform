@@ -54,8 +54,9 @@ test('Watch sizes the player to the file, not a forced 16:9 box', () => {
 
   const css = readFileSync(join(dir, '../styles/realdata.css'), 'utf8')
   assert.match(css, /--player-aspect/)
-  assert.match(css, /\.watch-wrap \.player\.is-portrait/)
-  assert.match(css, /min\(80dvh, 820px\)/)
+  assert.match(css, /--player-ratio/)
+  assert.match(css, /--player-max-h/)
+  assert.doesNotMatch(css, /\.watch-wrap \.player \{[^}]*max-height: min\(56\.25vw, 62dvh\)/)
 })
 
 test('a purchase of A remounts Watch and cannot unlock B', () => {

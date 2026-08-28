@@ -27,8 +27,15 @@
   .watch-wrap { padding-block: 62px 24px; }
 }
 .watch-wrap .player {
-  width: 100%;
-  max-width: 840px;
+  --player-max-h: min(80dvh, 820px);
+  position: relative;
+  /* The stage is the file's own rectangle — not a 16:9 card with the film
+     floating in the middle. Width is whatever still fits under the height cap. */
+  width: min(100%, calc(var(--player-max-h) * var(--player-ratio, 1.77777778)));
+  max-width: 100%;
+  height: auto;
+  max-height: var(--player-max-h);
+  aspect-ratio: var(--player-aspect, 16 / 9);
   margin-inline: auto;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, .1);
@@ -38,81 +45,22 @@
     0 0 60px -24px rgba(124, 58, 237, .35);
   background: #000;
 }
-/* -------- the player has to be wholly on screen without scrolling --------
-   The client opened a video and had to scroll to see the frame and its
-   timeline. On a phone that reads as a broken page. Cap the stage against the
-   viewport height so the player, and the unlock bar telling them what is
-   locked, are both above the fold on any device.
-
-   `dvh` rather than `vh` because mobile Safari's `vh` includes the browser
-   chrome that is currently covering the bottom of the page. */
-.watch-wrap .player {
-  max-height: min(56.25vw, 62dvh);
+.watch-wrap .player .stream-shell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  padding-top: 0;
+  aspect-ratio: auto;
 }
-.watch-wrap .player .stream-shell,
 .watch-wrap .player .stream-frame,
 .watch-wrap .player .stream-poster {
-  max-height: min(56.25vw, 62dvh);
+  max-height: none;
 }
-/* Size the Watch stage to the file, not a forced 16:9. Portrait / square
-   films used to sit as a thin strip inside that box. */
-.watch-wrap .player .stream-shell {
-  height: auto;
-  padding-top: 0;
-  aspect-ratio: var(--player-aspect, 16 / 9);
-}
-.watch-wrap .player.is-portrait,
-.watch-wrap .player.is-square {
-  display: flex;
-  justify-content: center;
-  max-height: min(80dvh, 820px);
-  background: #000;
-}
-.watch-wrap .player.is-portrait .stream-shell,
-.watch-wrap .player.is-square .stream-shell {
-  width: min(100%, calc(min(80dvh, 820px) * var(--player-ratio, 0.5625)));
-  max-width: 100%;
-  height: auto;
-  max-height: min(80dvh, 820px);
-  padding-top: 0;
-  aspect-ratio: var(--player-aspect, 9 / 16);
-  margin-inline: auto;
-}
-.watch-wrap .player.is-portrait .stream-frame,
-.watch-wrap .player.is-portrait .stream-poster,
-.watch-wrap .player.is-square .stream-frame,
-.watch-wrap .player.is-square .stream-poster {
-  max-height: min(80dvh, 820px);
-}
-@media (max-width: 720px) {
-  /* 16:9 of the full width is short enough here; the cap only gets in the way. */
-  .watch-wrap .player,
-  .watch-wrap .player .stream-shell,
-  .watch-wrap .player .stream-frame,
-  .watch-wrap .player .stream-poster {
-    max-height: none;
-  }
-  .watch-wrap .player.is-portrait,
-  .watch-wrap .player.is-square {
-    max-height: min(80dvh, 820px);
-  }
-  .watch-wrap .player.is-portrait .stream-shell,
-  .watch-wrap .player.is-square .stream-shell,
-  .watch-wrap .player.is-portrait .stream-frame,
-  .watch-wrap .player.is-portrait .stream-poster,
-  .watch-wrap .player.is-square .stream-frame,
-  .watch-wrap .player.is-square .stream-poster {
-    max-height: min(80dvh, 820px);
-  }
-}
-/* Landscape phones are all width and no height — there the cap is the only
-   thing keeping the player from running off the bottom of the screen. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .watch-wrap .player,
-  .watch-wrap .player .stream-shell,
-  .watch-wrap .player .stream-frame,
-  .watch-wrap .player .stream-poster {
-    max-height: 74dvh;
+  .watch-wrap .player {
+    --player-max-h: 74dvh;
   }
 }
 
