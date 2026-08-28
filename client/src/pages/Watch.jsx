@@ -29,7 +29,7 @@ import { resumePoint } from '@/lib/resumePoint'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
-import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
+import { rememberProgress, recallProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches, playbackRouteMatches } from '@/lib/watchUrl'
 import { videoShape } from '@/lib/videoShape'
@@ -320,14 +320,24 @@ export default function Watch() {
     if (!signedIn || !v?.id) return
     const local = recallProgress(videoId)
     if (local <= 0) return
-    api
-      .saveProgress(v.id, local)
-      .then(() => {
-        // The account owns the position now; a second copy could only go stale.
-        forgetProgress(videoId)
-        playback.reload({ quiet: true })
-      })
-      .catch(() => {})
+    /**
+     * Write it to the account, and then leave the page alone.
+     *
+     * This used to reload playback afterwards, to pick up the server's copy of
+     * the very number it had just sent. Every reload mints a fresh signed
+     * token, so the iframe URL changed, so the player was torn down and rebuilt
+     * — seconds of black screen a moment after the video had started, for any
+     * signed-in viewer with a position from earlier in the tab. It is a second,
+     * independent cause of the freeze, and it costs a round trip to learn
+     * nothing: the server's answer is the number we already hold.
+     *
+     * The local copy is kept rather than forgotten, too. Handing ownership over
+     * and then deleting our own copy assumes the server will hand it back, and
+     * it does not always — a position close to the end is deliberately returned
+     * as zero. Both copies say the same thing and playback overwrites ours
+     * every few seconds, so there is nothing here that can go stale.
+     */
+    api.saveProgress(v.id, local).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, v?.id])
 

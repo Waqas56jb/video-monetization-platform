@@ -5,7 +5,6 @@ import TopProgress from '@/components/ui/TopProgress'
 const FORCE_STOP_MS = 8000
 
 const ProgressContext = createContext({
-  active: false,
   setActive: () => {},
   start: () => {},
   stop: () => {},
@@ -40,15 +39,22 @@ export function ProgressProvider({ children }) {
     if (cap.current) clearTimeout(cap.current)
   }, [])
 
-  const value = useMemo(
-    () => ({
-      active,
-      setActive,
-      start,
-      stop,
-    }),
-    [active, start, stop]
-  )
+  /**
+   * Actions only, and the same object for the life of the provider.
+   *
+   * `active` used to be in here, which meant the context value was a new object
+   * every time the bar switched on or off — and every consumer re-rendered with
+   * it. The consumers are the route watcher, the watch page and *every video
+   * card on screen*, so starting the bar on a card tap re-rendered the whole
+   * grid before the navigation had even begun: two dozen cards' worth of work
+   * between the finger going down and anything happening. That is the tap that
+   * feels dead.
+   *
+   * Nothing reads `active` through the context — the bar itself is rendered
+   * here and takes it as a prop — so removing it costs nothing and makes every
+   * consumer render-stable.
+   */
+  const value = useMemo(() => ({ setActive, start, stop }), [start, stop])
 
   return (
     <ProgressContext.Provider value={value}>
