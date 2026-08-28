@@ -48,11 +48,20 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://video-monetization-platform-chi.vercel.app/icons/icon-512.png">
 
+<!-- The API. Every screen's first request goes here, and it was the one host
+     with no warm connection: DNS, TCP and TLS were all being paid after the
+     bundle had already parsed and asked for data. On a phone on mobile data
+     that handshake is most of the wait before anything appears. -->
+<link rel="dns-prefetch" href="https://video-monetization-platform-server.vercel.app">
+<link rel="preconnect" href="https://video-monetization-platform-server.vercel.app" crossorigin>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 <link rel="preconnect" href="https://iframe.videodelivery.net" crossorigin>
 <link rel="preconnect" href="https://embed.cloudflarestream.com" crossorigin>
+<!-- The video segments themselves come from here, not from the embed host. -->
+<link rel="preconnect" href="https://videodelivery.net" crossorigin>
 <link rel="dns-prefetch" href="https://videodelivery.net">
 <link rel="preload" as="script" href="https://embed.cloudflarestream.com/embed/sdk.latest.js">
 <script src="https://embed.cloudflarestream.com/embed/sdk.latest.js" async data-cf-stream-sdk="1"></script>

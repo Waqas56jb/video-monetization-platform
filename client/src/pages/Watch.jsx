@@ -84,6 +84,16 @@ export default function Watch() {
   const previewRanOut = useRef(false)
   const [resumeHint, setResumeHint] = useState(0)
   /**
+   * The second the CURRENT player was told to start at, decided once.
+   *
+   * Declared up here, with the other refs, because the value is worked out
+   * further down — past the loading shells, where a hook may not be called.
+   * Keyed on the video and the playback kind, which is the same key the player
+   * itself is mounted under, so the two can never disagree about which film
+   * they are describing.
+   */
+  const startFrom = useRef({ key: null, value: 0 })
+  /**
    * Which video this tab just bought — never a bare true/false.
    *
    * React reuses this page when the watcher opens another title. A boolean
@@ -239,6 +249,9 @@ export default function Watch() {
     lastReported.current = 0
     watchedTo.current = 0
     previewRanOut.current = false
+    /* A start point belongs to one video. Carrying it over would open the next
+       title part-way through, at a second nobody watching it has reached. */
+    startFrom.current = { key: null, value: 0 }
     setActiveAd(null)
     playedBreaks.current = new Set()
     mainProgress.current = 0
@@ -530,25 +543,42 @@ export default function Watch() {
   const previewSeconds = Number(p?.playback?.stopsAtSeconds || v.freePreviewSeconds || 0)
 
   /**
-   * Where playback actually begins.
+   * Where playback actually begins — worked out ONCE per player, not per render.
    *
-   * The server's figure wins — it is the only one that survives a refresh. The
-   * local hint fills the gap between paying and the reloaded playback arriving,
-   * and a mid-roll returning the viewer to the middle of the film also lands here.
+   * The server's figure wins: it is the only one that survives a refresh. The
+   * local hint fills the gap between paying and the reloaded playback arriving.
+   *
+   * Why this is pinned rather than derived every time: `recallProgress` reads a
+   * position that playback itself keeps advancing, so computing this on each
+   * render produced a number that climbed while the film was running. The
+   * player took that as "start somewhere else", rebuilt its iframe and
+   * restarted the video — a freeze of several seconds, triggered by something
+   * as innocent as tapping Share. The start point belongs to the player, so it
+   * is decided when the player is created and then left alone.
+   *
+   * The key is the one the player is mounted under, so a genuinely new player
+   * — the full film arriving after payment — does get a fresh answer.
    */
-  const resumeAt = justPaid
-    ? /* The moment they pay, where they were in this tab is the truth. The
-         server's figure can still be a stale, larger number from an earlier
-         visit, and taking the larger of the two would throw them forward
-         past film they have not seen. */
-      resumeHint
-    : Math.max(
-        Number(p?.playback?.resumeFromSeconds || 0),
-        resumeHint,
-        /* Covers the visitor who watched the preview before signing in — the
-           server had nobody to record it against at the time. */
-        recallProgress(videoId)
-      )
+  const playerKey = p?.playback?.iframe ? `${v?.id}-${p.playback.kind}` : null
+  if (playerKey && startFrom.current.key !== playerKey) {
+    startFrom.current = {
+      key: playerKey,
+      value: justPaid
+        ? /* The moment they pay, where they were in this tab is the truth. The
+             server's figure can still be a stale, larger number from an earlier
+             visit, and taking the larger of the two would throw them forward
+             past film they have not seen. */
+          resumeHint
+        : Math.max(
+            Number(p?.playback?.resumeFromSeconds || 0),
+            resumeHint,
+            /* Covers the visitor who watched the preview before signing in — the
+               server had nobody to record it against at the time. */
+            recallProgress(videoId)
+          ),
+    }
+  }
+  const resumeAt = startFrom.current.value
 
   /** Why this video is playing in full — see the badge below. */
   const accessReason = (() => {

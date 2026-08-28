@@ -103,3 +103,57 @@ test('moving a running player is a seek, not a new iframe', () => {
   // Once per nonce.
   assert.match(src, /want\.applied = true/)
 })
+
+test('the start second is decided once per player, not on every render', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // recallProgress advances while the film plays. Reading it on every render
+  // produced a climbing startAt, which the player took as "start elsewhere".
+  assert.match(src, /const startFrom = useRef\(\{ key: null, value: 0 \}\)/)
+  assert.match(src, /if \(playerKey && startFrom\.current\.key !== playerKey\)/)
+  assert.match(src, /const resumeAt = startFrom\.current\.value/)
+
+  // recallProgress may only be reached from inside the keyed block.
+  const guarded = src.slice(src.indexOf('if (playerKey && startFrom.current.key'))
+  const before = src.slice(0, src.indexOf('if (playerKey && startFrom.current.key'))
+  assert.doesNotMatch(before, /resumeAt = justPaid/)
+  assert.match(guarded, /recallProgress\(videoId\)/)
+
+  // The pin key must be the key the player is mounted under, or the two can
+  // disagree about which film they are describing.
+  assert.match(src, /const playerKey = p\?\.playback\?\.iframe \? `\$\{v\?\.id\}-\$\{p\.playback\.kind\}` : null/)
+  assert.match(src, /key=\{`\$\{v\.id\}-\$\{p\.playback\.kind\}`\}/)
+
+  // A start point belongs to one video.
+  assert.match(src, /startFrom\.current = \{ key: null, value: 0 \}/)
+})
+
+test('nothing unmutes the film without a person asking', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // Unmuting an autoplaying video asks for a permission never granted, and the
+  // browser answers by pausing it. The film started and stopped.
+  assert.doesNotMatch(src, /player\.muted = false\s*\n\s*unmutedAt/)
+  assert.doesNotMatch(src, /unmutedAt/)
+
+  // The "recovery" that was meant to catch it guarded on !aired, and aired was
+  // already true by then — unreachable. It is gone rather than left to mislead.
+  assert.doesNotMatch(src, /const onPause = /)
+  assert.doesNotMatch(src, /addEventListener\('pause', onPause\)/)
+
+  // muted=false may now only appear inside a click handler. Comments describe
+  // the old behaviour on purpose, so they are not code and must not be read
+  // as such.
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  const unmutes = [...code.matchAll(/player\.muted = false/g)]
+  assert.ok(unmutes.length > 0, 'sound must still be reachable')
+  for (const m of unmutes) {
+    const before = code.slice(Math.max(0, m.index - 400), m.index)
+    assert.match(before, /onClick=\{|kickFromGesture/, 'unmute must follow a gesture')
+  }
+
+  // The pill appears as soon as it is airing muted, not 1.2s later.
+  assert.doesNotMatch(src, /}, 1200\)/)
+  assert.match(src, /setSilent\(Boolean\(player\.muted\)\)/)
+  assert.match(src, /addEventListener\('volumechange'/)
+})

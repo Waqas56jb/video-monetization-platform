@@ -35,7 +35,6 @@ const WEB = publicWebOrigin()
 const SLUG_RE = /^[a-z0-9-]+$/
 const META_MEMO_MS = 5 * 60 * 1000
 const CRAWLER_META_MS = 600
-const BROWSER_META_MS = 1500
 const metaMemo = new Map()
 
 let shellCache = null
@@ -94,9 +93,22 @@ function ogCardUrl(slug, sourceKey) {
   return sourceKey ? `${base}?v=${encodeURIComponent(sourceKey)}` : base
 }
 
-async function loadShareMeta(slug, timeoutMs) {
+/**
+ * What this instance already knows about a slug. Never a network call.
+ *
+ * A browser is handed this and nothing more. It runs JavaScript: it sets its
+ * own title, and it does not read og: tags at all — so there is nothing a
+ * cross-service round trip could give it that is worth delaying its first byte
+ * for.
+ */
+function memoedShareMeta(slug) {
   const hit = metaMemo.get(slug)
-  if (hit && Date.now() - hit.at < META_MEMO_MS) return hit.meta
+  return hit && Date.now() - hit.at < META_MEMO_MS ? hit.meta : null
+}
+
+async function loadShareMeta(slug, timeoutMs) {
+  const hit = memoedShareMeta(slug)
+  if (hit) return hit
 
   let meta = null
   try {
@@ -168,8 +180,24 @@ export default async function handler(req, res) {
 
   const pending = startReport(API, req, { asset: 'html', slug })
 
+  /**
+   * A crawler races for the real title. A browser waits for nothing.
+   *
+   * This used to await share-meta for everybody, up to 1.5s for a browser —
+   * before a single byte of HTML went out, on top of this function's own cold
+   * start and the API's inside it. Every direct open of a watch link paid it:
+   * a tap from WhatsApp, a refresh, a new tab. The memo is per-instance, so a
+   * cold instance always missed, which is precisely when it hurt most.
+   *
+   * Nothing was gained. A browser boots the SPA, which sets the title from the
+   * video it fetches anyway; og: tags are for machines that do not run
+   * JavaScript. So browsers get whatever this instance already happens to
+   * know, and are never held up learning more.
+   */
   const meta = slug
-    ? await loadShareMeta(slug, previewBot ? CRAWLER_META_MS : BROWSER_META_MS)
+    ? previewBot
+      ? await loadShareMeta(slug, CRAWLER_META_MS)
+      : memoedShareMeta(slug)
     : null
   const title = meta?.title || (slug ? titleFromSlug(slug) : 'MTONYO+')
   const creator = meta?.creator || ''
@@ -244,7 +272,7 @@ export default async function handler(req, res) {
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
-  res.setHeader('Vary', 'Accept-Encoding')
+  res.setHeader('Vary', 'User-Agent, Accept-Encoding')
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)

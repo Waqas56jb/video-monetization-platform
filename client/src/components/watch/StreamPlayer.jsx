@@ -286,7 +286,6 @@ export default function StreamPlayer({
         player.addEventListener('timeupdate', haltIfDue)
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
-        let unmutedAt = 0
         const shown = () => {
           if (aired) return
           aired = true
@@ -305,23 +304,30 @@ export default function StreamPlayer({
           const first = !aired
           shown()
           if (!first || !alive) return
+          /**
+           * It is playing. Say whether it has sound — do not try to give it any.
+           *
+           * This used to set `player.muted = false` the instant the first frame
+           * aired. Muted autoplay is the only kind a browser grants without a
+           * gesture, so unmuting one immediately is asking for the permission
+           * that was never given: the browser answers by pausing the video. The
+           * viewer saw the film start and stop.
+           *
+           * Nothing recovered it either. The `pause` handler that was meant to
+           * re-mute and restart guarded on `!aired`, and `aired` is already true
+           * by the time anything unmutes — so the branch could never run. What
+           * looked like a recovery path was unreachable, which is why this reads
+           * as "the preview does not play".
+           *
+           * So the rule is now the browser's own: it stays muted until a person
+           * asks for sound. The pill below is that ask, and it appears the
+           * moment the film is airing rather than a second and a half later.
+           */
+          if (requireAirtimeRef.current) return
           try {
             setSilent(Boolean(player.muted))
           } catch {
-            /* ignore */
-          }
-          if (requireAirtimeRef.current) return
-          if (!playOnReadyRef.current && !autoplayRef.current) return
-          try {
-            if ('muted' in player) {
-              player.muted = false
-              unmutedAt = Date.now()
-              setTimeout(() => {
-                if (alive) setSilent(Boolean(player.muted))
-              }, 1200)
-            }
-          } catch {
-            /* stay muted; tap-for-sound still covers it */
+            /* the player's own control is still there */
           }
         }
         const uncoverFilm = () => {
@@ -349,6 +355,17 @@ export default function StreamPlayer({
         }
         player.addEventListener('loadedmetadata', reportSize)
         player.addEventListener('loadeddata', reportSize)
+
+        /* Sound can also be turned on from Stream's own controls. Follow it, so
+           the pill is never offering something the viewer already has. */
+        player.addEventListener('volumechange', () => {
+          if (!alive || requireAirtimeRef.current) return
+          try {
+            setSilent(Boolean(player.muted))
+          } catch {
+            /* ignore */
+          }
+        })
 
         // Seek once, and only if the URL parameter did not already land us
         // there. Seeking again on every metadata event would fight the viewer
@@ -413,12 +430,6 @@ export default function StreamPlayer({
             noteIfAiring()
           }
 
-          const onPause = () => {
-            if (!alive || aired) return
-            if (!unmutedAt || Date.now() - unmutedAt > 2000) return
-            play(true)
-          }
-
           const onTime = () => {
             const t = Number(player.currentTime) || 0
             if (t > lastTime + 0.15) {
@@ -430,7 +441,6 @@ export default function StreamPlayer({
           player.addEventListener('canplay', start)
           player.addEventListener('loadeddata', start)
           player.addEventListener('loadedmetadata', start)
-          player.addEventListener('pause', onPause)
           player.addEventListener('timeupdate', onTime)
           kickTimer = setTimeout(start, 0)
 
