@@ -218,6 +218,10 @@ router.post(
       )
     }
 
+    if (!video.preview_uid) {
+      await ensureClips(video.id).catch(() => {})
+    }
+
     const updated = await transaction(async (client) => {
       const { rows } = await client.query(
         `update videos set

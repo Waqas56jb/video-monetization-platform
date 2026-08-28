@@ -573,10 +573,15 @@ router.get(
 
     // Already settled — no need to trouble Cloudflare again.
     if (video.state === 'ready' || video.state === 'failed' || !video.cloudflare_uid) {
+      let row = video
+      if (video.state === 'ready' && !video.preview_uid) {
+        await ensureClips(video.id).catch(() => {})
+        row = (await one('select * from videos where id = $1', [video.id])) || video
+      }
       return res.json({
-        state: video.state,
-        progress: video.state === 'ready' ? 100 : 0,
-        video: studioVideo(video),
+        state: row.state,
+        progress: row.state === 'ready' ? 100 : 0,
+        video: studioVideo(row),
       })
     }
 
@@ -616,9 +621,11 @@ router.get(
         [video.id, Math.floor(remote.duration || 0) || null, cf.cloudflareThumbnail(remote)]
       )
       // Cut the free preview and the social promo now the source exists.
-      ensureClips(video.id).catch(() => {})
-      await maybeBuildShareCard(updated)
-      return res.json({ state: 'ready', progress: 100, video: studioVideo(updated) })
+      // Awaited so Watch never has to wait on clip generation at Play time.
+      await ensureClips(video.id).catch(() => {})
+      const withClips = (await one('select * from videos where id = $1', [updated.id])) || updated
+      await maybeBuildShareCard(withClips)
+      return res.json({ state: 'ready', progress: 100, video: studioVideo(withClips) })
     }
 
     if (remoteState === 'error') {

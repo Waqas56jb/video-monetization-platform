@@ -13,3 +13,13 @@ test('playback.routes imports clampFreePreviewSeconds (preview path needs it)', 
     'dropping this import 500s every unpaid preview'
   )
 })
+
+test('playback never waits on clip generation and never hands unpaid viewers the full uid', () => {
+  const dir = dirname(fileURLToPath(import.meta.url))
+  const src = readFileSync(join(dir, 'playback.routes.js'), 'utf8')
+  assert.doesNotMatch(src, /Promise\.race/)
+  assert.doesNotMatch(src, /setTimeout\(resolve, 8000\)/)
+  assert.match(src, /previewPending: true/)
+  assert.match(src, /Promise\.all/)
+  assert.match(src, /ensureClips\(video\.id\)\.catch/)
+})

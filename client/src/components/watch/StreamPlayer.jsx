@@ -234,6 +234,10 @@ export default function StreamPlayer({
           markReady()
           setNeedsGesture(false)
           onPlayingRef.current?.()
+          if (watchdog) {
+            clearInterval(watchdog)
+            watchdog = null
+          }
         }
         const noteIfAiring = (t = Number(player.currentTime) || 0) => {
           const floor = requireAirtimeRef.current ? AD_AIRTIME_FLOOR : 0.1
@@ -260,7 +264,14 @@ export default function StreamPlayer({
             /* stay muted; tap-for-sound still covers it */
           }
         }
-        // Never uncover on loadeddata — that is Stream's paused Play button.
+        const uncoverFilm = () => {
+          if (requireAirtimeRef.current) return
+          shown()
+        }
+        // Ads still wait for real airtime. The film uncovers as soon as Stream
+        // has a frame, so "Connecting to player…" does not sit for 20–30s.
+        player.addEventListener('loadeddata', uncoverFilm)
+        player.addEventListener('canplay', uncoverFilm)
         player.addEventListener('playing', () => noteIfAiring())
         player.addEventListener('timeupdate', () => noteIfAiring())
 
@@ -311,7 +322,7 @@ export default function StreamPlayer({
           }
 
           const start = async () => {
-            if (!alive) return
+            if (!alive || aired) return
             if (!(await play(true))) {
               setNeedsGesture(true)
               return
@@ -320,7 +331,8 @@ export default function StreamPlayer({
           }
 
           const onPause = () => {
-            if (!alive || !unmutedAt || Date.now() - unmutedAt > 2000) return
+            if (!alive || aired) return
+            if (!unmutedAt || Date.now() - unmutedAt > 2000) return
             play(true)
           }
 
@@ -339,7 +351,13 @@ export default function StreamPlayer({
           kickTimer = setTimeout(start, 200)
 
           watchdog = setInterval(() => {
-            if (!alive || aired) return
+            if (!alive || aired) {
+              if (watchdog) {
+                clearInterval(watchdog)
+                watchdog = null
+              }
+              return
+            }
             if (Date.now() - lastProgressAt < 2000) return
             if (attempts >= 8) {
               clearInterval(watchdog)
@@ -350,7 +368,6 @@ export default function StreamPlayer({
             attempts += 1
             lastProgressAt = Date.now()
             play(true)
-            if (alive) setSilent(true)
           }, 900)
         }
       } catch {

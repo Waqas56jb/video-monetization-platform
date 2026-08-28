@@ -6,7 +6,8 @@ import { resolveAccess, thumbnailFor } from '../services/entitlement.js'
 import { getSettings } from '../services/settings.js'
 import * as cf from '../lib/cloudflare.js'
 import { verifyThumbnailKey } from '../lib/mediaToken.js'
-import { capabilities } from '../config/env.js'
+import { env, capabilities } from '../config/env.js'
+import { log } from '../lib/logger.js'
 import { slugFallbacks } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { buildShareCard } from '../lib/buildShareCard.js'
@@ -28,6 +29,23 @@ const PREVIEW_TOKEN_TTL = 15 * 60 // 15 minutes
 /** Don't resume from the first breath of a video, or from its dying seconds. */
 const RESUME_MIN_SECONDS = 1
 const RESUME_END_MARGIN = 15
+
+function playbackTrace(id) {
+  const on = Boolean(env.verboseSql) || env.nodeEnv !== 'production'
+  const t0 = Date.now()
+  const marks = []
+  const label = `playback:${id}`
+  return {
+    mark(name) {
+      if (!on) return
+      marks.push(`${name}=${Date.now() - t0}ms`)
+    },
+    done() {
+      if (!on) return
+      log.debug(`${label} total=${Date.now() - t0}ms ${marks.join(' ')}`)
+    },
+  }
+}
 
 /**
  * Where this viewer should pick up from.
@@ -71,13 +89,27 @@ router.get(
   '/:id/playback',
   optionalAuth(),
   asyncHandler(async (req, res) => {
+    const trace = playbackTrace(req.params.id)
+
     let video = await videoByKey(req.params.id)
     if (!video) throw notFound('Video not found')
+    trace.mark('lookup')
 
     video = await expireIfDue(video)
+    trace.mark('expire')
 
     const isOwnerOrAdmin = req.user && (req.user.id === video.creator_id || req.user.role === 'admin')
-    const access = await resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role })
+
+    const [access, settings, resumeRaw] = await Promise.all([
+      resolveAccess({ video, userId: req.user?.id, userRole: req.user?.role }),
+      getSettings(),
+      resumePointFor({
+        videoId: video.id,
+        userId: req.user?.id,
+        durationSeconds: video.duration_seconds,
+      }),
+    ])
+    trace.mark('access+settings+resume')
 
     /**
      * Somebody who paid keeps what they paid for, published or not.
@@ -93,7 +125,6 @@ router.get(
     if (!(video.is_published && video.review_status === 'approved') && !isOwnerOrAdmin && !access.owned) {
       throw notFound('Video not found')
     }
-    const settings = await getSettings()
 
     const payload = {
       videoId: video.id,
@@ -113,6 +144,7 @@ router.get(
     }
 
     if (!capabilities.cloudflareStream) {
+      trace.done()
       return res.json({ ...payload, playback: null, note: 'Cloudflare Stream is not configured yet' })
     }
 
@@ -121,12 +153,8 @@ router.get(
       const token = capabilities.signedPlayback
         ? cf.signPlaybackToken(video.cloudflare_uid, { expiresInSeconds: FULL_TOKEN_TTL })
         : video.cloudflare_uid
-
-      const resumeFromSeconds = await resumePointFor({
-        videoId: video.id,
-        userId: req.user?.id,
-        durationSeconds: video.duration_seconds,
-      })
+      trace.mark('sign')
+      trace.done()
 
       return res.json({
         ...payload,
@@ -134,33 +162,28 @@ router.get(
           kind: 'full',
           expiresInSeconds: FULL_TOKEN_TTL,
           /* Someone who just paid picks up at the second the preview stopped. */
-          resumeFromSeconds,
+          resumeFromSeconds: resumeRaw,
           ...cf.playbackUrls(token),
         },
       })
     }
 
-    // Locked: only the preview clip is signed and returned.
-    // Recut in the background when a clip already exists so this request
-    // cannot sit on Cloudflare for ~8s and trip the client's 10s timeout.
-    // Wait only when there is nothing to play yet.
-    if (video.preview_uid) {
-      ensureClips(video.id).catch(() => {})
-    } else {
-      await Promise.race([
-        ensureClips(video.id).catch(() => {}),
-        new Promise((resolve) => setTimeout(resolve, 8000)),
-      ])
-    }
-    const fresh = await one('select preview_uid from videos where id = $1', [video.id])
-    const previewUid = fresh?.preview_uid || video.preview_uid || null
+    // Locked: only the preview clip is signed and returned. Never wait on
+    // Cloudflare here — clip generation belongs at encode/approve time.
+    const previewUid = video.preview_uid || null
     if (!previewUid) {
+      ensureClips(video.id).catch(() => {})
+      trace.mark('preview-pending')
+      trace.done()
       return res.json({
         ...payload,
         playback: null,
+        previewPending: true,
         note: 'The free preview clip is still being generated',
       })
     }
+
+    ensureClips(video.id).catch(() => {})
 
     const token = capabilities.signedPlayback
       ? cf.signPlaybackToken(previewUid, { expiresInSeconds: PREVIEW_TOKEN_TTL })
@@ -178,13 +201,14 @@ router.get(
       ]).catch(() => {})
     }
 
-    const resumeFromSeconds = await resumePointFor({
-      videoId: video.id,
-      userId: req.user?.id,
-      durationSeconds: previewSeconds,
-      capAt: previewSeconds,
-    })
+    let resumeFromSeconds = resumeRaw
+    if (previewSeconds > 0) {
+      resumeFromSeconds = Math.min(resumeFromSeconds, Math.max(0, previewSeconds - 3))
+      if (resumeFromSeconds < RESUME_MIN_SECONDS) resumeFromSeconds = 0
+    }
 
+    trace.mark('sign')
+    trace.done()
     res.json({
       ...payload,
       playback: {

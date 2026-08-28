@@ -35,6 +35,7 @@
     "demo:status": "node src/cli/demo.js status",
     "share:warm": "node src/cli/share-cards.js",
     "share:backfill": "node scripts/backfill-share-cards.js",
+    "previews:backfill": "node src/cli/backfill-previews.js",
     "demo:clear": "node src/cli/demo.js clear",
     "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js src/lib/lockPostgrest.test.js src/services/entitlement.thumbnail.test.js src/services/entitlement.access.test.js src/modules/playback.import.test.js src/modules/creatorApplication.import.test.js src/modules/creatorStorefront.import.test.js src/modules/videos.list.import.test.js"
   },

@@ -32,7 +32,7 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
-import { takeWarmedVideo } from '@/lib/prefetchWatch'
+import { takeWarmedVideo, takeWarmedPlayback } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
 
@@ -106,8 +106,13 @@ export default function Watch() {
     () => takeWarmedVideo(videoId) || api.videos.one(videoId),
     [videoId]
   )
-  const playback = useApi(() => api.playback(videoId), [videoId], { timeoutMs: 20_000 })
+  const playback = useApi(
+    () => takeWarmedPlayback(videoId) || api.playback(videoId),
+    [videoId],
+    { timeoutMs: 20_000 }
+  )
   const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
+  const [previewAttempt, setPreviewAttempt] = useState(0)
 
   /* Drop the top progress bar once this page has painted a shell. */
   useEffect(() => {
@@ -210,7 +215,22 @@ export default function Watch() {
     setActiveAd(null)
     playedBreaks.current = new Set()
     mainProgress.current = 0
+    setPreviewAttempt(0)
   }, [videoId])
+
+  /**
+   * Clip generation is not done on Play. If this title is missing a preview
+   * asset, ask again a few times while Cloudflare cuts it in the background.
+   */
+  useEffect(() => {
+    if (!p?.previewPending || p?.playback?.iframe) return
+    if (previewAttempt >= 5) return
+    const t = setTimeout(() => {
+      playback.reload({ quiet: true })
+      setPreviewAttempt((n) => n + 1)
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [p?.previewPending, p?.playback?.iframe, previewAttempt, playback.reload])
 
   /**
    * Report the position, at most every few seconds.
@@ -506,7 +526,9 @@ export default function Watch() {
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(0, Number(v.durationSeconds || 0) - previewSeconds)
   /** After preview: cinematic lock on the player — payment sheet only on tap. */
-  const showLockGate = needsPayment && (previewOver || (accessReady && !p?.playback?.iframe))
+  const showLockGate =
+    needsPayment &&
+    (previewOver || (accessReady && !p?.playback?.iframe && !p?.previewPending))
 
   const openCheckout = () => {
     if (!needsPayment) return
@@ -557,7 +579,7 @@ export default function Watch() {
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
               )}
             </div>
-          ) : p?.access?.showsAds && adBreaks.loading && !activeAd ? (
+          ) : p?.previewPending && !p?.playback?.iframe ? (
             <div className="stream-shell is-booting">
               {v.thumbnailUrl ? (
                 <img
@@ -569,7 +591,7 @@ export default function Watch() {
               ) : (
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
               )}
-              <p className="stream-boot-msg">Loading advert…</p>
+              <p className="stream-boot-msg">Preview is being prepared</p>
             </div>
           ) : playback.error && !p?.playback?.iframe ? (
             <div className="player-empty">
