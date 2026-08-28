@@ -19,6 +19,7 @@ import { adAirtimeStarted, adCanSkip, adSkipRules } from '@/lib/adSkip'
 export default function AdBreak({ ad, videoId, playId, onFinished }) {
   const [elapsed, setElapsed] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [booted, setBooted] = useState(false)
   const done = useRef(false)
   const watched = useRef(0)
 
@@ -69,7 +70,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     if (!ad?.iframe) return
     const fail = setTimeout(() => {
       if (!playing && !done.current) finish(false)
-    }, 12000)
+    }, 4000)
     return () => clearTimeout(fail)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad?.campaignId, playing])
@@ -88,6 +89,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         controls={false}
         onEnded={() => finish(true)}
         onTimeUpdate={noteAirtime}
+        onReady={() => setBooted(true)}
       />
 
       <div className="ad-badge">
@@ -114,7 +116,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         </button>
       )}
 
-      {!playing && <p className="ad-loading-note">Advert loading…</p>}
+      {!booted && !playing && <p className="ad-loading-note">Advert loading…</p>}
 
       <p className="ad-note">
         This video is free because of adverts like this one — the creator earns from it.

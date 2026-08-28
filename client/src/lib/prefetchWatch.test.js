@@ -12,4 +12,6 @@ test('warm playback is consumed on take and dropped after pay', () => {
   assert.match(src, /export function dropWarmedWatch/)
   assert.match(src, /export function dropWarmedPlayback/)
   assert.match(src, /playbackCache\.delete/)
+  assert.match(src, /warmAds/)
+  assert.match(src, /takeWarmedAds/)
 })

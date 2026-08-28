@@ -32,7 +32,7 @@ import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches } from '@/lib/watchUrl'
-import { takeWarmedVideo, takeWarmedPlayback, dropWarmedWatch } from '@/lib/prefetchWatch'
+import { takeWarmedVideo, takeWarmedPlayback, takeWarmedAds, dropWarmedWatch } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
 
@@ -113,7 +113,10 @@ export default function Watch() {
     [videoId],
     { timeoutMs: 20_000 }
   )
-  const adBreaks = useApi(() => api.ads.breaks(videoId), [videoId])
+  const adBreaks = useApi(
+    () => takeWarmedAds(videoId) || api.ads.breaks(videoId),
+    [videoId]
+  )
   const [previewAttempt, setPreviewAttempt] = useState(0)
 
   /* Drop the top progress bar once this page has painted a shell. */
@@ -626,8 +629,6 @@ export default function Watch() {
                 Try again
               </button>
             </div>
-          ) : activeAd ? (
-            <AdBreak ad={activeAd} videoId={v.id} playId={playId} onFinished={adFinished} />
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer
@@ -639,8 +640,9 @@ export default function Watch() {
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
                 startAt={resumeAt}
-                autoplay
-                playOnReady
+                autoplay={!activeAd}
+                playOnReady={!activeAd}
+                paused={Boolean(activeAd) || (Boolean(p?.access?.showsAds && p?.preroll?.enabled) && adBreaks.loading)}
                 /**
                  * Where the free preview ends, enforced by the player itself.
                  *
@@ -662,6 +664,7 @@ export default function Watch() {
                   /* Preview clip firing play must not drop the "Unlocked" veil
                      or the full film never remounts at the resume second. */
                   if (justPaid && p.playback.kind !== 'full') return
+                  if (activeAd) return
                   setContinueReady(true)
                 }}
                 onRetry={() => playback.reload()}
@@ -677,6 +680,7 @@ export default function Watch() {
                   runBreak('post_roll')
                 }}
                 onTimeUpdate={(current) => {
+                  if (activeAd) return
                   const prev = watchedTo.current
                   if (current < 2 && prev > 8) {
                     /* Preview clip reset to 0 after ending — keep the stop. */
@@ -699,6 +703,11 @@ export default function Watch() {
                   }
                 }}
               />
+              {activeAd && (
+                <div className="player-ad-layer">
+                  <AdBreak ad={activeAd} videoId={v.id} playId={playId} onFinished={adFinished} />
+                </div>
+              )}
               {needsPayment && !previewOver && (
                 /* Spell out how much of the film this preview is. The client
                    could not tell a paid video from a free one because nothing

@@ -81,12 +81,29 @@
    An advert must be unmistakably an advert. The badge says so, the skip
    control says when it can be dismissed, and neither can be mistaken for
    part of the video. */
-.ad-stage { position: relative; background: #000; }
+.ad-stage { position: relative; background: #000; height: 100%; }
 .ad-stage .stream-shell,
 .ad-stage .stream-frame { max-height: min(56.25vw, 62dvh); }
 @media (max-width: 720px) {
   .ad-stage .stream-shell,
   .ad-stage .stream-frame { max-height: none; }
+}
+.player-ad-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #000;
+}
+.player-ad-layer .ad-stage,
+.player-ad-layer .stream-shell,
+.player-ad-layer .stream-frame {
+  max-height: none;
+}
+.player-ad-layer .stream-shell {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  padding-top: 0;
 }
 .ad-badge {
   position: absolute;

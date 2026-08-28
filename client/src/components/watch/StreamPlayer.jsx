@@ -90,6 +90,7 @@ export default function StreamPlayer({
   title = 'Video player',
   onRetry,
   onPlaying,
+  onReady,
   /**
    * Do not treat the player as started until media time is actually advancing.
    *
@@ -100,6 +101,11 @@ export default function StreamPlayer({
   requireAirtime = false,
   /** Fired once when `stopAt` is reached, after playback has been paused. */
   onStopReached,
+  /**
+   * Keep the iframe in the document but do not play — used while a pre-roll
+   * sits on top so the film is already buffered when the advert ends.
+   */
+  paused = false,
 }) {
   /**
    * Playing, but silent.
@@ -116,6 +122,8 @@ export default function StreamPlayer({
   const frame = useRef(null)
   const onPlayingRef = useRef(onPlaying)
   onPlayingRef.current = onPlaying
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
   const onTimeUpdateRef = useRef(onTimeUpdate)
   onTimeUpdateRef.current = onTimeUpdate
   const onEndedRef = useRef(onEnded)
@@ -135,6 +143,8 @@ export default function StreamPlayer({
   playOnReadyRef.current = playOnReady
   const autoplayRef = useRef(autoplay)
   autoplayRef.current = autoplay
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
   const [boot, setBoot] = useState(0)
   /**
@@ -201,6 +211,13 @@ export default function StreamPlayer({
       try {
         player = Stream(frame.current)
         playerRef.current = player
+        if (pausedRef.current) {
+          try {
+            player.pause?.()
+          } catch {
+            /* held under a pre-roll */
+          }
+        }
         player.addEventListener('ended', () => onEndedRef.current?.())
         let stopped = false
         const haltIfDue = () => {
@@ -265,11 +282,18 @@ export default function StreamPlayer({
           }
         }
         const uncoverFilm = () => {
+          /* Drop the boot overlay as soon as Stream has a frame. Ads still
+             wait for real airtime before Skip / billing — that lives in
+             noteIfAiring, not on this cover. */
+          markReady()
+          setNeedsGesture(false)
+          onReadyRef.current?.()
           if (requireAirtimeRef.current) return
-          shown()
+          onPlayingRef.current?.()
         }
-        // Ads still wait for real airtime. The film uncovers as soon as Stream
-        // has a frame, so "Connecting to player…" does not sit for 20–30s.
+        // The film uncovers as soon as Stream has a frame, so
+        // "Connecting to player…" does not sit for 20–30s.
+        player.addEventListener('loadedmetadata', uncoverFilm)
         player.addEventListener('loadeddata', uncoverFilm)
         player.addEventListener('canplay', uncoverFilm)
         player.addEventListener('playing', () => noteIfAiring())
@@ -322,7 +346,7 @@ export default function StreamPlayer({
           }
 
           const start = async () => {
-            if (!alive || aired) return
+            if (!alive || aired || pausedRef.current) return
             if (!(await play(true))) {
               setNeedsGesture(true)
               return
@@ -346,13 +370,14 @@ export default function StreamPlayer({
 
           player.addEventListener('canplay', start)
           player.addEventListener('loadeddata', start)
+          player.addEventListener('loadedmetadata', start)
           player.addEventListener('pause', onPause)
           player.addEventListener('timeupdate', onTime)
-          kickTimer = setTimeout(start, 200)
+          kickTimer = setTimeout(start, 0)
 
           watchdog = setInterval(() => {
-            if (!alive || aired) {
-              if (watchdog) {
+            if (!alive || aired || pausedRef.current) {
+              if (aired && watchdog) {
                 clearInterval(watchdog)
                 watchdog = null
               }
@@ -384,6 +409,17 @@ export default function StreamPlayer({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iframeSrc, boot])
+
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
+    try {
+      if (paused) player.pause?.()
+      else if (playOnReady || autoplay) player.play?.()
+    } catch {
+      /* overlay / watchdog still cover a refused play */
+    }
+  }, [paused, playOnReady, autoplay])
 
   if (!src) {
     return (
@@ -425,10 +461,10 @@ export default function StreamPlayer({
         />
       )}
       {!poster && !ready && <div className="stream-poster stream-poster-fallback" aria-hidden="true" />}
-      {!ready && !timedOut && (
+      {!paused && !ready && !timedOut && !needsGesture && (
         <p className="stream-boot-msg">Connecting to player…</p>
       )}
-      {!ready && !timedOut && (
+      {!paused && needsGesture && !timedOut && (
         <button type="button" className="stream-tap" onClick={kickFromGesture}>
           <span className="stream-tap-hit">
             <Play size={22} />
@@ -446,6 +482,16 @@ export default function StreamPlayer({
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
         referrerPolicy="origin"
         allowFullScreen
+        onLoad={() => {
+          const player = playerRef.current
+          if (!player || pausedRef.current) return
+          try {
+            if ('muted' in player) player.muted = true
+            player.play?.()
+          } catch {
+            /* SDK start() still runs */
+          }
+        }}
       />
 
       {silent && (

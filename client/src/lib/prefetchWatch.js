@@ -38,6 +38,7 @@ export function prefetchWatchChunk() {
 /** In-flight / resolved video payloads keyed by slug or id. */
 const videoCache = new Map()
 const playbackCache = new Map()
+const adsCache = new Map()
 
 function cacheGet(map, key, fetch) {
   if (!key) return null
@@ -63,6 +64,10 @@ export function warmPlayback(idOrSlug) {
   return cacheGet(playbackCache, idOrSlug, (id) => api.playback(id))
 }
 
+export function warmAds(idOrSlug) {
+  return cacheGet(adsCache, idOrSlug, (id) => api.ads.breaks(id))
+}
+
 function takeFrom(map, idOrSlug) {
   if (!idOrSlug) return null
   const key = String(idOrSlug)
@@ -78,6 +83,10 @@ export function takeWarmedVideo(idOrSlug) {
 
 export function takeWarmedPlayback(idOrSlug) {
   return takeFrom(playbackCache, idOrSlug)
+}
+
+export function takeWarmedAds(idOrSlug) {
+  return takeFrom(adsCache, idOrSlug)
 }
 
 /** Drop a warmed payload so the next fetch is live (full film after payment). */
@@ -102,6 +111,7 @@ export function prefetchWatch(idOrSlug) {
   if (idOrSlug) {
     warmVideo(idOrSlug)
     warmPlayback(idOrSlug)
+    warmAds(idOrSlug)
   }
 }
 
