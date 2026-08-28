@@ -72,3 +72,34 @@ test('a purchase of A remounts Watch and cannot unlock B', () => {
   assert.match(src, /setJustPaidFor\(v\?\.id \|\| videoId\)/)
   assert.match(src, /showLockGate/)
 })
+
+test('the iframe URL is pinned to its source — a growing startAt never reloads the player', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // The re-pin was the freeze: startAt grows on its own (the page derives it
+  // from the position saved every ten seconds), so any re-render during
+  // playback re-navigated a live cross-origin iframe.
+  assert.doesNotMatch(src, /else if \(playOnReady && Number\(startAt\)/)
+  assert.doesNotMatch(src, /pin\.current\.startAt \|\| 0\) \+ 0\.4/)
+
+  // Exactly one place may write the pin, and only when the source changes.
+  const writes = src.match(/pin\.current = \{ src,/g) || []
+  assert.equal(writes.length, 1, 'the pin must only be written when src changes')
+  assert.match(src, /if \(src !== pin\.current\.src\) \{\s*\n\s*pin\.current = \{ src,/)
+
+  // iframeSrc therefore depends on nothing that moves during playback.
+  assert.match(src, /\[src, resumeAt, controls\]/)
+})
+
+test('moving a running player is a seek, not a new iframe', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+  assert.match(src, /seekRequest = null/)
+  assert.match(src, /const pendingSeek = useRef/)
+  // Held until the player exists: the request can arrive before the SDK boots.
+  assert.match(src, /player\.addEventListener\('loadedmetadata', runPendingSeek\)/)
+  assert.match(src, /player\.addEventListener\('canplay', runPendingSeek\)/)
+  // Only when the player is genuinely elsewhere, so it cannot fight a scrub.
+  assert.match(src, /Math\.abs\(\(Number\(player\.currentTime\) \|\| 0\) - want\.seconds\) > 2/)
+  // Once per nonce.
+  assert.match(src, /want\.applied = true/)
+})

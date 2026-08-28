@@ -95,6 +95,16 @@ export default function StreamPlayer({
    * sits on top so the film is already buffered when the advert ends.
    */
   paused = false,
+  /**
+   * Move the live player, without rebuilding it: `{ seconds, nonce }`.
+   *
+   * `startAt` decides where the iframe's FIRST frame comes from, and it is
+   * pinned for the life of a source — see `pin` below for why changing it is
+   * never allowed. A caller that genuinely needs the player moved after it is
+   * running bumps the nonce instead, and the SDK seeks in place: no new
+   * iframe, no new token, no reload.
+   */
+  seekRequest = null,
 }) {
   /**
    * Playing, but silent.
@@ -139,16 +149,26 @@ export default function StreamPlayer({
   /** Bumping this remounts the iframe so a stalled Stream load can be retried. */
   const [boot, setBoot] = useState(0)
   /**
-   * Pin startTime to the moment this source first loads.
+   * Pin startTime to the moment this source first loads — and never move it.
    *
-   * After payment, resumeHint and the server resume point can disagree by a
-   * second. Putting startAt in the iframe URL meant every tiny change remounted
-   * Stream — a new big play button each time. Seek still happens via the SDK.
+   * `iframeSrc` is the iframe's `src` attribute. Changing that attribute
+   * re-navigates a live cross-origin frame: Stream tears down, the SDK
+   * wrapper below is rebuilt, the poster comes back over the top and the film
+   * restarts. It costs seconds every time.
+   *
+   * This used to re-pin whenever `startAt` grew by more than 0.4s, and
+   * `startAt` grows on its own — the page derives it from the position saved
+   * every ten seconds of playback. So any re-render during playback (tapping
+   * Share, an advert ending, the top progress bar, a toast) pushed a larger
+   * number in here and reloaded the film underneath the viewer. That is the
+   * freeze, the mid-play restart and the "unresponsive" report, and it is why
+   * the rule is now absolute: one source, one URL, for its whole life.
+   *
+   * Moving a player that is already running is a different operation with its
+   * own door — `seekRequest`, applied through the SDK, below.
    */
   const pin = useRef({ src: null, startAt: 0 })
   if (src !== pin.current.src) {
-    pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
-  } else if (playOnReady && Number(startAt) > (pin.current.startAt || 0) + 0.4) {
     pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
   }
   const resumeAt = pin.current.startAt
@@ -156,6 +176,36 @@ export default function StreamPlayer({
     () => (src ? buildSrc(src, resumeAt, controls) : null),
     [src, resumeAt, controls]
   )
+
+  /**
+   * An explicit, caller-requested seek on the running player.
+   *
+   * Held until the player exists and is seekable, because the request can
+   * arrive before the SDK has booted. Applied at most once per nonce, and only
+   * when the player is genuinely somewhere else — so it can never fight a
+   * viewer who has just scrubbed.
+   */
+  const pendingSeek = useRef({ nonce: null, seconds: 0, applied: true })
+  const applySeek = (player) => {
+    const want = pendingSeek.current
+    if (!player || want.applied || want.nonce == null) return
+    try {
+      if (Math.abs((Number(player.currentTime) || 0) - want.seconds) > 2) {
+        player.currentTime = want.seconds
+      }
+      want.applied = true
+    } catch {
+      /* not seekable yet — the next player event tries again */
+    }
+  }
+  const seekNonce = seekRequest?.nonce ?? null
+  const seekSeconds = Math.max(0, Number(seekRequest?.seconds) || 0)
+  useEffect(() => {
+    if (seekNonce == null || seekNonce === pendingSeek.current.nonce) return
+    pendingSeek.current = { nonce: seekNonce, seconds: seekSeconds, applied: false }
+    applySeek(playerRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs only
+  }, [seekNonce, seekSeconds])
 
   const kickFromGesture = () => {
     markPerf('playClick')
@@ -321,6 +371,14 @@ export default function StreamPlayer({
           player.addEventListener('loadedmetadata', seek)
           player.addEventListener('canplay', seek)
         }
+
+        /* A seek asked for before this player existed, or while it was still
+           loading, lands here rather than being dropped. */
+        const runPendingSeek = () => applySeek(player)
+        runPendingSeek()
+        player.addEventListener('loadedmetadata', runPendingSeek)
+        player.addEventListener('canplay', runPendingSeek)
+        player.addEventListener('playing', runPendingSeek)
 
         {
           /**
