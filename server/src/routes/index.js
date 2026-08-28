@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import authRoutes from '../modules/auth.routes.js'
+import creatorsRoutes from '../modules/creators.routes.js'
 import accountRoutes from '../modules/account.routes.js'
 import videoRoutes from '../modules/videos.routes.js'
 import playbackRoutes from '../modules/playback.routes.js'
@@ -25,6 +26,7 @@ const router = Router()
 router.use('/stats', statsRoutes)
 
 router.use('/auth', authRoutes)
+router.use('/creators', creatorsRoutes)
 
 // Your own account: details, picture, preferences, how you are getting on.
 router.use('/account', accountRoutes)

@@ -315,7 +315,12 @@ export const api = {
     resetPassword: (body) => post('/api/auth/reset-password', body, { auth: false }),
     changePassword: (body) => post('/api/auth/change-password', body),
     checkEmail: (email) => post('/api/auth/check-email', { email }, { auth: false }),
-    creator: (id) => get(`/api/auth/creators/${id}`, { auth: false }),
+    creator: (id) => get(`/api/auth/creators/${id}`, { auth: Boolean(getAccessToken()) }),
+  },
+
+  creators: {
+    follow: (id) => post(`/api/creators/${encodeURIComponent(id)}/follow`),
+    unfollow: (id) => del(`/api/creators/${encodeURIComponent(id)}/follow`),
   },
 
   videos: {

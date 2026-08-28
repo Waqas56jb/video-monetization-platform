@@ -28,10 +28,10 @@ function asPublic(row) {
   })
 }
 
-export async function creatorStorefront(creatorId) {
+export async function creatorStorefront(creatorId, { viewerId } = {}) {
   const row = await one(
     `select p.id, p.full_name, p.avatar_url, p.website,
-            cp.display_name, cp.bio, cp.location, cp.verified, cp.followers,
+            cp.display_name, cp.bio, cp.location, cp.verified,
             cp.category, cp.socials
        from profiles p
        join creator_profiles cp on cp.user_id = p.id
@@ -39,6 +39,15 @@ export async function creatorStorefront(creatorId) {
     [creatorId]
   )
   if (!row) return null
+
+  const follow = await one(
+    `select
+       (select count(*)::int from follows where creator_id = $1) as followers,
+       exists(
+         select 1 from follows where follower_id = $2 and creator_id = $1
+       ) as is_following`,
+    [creatorId, viewerId || null]
+  )
 
   const published = await many(
     `${CATALOGUE} order by v.published_at desc nulls last, v.created_at desc`,
@@ -66,7 +75,9 @@ export async function creatorStorefront(creatorId) {
     bio: row.bio || '',
     location: row.location || '',
     verified: Boolean(row.verified),
-    followers: Number(row.followers || 0),
+    followers: Number(follow?.followers || 0),
+    isFollowing: Boolean(follow?.is_following),
+    isOwn: Boolean(viewerId && viewerId === row.id),
     category: row.category || '',
     socials,
     videoCount: videos.length,

@@ -25,11 +25,14 @@ const Watch = lazy(loadWatchPage)
 function RouteProgress() {
   const location = useLocation()
   const { start, stop } = useProgress()
+  // start/stop are stable. Listing them used to retrigger this effect
+  // every time the bar toggled, which cancelled the 600ms stop forever.
   useEffect(() => {
     start()
     const done = window.setTimeout(stop, 600)
     return () => window.clearTimeout(done)
-  }, [location.pathname, location.search, start, stop])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL only
+  }, [location.pathname, location.search])
   return null
 }
 

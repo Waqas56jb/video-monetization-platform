@@ -1,15 +1,19 @@
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, BadgeCheck, Eye, MapPin, Play } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { ArrowLeft, BadgeCheck, Eye, MapPin, Play, UserCheck, UserPlus } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
 import Icon from '@/components/ui/Icon'
-import { ErrorState, Skeleton, SkeletonCards } from '@/components/ui/States'
+import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { compact } from '@/hooks/useApi'
 import { toCard, videoLink } from '@/lib/videoView'
 import { socialIcon, socialLabel } from '@/lib/socialLinks'
 import api, { mediaUrl } from '@/lib/api'
 import useGoBack from '@/hooks/useGoBack'
+import { useAuth } from '@/context/AuthContext'
+import { useNotify } from '@/context/ToastContext'
+import { authUrl } from '@/lib/nextPath'
 
 function Grid({ videos }) {
   if (!videos?.length) return null
@@ -25,19 +29,51 @@ function Grid({ videos }) {
   )
 }
 
+function followCopy(following, n) {
+  const noun = Number(n) === 1 ? 'Follower' : 'Followers'
+  return `${following ? 'Following' : 'Follow'} · ${compact(n)} ${noun}`
+}
+
 /**
- * Public creator storefront.
+ * Public creator storefront — a destination, not a database dump.
  *
- * Not a name and a dump of videos. A page a viewer can open, share, and browse:
- * who this person is, proof they are verified, what they make, then featured,
- * latest, most watched, and the full catalogue.
+ * Header is the person (avatar, name, bio, place, socials, counts). Below
+ * that: featured, latest, most watched, then the full catalogue. Follow is
+ * the action on the page.
  */
 export default function CreatorProfile() {
   const { creatorId } = useParams()
   const goBack = useGoBack('/explore')
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const notify = useNotify()
   const profile = useApi(() => api.auth.creator(creatorId), [creatorId])
+  const [busy, setBusy] = useState(false)
   const c = profile.data
   const videos = c?.videos || []
+
+  async function toggleFollow() {
+    if (!user) {
+      navigate(authUrl('login', `/creator/${creatorId}`))
+      return
+    }
+    if (!c || c.isOwn || user.id === c.id) return
+    setBusy(true)
+    try {
+      const next = c.isFollowing
+        ? await api.creators.unfollow(creatorId)
+        : await api.creators.follow(creatorId)
+      profile.setData({
+        ...c,
+        isFollowing: next.isFollowing,
+        followers: next.followers,
+      })
+    } catch (err) {
+      notify.error(err?.message || 'Could not update follow')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <>
@@ -81,6 +117,7 @@ export default function CreatorProfile() {
                     )}
                     {c.category && <span className="pill gold">{c.category}</span>}
                   </div>
+                  {c.bio && <p className="creator-hero-bio">{c.bio}</p>}
                   <p className="creator-hero-meta">
                     <span>
                       <Play size={14} />
@@ -90,7 +127,6 @@ export default function CreatorProfile() {
                       <Eye size={14} />
                       {compact(c.totalViews)} views
                     </span>
-                    {c.followers > 0 && <span>{compact(c.followers)} followers</span>}
                   </p>
                   {c.socials?.length > 0 && (
                     <ul className="creator-socials">
@@ -105,14 +141,25 @@ export default function CreatorProfile() {
                     </ul>
                   )}
                 </div>
+                <div className="creator-hero-actions">
+                  {c.isOwn ? (
+                    <p className="creator-hero-followers">
+                      {compact(c.followers)} {Number(c.followers) === 1 ? 'Follower' : 'Followers'}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`btn creator-follow ${c.isFollowing ? 'btn-ghost is-following' : 'btn-gold'}`}
+                      onClick={toggleFollow}
+                      disabled={busy}
+                      aria-pressed={c.isFollowing}
+                    >
+                      {c.isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                      {followCopy(c.isFollowing, c.followers)}
+                    </button>
+                  )}
+                </div>
               </header>
-
-              {c.bio && (
-                <section className="creator-about">
-                  <h2>About</h2>
-                  <p>{c.bio}</p>
-                </section>
-              )}
 
               {c.featured && (
                 <section className="creator-section">
@@ -151,7 +198,7 @@ export default function CreatorProfile() {
               )}
 
               <section className="creator-section">
-                <h2>All published videos</h2>
+                <h2>Full catalogue</h2>
                 {!videos.length ? (
                   <p className="creator-empty">No published videos yet.</p>
                 ) : (

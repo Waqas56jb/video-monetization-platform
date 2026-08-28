@@ -1,5 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import TopProgress from '@/components/ui/TopProgress'
+
+/** If a caller forgets stop(), the bar must not run forever. */
+const FORCE_STOP_MS = 8000
 
 const ProgressContext = createContext({
   active: false,
@@ -14,15 +17,37 @@ export function useProgress() {
 
 export function ProgressProvider({ children }) {
   const [active, setActive] = useState(false)
+  const cap = useRef(null)
+
+  const start = useCallback(() => {
+    setActive(true)
+    if (cap.current) clearTimeout(cap.current)
+    cap.current = setTimeout(() => {
+      cap.current = null
+      setActive(false)
+    }, FORCE_STOP_MS)
+  }, [])
+
+  const stop = useCallback(() => {
+    if (cap.current) {
+      clearTimeout(cap.current)
+      cap.current = null
+    }
+    setActive(false)
+  }, [])
+
+  useEffect(() => () => {
+    if (cap.current) clearTimeout(cap.current)
+  }, [])
 
   const value = useMemo(
     () => ({
       active,
       setActive,
-      start: () => setActive(true),
-      stop: () => setActive(false),
+      start,
+      stop,
     }),
-    [active]
+    [active, start, stop]
   )
 
   return (

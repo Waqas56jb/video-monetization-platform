@@ -38,7 +38,7 @@
     "previews:backfill": "node src/cli/backfill-previews.js",
     "videos:backfill-size": "node src/cli/backfill-dimensions.js",
     "demo:clear": "node src/cli/demo.js clear",
-    "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js src/lib/videoShape.test.js src/lib/lockPostgrest.test.js src/lib/accessToken.test.js src/lib/profileCache.test.js src/services/entitlement.thumbnail.test.js src/services/entitlement.access.test.js src/services/settings.cache.test.js src/jobs/premiere.expire.test.js src/db/pool.import.test.js src/modules/playback.import.test.js src/modules/creatorApplication.import.test.js src/modules/creatorStorefront.import.test.js src/modules/videos.list.import.test.js src/middleware/auth.import.test.js"
+    "test": "node --test src/lib/publicWatchUrl.test.js src/lib/preview.test.js src/lib/videoKey.test.js src/lib/videoShape.test.js src/lib/lockPostgrest.test.js src/lib/accessToken.test.js src/lib/profileCache.test.js src/services/entitlement.thumbnail.test.js src/services/entitlement.access.test.js src/services/settings.cache.test.js src/jobs/premiere.expire.test.js src/db/pool.import.test.js src/modules/playback.import.test.js src/modules/creatorApplication.import.test.js src/modules/creatorStorefront.import.test.js src/modules/creators.follow.import.test.js src/modules/videos.list.import.test.js src/middleware/auth.import.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

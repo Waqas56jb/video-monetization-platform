@@ -16,7 +16,7 @@ import {
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
 import { asyncHandler, badRequest, conflict, forbidden, notFound, unauthorized } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
-import { requireAuth, permissionsFor, hasCreatorAccess } from '../middleware/auth.js'
+import { requireAuth, optionalAuth, permissionsFor, hasCreatorAccess } from '../middleware/auth.js'
 import { getSettings } from '../services/settings.js'
 import { recordAudit, clientIp } from '../services/audit.js'
 import { notify } from '../services/notify.js'
@@ -618,8 +618,9 @@ router.post('/logout', requireAuth(), (req, res) => res.json({ ok: true }))
 /* -------------------------------------------------- public creator lookup */
 router.get(
   '/creators/:id',
+  optionalAuth(),
   asyncHandler(async (req, res) => {
-    const page = await creatorStorefront(req.params.id)
+    const page = await creatorStorefront(req.params.id, { viewerId: req.user?.id })
     if (!page) throw notFound('Creator not found')
     res.json(page)
   })

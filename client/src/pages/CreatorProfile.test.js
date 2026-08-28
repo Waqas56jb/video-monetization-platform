@@ -13,13 +13,15 @@ test('public creator page is a storefront, not a name and a grid', () => {
     'Featured release',
     'Latest releases',
     'Most watched',
-    'All published videos',
-    'About',
+    'Full catalogue',
     'creator-socials',
+    'creator-follow',
     'totalViews',
+    'Follow',
   ]) {
     assert.match(src, new RegExp(needle), `missing ${needle}`)
   }
+  assert.doesNotMatch(src, /All published videos/)
 })
 
 test('social links pick an icon from the host', () => {
