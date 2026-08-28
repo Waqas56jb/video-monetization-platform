@@ -42,3 +42,15 @@ test('Watch keeps the film mounted under a pre-roll so Play is not a second boot
   assert.match(src, /player-ad-layer/)
   assert.match(src, /paused=\{Boolean\(activeAd\)/)
 })
+
+test('a purchase of A remounts Watch and cannot unlock B', () => {
+  const app = readFileSync(join(dir, '../App.jsx'), 'utf8')
+  assert.match(app, /<Watch key=\{videoId \|\| location\.pathname\} \/>/)
+
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /justPaidFor/)
+  assert.match(src, /playbackRouteMatches/)
+  assert.match(src, /justPaidFor === v\?\.id/)
+  assert.match(src, /setJustPaidFor\(v\?\.id \|\| videoId\)/)
+  assert.match(src, /showLockGate/)
+})

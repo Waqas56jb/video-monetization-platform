@@ -37,6 +37,16 @@ export function videoRouteMatches(idOrSlug, video) {
   return key === video.slug || key === video.id
 }
 
+/**
+ * Playback JSON is per video. After /watch/A → /watch/B the previous
+ * payload can still be in memory until the next fetch returns — that
+ * payload must not decide B's lock, badge, or iframe.
+ */
+export function playbackRouteMatches(playback, video) {
+  if (!playback || !video?.id) return false
+  return playback.videoId === video.id
+}
+
 export function whatsappShareText(watchUrl) {
   return String(watchUrl || '').trim()
 }

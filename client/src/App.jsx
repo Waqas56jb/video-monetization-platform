@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { ToastProvider } from '@/context/ToastContext'
 import { ProgressProvider, useProgress } from '@/context/ProgressContext'
 import { AuthProvider } from '@/context/AuthContext'
@@ -36,6 +36,7 @@ function RouteProgress() {
 /** Suspense shell can show the card poster while the Watch chunk downloads. */
 function WatchRoute() {
   const location = useLocation()
+  const { videoId } = useParams()
   return (
     <Suspense
       fallback={
@@ -45,7 +46,11 @@ function WatchRoute() {
         </div>
       }
     >
-      <Watch />
+      {/* A new video is a new Watch. Without this, React reuses the same
+          instance from /watch/A to /watch/B and `justPaid` from A would
+          hide B's paywall — the client saw B, C, D as unlocked after
+          buying only A. */}
+      <Watch key={videoId || location.pathname} />
     </Suspense>
   )
 }

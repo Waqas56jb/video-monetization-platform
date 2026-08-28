@@ -31,7 +31,7 @@ import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress, forgetProgress } from '@/lib/watchProgress'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
-import { videoRouteMatches } from '@/lib/watchUrl'
+import { videoRouteMatches, playbackRouteMatches } from '@/lib/watchUrl'
 import { takeWarmedVideo, takeWarmedPlayback, takeWarmedAds, dropWarmedWatch } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
@@ -82,7 +82,15 @@ export default function Watch() {
   /** Stays true once the free clip has run out — `previewOver` is cleared on pay. */
   const previewRanOut = useRef(false)
   const [resumeHint, setResumeHint] = useState(0)
-  const [justPaid, setJustPaid] = useState(false)
+  /**
+   * Which video this tab just bought — never a bare true/false.
+   *
+   * React reuses this page when the watcher opens another title. A boolean
+   * `justPaid` from video A stayed true on B, C and D, so the paywall never
+   * appeared even though the server only ever signed A's full film. The id
+   * is the purchase; anything else stays locked.
+   */
+  const [justPaidFor, setJustPaidFor] = useState(null)
   /* Full video has actually started after purchase — overlay can drop. */
   const [continueReady, setContinueReady] = useState(false)
 
@@ -126,16 +134,25 @@ export default function Watch() {
 
   const v = video.data?.video
   const share = shareLive ?? video.data?.share
-  const p = playback.data
+  const playbackRow = playback.data
+  const p = playbackRouteMatches(playbackRow, v) ? playbackRow : null
+  const waitingForPlayback =
+    !playback.error && (playback.loading || (Boolean(v?.id) && Boolean(playbackRow) && !p))
   /**
-   * Only decide lock state after playback access is known.
+   * Only decide lock state after playback access is known for THIS video.
    *
    * While the request is in flight we used to treat every video as locked, which
    * flashed the paywall for a beat on videos the viewer already owns. Wait for
    * the server answer — then show lock UI only when payment is actually required.
+   *
+   * A leftover payload from the previous title is not an answer. Access is
+   * `user_id + video_id + successful purchase` and nothing else.
    */
   const accessReady = Boolean(p) && !playback.loading
   const locked = accessReady ? !p.access?.canWatchFull : false
+  const justPaid =
+    Boolean(justPaidFor) &&
+    (justPaidFor === videoId || justPaidFor === v?.id || justPaidFor === v?.slug)
   const owned = justPaid || (accessReady && !locked)
   const needsPayment = locked && Number(v?.priceTzs || 0) > 0 && !justPaid
   const signedIn = Boolean(getAccessToken())
@@ -212,7 +229,7 @@ export default function Watch() {
   useEffect(() => {
     setPreviewOver(false)
     setPayOpen(false)
-    setJustPaid(false)
+    setJustPaidFor(null)
     setContinueReady(false)
     setResumeHint(0)
     lastReported.current = 0
@@ -410,7 +427,7 @@ export default function Watch() {
     dropWarmedWatch(v?.id)
     dropWarmedWatch(v?.slug)
 
-    setJustPaid(true)
+    setJustPaidFor(v?.id || videoId)
     setContinueReady(false)
     setPayOpen(false)
     setPreviewOver(false)
@@ -583,7 +600,7 @@ export default function Watch() {
             <ArrowLeft />
           </button>
 
-          {playback.loading && !p?.playback?.iframe ? (
+          {waitingForPlayback && !p?.playback?.iframe ? (
             <div className="stream-shell is-booting">
               {v.thumbnailUrl ? (
                 <img

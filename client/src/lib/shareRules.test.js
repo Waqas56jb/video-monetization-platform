@@ -6,6 +6,7 @@ import {
   shareWatchUrl,
   nativeShareData,
   videoRouteMatches,
+  playbackRouteMatches,
   whatsappShareText,
 } from './watchUrl.js'
 import { whatsappHref } from './socialShare.js'
@@ -29,6 +30,15 @@ test('route match accepts slug or id and rejects stale rows', () => {
   assert.equal(videoRouteMatches('studio-session-track-4', video), true)
   assert.equal(videoRouteMatches(video.id, video), true)
   assert.equal(videoRouteMatches('other-title', video), false)
+})
+
+test('a purchase of video A never matches playback for video B', () => {
+  const a = { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' }
+  const b = { id: 'bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee' }
+  assert.equal(playbackRouteMatches({ videoId: a.id, access: { canWatchFull: true } }, a), true)
+  assert.equal(playbackRouteMatches({ videoId: a.id, access: { canWatchFull: true } }, b), false)
+  assert.equal(playbackRouteMatches({ videoId: a.id }, null), false)
+  assert.equal(playbackRouteMatches(null, a), false)
 })
 
 test('share URL adds cache-busting ?s= when sourceKey is set', () => {
