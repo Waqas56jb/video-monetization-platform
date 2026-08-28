@@ -27,9 +27,9 @@ function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
  * Fetch from the API and keep the three states that always come with it:
  * loading, error, and the data.
  */
-export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false, timeoutMs = FETCH_TIMEOUT_MS } = {}) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(!skip)
+export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false, timeoutMs = FETCH_TIMEOUT_MS, initialData = null } = {}) {
+  const [data, setData] = useState(initialData)
+  const [loading, setLoading] = useState(!skip && initialData == null)
   const [isRefetching, setIsRefetching] = useState(false)
   const [error, setError] = useState(null)
 
@@ -41,7 +41,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
   const runFetch = useCallback(
     async ({ quiet = false } = {}) => {
       if (skip) return
-      const hasPrevious = keepPreviousData && dataRef.current != null
+      const hasPrevious = (keepPreviousData || initialData != null) && dataRef.current != null
       if (!quiet && !hasPrevious) setLoading(true)
       if (hasPrevious) setIsRefetching(true)
       try {
@@ -75,7 +75,7 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
       setLoading(false)
       return
     }
-    const hasPrevious = keepPreviousData && dataRef.current != null
+    const hasPrevious = (keepPreviousData || initialData != null) && dataRef.current != null
     if (!hasPrevious) setLoading(true)
     else setIsRefetching(true)
 

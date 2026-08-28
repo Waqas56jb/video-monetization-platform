@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Handshake, ShieldCheck, Wallet } from 'lucide-react'
 import useApi, { tzs, compact } from '@/hooks/useApi'
 import api from '@/lib/api'
+import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /**
  * Why a creator should trust this with their work.
@@ -18,8 +19,12 @@ import api from '@/lib/api'
 export default function Testimonials() {
   const navigate = useNavigate()
 
-  const stats = useApi(() => api.stats.platform(), [])
-  const top = useApi(() => api.stats.topCreators(), [])
+  const stats = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
+    initialData: readLanding(LANDING_KEYS.stats),
+  })
+  const top = useApi(landingFetcher(LANDING_KEYS.topCreators, () => api.stats.topCreators()), [], {
+    initialData: readLanding(LANDING_KEYS.topCreators),
+  })
 
   const creators = top.data?.creators || []
   const split = stats.data?.creatorSplitPercent ?? 70

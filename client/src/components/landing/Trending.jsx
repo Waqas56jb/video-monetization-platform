@@ -5,6 +5,7 @@ import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import useApi from '@/hooks/useApi'
 import { toCard, videoLink, isPublicCatalogueVideo } from '@/lib/videoView'
 import api from '@/lib/api'
+import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /**
  * Trending — the real catalogue, not a picture of one.
@@ -21,8 +22,9 @@ export default function Trending() {
   const navigate = useNavigate()
 
   const { data, loading, error, reload } = useApi(
-    () => api.videos.list({ sort: 'trending', limit: 8 }),
-    []
+    landingFetcher(LANDING_KEYS.trending8, () => api.videos.list({ sort: 'trending', limit: 8 })),
+    [],
+    { initialData: readLanding(LANDING_KEYS.trending8) }
   )
   const videos = (data?.videos || []).filter(isPublicCatalogueVideo)
 

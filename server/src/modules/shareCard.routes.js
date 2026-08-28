@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { asyncHandler } from '../lib/errors.js'
 import { handleShareCard } from '../lib/shareCardServe.js'
-import { ensureShareCard } from '../lib/buildShareCard.js'
 import { SLUG_RE } from '../lib/shareMeta.js'
 
 const router = Router()
@@ -21,6 +20,7 @@ router.head('/:slug', asyncHandler(handleShareCard))
 router.post('/:slug/ensure', asyncHandler(async (req, res) => {
   const slug = parseSlug(req.params.slug)
   if (!slug) return res.status(404).json({ error: 'Not found' })
+  const { ensureShareCard } = await import('../lib/buildShareCard.js')
   const result = await ensureShareCard(slug, { budgetMs: 8000 })
   res.json(result)
 }))

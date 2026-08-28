@@ -30,6 +30,19 @@ function supabaseJwks() {
   return jwks
 }
 
+/** Pull JWKS into this instance so the first viewer JWT is not a network wait. */
+export async function warmJwks() {
+  const base = (env.supabase.url || '').replace(/\/$/, '')
+  if (!base) return { ok: false }
+  try {
+    supabaseJwks()
+    const res = await fetch(`${base}/auth/v1/.well-known/jwks.json`)
+    return { ok: res.ok, status: res.status }
+  } catch (err) {
+    return { ok: false, error: err.message }
+  }
+}
+
 export function anonClient() {
   if (!env.supabase.url || !env.supabase.anonKey) {
     throw serviceUnavailable('Supabase is not configured (SUPABASE_URL / SUPABASE_ANON_KEY)')

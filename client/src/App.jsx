@@ -17,10 +17,19 @@ import ForgotPassword from '@/pages/ForgotPassword'
 import Dashboard from '@/pages/Dashboard'
 import CreatorProfile from '@/pages/CreatorProfile'
 import Legal from '@/pages/Legal'
-import { loadWatchPage } from '@/lib/prefetchWatch'
+import { loadWatchPage, idlePrefetchWatch, ensureStreamSdk } from '@/lib/prefetchWatch'
 
 /** Same import() as prefetchWatch — Vite emits one chunk. */
 const Watch = lazy(loadWatchPage)
+
+/** Landing stays in the main bundle so Home never waits on a chunk. Watch + Stream SDK start after first paint. */
+function BootPrefetch() {
+  useEffect(() => {
+    idlePrefetchWatch()
+    ensureStreamSdk()
+  }, [])
+  return null
+}
 
 function RouteProgress() {
   const location = useLocation()
@@ -67,6 +76,7 @@ export default function App() {
       <BackgroundFX />
       <ScrollToTop />
       <RouteProgress />
+      <BootPrefetch />
 
       <Routes>
         <Route path="/" element={<Landing />} />

@@ -4,6 +4,7 @@ import Icon from '@/components/ui/Icon'
 import { CREATOR_CONTROL, EARN_ITEMS, IMG } from '@/data/copy'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
+import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 export default function ForCreators() {
   const navigate = useNavigate()
@@ -11,7 +12,9 @@ export default function ForCreators() {
   // The split shown here is the real one this platform runs on, read from the
   // settings the administrator controls — not a number painted into a mockup
   // that would quietly become a lie the day it was changed.
-  const { data } = useApi(() => api.stats.platform(), [])
+  const { data } = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
+    initialData: readLanding(LANDING_KEYS.stats),
+  })
   const creatorShare = data?.creatorSplitPercent ?? 70
 
   return (

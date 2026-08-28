@@ -35,6 +35,7 @@ test('StreamPlayer uncovers the film on canplay, ads still wait for airtime', ()
   assert.match(src, /if \(requireAirtimeRef\.current\) return/)
   assert.match(src, /if \(!alive \|\| aired \|\| pausedRef\.current\)/)
   assert.match(src, /needsGesture && !timedOut/)
+  assert.match(src, /ensureStreamSdk/)
   assert.doesNotMatch(src, /!ready && !timedOut && \(\s*<button type="button" className="stream-tap"/)
 })
 
@@ -42,7 +43,8 @@ test('Watch keeps the film mounted under a pre-roll so Play is not a second boot
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
   assert.match(src, /takeWarmedAds/)
   assert.match(src, /player-ad-layer/)
-  assert.match(src, /paused=\{Boolean\(activeAd\)/)
+  assert.match(src, /paused=\{Boolean\(activeAd\)\}/)
+  assert.doesNotMatch(src, /paused=\{Boolean\(activeAd\) \|\|/)
 })
 
 test('Watch sizes the player to the file, not a forced 16:9 box', () => {

@@ -2,8 +2,7 @@ import { createHash } from 'node:crypto'
 import { one } from '../db/pool.js'
 import { env } from '../config/env.js'
 import { publicOgCardUrl, publicWatchUrl } from './publicWatchUrl.js'
-import { readCardStatus } from './buildShareCard.js'
-import { buildShareCard } from './buildShareCard.js'
+import { readCardStatus } from './shareCardCache.js'
 import { log } from './logger.js'
 
 export const SLUG_RE = /^[a-z0-9-]+$/
@@ -52,7 +51,7 @@ export async function sharePayloadFromRow(row) {
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${row.slug} status=${cardStatus}`)
-    buildShareCard(row.id || row.slug).catch(() => {})
+    import('./buildShareCard.js').then((m) => m.buildShareCard(row.id || row.slug)).catch(() => {})
   }
 
   return {
@@ -91,7 +90,7 @@ export async function loadShareMeta(slug) {
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${video.slug} status=${cardStatus}`)
-    buildShareCard(video.id).catch(() => {})
+    import('./buildShareCard.js').then((m) => m.buildShareCard(video.id)).catch(() => {})
   }
 
   return {

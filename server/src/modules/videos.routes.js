@@ -19,12 +19,12 @@ import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { dimensionsFromCloudflare } from '../lib/videoShape.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { sharePayloadFromRow } from '../lib/shareMeta.js'
-import { buildShareCard } from '../lib/buildShareCard.js'
 import { log } from '../lib/logger.js'
 
 async function maybeBuildShareCard(video) {
   if (!video?.id || !(video.is_published && video.review_status === 'approved')) return
   try {
+    const { buildShareCard } = await import('../lib/buildShareCard.js')
     await buildShareCard(video.id)
   } catch (err) {
     log.error(`share card build slug=${video.slug}:`, err.message)

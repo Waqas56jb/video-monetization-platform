@@ -21,6 +21,7 @@ import Reveal from '@/components/ui/Reveal'
 import useApi, { compact, duration } from '@/hooks/useApi'
 import api, { mediaUrl } from '@/lib/api'
 import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
+import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /** Used only until the API answers, so the block is never empty on first paint. */
 const SHARE_DEMO = {
@@ -98,7 +99,11 @@ function ShareSheetPreview() {
  * WATCH FREE PREVIEW. A picture of the card, not a link.
  */
 function ShareCardDemo() {
-  const trending = useApi(() => api.videos.list({ sort: 'trending', limit: 1 }), [])
+  const trending = useApi(
+    landingFetcher(LANDING_KEYS.trending1, () => api.videos.list({ sort: 'trending', limit: 1 })),
+    [],
+    { initialData: readLanding(LANDING_KEYS.trending1) }
+  )
   const v = trending.data?.videos?.[0] || SHARE_DEMO
   const poster = mediaUrl(v.thumbnailUrl)
   const creator = v.creator?.name || v.creatorName

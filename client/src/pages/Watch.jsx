@@ -670,7 +670,7 @@ export default function Watch() {
                 startAt={resumeAt}
                 autoplay={!activeAd}
                 playOnReady={!activeAd}
-                paused={Boolean(activeAd) || (Boolean(p?.access?.showsAds && p?.preroll?.enabled) && adBreaks.loading)}
+                paused={Boolean(activeAd)}
                 onMediaSize={
                   v.width && v.height
                     ? undefined

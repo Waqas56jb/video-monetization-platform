@@ -10,7 +10,6 @@ import { env, capabilities } from '../config/env.js'
 import { log } from '../lib/logger.js'
 import { slugFallbacks, isUuidKey } from '../lib/videoKey.js'
 import { expireIfDue } from '../jobs/premiere.js'
-import { buildShareCard } from '../lib/buildShareCard.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { dimensionsFromCloudflare } from '../lib/videoShape.js'
 
@@ -457,7 +456,7 @@ router.post(
     // Generate the two derived assets once the source is ready.
     await ensureClips(video.id).catch(() => {})
     if (video.is_published && video.review_status === 'approved') {
-      buildShareCard(video.id).catch(() => {})
+      import('../lib/buildShareCard.js').then((m) => m.buildShareCard(video.id)).catch(() => {})
     }
     res.json({ ok: true, state: 'ready' })
   })

@@ -201,7 +201,7 @@ app.get('/api', (_req, res) => {
               'GET /api/admin/settings', 'PATCH /api/admin/settings', 'GET /api/admin/audit',
               'GET /api/admin/ads', 'POST /api/admin/ads', 'PATCH /api/admin/ads/:id',
               'POST /api/admin/jobs/premiere-expiry'],
-      jobs: ['POST /api/jobs/premiere-expiry (x-cron-secret)'],
+      jobs: ['POST /api/jobs/premiere-expiry (x-cron-secret)', 'GET /api/jobs/keep-warm (x-cron-secret)'],
     },
   })
 })

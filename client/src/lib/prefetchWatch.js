@@ -1,23 +1,38 @@
 import api from '@/lib/api'
 
-const STREAM_SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
+export const STREAM_SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
 
 /** Same dynamic import App.jsx uses for React.lazy — one Vite chunk. */
 export function loadWatchPage() {
   return import('../pages/Watch.jsx')
 }
 
+export function loadLandingPage() {
+  return import('../pages/Landing.jsx')
+}
+
 let chunkDone = false
+let sdkPromise = null
+
+function existingSdkScript() {
+  if (typeof document === 'undefined') return null
+  return (
+    document.querySelector('script[data-cf-stream-sdk]') ||
+    document.querySelector('script[src*="embed.cloudflarestream.com/embed/sdk"]')
+  )
+}
 
 function preloadStreamSdk() {
   if (typeof document === 'undefined') return
-  if (document.querySelector('link[data-cf-stream-sdk], script[data-cf-stream-sdk]')) return
-  const link = document.createElement('link')
-  link.rel = 'preload'
-  link.as = 'script'
-  link.href = STREAM_SDK
-  link.dataset.cfStreamSdk = '1'
-  document.head.appendChild(link)
+  if (!document.querySelector('link[data-cf-stream-sdk]')) {
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'script'
+    link.href = STREAM_SDK
+    link.dataset.cfStreamSdk = '1'
+    document.head.appendChild(link)
+  }
+  if (existingSdkScript()) return
   const el = document.createElement('script')
   el.src = STREAM_SDK
   el.async = true
@@ -25,11 +40,38 @@ function preloadStreamSdk() {
   document.head.appendChild(el)
 }
 
+/** One Stream SDK script for the whole app — index.html, idle prefetch, or player. */
+export function ensureStreamSdk() {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.Stream) return Promise.resolve(window.Stream)
+  if (sdkPromise) return sdkPromise
+
+  preloadStreamSdk()
+
+  sdkPromise = new Promise((resolve) => {
+    const finish = (value) => resolve(value)
+    if (window.Stream) return finish(window.Stream)
+    const el = existingSdkScript()
+    if (el) {
+      el.addEventListener('load', () => finish(window.Stream || null), { once: true })
+      el.addEventListener('error', () => finish(null), { once: true })
+    }
+    const t0 = Date.now()
+    const poll = () => {
+      if (window.Stream) return finish(window.Stream)
+      if (Date.now() - t0 > 10000) return finish(null)
+      setTimeout(poll, 40)
+    }
+    poll()
+  })
+  return sdkPromise
+}
+
 /** Prefetch the Watch route chunk (no-op after first success). */
 export function prefetchWatchChunk() {
   if (chunkDone) return
   chunkDone = true
-  preloadStreamSdk()
+  ensureStreamSdk()
   loadWatchPage().catch(() => {
     chunkDone = false
   })
@@ -116,7 +158,10 @@ export function prefetchWatch(idOrSlug) {
 }
 
 export function idlePrefetchWatch() {
-  const run = () => prefetchWatchChunk()
+  const run = () => {
+    prefetchWatchChunk()
+    loadLandingPage().catch(() => {})
+  }
   if (typeof requestIdleCallback !== 'undefined') {
     requestIdleCallback(run, { timeout: 3000 })
   } else {

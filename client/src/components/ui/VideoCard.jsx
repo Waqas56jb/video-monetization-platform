@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import Icon from './Icon'
@@ -6,6 +6,7 @@ import Reveal from './Reveal'
 import useInView from '@/hooks/useInView'
 import { prefetchWatch } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
+import { markPerf } from '@/lib/perfLog'
 
 /**
  * The trending / library video card. Used on the landing grid and inside the
@@ -47,9 +48,23 @@ export default function VideoCard({
   const { start } = useProgress()
 
   const warm = () => {
+    markPerf('cardTap')
     start?.()
     prefetchWatch(slug || id)
   }
+
+  useEffect(() => {
+    if (!inView) return
+    const key = slug || id
+    if (!key) return
+    const run = () => prefetchWatch(key)
+    if (typeof requestIdleCallback !== 'undefined') {
+      const idle = requestIdleCallback(run, { timeout: 4000 })
+      return () => cancelIdleCallback(idle)
+    }
+    const t = setTimeout(run, 700)
+    return () => clearTimeout(t)
+  }, [inView, slug, id])
 
   const body = (
     <>

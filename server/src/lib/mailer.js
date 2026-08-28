@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer'
 import { env } from '../config/env.js'
 import { log } from './logger.js'
 import { serviceUnavailable } from './errors.js'
@@ -13,17 +12,21 @@ import { serviceUnavailable } from './errors.js'
  * Everything here degrades honestly: if SMTP is not configured the API still
  * runs, and the endpoints that need mail say exactly what is missing instead of
  * silently pretending a message went out.
+ *
+ * nodemailer is loaded on first send, not at boot — so a public /api/videos
+ * request never pays for the SMTP stack.
  */
 
 let transport = null
 
-function getTransport() {
+async function getTransport() {
   if (!env.smtp.host || !env.smtp.user || !env.smtp.pass) {
     throw serviceUnavailable(
       'Email is not configured. Set SMTP_HOST, SMTP_USER and SMTP_PASS in server/.env'
     )
   }
   if (!transport) {
+    const nodemailer = (await import('nodemailer')).default
     transport = nodemailer.createTransport({
       host: env.smtp.host,
       port: env.smtp.port,
@@ -61,12 +64,14 @@ function getTransport() {
 
 /** Prove the credentials work, without sending anything. */
 export async function verifyMail() {
-  await getTransport().verify()
+  const t = await getTransport()
+  await t.verify()
   return { ok: true, host: env.smtp.host, from: env.smtp.from }
 }
 
 export async function sendMail({ to, subject, html, text }) {
-  const info = await getTransport().sendMail({
+  const t = await getTransport()
+  const info = await t.sendMail({
     from: env.smtp.from,
     to,
     subject,

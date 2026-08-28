@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Play, RefreshCw, Volume2 } from 'lucide-react'
 import { AD_AIRTIME_FLOOR } from '@/lib/adSkip'
+import { ensureStreamSdk } from '@/lib/prefetchWatch'
+import { markPerf, measurePerf } from '@/lib/perfLog'
 
 /**
  * Cloudflare Stream iframe player.
@@ -9,24 +11,6 @@ import { AD_AIRTIME_FLOOR } from '@/lib/adSkip'
  * that with the video poster (black underneath) until playback is actually
  * ready — so the user never sees a blank white flash.
  */
-const SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
-
-let sdkPromise = null
-function loadSdk() {
-  if (typeof window === 'undefined') return Promise.resolve(null)
-  if (window.Stream) return Promise.resolve(window.Stream)
-  if (sdkPromise) return sdkPromise
-
-  sdkPromise = new Promise((resolve) => {
-    const el = document.createElement('script')
-    el.src = SDK
-    el.async = true
-    el.onload = () => resolve(window.Stream || null)
-    el.onerror = () => resolve(null)
-    document.head.appendChild(el)
-  })
-  return sdkPromise
-}
 
 function buildSrc(src, startAt, controls) {
   try {
@@ -174,6 +158,7 @@ export default function StreamPlayer({
   )
 
   const kickFromGesture = () => {
+    markPerf('playClick')
     const player = playerRef.current
     try {
       if (player && 'muted' in player) player.muted = true
@@ -213,7 +198,7 @@ export default function StreamPlayer({
     let watchdog = null
     let stopPoll = null
 
-    loadSdk().then((Stream) => {
+    ensureStreamSdk().then((Stream) => {
       if (!alive || !Stream || !frame.current) return
       try {
         player = Stream(frame.current)
@@ -257,6 +242,7 @@ export default function StreamPlayer({
           aired = true
           markReady()
           setNeedsGesture(false)
+          measurePerf('playClick', 'play-to-first-frame')
           onPlayingRef.current?.()
           if (watchdog) {
             clearInterval(watchdog)

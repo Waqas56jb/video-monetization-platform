@@ -1,9 +1,5 @@
 import { one, query } from '../db/pool.js'
 import { log } from './logger.js'
-import { shareSourceKey } from './shareMeta.js'
-
-/** Alias used by the compose pipeline. */
-export const cardSourceKey = shareSourceKey
 
 /** Warm instances skip Postgres. Cold starts still hit the table. */
 const mem = new Map()
@@ -99,5 +95,20 @@ export async function writeCachedCard(slug, videoId, key, jpeg) {
     )
   } catch (err) {
     log.warn('share card cache write:', err.message)
+  }
+}
+
+export async function readCardStatus(slug, sourceKey) {
+  if (!slug || !sourceKey) return 'fallback'
+  try {
+    await ensureShareCardTable()
+    const row = await one('select source_key, jpeg from share_card_cache where slug = $1', [slug])
+    if (!row) return 'fallback'
+    if (row.source_key !== sourceKey) return 'building'
+    const jpeg = Buffer.isBuffer(row.jpeg) ? row.jpeg : Buffer.from(row.jpeg || [])
+    if (jpeg.length < 1000) return 'fallback'
+    return 'ready'
+  } catch {
+    return 'fallback'
   }
 }

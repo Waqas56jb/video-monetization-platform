@@ -2,7 +2,7 @@ import { one, many } from '../db/pool.js'
 import { capabilities, env } from '../config/env.js'
 import { slugFallbacks } from './videoKey.js'
 import { brandShareCard } from './shareCard.js'
-import { readCachedCard, writeCachedCard, ensureShareCardTable } from './shareCardCache.js'
+import { readCachedCard, writeCachedCard, ensureShareCardTable, readCardStatus } from './shareCardCache.js'
 import { uploadShareCardToStorage } from './shareCardStorage.js'
 import { shareSourceKey, shareCardUrl } from './shareMeta.js'
 import { log } from './logger.js'
@@ -157,21 +157,6 @@ export async function ensureShareCard(videoId, { budgetMs = 8000 } = {}) {
   }
 }
 
-export async function readCardStatus(slug, sourceKey) {
-  if (!slug || !sourceKey) return 'fallback'
-  try {
-    await ensureShareCardTable()
-    const row = await one('select source_key, jpeg from share_card_cache where slug = $1', [slug])
-    if (!row) return 'fallback'
-    if (row.source_key !== sourceKey) return 'building'
-    const jpeg = Buffer.isBuffer(row.jpeg) ? row.jpeg : Buffer.from(row.jpeg || [])
-    if (jpeg.length < 1000) return 'fallback'
-    return 'ready'
-  } catch {
-    return 'fallback'
-  }
-}
-
 async function videosForRebuild({ slug, all, stale } = {}) {
   await ensureShareCardTable()
   if (slug) {
@@ -263,3 +248,6 @@ export async function rebuildShareCardsForCreator(creatorId) {
     await buildShareCard(row.id).catch(() => {})
   }
 }
+
+export { readCardStatus } from './shareCardCache.js'
+

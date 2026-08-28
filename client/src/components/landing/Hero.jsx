@@ -7,6 +7,7 @@ import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
 import { videoLink } from '@/lib/videoView'
 import { IMG } from '@/data/copy'
+import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /**
  * The first thing anyone sees.
@@ -61,7 +62,9 @@ function HeroLinks() {
 export default function Hero() {
   const navigate = useNavigate()
 
-  const stats = useApi(() => api.stats.platform(), [])
+  const stats = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
+    initialData: readLanding(LANDING_KEYS.stats),
+  })
 
   /**
    * The phone shows a real video, and tapping it opens that video.
@@ -72,7 +75,11 @@ export default function Hero() {
    * nothing published, so an empty catalogue is handled without inventing
    * anything.
    */
-  const trending = useApi(() => api.videos.list({ sort: 'trending', limit: 1 }), [])
+  const trending = useApi(
+    landingFetcher(LANDING_KEYS.trending1, () => api.videos.list({ sort: 'trending', limit: 1 })),
+    [],
+    { initialData: readLanding(LANDING_KEYS.trending1) }
+  )
   const featured = trending.data?.videos?.[0] || null
 
   const s = stats.data
