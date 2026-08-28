@@ -316,6 +316,13 @@
   border: 0;
   background: #000;
   color-scheme: dark;
+  /* An iframe shows its document's own background before that document's CSS
+     lands, and the Stream embed's is white. Start transparent over the shell's
+     black and reveal on load — a white flash skipped, not a wait added. */
+  opacity: 0;
+}
+.stream-frame.is-painted {
+  opacity: 1;
 }
 .stream-poster {
   position: absolute;

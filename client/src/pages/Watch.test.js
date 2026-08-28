@@ -40,7 +40,20 @@ test('nothing of ours is ever drawn over the Cloudflare player', () => {
 
   // The iframe is the whole shell, mounted the moment there is a source.
   assert.match(src, /<div className="stream-shell is-live">/)
-  assert.match(src, /className="stream-frame is-playing"/)
+  assert.match(src, /className=\{`stream-frame \$\{painted \? 'is-painted' : ''\}`/)
+
+  // `painted` is not a loading state — it skips the embed document's own white
+  // background, which is what the poster was really hiding. It is revealed by
+  // the iframe's load, by the SDK's first event, and unconditionally after a
+  // moment, so a working player can never be left invisible.
+  assert.match(src, /setTimeout\(\(\) => setPainted\(true\), 1500\)/)
+  assert.match(src, /onLoad=\{\(\) => \{\s*\n[^}]*setPainted\(true\)/)
+  assert.match(src, /const announceReady = \(\) => \{\s*\n\s*setPainted\(true\)/)
+
+  const css = readFileSync(join(dir, '../styles/realdata.css'), 'utf8')
+  assert.match(css, /\.stream-frame\.is-painted \{\s*\n\s*opacity: 1;/)
+  // Black underneath, so what is skipped is white and never content.
+  assert.match(css, /\.stream-shell \{[\s\S]*?background: #000;/)
 
   // What depended on our cover now fires on the SDK's own events.
   assert.match(src, /const announceReady = \(\) => \{/)
@@ -351,4 +364,50 @@ test('the origin that actually serves the media is the one warmed', () => {
   assert.match(html, /rel="preconnect" href="https:\/\/cloudflarestream\.com"/)
   // videodelivery.net stays — it is the poster host Watch fetches first-party.
   assert.match(html, /rel="preconnect" href="https:\/\/videodelivery\.net"/)
+})
+
+test('the purple unlock gate comes back when a paid preview runs out', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // Removing our loader must not have taken the paywall with it: the gate is a
+  // sibling of the player, not part of it.
+  assert.match(src, /\{showLockGate && \(\s*\n\s*<LockGate/)
+  assert.match(src, /onUnlock=\{openCheckout\}/)
+  assert.match(src, /needsPayment &&\s*\n\s*\(previewOver \|\|/)
+
+  // Three independent things raise it, so one missed event cannot lose it:
+  // the SDK halt, the clip ending, and a wall-clock backstop.
+  assert.match(src, /onStopReached=\{\(\) => \{\s*\n\s*capturePosition\(\)/)
+  assert.match(src, /previewRanOut\.current = true\s*\n\s*setPreviewOver\(true\)/)
+  assert.match(src, /\}, \(stopsAt \+ 8\) \* 1000\)/)
+
+  // It has to sit above the player, which now shows Cloudflare's own controls.
+  const css = readFileSync(join(dir, '../styles/realdata.css'), 'utf8')
+  const gate = css.slice(css.indexOf('.lock-gate {'), css.indexOf('@keyframes lg-in'))
+  assert.match(gate, /position: absolute/)
+  assert.match(gate, /inset: 0/)
+  assert.match(gate, /z-index: 5/)
+  const frame = css.slice(css.indexOf('.stream-frame {'), css.indexOf('.stream-frame.is-painted'))
+  assert.match(frame, /z-index: 1/)
+  // And the purple is the veil's own gradient.
+  assert.match(css, /\.lg-veil \{[\s\S]*?rgba\(124, 58, 237, \.28\)/)
+})
+
+test('paying from that gate resumes where the preview stopped, never at zero', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // Captured at the gate and again when checkout opens — the player's own
+  // clock, because a halted preview stops telling the page anything.
+  assert.match(src, /const at = capturePosition\(\)/)
+  assert.match(src, /captured: capturePosition\(\)/)
+
+  // Handed to the full film as its start second, then nudged by seek if the
+  // player landed somewhere else anyway.
+  assert.match(src, /startAt=\{resumeAt\}/)
+  assert.match(src, /nonce: `paid:\$\{v\?\.id \|\| videoId\}:\$\{at\}`/)
+  assert.match(src, /Resuming from \$\{duration\(Math\.floor\(resumeAt\)\)\}/)
+
+  const rp = readFileSync(join(dir, '../lib/resumePoint.js'), 'utf8')
+  assert.match(rp, /const from = Math\.max\(seen, watched, saved\)/)
+  assert.match(rp, /if \(stop > 2 && previewEnded\) return stop/)
 })

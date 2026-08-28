@@ -162,6 +162,22 @@ export default function StreamPlayer({
    * The only thing worth saying is that it broke.
    */
   const [failed, setFailed] = useState(false)
+  /**
+   * The embed document has painted. NOT a loading state — a white one.
+   *
+   * An <iframe> shows its document's own background before that document's CSS
+   * arrives, and the Stream embed's is white. So for a beat between the element
+   * existing and Cloudflare styling itself, the player is a white rectangle —
+   * which is what the old poster was really hiding, and what came back when it
+   * was removed.
+   *
+   * Nothing is drawn on top to solve it. The frame simply starts transparent
+   * over the shell's black, and is revealed the moment its document loads —
+   * which is well before the video starts, so Cloudflare's own poster, spinner
+   * and play button still appear immediately. There is no spinner of ours, no
+   * message, and no wait for playback: only the white is skipped.
+   */
+  const [painted, setPainted] = useState(false)
   const requireAirtimeRef = useRef(requireAirtime)
   requireAirtimeRef.current = requireAirtime
   const playOnReadyRef = useRef(playOnReady)
@@ -270,10 +286,15 @@ export default function StreamPlayer({
 
   useEffect(() => {
     setFailed(false)
+    setPainted(false)
     if (!iframeSrc) return
+    /* A reveal that depends on one event is a black screen when that event is
+       missed. This one cannot be. */
+    const failsafe = setTimeout(() => setPainted(true), 1500)
     /* Autoplay means most viewers never tap anything, so a tap is not a
        boundary we can measure from. This one always happens. */
     markPerf('playerBoot')
+    return () => clearTimeout(failsafe)
   }, [iframeSrc, boot])
 
   useEffect(() => {
@@ -408,6 +429,7 @@ export default function StreamPlayer({
          * that anything depending on the player being usable was waiting for.
          */
         const announceReady = () => {
+          setPainted(true)
           onReadyRef.current?.()
           if (requireAirtimeRef.current) return
           onPlayingRef.current?.()
@@ -650,7 +672,7 @@ export default function StreamPlayer({
       <iframe
         key={boot}
         ref={frame}
-        className="stream-frame is-playing"
+        className={`stream-frame ${painted ? 'is-painted' : ''}`.trim()}
         src={iframeSrc}
         title={title}
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
@@ -658,6 +680,8 @@ export default function StreamPlayer({
         allowFullScreen
         onError={() => setFailed(true)}
         onLoad={() => {
+          /* The document exists, so it is Cloudflare's own black from here. */
+          setPainted(true)
           const player = playerRef.current
           if (!player || pausedRef.current) return
           try {
