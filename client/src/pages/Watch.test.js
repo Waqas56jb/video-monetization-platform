@@ -99,9 +99,63 @@ test('moving a running player is a seek, not a new iframe', () => {
   assert.match(src, /player\.addEventListener\('loadedmetadata', runPendingSeek\)/)
   assert.match(src, /player\.addEventListener\('canplay', runPendingSeek\)/)
   // Only when the player is genuinely elsewhere, so it cannot fight a scrub.
-  assert.match(src, /Math\.abs\(\(Number\(player\.currentTime\) \|\| 0\) - want\.seconds\) > 2/)
-  // Once per nonce.
-  assert.match(src, /want\.applied = true/)
+  assert.match(src, /Math\.abs\(at - want\.seconds\) <= 2/)
+
+  // A cross-origin currentTime write can be dropped silently, so landing is
+  // observed rather than asserted — and the asking is bounded.
+  assert.match(src, /want\.tries >= 5/)
+  assert.match(src, /want\.done = true/)
+
+  // A seek belongs to one source. If the film moved on, it is retired, not
+  // re-armed against whatever is playing now.
+  assert.match(src, /if \(want\.src !== srcRef\.current\)/)
+})
+
+test('an advert can never leave the film frozen with no way back', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+
+  // Once the film has aired every other restart has retired: shown() clears the
+  // watchdog and start() returns early on `aired`. The resume after a mid-roll
+  // is the only thing left, so it may not be fire-and-forget: play() rejects
+  // asynchronously and a synchronous try/catch never sees it.
+  assert.match(src, /await Promise\.resolve\(player\.play\?\.\(\)\)/)
+  assert.doesNotMatch(src, /else if \(playOnReady \|\| autoplay\) player\.play\?\.\(\)/)
+  assert.doesNotMatch(src, /overlay \/ watchdog still cover a refused play/)
+
+  // Refused unmuted -> retry muted -> and only then hand the tap back.
+  assert.match(src, /if \(alive\) setNeedsGesture\(true\)/)
+
+  // The tap must be able to disappear again, which means clearing it cannot sit
+  // behind the `aired` guard.
+  const shown = src.slice(src.indexOf('const shown = () => {'))
+  const guard = shown.indexOf('if (aired) return')
+  const clear = shown.indexOf('setNeedsGesture(false)')
+  assert.ok(clear >= 0 && clear < guard, 'needsGesture must clear before the aired guard')
+})
+
+test('a torn-down player is not left reachable', () => {
+  const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+  // A seek, a tap or the page reading the position would otherwise be talking
+  // to a wrapper around an iframe that has gone.
+  assert.match(src, /if \(playerRef\.current === player\) playerRef\.current = null/)
+})
+
+test('the mid-roll resume is a seek, and the film publishes its own position', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // setResumeHint here used to rebuild the whole iframe on every mid-roll, and
+  // once the start second was pinned it stopped reaching the player at all.
+  assert.doesNotMatch(src, /setResumeHint\(mainProgress\.current\)/)
+  assert.match(src, /setSeekTo\(\{ seconds: at, nonce: `mid_roll:\$\{at\}` \}\)/)
+
+  assert.match(src, /seekRequest=\{seekTo\}/)
+  assert.match(src, /positionRef=\{livePosition\}/)
+  // Per-video, like everything else on this page.
+  assert.match(src, /livePosition\.current = 0/)
+
+  const player = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
+  // Published before the branch that halts a finished preview stops reporting.
+  assert.match(player, /if \(positionRefProp && at > 0\) positionRefProp\.current = at/)
 })
 
 test('the start second is decided once per player, not on every render', () => {

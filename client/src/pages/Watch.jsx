@@ -83,6 +83,10 @@ export default function Watch() {
   /** Stays true once the free clip has run out — `previewOver` is cleared on pay. */
   const previewRanOut = useRef(false)
   const [resumeHint, setResumeHint] = useState(0)
+  /** An explicit move of the running player — never a rebuild. See StreamPlayer. */
+  const [seekTo, setSeekTo] = useState(null)
+  /** The player's own live second, for the moment the page has to ask. */
+  const livePosition = useRef(0)
   /**
    * The second the CURRENT player was told to start at, decided once.
    *
@@ -252,6 +256,8 @@ export default function Watch() {
     /* A start point belongs to one video. Carrying it over would open the next
        title part-way through, at a second nobody watching it has reached. */
     startFrom.current = { key: null, value: 0 }
+    livePosition.current = 0
+    setSeekTo(null)
     setActiveAd(null)
     playedBreaks.current = new Set()
     mainProgress.current = 0
@@ -377,8 +383,23 @@ export default function Watch() {
   }, [ads, p?.access?.showsAds])
 
   const adFinished = useCallback(() => {
+    /**
+     * Put the film back where the advert interrupted it — if it moved.
+     *
+     * It should not have: the film is paused in place under the break, so it
+     * resumes at the same second on its own. This used to be written into the
+     * resume hint instead, which rebuilt the whole iframe every single time a
+     * mid-roll ended — a poster flash and a reload to land on the second it was
+     * already sitting on. Once the start second was pinned that write stopped
+     * reaching the player at all and became decoration.
+     *
+     * As a seek it earns its place again, and covers the one case the pause
+     * cannot: a refused `pause()` leaving the film running on underneath the
+     * advert. The seek is ignored unless the player is genuinely elsewhere.
+     */
     if (activeAd?.placement === 'mid_roll' && mainProgress.current > 0) {
-      setResumeHint(mainProgress.current)
+      const at = Math.floor(mainProgress.current)
+      setSeekTo({ seconds: at, nonce: `mid_roll:${at}` })
     }
     setActiveAd(null)
   }, [activeAd?.placement])
@@ -698,6 +719,8 @@ export default function Watch() {
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
                 startAt={resumeAt}
+                seekRequest={seekTo}
+                positionRef={livePosition}
                 autoplay={!activeAd}
                 playOnReady={!activeAd}
                 paused={Boolean(activeAd)}

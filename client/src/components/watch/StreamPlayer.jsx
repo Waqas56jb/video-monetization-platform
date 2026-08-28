@@ -105,6 +105,16 @@ export default function StreamPlayer({
    * iframe, no new token, no reload.
    */
   seekRequest = null,
+  /**
+   * A ref this player keeps the live second in, for the page to read.
+   *
+   * `onTimeUpdate` tells the page where playback got to, but only while it is
+   * being told — and the halt at the end of a free preview deliberately stops
+   * telling it. So at the exact moment that matters most, the page's own idea
+   * of the position is already behind the player's. This is the player's
+   * answer, readable synchronously, at the instant somebody taps Unlock.
+   */
+  positionRef = null,
 }) {
   /**
    * Playing, but silent.
@@ -185,15 +195,37 @@ export default function StreamPlayer({
    * when the player is genuinely somewhere else — so it can never fight a
    * viewer who has just scrubbed.
    */
-  const pendingSeek = useRef({ nonce: null, seconds: 0, applied: true })
+  const srcRef = useRef(null)
+  srcRef.current = src
+  /* Read through a ref: the SDK listener is attached once per source and must
+     not be rebuilt because the page re-rendered. */
+  const positionRefProp = positionRef
+  const pendingSeek = useRef({ nonce: null, seconds: 0, done: true, tries: 0, src: null })
   const applySeek = (player) => {
     const want = pendingSeek.current
-    if (!player || want.applied || want.nonce == null) return
+    if (!player || want.done || want.nonce == null) return
+    /* A seek is a second inside one particular film. If the source has moved
+       on, this one no longer means anything — retiring it is the only safe
+       thing to do with it. */
+    if (want.src !== srcRef.current) {
+      want.done = true
+      return
+    }
+    /* Writing currentTime on a cross-origin player can be silently dropped, so
+       "applied" is not something we can assert — only observe. Keep asking
+       until the player agrees it is there, then stop. */
+    const at = Number(player.currentTime) || 0
+    if (Math.abs(at - want.seconds) <= 2) {
+      want.done = true
+      return
+    }
+    if (want.tries >= 5) {
+      want.done = true
+      return
+    }
+    want.tries += 1
     try {
-      if (Math.abs((Number(player.currentTime) || 0) - want.seconds) > 2) {
-        player.currentTime = want.seconds
-      }
-      want.applied = true
+      player.currentTime = want.seconds
     } catch {
       /* not seekable yet — the next player event tries again */
     }
@@ -202,7 +234,13 @@ export default function StreamPlayer({
   const seekSeconds = Math.max(0, Number(seekRequest?.seconds) || 0)
   useEffect(() => {
     if (seekNonce == null || seekNonce === pendingSeek.current.nonce) return
-    pendingSeek.current = { nonce: seekNonce, seconds: seekSeconds, applied: false }
+    pendingSeek.current = {
+      nonce: seekNonce,
+      seconds: seekSeconds,
+      done: false,
+      tries: 0,
+      src: srcRef.current,
+    }
     applySeek(playerRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs only
   }, [seekNonce, seekSeconds])
@@ -266,6 +304,10 @@ export default function StreamPlayer({
           if (!alive || !player) return
           const limit = stopAtRef.current
           const at = Number(player.currentTime) || 0
+          /* Publish the live second before any of the branches below, because
+             the one that halts a finished preview deliberately stops reporting
+             — and that is the exact moment the page needs the number. */
+          if (positionRefProp && at > 0) positionRefProp.current = at
           if (!(limit > 0) || at < limit - 0.15) {
             if (limit > 0 && at < limit - 0.15) stopped = false
             if (!(limit > 0 && at >= limit - 0.15)) onTimeUpdateRef.current?.(at, player.duration)
@@ -287,10 +329,15 @@ export default function StreamPlayer({
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
         const shown = () => {
+          /* Before the `aired` guard, deliberately. A film that is running
+             needs no tap — and the tap can be handed back long after the first
+             frame, when a resume from an advert is refused. If this sat below
+             the guard, that overlay would never come down again. React drops a
+             set to the value it already holds, so the repeat costs nothing. */
+          setNeedsGesture(false)
           if (aired) return
           aired = true
           markReady()
-          setNeedsGesture(false)
           measurePerf('playClick', 'play-to-first-frame')
           onPlayingRef.current?.()
           if (watchdog) {
@@ -471,6 +518,10 @@ export default function StreamPlayer({
 
     return () => {
       alive = false
+      /* Retire the shared handle too, not just the local one. Anything holding
+         playerRef — a seek, a tap, the page reading the position — would
+         otherwise be talking to a wrapper around an iframe that has gone. */
+      if (playerRef.current === player) playerRef.current = null
       player = null
       if (kickTimer) clearTimeout(kickTimer)
       if (watchdog) clearInterval(watchdog)
@@ -479,14 +530,64 @@ export default function StreamPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iframeSrc, boot])
 
+  /**
+   * Holding the film under an advert, and starting it again afterwards.
+   *
+   * The comment here used to say the overlay and the watchdog still covered a
+   * refused play. They do not, and that mattered: both retire the moment the
+   * film has aired — `shown()` clears the watchdog, and `start()` returns early
+   * once `aired` — so by the time a mid-roll ends this is the ONLY thing left
+   * that restarts the film. `play()` returns a promise, so a browser refusing
+   * an un-gestured resume rejects it asynchronously and a synchronous
+   * `try/catch` never sees it. The advert would finish and the film would sit
+   * frozen with nothing on the page able to start it.
+   *
+   * So the resume is awaited, retried muted — the one kind a browser always
+   * allows — and if even that is refused the tap comes back. The viewer is
+   * never left holding a dead player.
+   */
   useEffect(() => {
     const player = playerRef.current
     if (!player) return
-    try {
-      if (paused) player.pause?.()
-      else if (playOnReady || autoplay) player.play?.()
-    } catch {
-      /* overlay / watchdog still cover a refused play */
+
+    if (paused) {
+      try {
+        player.pause?.()
+      } catch {
+        /* held under the advert by the layer above */
+      }
+      return
+    }
+    if (!playOnReady && !autoplay) return
+
+    let alive = true
+    const attempt = async () => {
+      try {
+        await Promise.resolve(player.play?.())
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    ;(async () => {
+      if (await attempt()) return
+      if (!alive) return
+      try {
+        if ('muted' in player) player.muted = true
+      } catch {
+        /* ignore */
+      }
+      if (await attempt()) {
+        if (alive) setSilent(true)
+        return
+      }
+      /* Nothing script is allowed to do. Hand the tap back. */
+      if (alive) setNeedsGesture(true)
+    })()
+
+    return () => {
+      alive = false
     }
   }, [paused, playOnReady, autoplay])
 
