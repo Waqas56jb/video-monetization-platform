@@ -75,7 +75,19 @@ export function healShareCard(slug, onRefresh) {
       }
     })
     .catch(() => {})
-    .finally(() => healing.delete(slug))
+  /**
+   * Deliberately never released.
+   *
+   * `healing` used to be cleared in a `.finally`, which resolves as a microtask
+   * — before React has flushed the passive effect that `onRefresh`'s setState
+   * scheduled. So the effect re-ran with the guard already open and called this
+   * again: POST /ensure, GET /share-meta, setState, repeat. On a video whose
+   * card genuinely cannot be built, `cardStatus` never becomes 'ready' and the
+   * loop had nothing to stop it.
+   *
+   * One attempt per slug per page is all this is for — it is a rare self-heal,
+   * not a retry policy. A reload gets a fresh attempt.
+   */
 }
 
 /** @deprecated use warmShareFromMeta */

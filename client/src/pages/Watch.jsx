@@ -210,16 +210,26 @@ export default function Watch() {
   }, [video.data?.share])
 
   /**
-   * Build the WhatsApp/Facebook poster before anyone pastes the link.
-   * Cards are built at publish time; this only warms caches and self-heals rare misses.
+   * Self-heal a missing WhatsApp/Facebook poster. Nothing else, and not yet.
+   *
+   * This used to call `warmShareFromMeta` here as well, on mount — which fetches
+   * two `/watch/:slug` URLs and prefetches the 1200×630 share card. Those two
+   * URLs are served by a serverless function that renders the whole SPA shell,
+   * and the card is a JPEG of 80–250 KB that this viewer will never look at. All
+   * three went out in the same tick the Cloudflare player was fetching its
+   * manifest and first segment, and took bandwidth from it on every single view.
+   *
+   * Nobody needed it here. The cards are built at publish time; this only ever
+   * warmed a cache. The warm that matters still happens on intent —
+   * `primeShare` runs on the Share button's pointerenter, touchstart and focus,
+   * which is well before the sheet can open — and `healShareCard` warms from the
+   * meta it fetches anyway.
    */
   useEffect(() => {
-    if (!share?.watchUrl) return
-    warmShareFromMeta(share)
-    if (share.cardStatus && share.cardStatus !== 'ready' && v?.slug) {
-      healShareCard(v.slug, (meta) => setShareLive((prev) => ({ ...prev, ...meta })))
-    }
-  }, [share, v?.slug])
+    if (!share?.watchUrl || !v?.slug) return
+    if (!share.cardStatus || share.cardStatus === 'ready') return
+    healShareCard(v.slug, (meta) => setShareLive((prev) => ({ ...prev, ...meta })))
+  }, [share?.watchUrl, share?.cardStatus, v?.slug])
 
   const primeShare = () => {
     if (share?.watchUrl) warmShareFromMeta(share)

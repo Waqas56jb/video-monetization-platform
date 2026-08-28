@@ -4,7 +4,7 @@ import { Play } from 'lucide-react'
 import Icon from './Icon'
 import Reveal from './Reveal'
 import useInView from '@/hooks/useInView'
-import { prefetchWatch } from '@/lib/prefetchWatch'
+import { prefetchWatch, prefetchWatchLight } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
 import { markPerf } from '@/lib/perfLog'
 
@@ -57,7 +57,7 @@ export default function VideoCard({
     if (!inView) return
     const key = slug || id
     if (!key) return
-    const run = () => prefetchWatch(key)
+    const run = () => prefetchWatchLight(key)
     if (typeof requestIdleCallback !== 'undefined') {
       const idle = requestIdleCallback(run, { timeout: 4000 })
       return () => cancelIdleCallback(idle)

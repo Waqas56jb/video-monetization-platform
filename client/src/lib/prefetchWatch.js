@@ -82,16 +82,28 @@ const videoCache = new Map()
 const playbackCache = new Map()
 const adsCache = new Map()
 
+/**
+ * A warmed payload is only good for as long as what is inside it.
+ *
+ * A preview playback token lives fifteen minutes. Cards warm themselves when
+ * they scroll into view, so browsing Explore for a quarter of an hour and then
+ * tapping a title handed the player a JWT that had already expired: a black
+ * frame, "Connecting to player…", a twelve second timeout, and a Try again that
+ * re-used the very same dead promise. Ten minutes leaves comfortable margin.
+ */
+const WARM_TTL_MS = 10 * 60 * 1000
+
 function cacheGet(map, key, fetch) {
   if (!key) return null
   const id = String(key)
-  if (map.has(id)) return map.get(id)
-  const p = fetch(id).catch((err) => {
+  const hit = map.get(id)
+  if (hit && Date.now() - hit.at < WARM_TTL_MS) return hit.promise
+  const promise = fetch(id).catch((err) => {
     map.delete(id)
     throw err
   })
-  map.set(id, p)
-  return p
+  map.set(id, { promise, at: Date.now() })
+  return promise
 }
 
 /**
@@ -113,9 +125,12 @@ export function warmAds(idOrSlug) {
 function takeFrom(map, idOrSlug) {
   if (!idOrSlug) return null
   const key = String(idOrSlug)
-  const p = map.get(key) || null
-  if (p) map.delete(key)
-  return p
+  const hit = map.get(key)
+  if (!hit) return null
+  map.delete(key)
+  /* Stale means the token inside it may already be refused. Better to spend a
+     round trip than to hand the player a JWT it cannot use. */
+  return Date.now() - hit.at < WARM_TTL_MS ? hit.promise : null
 }
 
 /** Promise already warming, or null. Consumed so a later reload cannot reuse it. */
@@ -147,7 +162,7 @@ export function dropWarmedWatch(idOrSlug) {
   dropWarmedVideo(idOrSlug)
 }
 
-/** Chunk + video + signed playback — call from card pointerdown / Explore. */
+/** Chunk + video + signed playback — real intent, i.e. a finger on a card. */
 export function prefetchWatch(idOrSlug) {
   prefetchWatchChunk()
   if (idOrSlug) {
@@ -155,6 +170,22 @@ export function prefetchWatch(idOrSlug) {
     warmPlayback(idOrSlug)
     warmAds(idOrSlug)
   }
+}
+
+/**
+ * The cheap half, for a card that has merely scrolled past.
+ *
+ * The full warm is three requests, and every card in view was firing all three
+ * on idle: twenty-four on the home page, up to seventy-two on Explore, all
+ * competing with the card thumbnails that are the page's largest paint. Only
+ * one of the three decides when the film can start — the signed playback URL is
+ * what the iframe is built from — so that is the one worth spending on
+ * speculatively. The video row and the ad breaks are fetched on the tap, which
+ * is where the intent actually is.
+ */
+export function prefetchWatchLight(idOrSlug) {
+  prefetchWatchChunk()
+  if (idOrSlug) warmPlayback(idOrSlug)
 }
 
 export function idlePrefetchWatch() {

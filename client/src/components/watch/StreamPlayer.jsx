@@ -287,7 +287,26 @@ export default function StreamPlayer({
     let stopPoll = null
 
     ensureStreamSdk().then((Stream) => {
-      if (!alive || !Stream || !frame.current) return
+      if (!alive || !frame.current) return
+      /**
+       * No SDK — but the iframe is playing anyway.
+       *
+       * Everything that lifts the poster lives inside this callback, and the
+       * poster sits opaque on top of the frame. So an ad blocker, a DNS filter
+       * or one dropped request for the embed script left every video on the
+       * site as a still image with "Connecting to player…", then a twelve
+       * second timeout, then a Try again that did the same thing — while the
+       * film played behind it, audible if the viewer had sound on.
+       *
+       * The iframe carries its own controls and needs nothing from us. Uncover
+       * it and let Cloudflare's player be the player.
+       */
+      if (!Stream) {
+        setReady(true)
+        setNeedsGesture(false)
+        onReadyRef.current?.()
+        return
+      }
       try {
         player = Stream(frame.current)
         playerRef.current = player
@@ -319,11 +338,26 @@ export default function StreamPlayer({
           } catch {
             /* paywall still covers it */
           }
+          /**
+           * Say it once.
+           *
+           * This report used to sit outside the guard, and the poll below runs
+           * every 200ms whether or not anything has changed — so a viewer
+           * sitting on the paywall, or with the payment sheet open, produced
+           * five of these a second for as long as they stayed there. The page
+           * answers each one with a forced progress report: a synchronous
+           * sessionStorage write and a PUT to the API. Five writes and five
+           * requests a second, indefinitely, against an API that allows a
+           * hundred and twenty a minute — so it also rate-limited the very
+           * payment the viewer was in the middle of making.
+           *
+           * The preview halting is one event. It is reported like one.
+           */
           if (!stopped) {
             stopped = true
             onStopReachedRef.current?.()
+            onTimeUpdateRef.current?.(limit, player.duration)
           }
-          onTimeUpdateRef.current?.(limit, player.duration)
         }
         player.addEventListener('timeupdate', haltIfDue)
         stopPoll = setInterval(haltIfDue, 200)
