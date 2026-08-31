@@ -30,8 +30,21 @@ const app = express()
  * kept answering plausibly. The most recent time, telemetry rows arrived with
  * the wrong asset type for exactly that reason. One header ends that class of
  * confusion, so it is on every response.
+ *
+ * Each host names this differently, and reading only Vercel's name is how the
+ * header quietly became `dev` the moment the API moved to Railway — still
+ * present, still looking fine, no longer answering the question it exists for.
+ * Both are read, Railway first, because Railway is what runs the API now.
+ *
+ * `dev` remains the honest last resort: locally there is no deployment to
+ * identify, and a header that says `dev` is better than one that invents a
+ * commit or disappears.
  */
-const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
+const BUILD = (
+  process.env.RAILWAY_GIT_COMMIT_SHA ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  'dev'
+).slice(0, 7)
 
 /**
  * How many proxies sit in front of this process.

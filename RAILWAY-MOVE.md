@@ -76,12 +76,27 @@ TTFB ×5 : 0.944  0.846  0.888  0.844  0.965
 All six capabilities true, `needsConfiguration` empty — **nothing is missing from the
 Railway environment.** `allowedOrigins` correctly still names the two Vercel frontends.
 
-**One thing to know: `X-Build: dev`.** The header is built from `VERCEL_GIT_COMMIT_SHA`,
-which Railway does not set, so it no longer identifies the deployed commit. That header was
-how the last two tiers proved which build was answering. Railway exposes
-`RAILWAY_GIT_COMMIT_SHA`; wiring it in is a small change and is **not** in this branch,
-because it would change `app.js` while the deployed code is still `main` and I would not be
-able to verify it until after your redeploy. Worth doing next.
+**`X-Build: dev` — since fixed, in the fourth commit on this branch.** The header was built from
+`VERCEL_GIT_COMMIT_SHA` alone, which Railway does not set, so it stopped identifying the
+deployed commit the moment the API moved. That header is how the last two tiers proved which
+build was answering, and it is what Step 8 below uses to confirm the redeploy is live, so
+`dev` would have made this move's own verification unfalsifiable.
+
+It now reads `RAILWAY_GIT_COMMIT_SHA` first, then `VERCEL_GIT_COMMIT_SHA`, then `dev`.
+Railway wins because Railway runs the API; Vercel is still read so a rollback there is not
+blind; `dev` stays as the honest local answer rather than an invented commit.
+
+`client/api/watch.js` keeps its Vercel-only read — that function still runs on Vercel, so
+that is the correct variable there, not an oversight.
+
+Four tests boot the app and read the header off a real response. That matters more than it
+sounds: a source-text test would have passed happily through this entire move, because the
+string `VERCEL_GIT_COMMIT_SHA` was still sitting in the file and looking right. Checked
+against the old `app.js`, the two Railway cases fail (`dev` and `9999999` against the
+expected `ab12cd3`), so the tests are not passing vacuously.
+
+The Step 1 reading above is left as it was measured — `x-build: dev` is what that deployment
+actually returned.
 
 ---
 
@@ -306,6 +321,9 @@ Not run. These need the Railway env set, the Railway service redeployed from thi
 and both Vercel frontends rebuilt so `VITE_API_URL` is baked in fresh. Ready to run verbatim
 on your word:
 
+0. `/health` on Railway → `X-Build` equals the merge commit. This one goes first: until it
+   does, every result below could be the old build answering, and the last two tiers both
+   lost time to exactly that.
 1. client production `/watch/:slug` → the shell's injected API origin is Railway
 2. anonymous `/api/playback/live-at-arusha-full-set/playback` on Railway → `kind:preview`,
    `canWatchFull:false`
