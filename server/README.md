@@ -8,6 +8,13 @@ Node.js API for the MTONYO+ video monetization platform.
 
 Everything lives in `server/`. Nothing backend sits outside it.
 
+> **Before any CLI deploy:** the Vercel project lives in the **client's** team, not the
+> developer's. Run `vercel login` with the invited account first, then `vercel link` — the
+> old `server/.vercel/` link pointed at `video-monetization-platform-backend`, a project
+> that no longer exists, so `vercel` from here targeted nothing. Cloudflare's Stream
+> webhook was aimed at that same dead host from 9 to 31 August and every
+> encoding notification in that window was lost; see `scripts/reconcile-stream.mjs`.
+
 ---
 
 ## 1. What you need before it runs
