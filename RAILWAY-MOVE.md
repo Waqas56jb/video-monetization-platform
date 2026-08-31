@@ -1,6 +1,6 @@
 # Backend move — Vercel → Railway
 
-Branch `fix/backend-railway`, off `main` (`777137d`). **Not pushed.** 2026-08-31.
+Branch `fix/backend-railway`, merged to `main` as `2cfe935` and deployed. 2026-08-31.
 
 ```
 New API origin   https://video-monetization-platform-production.up.railway.app
@@ -315,31 +315,128 @@ client  100 passing
 
 ---
 
-## Step 8 — Verification, pending your redeploy
+## Step 8 — Verification, run live
 
-Not run. These need the Railway env set, the Railway service redeployed from this branch,
-and both Vercel frontends rebuilt so `VITE_API_URL` is baked in fresh. Ready to run verbatim
-on your word:
+All against the deployed merge commit, 2026-08-31 ~12:51–12:58 UTC.
 
-0. `/health` on Railway → `X-Build` equals the merge commit. This one goes first: until it
-   does, every result below could be the old build answering, and the last two tiers both
-   lost time to exactly that.
-1. client production `/watch/:slug` → the shell's injected API origin is Railway
-2. anonymous `/api/playback/live-at-arusha-full-set/playback` on Railway → `kind:preview`,
-   `canWatchFull:false`
-3. `POST /api/share/crawl-hit` on Railway → 2xx
-4. `/og/card/how-to-cook-pilau-properly.jpg` → `X-Bucket: hit`, and the fallback leg must
-   reach Railway rather than Vercel
-5. `OPTIONS` from `https://video-monetization-platform-chi.vercel.app` → allowed
-6. plus `/health` `proxy.hops` vs `trustProxyHops`, and `scheduler.inProcess: true`
+**`X-Build: 2cfe935` on Railway** — the merge commit. This goes first because
+everything below is meaningless without it, and it is only readable at all because
+the header was fixed earlier on this branch; before that it said `dev` and this
+check could not have been made.
 
-## Ordering, and one thing to decide
+### Passing
 
-**Deploy order is safe either way** — the branch works against a Railway env that is already
-set, and the frontends will keep working until rebuilt because the old host redirects. But
-the retired Vercel *server* deployment must stay up until the frontends are rebuilt, or a
-cached bundle pointing at it has nothing to redirect *from*.
+| # | check | result |
+|---|---|---|
+| 1 | Railway `/health` | `200`, `database: connected`, all six capabilities `true`, no `needsConfiguration` |
+| 2 | scheduler | `scheduler.inProcess: true` — the nightly jobs are running again |
+| 3 | frontends rebuilt | both bundles inline `…up.railway.app` as `VITE_API_URL`; **zero** occurrences of `localhost:4000` |
+| 4 | frontend build | `X-Build: 2cfe935` on the watch shell — both Vercel projects are on the merge commit |
+| 5 | entitlement, anonymous, `ppv_forever` | `canWatchFull: false`, `owned: false`, `requiresPayment: true`, `playback.kind: preview`, `stopsAtSeconds: 217` of 653 |
+| 6 | `POST /api/share/crawl-hit` | `202` (was a 500 before Tier 1) |
+| 7 | `/og/card/…jpg` | `200`, `X-Bucket: hit`, 39,577 bytes `image/jpeg` |
+| 8 | CORS, real frontend | `204` + `access-control-allow-origin` for the client origin |
+| 9 | CORS, rogue origin | explicit `ORIGIN_NOT_ALLOWED` JSON, not an opaque failure |
 
-**To decide:** the Railway region. If it is not in Europe, moving it is worth more than the
-whole of Tier 2, and it changes what the Tier 2 numbers will look like — so it is better
-done before that branch is measured again.
+**The Tier 1 cache fix holds under real edge caching** — which is the test that
+matters, because the original bug only fired on a HIT:
+
+```
+round 1   crawler: X-Doc: crawler  MISS      browser: X-Doc: shell  MISS
+round 2   crawler: X-Doc: crawler  HIT       browser: X-Doc: shell  HIT
+round 3   crawler: X-Doc: crawler  HIT       browser: X-Doc: shell  HIT
+Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+```
+
+Two documents at one URL, both cached, neither ever served to the other.
+
+### Three things that need you
+
+**1 · The rate limiter is not counting per viewer. `TRUST_PROXY_HOPS=2` on Railway.**
+
+```
+/health proxy : {"ip":"152.233.15.120","hops":2,"trustProxyHops":1,"host":"railway"}
+my actual IP  : 103.104.87.140
+```
+
+`req.ip` is not the caller — it is a Railway internal address, and it moves
+between `.120` and `.121` across requests. Every viewer therefore shares a
+handful of 120-requests-per-minute buckets instead of holding one each, so the
+site can rate-limit its own users under load. Watching `ratelimit` bounce
+`116 → 117 → 116` across three of my own sequential calls is the same fact from
+the other side: those calls were not landing in one bucket, and other traffic was
+spending it.
+
+Setting 2 is safe here, and that was checked rather than assumed — Railway
+**replaces** `X-Forwarded-For` rather than appending to it:
+
+```
+sent XFF: (none)                      -> hops 2
+sent XFF: 1.2.3.4                     -> hops 2
+sent XFF: 1.2.3.4, 5.6.7.8            -> hops 2
+sent XFF: 1.2.3.4, 5.6.7.8, 9.10.11.12 -> hops 2
+```
+
+Nothing a client sends survives, so trusting the second hop cannot be forged into
+someone else's bucket. The old Vercel host confirms the other half: it reports
+`{"ip":"103.104.87.129","hops":1,"trustProxyHops":1}` — my real address. One hop
+was right there, two is right here, which is exactly why the value is settable
+rather than hard-coded. **No code change: a Railway variable.**
+
+**2 · The region is still not in Europe.** `x-railway-edge: sin1` unchanged, and
+the cost per query is unchanged with it:
+
+| route | queries | median (s) |
+|---|---|---|
+| `/` | 0 | 0.588 |
+| `/health` | 1 | 0.711 |
+| `/api/playback/:slug/playback` | 3 | 0.700 |
+| `/api/videos/:slug` | 6 | **0.832** |
+
+`(0.832 − 0.588) / 6 ≈ **41 ms per query**`, against ~0 ms when the API sat in
+`dub1` beside Supabase. Slightly better than the 51 ms measured before the
+redeploy, and the same story. The 1-query and 3-query rows still fail to separate,
+which is the same noise noted earlier — the 0-vs-6 span is the load-bearing
+figure, not the middle.
+
+**3 · The retired Vercel backend is still live, and still deploying from `main`.**
+
+```
+…-server.vercel.app/health                 -> 200   X-Build: 2cfe935
+…-server.vercel.app/api/videos             -> 200
+…-server.vercel.app/api/playback/…/playback -> 200
+…-backend.vercel.app/health                -> 404   (genuinely gone)
+```
+
+It built the merge commit within minutes of the push, so that project is still
+connected to this repository. It is a second production API, fully functional,
+on the same database. It is **not** running the nightly jobs
+(`scheduler.inProcess: false`, since `RAILWAY_ENVIRONMENT` is unset there), so
+there is no duplicate-cron problem — but it is a live second copy nobody is
+watching, and it will keep deploying on every push.
+
+Deleting or disconnecting it is safe **now** rather than earlier, and the order
+matters: both frontends are confirmed rebuilt onto Railway, so nothing points at
+it any more. The `legacyApis` rewrite still names it, which is deliberate — that
+list exists for bundles already sitting in someone's browser cache, and it costs
+nothing to keep after the host is gone.
+
+---
+## What is left
+
+Everything in this document is deployed and verified. Three things remain, all of
+them settings rather than code:
+
+1. **`TRUST_PROXY_HOPS=2`** on Railway — the rate limiter is currently counting
+   proxies instead of viewers.
+2. **Region → Europe** on Railway. Worth more than the whole of the unmerged
+   Tier 2 branch, and it changes what Tier 2's numbers will look like, so it is
+   better done before that branch is measured again.
+3. **Delete or disconnect the retired Vercel *server* project.** Safe now: both
+   frontends are confirmed rebuilt onto Railway, so nothing points at it. It was
+   deliberately left up until they were.
+
+Tier 2 (`fix/tier2-player-speed`) is still unmerged and migration
+`030_video_card_ready.sql` is still unrun. Its baseline should be taken again on
+Railway — the old numbers were measured against a co-located database and no
+longer describe this deployment.
