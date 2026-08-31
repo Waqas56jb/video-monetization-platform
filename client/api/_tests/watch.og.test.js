@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'watch.js'), 'utf8')
+const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'watch.js'), 'utf8')
 
 test('watch HTML serves a crawler document to WhatsApp and never claims og:video', () => {
   assert.match(src, /isLinkPreviewBot/)

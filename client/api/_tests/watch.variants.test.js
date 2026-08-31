@@ -14,7 +14,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import handler from './watch.js'
+import handler from '../watch.js'
 
 const SLUG = 'how-to-cook-pilau-properly'
 const SAFARI =

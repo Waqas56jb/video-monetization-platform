@@ -958,6 +958,32 @@ the repo.
     (`002_publish_guard_and_rls.sql:215`). Grants are revoked so it is not currently reachable,
     but the policy itself would expose the revenue split and price floors to the anon key.
 
+11. **`api/watch` ships the entire website inside the function — 942 KB for a 22 KB job.**
+    `client/vercel.json` gives `api/watch.js` `"includeFiles": "dist/**"`, so every build
+    artefact is bundled into the serverless function. Measured from a real deployment
+    (`vercel inspect`, 2026-08-31): `λ api/watch (942.56KB)`, against ~22 KB of actual
+    source (`watch.js` + its three `_lib` imports). The five heaviest included files are
+    `dist/assets/index-*.js` 411 KB, `dist/logo.png` 268 KB, `dist/logo-lockup.png`
+    228 KB, `dist/assets/index-*.css` 159 KB and `dist/icons/icon-512.png` 126 KB — and
+    the function reads **none** of them. `loadShell()` opens exactly one file,
+    `dist/index.html`, which is 4.84 KB.
+
+    This matters for A1 rather than for disk: bundle size is a direct input to cold-start
+    time, and this function is on the critical path of every shared link and every direct
+    `/watch/:slug` open. Narrowing the glob to `dist/index.html` should cut it by ~97%.
+    Not changed here — Tier 2, and it wants a deploy-and-measure rather than a code review,
+    because the win is entirely in cold-start latency.
+
+12. **Test files under `api/` were being deployed as public serverless functions.**
+    Vercel turns every file directly under `api/` into an endpoint. The same
+    `vercel inspect` listed `λ api/watch.og.test (14.54KB)` and
+    `λ api/watch.variants.test (15.33KB)` alongside the real handlers — so
+    `/api/watch.og.test` and `/api/watch.variants.test` were live URLs that would throw on
+    invocation. `watch.og.test.js` predates this branch; `watch.variants.test.js` was added
+    by it, so this branch made it worse before catching it. Both moved to `api/_tests/`,
+    which Vercel excludes — proven by the same build output, which never listed anything
+    from the existing `api/_lib/` directory. Fixed on this branch.
+
 ---
 
 ## Infrastructure note
