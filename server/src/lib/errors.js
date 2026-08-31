@@ -2,6 +2,11 @@
 export class ApiError extends Error {
   constructor(status, message, { code = null, details = null } = {}) {
     super(message)
+    /* Without this, `name` inherits 'Error' — so a deliberate ApiError and a
+       stray `throw new Error()` are indistinguishable in a log line or in the
+       errorClass a 500 reports. That cost a deploy while chasing a login
+       failure: the class said 'Error' and ruled nothing out. */
+    this.name = 'ApiError'
     this.status = status
     this.code = code
     this.details = details
