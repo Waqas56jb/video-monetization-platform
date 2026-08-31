@@ -2,7 +2,13 @@
 
 Date: 2026-08-31 · 7 commits ahead of `main` · working tree clean
 
-## Preconditions — two premises in Prompt 3 are not met
+> **Update 2026-08-31 09:15 UTC.** The branch is now pushed, the service-role key and a
+> new `CRON_SECRET` are live on production, the share-card bucket has been created and
+> filled, and audit questions **Q1 (migrations)**, **Q7 (cron secret)** and **E22 (Supabase
+> RLS)** are closed with real output — see "Post-push results" at the end. Steps 1, 6 and
+> the preview halves of 2 and 5 remain blocked on the preview URLs.
+
+## Preconditions — two premises in Prompt 3 are not met (at time of writing)
 
 ```
 $ git rev-parse --abbrev-ref HEAD
@@ -302,3 +308,219 @@ To unblock, in order:
 
 Then Steps 1, 2-preview, 3, 5-preview and 6 run verbatim and this file gets its real
 outputs.
+
+---
+
+# Post-push results — 2026-08-31 09:12–09:16 UTC
+
+Env vars were set on Vercel and production redeployed between the two halves of this
+document. `X-Build` is still `4419c9c` (production runs `main`), so everything below
+proves the **environment**, not the branch code.
+
+## Env landed · **PASS**
+
+```
+$ curl -s .../health
+capabilities: {"database":true,"auth":true,"email":true,"serviceRole":true,
+               "cloudflareStream":true,"signedPlayback":true}
+needsConfiguration: (empty)
+```
+
+`serviceRole` flipped `false → true`. The `(empty)` is from the old code — the
+`serviceRole` line added to `missingConfig()` is on the branch and not deployed yet.
+
+**`/health` alone is not proof the key works** — `capabilities.serviceRole` is
+`Boolean(non-empty)` and never validates it. Checked separately, read-only:
+
+```
+listBuckets OK. buckets: avatars(public=true), thumbnails(public=true)
+share-cards bucket: does not exist yet
+VERDICT: key is valid for storage admin
+```
+
+The bucket was **absent**, not empty — independent confirmation that nothing was ever
+uploaded in the life of this deployment.
+
+## CRON_SECRET · **PASS** — closes audit Q7
+
+Tested against `keep-warm` (`select 1` + JWKS) rather than `premiere-expiry`, which mutates.
+
+```
+curl -H "x-cron-secret: <new>"  .../api/jobs/keep-warm   -> 200
+{"ok":true,"db":true,"jwks":{"ok":true,"status":200}}
+
+curl -H "x-cron-secret: wrong"  .../api/jobs/keep-warm   -> 403
+{"error":{"message":"Invalid cron secret"}}
+```
+
+The control matters: a 200 alone would not distinguish a working secret from an endpoint
+that accepts anything. **Q7 closed** — the nightly premiere-expiry job will authenticate.
+
+## Step 3 — Share-card bucket · **PASS**
+
+```
+$ npm run share:backfill
+slug                                     status   bucket       ms    bytes
+--------------------------------------------------------------------------
+whatsapp-video-2026-08-15-at-11-50-34-pm skipped  ok         2402    57276
+rpreplay-final1589783013-2               skipped  ok         3502    41266
+80915499123-fd8feac4-6609-4d3e-...       failed   no         2894        0
+  error: no-poster
+how-to-cook-pilau-properly               skipped  ok         1445    39577
+live-at-arusha-full-set                  skipped  ok         1728    38080
+behind-the-fame-a-coast-documentary      skipped  ok         1328    43010
+studio-session-track-4                   skipped  ok          921    47954
+ugali-samaki-sunday-cooking              skipped  ok         1164    41588
+backfill scanned=8 built=0 skipped=7 failed=1
+```
+
+**7 uploaded, 1 failed.** The failure is the 1-second junk row flagged in AUDIT.md §15
+item 9 — it has no usable poster frame, so there is nothing to compose a card from. Not a
+regression; it has never had a card.
+
+This run is also the proof that the two changes made in Step 0 / item 4 were necessary.
+Every row reads `status=skipped`, meaning the card was already in `share_card_cache`.
+Under the previous `{ stale: true }` all seven would have been **filtered out before
+reaching the uploader**, and the table would have printed empty and exited 0. And without
+the `bucket` column there would be no way to tell that from success.
+
+```
+share-cards bucket: EXISTS, public=true
+objects: 14
+  behind-the-fame-a-coast-documentary-cb5329adb7.jpg      43010
+  behind-the-fame-a-coast-documentary.jpg                 43010
+  how-to-cook-pilau-properly-a1a58b1a0f.jpg               39577
+  how-to-cook-pilau-properly.jpg                          39577
+  live-at-arusha-full-set-c5ce44811b.jpg                  38080
+  live-at-arusha-full-set.jpg                             38080
+  rpreplay-final1589783013-2-389d4e26c3.jpg               41266
+  rpreplay-final1589783013-2.jpg                          41266
+  studio-session-track-4-b33b0a6072.jpg                   47954
+  studio-session-track-4.jpg                              47954
+  ugali-samaki-sunday-cooking-2bad6d1ba8.jpg              41588
+  ugali-samaki-sunday-cooking.jpg                         41588
+  whatsapp-video-2026-08-15-at-11-50-34-pm-1bd82174b3.jpg 57276
+  whatsapp-video-2026-08-15-at-11-50-34-pm.jpg            57276
+```
+
+**14 objects = 7 videos × 2 names.** Direct confirmation of the Step 0 finding: the
+uploader writes both `{slug}.jpg` and `{slug}-{sourceKey}.jpg`, so there never was a name
+mismatch. `live-at-arusha-full-set-c5ce44811b.jpg` carries exactly the `sourceKey` the
+unit test pins.
+
+### The card path on production (still old og.js, so no X-Bucket header)
+
+```
+$ curl .../og/card/how-to-cook-pilau-properly.jpg?nocache=$RANDOM
+http=200 ttfb=2.243s size=39577
+X-Share-Card: cdn          <-- was always 'api' before
+X-Vercel-Cache: MISS
+X-Bucket present? NO — that header only exists on the branch
+
+Supabase object directly:   http=200 ttfb=2.026s size=39577
+BEFORE, recorded 08:15:     http=400        1.43s      98 bytes
+```
+
+`X-Share-Card: cdn` is the structural result: the fast leg now serves, where before it
+always fell through to the API.
+
+**On the timings, honestly.** That first 2.24 s was a cold serverless start, and every
+number here is measured from Pakistan while the function and Supabase are both in Ireland
+— so it is not the client's experience either. Steady state:
+
+```
+try1 ttfb=0.644s  X-Vercel-Cache: MISS   (warm function)
+try2 ttfb=0.337s  X-Vercel-Cache: HIT
+my own baseline ttfb to that host: 0.615s
+```
+
+| | before | after |
+|---|---|---|
+| edge MISS, warm function | **2.50 s** (1.43 s of it a guaranteed 400) | **0.64 s** |
+| edge HIT | 0.39 s | **0.34 s** |
+
+PASS on the stated criterion (`< 1.0 s` on a cache-busted miss), with the caveat that the
+MISS figure sits at roughly my own baseline latency to that host, so most of what remains
+is me, not the platform.
+
+## Audit Q1 — migrations · **CLOSED**
+
+`npm run db:status` was refused by the sandbox because `ensureTable()` issues DDL against
+production. Answered with a strictly read-only query of the ledger instead — same
+information, less privilege.
+
+```
+files=30  applied=30  PENDING=0  CHANGED=0
+
+025_lock_postgrest.sql              applied   2026-08-27 04:58:49
+026_lock_new_public_tables.sql      applied   2026-08-27 04:59:53
+029_follows.sql                     applied   2026-08-28 10:23:12
+```
+
+All 30 applied, none pending, no checksum drift. **025 landed on 27 Aug — the day after
+the 26 Aug Supabase warning**, so it was applied in response to it.
+
+`021_crawler_hits.sql` (applied 22 Aug 00:57) and `021_share_card_cache.sql`
+(21 Aug 20:16) share a number and were applied out of filename order. Harmless now, and
+exactly the fragility recorded in AUDIT.md §15 item 6.
+
+## Audit E22 — Supabase RLS · **CLOSED**
+
+Read-only enumeration against production: RLS flag, policy count, and the real `anon`
+grants from `has_table_privilege`.
+
+```
+table                       RLS  pol  anon: SEL INS UPD DEL
+----------------------------------------------------------------
+_migrations                 on   0    .   .   .   .
+ad_campaigns                on   0    .   .   .   .
+ad_impressions              on   0    .   .   .   .
+announcements               on   1    .   .   .   .
+audit_log                   on   1    .   .   .   .
+content_reports             on   2    .   .   .   .
+crawler_hits                on   1    .   .   .   .
+creator_applications        on   2    .   .   .   .
+creator_profiles            on   0    .   .   .   .
+earnings                    on   1    .   .   .   .
+follows                     on   0    .   .   .   .
+notifications               on   2    .   .   .   .
+password_resets             on   0    .   .   .   .
+payments                    on   1    .   .   .   .
+platform_settings           on   2    .   .   .   .
+profiles                    on   2    .   .   .   .
+purchases                   on   1    .   .   .   .
+share_card_cache            on   0    .   .   .   .
+staff_permissions           on   1    .   .   .   .
+video_deletion_requests     on   2    .   .   .   .
+video_views                 on   0    .   .   .   .
+videos                      on   4    .   .   .   .
+watch_progress              on   4    .   .   .   .
+withdrawals                 on   2    .   .   .   .
+----------------------------------------------------------------
+24 tables · RLS off or anon-reachable: 0
+```
+
+Every table in `public` has RLS enabled, and `anon` holds **no** SELECT / INSERT / UPDATE /
+DELETE on any of them. The table list matches AUDIT.md §8 exactly. The Security Advisor
+finding is genuinely closed, not merely migrated-against.
+
+## Branch pushed
+
+```
+$ git push -u origin fix/tier1-sharing-chain
+ * [new branch]      fix/tier1-sharing-chain -> fix/tier1-sharing-chain
+branch 'fix/tier1-sharing-chain' set up to track 'origin/fix/tier1-sharing-chain'.
+```
+
+Not merged. PR link:
+`https://github.com/Waqas56jb/video-monetization-platform/pull/new/fix/tier1-sharing-chain`
+
+## Still blocked
+
+Steps 1, 6 and the preview halves of 2 and 5 need `CLIENT_PREVIEW` / `SERVER_PREVIEW`.
+**Step 1 is still the one that matters** — the edge-cache keying behind the dead-end shared
+link is the reason this branch exists, and it cannot be demonstrated anywhere but a real
+Vercel edge.
+
+**Merge verdict unchanged: NO** — not because anything failed, but because the headline
+fix remains unwitnessed.
