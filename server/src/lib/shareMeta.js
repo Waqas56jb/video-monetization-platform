@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { publicOgCardUrl, publicWatchUrl } from './publicWatchUrl.js'
 import { readCardStatus } from './shareCardCache.js'
 import { log } from './logger.js'
+import { SHARE_CARD_BUCKET, versionedCardPath } from './shareCardObjectPath.js'
 
 export const SLUG_RE = /^[a-z0-9-]+$/
 
@@ -33,8 +34,9 @@ export function shareCardUrl(slug, sourceKey, _cardStatus = 'ready') {
 
 /** Public Supabase Storage URL when bucket is configured. */
 export function publicStorageCardUrl(slug, sourceKey) {
-  if (!env.supabase?.url || !sourceKey || !slug) return null
-  return `${env.supabase.url.replace(/\/$/, '')}/storage/v1/object/public/share-cards/${slug}-${sourceKey}.jpg`
+  const path = versionedCardPath(slug, sourceKey)
+  if (!env.supabase?.url || !path) return null
+  return `${env.supabase.url.replace(/\/$/, '')}/storage/v1/object/public/${SHARE_CARD_BUCKET}/${path}`
 }
 
 function shareUrlWithSource(watchUrl, sourceKey) {

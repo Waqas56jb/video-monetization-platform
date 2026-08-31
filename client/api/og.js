@@ -7,6 +7,7 @@
  */
 
 import { apiOrigin } from './_lib/apiOrigin.js'
+import { SHARE_CARD_BUCKET, readCardPath } from './_lib/shareCardObjectPath.js'
 
 /**
  * How long the bucket leg is trusted after it starts refusing.
@@ -79,7 +80,20 @@ export default async function handler(req, res) {
     return
   }
 
-  const cdn = `${String(SUPABASE).replace(/\/$/, '')}/storage/v1/object/public/share-cards/${encodeURIComponent(slug)}.jpg`
+  /**
+   * Ask for the exact card, not the convenient one.
+   *
+   * og:image is emitted as `/og/card/{slug}.jpg?v={sourceKey}`, so this handler
+   * is told precisely which card the page is claiming. It used to ignore that
+   * and read `{slug}.jpg`, which Supabase serves with an hour of cache: after a
+   * poster or title change the versioned URL busts every cache downstream and
+   * then landed on a stale object anyway, showing the old card for up to an
+   * hour. `{slug}-{sourceKey}.jpg` is immutable and cannot be stale — and it is
+   * already written on every upload, so this costs nothing.
+   */
+  const sourceKey = String((req.query && req.query.v) || '')
+  const object = readCardPath(slug, sourceKey)
+  const cdn = `${String(SUPABASE).replace(/\/$/, '')}/storage/v1/object/public/${SHARE_CARD_BUCKET}/${encodeURIComponent(object)}`
   let bucketState = 'skipped'
   if (bucketWorthTrying()) {
     try {
