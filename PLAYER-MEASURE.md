@@ -103,6 +103,61 @@ corrected. **But note the spread**: `/health` ranges 0.632–0.863 across five w
 the entire quantity being measured. That is why the counts above are the load-bearing numbers
 and these are corroboration.
 
+### Browser side — tap → first frame, production, median of 3
+
+All figures milliseconds from the tap on an Explore card. `first_playing` is
+`currentTime > 0.25` read from inside the Cloudflare iframe via Playwright frame
+access — the picture actually moving, not an SDK event.
+
+| video | profile | playback | iframe | video el | canplay | unpaused | **first_playing** |
+|---|---|---|---|---|---|---|---|
+| `live-at-arusha-full-set` | desktop | 502 | 1147 | 3065 | 4297 | 3065 | **6264** |
+| `live-at-arusha-full-set` | desktop · Fast 3G | 304 | 932 | 6155 | 10138 | 6260 | **14186** |
+| `live-at-arusha-full-set` | iPhone 13 | 191 | 934 | 2364 | 3832 | 2470 | **5686** |
+| `live-at-arusha-full-set` | iPhone 13 · Fast 3G | 194 | 939 | 6220 | 10147 | 6327 | **14217** |
+| `how-to-cook-pilau-properly` | desktop | 494 | 1061 | 2644 | 4741 | 2778 | **7652** |
+| `how-to-cook-pilau-properly` | desktop · Fast 3G | 563 | 1062 | 6034 | 10113 | 6034 | **14903** |
+| `how-to-cook-pilau-properly` | iPhone 13 | 389 | 952 | 2608 | 4679 | 2740 | **6648** |
+| `how-to-cook-pilau-properly` | iPhone 13 · Fast 3G | 391 | 980 | 4423 | 8014 | 4553 | **11180** |
+| `rpreplay-final1589783013-2` | desktop | 407 | 1071 | 2459 | 4803 | 2559 | **6355** |
+| `rpreplay-final1589783013-2` | desktop · Fast 3G | 1338 | 1699 | 6702 | 10262 | 6814 | **13791** |
+| `rpreplay-final1589783013-2` | iPhone 13 | 772 | 1714 | 3939 | 6465 | 4054 | **8593** |
+
+**Target is 2000. The best cell is 5686 and the worst is 14903.**
+
+Where the time goes, desktop unthrottled, `live-at-arusha-full-set`:
+
+```
+tap          0
+playback   502   the API has answered                       ← items 1–4 live here
+iframe    1147   our page mounts the iframe        (+645)   ← item 5
+video_el  3065   Cloudflare's SDK builds its player (+1918)  ← item 7
+canplay   4297   enough data buffered              (+1232)
+PLAY      6264   the picture moves                 (+1967)
+```
+
+**The API is 8% of the wait.** Items 1–4 of the brief target that 8%, and driving
+it to zero still leaves 5.8 seconds. The whole of the remaining 92% is after our
+own JavaScript has done its job: 645 ms of ours between the response and the
+iframe, then **5.1 seconds inside Cloudflare's player.**
+
+One probe decides how to read that, and it was worth adding: **`unpaused` lands at
+3065 — the same instant the video element appears, and 1.2 s before `canplay`.**
+`play()` is being called early and is not being refused. So the wait is manifest
+and buffering, not autoplay permission. Without that mark the obvious reading
+would have been an autoplay block, and the fix would have been aimed at the wrong
+thing entirely.
+
+The pattern is the same on every profile and every video: `unpaused ≈ video_el`,
+always well before `canplay`. Fast 3G triples the buffering leg and leaves the
+rest roughly intact, which is consistent with it being data-bound.
+
+**This reorders the brief.** Items 5 and 7 own the large terms; items 1–4 are
+worth about 500 ms between them and are still worth doing, because on a
+persistent host they also decide how much load the process carries per viewer.
+Item 8 stops mattering as polish and starts mattering as the honest answer to a
+six-second wait that is not going away this week.
+
 ---
 
-*Browser-side baseline, per-item changes and after-numbers follow below as they are produced.*
+*Per-item changes and after-numbers follow below as they are produced.*
