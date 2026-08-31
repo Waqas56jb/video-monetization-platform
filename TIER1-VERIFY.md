@@ -7,6 +7,11 @@ Date: 2026-08-31 · 7 commits ahead of `main` · working tree clean
 > filled, and audit questions **Q1 (migrations)**, **Q7 (cron secret)** and **E22 (Supabase
 > RLS)** are closed with real output — see "Post-push results" at the end. Steps 1, 6 and
 > the preview halves of 2 and 5 remain blocked on the preview URLs.
+>
+> **Update 2026-08-31 11:35 UTC — SUPERSEDED.** Deployment Protection was disabled, the
+> preview URLs were found via CLI, and **every remaining step now passes**. The BLOCKED
+> markers below are the state at time of writing; see "Preview verification" at the end for
+> the real outputs and the merge verdict.
 
 ## Preconditions — two premises in Prompt 3 are not met (at time of writing)
 
@@ -524,3 +529,172 @@ Vercel edge.
 
 **Merge verdict unchanged: NO** — not because anything failed, but because the headline
 fix remains unwitnessed.
+
+---
+
+# Preview verification — 2026-08-31 11:27–11:35 UTC — **ALL STEPS PASS**
+
+Deployment Protection was disabled on both preview projects, which unblocked everything
+below. Found via CLI after switching Vercel accounts — the projects live in team `us-4e8d`
+under `waqas56jb-2076`, not the account the CLI was originally signed into.
+
+```
+CLIENT_PREVIEW = https://video-monetization-platform-chi-git-fix-tier1-sh-b8a38e-us-4e8d.vercel.app
+SERVER_PREVIEW = https://video-monetization-platform-server-git-fix-tier1-6e455c-us-4e8d.vercel.app
+```
+
+Both are **branch aliases** confirmed by `vercel inspect`, so they survive further pushes.
+
+```
+$ curl SERVER_PREVIEW/health
+http=200          X-Build: 2e2793a
+capabilities: {"database":true,"auth":true,"email":true,"serviceRole":true,
+               "cloudflareStream":true,"signedPlayback":true}
+
+$ git rev-parse --short=7 HEAD
+2e2793a
+```
+
+`X-Build` equals the branch HEAD exactly — this is the branch code, not `main`.
+
+## Step 1 — Edge cache keying · **PASS**, both directions
+
+This is the one thing that could not be proven locally, and the reason the branch exists.
+
+### Direction A — unfurl first, then a human taps the link (`studio-session-track-4`)
+
+```
+1  cors      X-Doc: crawler   Content-Length: 2182   X-Vercel-Cache: MISS
+             Vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+2  navigate  X-Doc: shell     Content-Length: 4710   X-Vercel-Cache: MISS
+             id="root": 1     <script: 4
+3  navigate  X-Doc: shell                            X-Vercel-Cache: HIT
+4  WhatsApp/2.23.20.0 A
+             X-Doc: crawler                          X-Vercel-Cache: MISS
+   <meta property="og:title" content="Studio Session — Track 4">
+   <meta property="og:url" content=".../watch/studio-session-track-4">
+   <meta property="og:image" content=".../og/card/studio-session-track-4.jpg?v=b33b0a6072">
+```
+
+Call 2 is the whole test. Before this branch it was a **HIT returning the 2,182-byte crawler
+stub**; now it is a MISS that returns the shell, because the edge no longer treats the two
+as one entry. `id="root"` is present and four script tags load, so the human gets an
+application.
+
+Call 4 carries the **real** title — `Studio Session — Track 4`, em-dash and all, straight
+from the database. Slug-derived would read `Studio Session Track 4`, so the browser-side
+share-meta lookup added in this branch is working, and `og:image` carries the sourceKey.
+
+### Direction B — human first, then the unfurl (`ugali-samaki-sunday-cooking`)
+
+```
+1  navigate  X-Doc: shell     Content-Length: 4777   X-Vercel-Cache: MISS
+2  cors      X-Doc: crawler   Content-Length: 2261   X-Vercel-Cache: MISS
+             id="root" in the unfurl response: 0
+3  cors      X-Doc: crawler                          X-Vercel-Cache: HIT
+4  navigate  X-Doc: shell                            X-Vercel-Cache: HIT
+             id="root": 1     <script: 4
+```
+
+Calls 3 and 4 are the strongest evidence in this document: **both are HITs, and they return
+different documents.** Two independent edge entries now coexist for one URL. Before, whichever
+arrived first owned the entry for 300 s and the other audience got the wrong document.
+
+## Step 2 — Crawler telemetry · **PASS**
+
+```
+preview     POST /api/share/crawl-hit  →  202
+production  POST /api/share/crawl-hit  →  500     (still main — the "before" for the client)
+```
+
+## Step 3 — Share-card bucket leg · **PASS**
+
+```
+X-Bucket: hit          X-Share-Card: cdn
+Content-Type: image/jpeg   Content-Length: 39577
+
+cache-busted miss:  ttfb=0.803s  total=1.158s     (criterion: < 1.0 s)
+```
+
+`X-Bucket: hit` means the Supabase object was found and served. Before this work that leg
+returned HTTP 400 in 1.43 s on every single request, then fell through to the API.
+
+The versioned-object change from Step 0 also confirmed live:
+
+```
+GET /og/card/live-at-arusha-full-set.jpg?v=c5ce44811b
+X-Bucket: hit   X-Share-Card: cdn   Content-Length: 38080
+```
+
+With `?v=` present the handler reads `live-at-arusha-full-set-c5ce44811b.jpg` — the immutable
+object — rather than the one-hour-cached `{slug}.jpg`, so a rebuilt card can no longer serve
+stale for up to an hour.
+
+## Step 5 — Service worker · **PASS** (as deployed)
+
+```
+GET CLIENT_PREVIEW/sw.js   http=200  bytes=5648
+
+c.put(request, copy)  : 3      (navigate, asset, image)
+c.put('/', copy)      : 0
+res.ok guards         : 2      (navigate + asset)
+versioned cache name  : 1
+
+assets referenced by the served page:
+  /assets/index-CALzXy9r.js
+  /assets/index-BrJaQtU7.css
+```
+
+Content-hashed filenames confirmed on the deployed HTML, not just locally.
+
+## Step 6 — Regression smoke · **PASS**
+
+```
+/                                   200   0.657s
+/explore                            200   0.835s
+/watch/how-to-cook-pilau-properly   200   1.242s
+/login                              200   0.410s
+/s/how-to-cook-pilau-properly       200   0.585s
+
+/api/videos?limit=3   →  200, real payload
+playback anonymous    →  "canWatchFull":false  "kind":"preview"
+```
+
+The entitlement result is the important one: an anonymous request still gets only the preview
+asset and `canWatchFull:false`. Nothing in this branch loosened the paywall.
+
+---
+
+# Ready to merge: **YES**
+
+Every step passes, including the one that could not be tested before a deploy existed.
+
+| Step | Result |
+|---|---|
+| 0 — bucket object naming | PASS — premise corrected, real staleness defect fixed, versioned read confirmed live |
+| 1 — edge cache keying | **PASS both directions** — two variants now cached independently |
+| 2 — crawler telemetry | PASS — preview 202, production 500 |
+| 3 — share-card bucket | PASS — `X-Bucket: hit`, 0.80 s on a cache-busted miss |
+| 4 — WhatsApp href | PASS — no `api.whatsapp.com`; iPad opens a tab instead of navigating away |
+| 5 — service worker | PASS — verified against the deployed file |
+| 6 — regression smoke | PASS — all 200, entitlement unchanged |
+
+Suites: client 100/100, server 58/58. Branch is 13 commits ahead of `main`; `main` untouched.
+
+## What this does and does not prove
+
+**Proven, on a real Vercel edge:** a shared link can no longer serve a page with no
+application in it. That was the client's worst symptom and the reason for the branch.
+
+**Not proven here, and worth saying before it reaches the client:**
+
+- **No real WhatsApp send has happened yet.** Everything above is a curl with WhatsApp's
+  User-Agent. The end-to-end test — send to a phone, see the card, tap it, land on the right
+  video — has to happen on production after merge.
+- **The A1 "20–30 s" player wait is untouched by this branch.** The webhook repair prevents
+  new uploads from paying the clip-cutting cost on first Play, but the published catalogue had
+  already self-healed, so re-measuring today will not show a change. Tier 2 is where the
+  player numbers move.
+- **Timings here are measured from Pakistan** while the functions run in Dublin (server) and
+  Washington (client OG). They are directionally right and internally comparable, but they are
+  not the client's numbers.
