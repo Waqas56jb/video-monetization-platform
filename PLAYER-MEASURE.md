@@ -221,9 +221,17 @@ or off the critical path.
 
 ### Three things the trace found that the brief does not mention
 
-**1. `/api/videos/:slug` is fetched twice per play** — at 692 ms and again at 1269 ms, same
-URL, same row. That is two of the 3-SQL-plus-3-outbound-HTTP requests measured earlier, so
-the `graph.facebook.com` re-scrape ping fires **twice for every viewer who opens a video**.
+**1. ~~`/api/videos/:slug` is fetched twice per play~~ — WRONG, retracted.** The two entries
+were `/api/videos/live-at-arusha-full-set` and `/api/videos/live-at-arusha-full-set/related`,
+a different endpoint. My trace printed URLs truncated to 95 characters, which is exactly where
+those two diverge, so they rendered identically. Printing them in full settles it: one
+`/api/videos/:slug`, one `/api/videos/:slug/related`, one `POST /api/videos/:id/view`.
+
+Checked three ways before retracting — CDP initiator stacks with the Explore prefetch settled
+for 0 ms, 300 ms and 3000 ms — and every run shows exactly one request, from one call site.
+
+The claim that followed from it, that the `graph.facebook.com` ping fires twice per viewer, is
+retracted with it. It fires **once**, which is still once more than it should.
 
 **2. Explore warms six playback payloads before any tap.** One per visible card, on idle.
 When they have not finished, they compete with the real request: in a cold trace
