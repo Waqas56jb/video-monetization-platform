@@ -1,5 +1,6 @@
 import api, { getAccessToken } from '@/lib/api'
 import { warmEntryUsable } from '@/lib/warmEntry'
+import { createWarmQueue } from '@/lib/warmQueue'
 
 export const STREAM_SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
 
@@ -105,18 +106,52 @@ const adsCache = new Map()
  * a still-valid entry after a token refresh costs one round trip; serving the
  * wrong viewer's entitlement costs money or a false paywall.
  */
+/**
+ * Speculative warms are capped and droppable — see lib/warmQueue.js for the
+ * rule and the reason it does not abort.
+ */
+const warmQueue = createWarmQueue()
+
+/** A navigation has begun; stop speculating, but spare what is being opened. */
+export function abortPrefetches(keep = null) {
+  warmQueue.drop(keep)
+}
+
 const authIdentity = () => getAccessToken() || null
 
-function cacheGet(map, key, fetch) {
+function cacheGet(map, key, fetch, { queue = false } = {}) {
   if (!key) return null
   const id = String(key)
   const auth = authIdentity()
   const hit = map.get(id)
   if (warmEntryUsable(hit, Date.now(), auth)) return hit.promise
-  const promise = fetch(id).catch((err) => {
-    map.delete(id)
-    throw err
-  })
+
+  const run = () =>
+    fetch(id).catch((err) => {
+      map.delete(id)
+      throw err
+    })
+
+  /**
+   * A queued warm still returns a promise immediately, so a tap that arrives
+   * while it is waiting for a slot gets the same promise rather than starting a
+   * second request. The entry is cached at queue time for the same reason.
+   */
+  let promise
+  if (queue) {
+    let settle, fail
+    promise = new Promise((res, rej) => {
+      settle = res
+      fail = rej
+    })
+    /* Nothing may be awaiting this yet — an unhandled rejection from a warm
+       nobody wanted must not surface as a page error. */
+    promise.catch(() => {})
+    warmQueue.push(id, () => run().then(settle, fail))
+  } else {
+    promise = run()
+  }
+
   map.set(id, { promise, at: Date.now(), auth })
   return promise
 }
@@ -125,16 +160,16 @@ function cacheGet(map, key, fetch) {
  * Start fetching video JSON on pointerdown so the request is ~100 ms ahead of
  * Watch mount. Returns the same Promise useApi will await.
  */
-export function warmVideo(idOrSlug) {
-  return cacheGet(videoCache, idOrSlug, (id) => api.videos.one(id))
+export function warmVideo(idOrSlug, opts) {
+  return cacheGet(videoCache, idOrSlug, (id) => api.videos.one(id), opts)
 }
 
-export function warmPlayback(idOrSlug) {
-  return cacheGet(playbackCache, idOrSlug, (id) => api.playback(id))
+export function warmPlayback(idOrSlug, opts) {
+  return cacheGet(playbackCache, idOrSlug, (id) => api.playback(id), opts)
 }
 
-export function warmAds(idOrSlug) {
-  return cacheGet(adsCache, idOrSlug, (id) => api.ads.breaks(id))
+export function warmAds(idOrSlug, opts) {
+  return cacheGet(adsCache, idOrSlug, (id) => api.ads.breaks(id), opts)
 }
 
 function takeFrom(map, idOrSlug) {
@@ -182,11 +217,12 @@ export function dropWarmedWatch(idOrSlug) {
 /** Chunk + video + signed playback — real intent, i.e. a finger on a card. */
 export function prefetchWatch(idOrSlug) {
   prefetchWatchChunk()
-  if (idOrSlug) {
-    warmVideo(idOrSlug)
-    warmPlayback(idOrSlug)
-    warmAds(idOrSlug)
-  }
+  if (!idOrSlug) return
+  /* A tap is not speculation. Everything else may stop; this one starts now. */
+  abortPrefetches(idOrSlug)
+  warmVideo(idOrSlug)
+  warmPlayback(idOrSlug)
+  warmAds(idOrSlug)
 }
 
 /**
@@ -202,7 +238,7 @@ export function prefetchWatch(idOrSlug) {
  */
 export function prefetchWatchLight(idOrSlug) {
   prefetchWatchChunk()
-  if (idOrSlug) warmPlayback(idOrSlug)
+  if (idOrSlug) warmPlayback(idOrSlug, { queue: true })
 }
 
 export function idlePrefetchWatch() {

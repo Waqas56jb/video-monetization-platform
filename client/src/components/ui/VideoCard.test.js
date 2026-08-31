@@ -6,16 +6,31 @@ import { fileURLToPath } from 'node:url'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 
-test('VideoCard prefetches on pointer and when the card is in view', () => {
+test('VideoCard warms on intent, and only once per card', () => {
   const src = readFileSync(join(dir, 'VideoCard.jsx'), 'utf8')
   assert.match(src, /onPointerDown: warm/)
   assert.match(src, /onTouchStart: warm/)
-  // A card merely scrolling past warms only the request that gates the iframe.
-  // The full three-request warm belongs to a finger on the card — every card in
-  // view firing all three put 24 requests on Home and up to 72 on Explore
-  // against the thumbnails that are the page's largest paint.
-  assert.match(src, /prefetchWatchLight\(key\)/)
+  assert.match(src, /onPointerEnter: hover/)
   assert.match(src, /prefetchWatch\(slug \|\| id\)/)
-  assert.match(src, /requestIdleCallback/)
   assert.match(src, /markPerf\('cardTap'\)/)
+
+  /**
+   * iOS fires pointerdown AND touchstart for one tap, so `warm` ran twice. It
+   * was harmless only because the cache collapsed the second call, which is a
+   * thin thing to rely on.
+   */
+  assert.match(src, /if \(warmed\.current\) return/)
+
+  /**
+   * Warming on viewport entry is gone. Explore fired one playback request per
+   * visible card — six, measured, before anyone tapped — and cold they compete
+   * with the request the viewer is actually waiting for. Being on screen is not
+   * evidence that anyone wants a video; a pointer on the card is.
+   *
+   * The route chunk is still warmed on view: that is one request for the whole
+   * page rather than one per card.
+   */
+  assert.doesNotMatch(src, /if \(inView\) prefetchWatchLight/)
+  assert.doesNotMatch(src, /requestIdleCallback/)
+  assert.match(src, /if \(inView\) prefetchWatchChunk\(\)/)
 })
