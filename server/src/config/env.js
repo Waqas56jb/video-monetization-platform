@@ -29,11 +29,31 @@ function webUrl(envKey, fallback) {
   return fallback
 }
 
+/**
+ * Which origins the API answers.
+ *
+ * The two live apps are always in the list, so a half-configured deployment
+ * cannot lock the real site out of its own API. That is why localhost used to be
+ * stripped from whatever was configured: a deploy that still carried the
+ * development default would otherwise have allowed a developer's machine and,
+ * before `live` was appended, nothing else.
+ *
+ * But `live` is appended unconditionally, so the stripping no longer protects
+ * anything — it only removes an origin an operator asked for by name. And it did
+ * so silently, while the 403 body told them "Add it to CORS_ORIGINS on the server
+ * and redeploy": advice the API then ignored. Being told to do something that
+ * cannot work is worse than being told no.
+ *
+ * So configured origins are honoured exactly as written. Allowing a localhost
+ * origin in production is a real decision — a page on someone's own machine may
+ * then call the live API with their credentials — and it belongs to whoever sets
+ * the variable, not to this function. Nothing is allowed by default that was not
+ * allowed before.
+ */
 function corsOrigins() {
   const configured = list(process.env.CORS_ORIGINS)
   const live = [DEPLOY_URLS.publicApp, DEPLOY_URLS.adminApp]
-  const nonLocal = configured.filter((origin) => !isLocalHost(origin))
-  return [...new Set([...nonLocal, ...live])]
+  return [...new Set([...configured, ...live])]
 }
 
 export const env = {
