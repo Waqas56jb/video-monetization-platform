@@ -12,6 +12,7 @@ import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { shareSourceKey, shareCardUrl } from '../lib/shareMeta.js'
 import { handleShareCard } from '../lib/shareCardServe.js'
 import { buildShareCard, rebuildShareCards } from '../lib/buildShareCard.js'
+import { recordCrawlerHit } from '../lib/crawlerLog.js'
 import { log } from '../lib/logger.js'
 
 const router = Router()
