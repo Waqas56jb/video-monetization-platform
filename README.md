@@ -120,16 +120,18 @@ normal flow knows they exist. Add `-- --delete` to clear them.
 Check the API first if anything looks wrong:
 `https://video-monetization-platform-production.up.railway.app/health`
 
-All three apps use these Vercel URLs end-to-end. Set the same values in each
-project's Vercel **Environment Variables** (see `server/.env.example`,
+The two apps are Vercel projects; the API is a Railway service. Set the values
+above in each one's environment variables — Vercel **Settings → Environment
+Variables**, Railway **Variables** (see `server/.env.example`,
 `client/.env.example`, `admin/.env.example`).
 
 ---
 
 ## Deploying
 
-Three Vercel projects from this one repository. **The API has to go first**,
-because the other two need its address baked into their build.
+Three deployments from this one repository: the API on **Railway**, the two
+apps on **Vercel**. **The API has to go first**, because the other two need its
+address baked into their build.
 
 ### The mistake that costs an afternoon
 
@@ -143,10 +145,16 @@ build keeps the old address inside it.
 
 ### 1 · API
 
-Root directory `server`, framework preset **Other**, no build command.
+**Railway**, root directory `server`, start command `npm start`. Not Vercel —
+the API was there until 2026-08-31 and moving it back would silently stop the
+nightly jobs; see `RAILWAY-MOVE.md`.
 
-Environment variables come from `server/.env`. Set them for Production,
-Preview and Development:
+**Set the region to Europe.** It is a dashboard setting, and it is the single
+highest-value one in this deployment: Supabase is in `eu-west-1`, and a service
+placed elsewhere pays that distance on every query — measured at ~51 ms each,
+against ~0 ms when the two were co-located. A watch page makes six.
+
+Environment variables come from `server/.env`:
 
 ```
 NODE_ENV=production
@@ -176,10 +184,16 @@ MEDIA_TOKEN_SECRET=…            # signs poster links for unpublished videos
 ```
 
 `DATABASE_URL` must be the **transaction pooler** (port **6543**, not 5432).
-Serverless functions open a connection per invocation; a direct connection
-would exhaust Postgres's limit within minutes of real traffic.
+This mattered acutely on serverless, where every invocation opened its own
+connection and a direct URL exhausted Postgres's limit within minutes of real
+traffic. On Railway one process holds one pool, so the pressure is gone — but
+the pooler is still right, and port 5432 still holds a backend per client.
 
-`SUPABASE_SERVICE_ROLE_KEY` is **not needed** — nothing depends on it.
+`SUPABASE_SERVICE_ROLE_KEY` **is** needed. Without it the share-card upload to
+Supabase Storage fails and WhatsApp previews fall back to generating an image
+per request — around 2.5s instead of 0.8s. It was unset in production until
+31 August and that was the entire reason the bucket leg appeared broken; the
+README said it was optional, which is how it stayed unset.
 
 ### 2 · Public app
 
@@ -213,16 +227,24 @@ machine.
 poll:
 
 ```bash
-cd server && npm run cf:webhook https://your-api.vercel.app
+cd server && npm run cf:webhook https://video-monetization-platform-production.up.railway.app
 ```
 
 It prints a secret. Add it as `CLOUDFLARE_WEBHOOK_SECRET` and redeploy —
 without it every incoming webhook is rejected, by design.
 
-**Confirm the nightly job.** `server/vercel.json` schedules the premiere-expiry
-sweep for 02:00 UTC; check it appears under Settings → Cron Jobs. Nothing else
-turns a paid premiere into free-with-ads when its window closes, so if it never
-runs, videos stay paid forever.
+Get this address right. The webhook pointed at a Vercel host that had been
+deleted from 9 to 31 August, and every encoding notification in those 22 days
+was lost. Cloudflare reports nothing when its target is gone; videos simply
+stay "processing". `scripts/reconcile-stream.mjs` repaired it.
+
+**Confirm the nightly jobs.** `GET /health` → `scheduler.inProcess: true`. They
+run inside the API process (`src/jobs/scheduler.js`), not on a platform
+scheduler — 02:00 UTC premiere-expiry, 03:15 UTC share-card refresh. Nothing
+else turns a paid premiere into free-with-ads when its window closes, so if it
+never runs, videos stay paid forever. These were Vercel Cron entries until the
+move, and Vercel Cron belongs to a Vercel deployment: moving the API stopped
+both, invisibly.
 
 ---
 
