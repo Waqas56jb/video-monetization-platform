@@ -1,8 +1,9 @@
 import { supabaseAdmin } from './supabase.js'
 import { capabilities } from '../config/env.js'
 import { log } from './logger.js'
+import { SHARE_CARD_BUCKET, writeCardPaths } from './shareCardObjectPath.js'
 
-const BUCKET = 'share-cards'
+const BUCKET = SHARE_CARD_BUCKET
 
 let bucketReady = false
 
@@ -45,16 +46,18 @@ async function putObject(path, jpeg, cacheControl) {
 /**
  * Upload branded JPEG to public Supabase Storage.
  *
- * Two keys: `{slug}-{sourceKey}.jpg` (immutable) and `{slug}.jpg` (latest).
- * `/og/card/{slug}.jpg` can fetch the latest object without waiting on the API.
+ * Two keys, both named by `shareCardObjectPath` so the reader in
+ * `client/api/og.js` and the URL in `shareMeta` cannot drift from what is
+ * actually written here.
  */
 export async function uploadShareCardToStorage(slug, sourceKey, jpeg) {
   if (!capabilities.serviceRole || !slug || !jpeg?.length) return false
   try {
     if (!(await ensureBucket())) return false
-    const latest = await putObject(`${slug}.jpg`, jpeg, '3600')
-    const versioned = sourceKey
-      ? await putObject(`${slug}-${sourceKey}.jpg`, jpeg, '31536000')
+    const paths = writeCardPaths(slug, sourceKey)
+    const latest = await putObject(paths.latest, jpeg, '3600')
+    const versioned = paths.versioned
+      ? await putObject(paths.versioned, jpeg, '31536000')
       : true
     return latest && versioned
   } catch (err) {

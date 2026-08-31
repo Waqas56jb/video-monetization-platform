@@ -73,12 +73,30 @@ self.addEventListener('fetch', (event) => {
           // Only keep a copy worth serving later. Caching an error page as the
           // app shell is how a device ends up permanently broken offline.
           if (res && res.ok) {
+            /**
+             * Stored under its own URL, not under '/'.
+             *
+             * This wrote every successful navigation to the key '/', so opening
+             * one video replaced the offline home page with that video's
+             * document — and /watch/:slug is server-rendered per video, so the
+             * two are genuinely different pages, not one shell. Going offline
+             * afterwards and opening the site gave you whatever film you last
+             * looked at.
+             *
+             * '/' is still populated, by the SHELL precache on install, so the
+             * fallback below keeps working for a URL never visited online.
+             */
             const copy = res.clone()
-            caches.open(SHELL_CACHE).then((c) => c.put('/', copy)).catch(() => {})
+            caches.open(SHELL_CACHE).then((c) => c.put(request, copy)).catch(() => {})
           }
           return res
         })
-        .catch(() => caches.match('/').then((cached) => cached || Response.error()))
+        .catch(() =>
+          caches
+            .match(request)
+            .then((exact) => exact || caches.match('/'))
+            .then((cached) => cached || Response.error())
+        )
     )
     return
   }
@@ -90,8 +108,23 @@ self.addEventListener('fetch', (event) => {
         (cached) =>
           cached ||
           fetch(request).then((res) => {
-            const copy = res.clone()
-            caches.open(ASSET_CACHE).then((c) => c.put(request, copy)).catch(() => {})
+            /**
+             * `res.ok`, for the same reason the navigation branch checks it.
+             *
+             * This branch is cache-first with an exact-URL match, so whatever is
+             * stored here is served for the whole life of this build version and
+             * is never revalidated. Without the guard a 404 or a 502 body — an
+             * edge briefly serving a chunk from a build that has just been
+             * replaced is the realistic case — is written under the asset URL
+             * and then handed back as JavaScript to every subsequent load. The
+             * app breaks for that visitor until the next deploy changes VERSION,
+             * and a reload cannot clear it because the cache is the first thing
+             * consulted.
+             */
+            if (res && res.ok) {
+              const copy = res.clone()
+              caches.open(ASSET_CACHE).then((c) => c.put(request, copy)).catch(() => {})
+            }
             return res
           })
       )

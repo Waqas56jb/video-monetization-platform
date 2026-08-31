@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test src/lib/shareRules.test.js src/lib/adSkip.test.js src/lib/resumePoint.test.js src/lib/accountSide.test.js src/lib/prefetchWatch.test.js src/lib/videoShape.test.js src/styles/global.test.js api/_lib/ogDocument.test.js api/watch.og.test.js src/pages/CreatorProfile.test.js src/pages/Explore.test.js src/pages/Watch.test.js src/context/ProgressContext.test.js src/App.perf.test.js src/components/ui/VideoCard.test.js src/components/landing/landingCache.test.js"
+    "test": "node --test src/lib/shareRules.test.js src/lib/adSkip.test.js src/lib/resumePoint.test.js src/lib/accountSide.test.js src/lib/prefetchWatch.test.js src/lib/videoShape.test.js src/lib/serviceWorker.test.js src/styles/global.test.js api/_lib/ogDocument.test.js api/_lib/shareCardObjectPath.test.js api/_tests/watch.og.test.js api/_tests/watch.variants.test.js src/pages/CreatorProfile.test.js src/pages/Explore.test.js src/pages/Watch.test.js src/context/ProgressContext.test.js src/App.perf.test.js src/components/ui/VideoCard.test.js src/components/landing/landingCache.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.462.0",

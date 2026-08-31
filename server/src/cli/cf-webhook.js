@@ -61,12 +61,38 @@ try {
     log.ok(`Cloudflare will now notify ${url}`)
     console.log('\n  Add this to server/.env so we can verify the signature:\n')
     console.log(`  CLOUDFLARE_WEBHOOK_SECRET=${result.secret}\n`)
-    log.warn('Without that secret every incoming webhook is rejected, by design.')
+    log.warn(
+      'Without that secret every incoming webhook is ACCEPTED, signed or not — ' +
+        'verifyWebhookSignature returns true when it is blank (lib/cloudflare.js). ' +
+        'This line used to say "rejected", which is the safe-sounding opposite of ' +
+        'what happens, and is probably why it went unset for weeks.'
+    )
   } else {
     const current = await call('GET')
     if (current?.notificationUrl) {
       console.log(`  currently notifying: ${current.notificationUrl}`)
-      console.log(`  secret configured here: ${env.cloudflare.webhookSecret ? 'yes' : 'NO — webhooks will be rejected'}\n`)
+      console.log(
+        `  secret configured here: ${
+          env.cloudflare.webhookSecret
+            ? 'yes'
+            : 'NO — every unsigned webhook is ACCEPTED until you set it'
+        }\n`
+      )
+      /**
+       * Say plainly when Cloudflare is talking to somewhere we do not answer.
+       *
+       * It was pointed at the retired `-backend` host, which returns
+       * DEPLOYMENT_NOT_FOUND, so every encoding notification since it was set
+       * had gone nowhere — and the only symptom is uploads relying on the
+       * polling fallback, which works, so nothing ever looked broken.
+       */
+      const expected = `${env.serverPublicUrl.replace(/\/$/, '')}/api/playback/webhooks/cloudflare`
+      if (current.notificationUrl !== expected) {
+        console.log('  \x1b[33mnotification URL does not match SERVER_PUBLIC_URL\x1b[0m')
+        console.log(`    expected: ${expected}`)
+        console.log(`    actual:   ${current.notificationUrl}`)
+        console.log(`    fix with: npm run cf:webhook ${env.serverPublicUrl}\n`)
+      }
     } else {
       console.log('  no webhook set — encoding status is discovered by polling.\n')
       console.log('  To set one up once the API is deployed somewhere public:\n')
