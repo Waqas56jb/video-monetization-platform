@@ -33,7 +33,24 @@ const app = express()
  */
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
-app.set('trust proxy', 1)
+/**
+ * How many proxies sit in front of this process.
+ *
+ * This matters more than it looks, because the rate limiter is keyed on client
+ * IP. Trust too few hops and `req.ip` is the proxy's address — so every viewer
+ * shares one 120-requests-per-minute bucket and the site rate-limits itself
+ * under load. Trust too many and a client can forge `X-Forwarded-For` and either
+ * evade the limit or, worse, exhaust someone else's bucket.
+ *
+ * One hop is right for both hosts we have used: Vercel's edge and Railway's
+ * (`Server: railway-hikari`) each append exactly one entry. It is settable
+ * because that is a property of the deployment, not of the code, and the next
+ * host may differ — put a CDN in front and this becomes 2.
+ *
+ * `/health` reports what actually arrived, so this can be checked rather than
+ * assumed after a move.
+ */
+app.set('trust proxy', Number.parseInt(process.env.TRUST_PROXY_HOPS, 10) || 1)
 app.use((req, res, next) => {
   res.setHeader('X-Build', BUILD)
   next()
@@ -120,7 +137,7 @@ app.use(
 )
 
 /* ----------------------------------------------------------------- health */
-app.get('/health', async (_req, res) => {
+app.get('/health', async (req, res) => {
   let db = 'unknown'
   if (capabilities.database) {
     try {
@@ -155,6 +172,32 @@ app.get('/health', async (_req, res) => {
       publicApp: env.publicWebUrl,
       adminApp: env.adminWebUrl,
       allowedOrigins: env.corsOrigins,
+    },
+
+    /**
+     * Enough to check the proxy setting without guessing.
+     *
+     * `trust proxy` decides whether the IP-keyed rate limiter buckets per viewer
+     * or lumps everyone together, and the correct value is a property of the
+     * host, not of the code. After a move, comparing `hops` against
+     * `trustProxyHops` is the whole check: if the chain is longer than we trust,
+     * `ip` will read as a proxy address rather than the caller's.
+     *
+     * `ip` is the caller's own address being handed back to the caller, so there
+     * is nothing here they did not already send.
+     */
+    proxy: {
+      ip: req.ip,
+      hops: String(req.headers['x-forwarded-for'] || '').split(',').filter(Boolean).length,
+      trustProxyHops: app.get('trust proxy'),
+      host: process.env.RAILWAY_ENVIRONMENT ? 'railway' : process.env.VERCEL ? 'vercel' : 'other',
+    },
+
+    scheduler: {
+      /* Whether THIS process runs the nightly jobs. Two instances both saying
+         true would mean duplicate (idempotent) runs; none saying true means
+         premieres stop converting on their own. */
+      inProcess: Boolean(process.env.RAILWAY_ENVIRONMENT) && process.env.DISABLE_CRON !== '1',
     },
 
     ...(missingConfig().length ? { needsConfiguration: missingConfig() } : {}),

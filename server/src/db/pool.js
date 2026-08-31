@@ -5,11 +5,16 @@ import { log } from '../lib/logger.js'
 /**
  * Postgres access through Supabase's transaction pooler (port 6543).
  *
- * On Vercel each isolate may be frozen between invocations. A module-level
- * Pool (and the same object on globalThis) is reused while the isolate is
- * warm, so we do not open a new TCP/TLS session per request. `max` stays
- * small because many isolates can exist at once; the pooler multiplexes them
- * onto a few real Postgres backends.
+ * The API has run on two hosts with opposite shapes, and this file has to suit
+ * whichever it is on — see `getPool` for the sizing and why it flips.
+ *
+ * Serverless (Vercel): many isolates, each frozen between invocations, each
+ * holding its own pool. A module-level Pool cached on globalThis is reused while
+ * an isolate is warm, so a request does not open a fresh TCP/TLS session.
+ *
+ * Persistent (Railway, and any `npm start`): one process, one pool, for the life
+ * of the deployment. The globalThis cache is then only guarding against a double
+ * import, which is still worth having and costs nothing.
  *
  * DATABASE_URL must be the transaction-mode pooler:
  *   postgresql://postgres.<project-ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:6543/postgres
@@ -19,6 +24,12 @@ import { log } from '../lib/logger.js'
 const { Pool } = pg
 
 const GLOBAL_KEY = '__mtonyoPgPool'
+
+/** Small local parse so this module keeps its single dependency on env. */
+const int = (v, dflt) => {
+  const n = Number.parseInt(v, 10)
+  return Number.isFinite(n) && n > 0 ? n : dflt
+}
 
 function existingPool() {
   return globalThis[GLOBAL_KEY] || null
@@ -84,19 +95,41 @@ export function getPool() {
   const info = databaseEndpointInfo()
   warnIfNotTransactionPooler(info)
 
+  /**
+   * Pool size follows the host, because the two hosts are opposite problems.
+   *
+   * On Vercel, `max: 3` was right and generous: every isolate holds its own pool,
+   * dozens can exist at once, and the transaction pooler multiplexes them onto a
+   * few real backends. Being stingy per isolate was the only way to stay under
+   * the connection limit.
+   *
+   * Railway runs ONE process, so that same 3 is now the ceiling for the entire
+   * API. Four concurrent requests would queue on connection acquisition — and
+   * the watch page issues three in parallel, so two viewers opening a video at
+   * the same time is already past it. Nothing would error; requests would just
+   * mysteriously take turns.
+   *
+   * `allowExitOnIdle` goes with it: it exists so a serverless invocation is not
+   * held open by an idle pool. On a persistent server the HTTP listener keeps the
+   * process alive anyway, and letting the pool bow out is meaningless at best.
+   */
+  const persistent = Boolean(process.env.RAILWAY_ENVIRONMENT)
+  const max = int(process.env.PG_POOL_MAX, persistent ? 12 : 3)
+
   pool = new Pool({
     connectionString: env.databaseUrl,
     // Supabase terminates TLS with its own chain; verifying it from Node needs
     // the Supabase root cert, which we do not ship. Encryption is still on.
     ssl: { rejectUnauthorized: false },
-    max: 3,
+    max,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
-    allowExitOnIdle: true,
+    allowExitOnIdle: !persistent,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
     application_name: 'mtonyo-api',
   })
+  log.info(`postgres pool: max=${max}${persistent ? ' (persistent host)' : ' (serverless sizing)'}`)
 
   globalThis[GLOBAL_KEY] = pool
   pool.on('error', (err) => log.error('idle postgres client error', err.message))

@@ -6,10 +6,31 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
-test('API functions run in Dublin, next to eu-west-1', () => {
-  const src = readFileSync(join(root, 'vercel.json'), 'utf8')
-  assert.match(src, /"regions":\s*\[\s*"dub1"\s*\]/)
-  assert.doesNotMatch(src, /\*\/5 \* \* \* \*/)
+/**
+ * The Dublin-region assertion is gone with the host.
+ *
+ * It pinned `"regions": ["dub1"]` in server/vercel.json so the functions stayed
+ * next to Supabase in eu-west-1. The API moved to Railway on 2026-08-31, where
+ * region is a dashboard setting rather than a repository one — so there is
+ * nothing here left to assert, and keeping a test that reads a file the host no
+ * longer uses would be worse than deleting it: it would pass while meaning
+ * nothing.
+ *
+ * What replaced it is the scheduler, which is the part that genuinely had to
+ * come back into the repository — see jobs/scheduler.test.js. Locality to the
+ * database is now checked by measurement rather than by config, and recorded in
+ * RAILWAY-MOVE.md.
+ */
+test('the API still starts a long-running server on PORT', () => {
+  // Railway runs `npm start`, so an entry point that only exports the app —
+  // which is all a serverless host needs — would deploy cleanly and serve
+  // nothing at all.
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  assert.equal(pkg.scripts.start, 'node src/index.js')
+  const index = readFileSync(join(root, 'src/index.js'), 'utf8')
+  assert.match(index, /app\.listen\(env\.port/)
+  const env = readFileSync(join(root, 'src/config/env.js'), 'utf8')
+  assert.match(env, /port: int\(process\.env\.PORT/)
 })
 
 test('share-meta does not load Sharp on the public GET path', () => {
