@@ -27,7 +27,7 @@ test('production can enable timing logs with ?perf=1', () => {
 
 test('the API origin has a warm connection before the bundle asks for data', () => {
   const html = readFileSync(join(dir, '../index.html'), 'utf8')
-  const { DEPLOY } = { DEPLOY: { api: 'https://video-monetization-platform-server.vercel.app' } }
+  const { DEPLOY } = { DEPLOY: { api: 'https://video-monetization-platform-production.up.railway.app' } }
 
   // It was the one host with no warm connection: DNS + TCP + TLS were all paid
   // after the bundle had parsed and asked for data.

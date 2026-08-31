@@ -7,7 +7,7 @@
 import { chromium } from 'playwright'
 
 const BASE = (process.argv[2] || 'http://localhost:5173').replace(/\/$/, '')
-const API = (process.argv[3] || process.env.API_URL || 'https://video-monetization-platform-server.vercel.app').replace(
+const API = (process.argv[3] || process.env.API_URL || 'https://video-monetization-platform-production.up.railway.app').replace(
   /\/$/,
   ''
 )

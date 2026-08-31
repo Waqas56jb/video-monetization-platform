@@ -1,5 +1,14 @@
 # Tier 1 verification — branch `fix/tier1-sharing-chain`
 
+> **2026-08-31 — the backend has since moved.** Every `…-server.vercel.app`
+> URL below refers to the API's Vercel deployment, which was retired on this date.
+> The API now runs on Railway at
+> `https://video-monetization-platform-production.up.railway.app`. The two
+> frontends are still Vercel projects. This document is left as written because it
+> is a record of what was measured at the time, and rewriting the hosts would make
+> the measurements unreproducible and the reasoning harder to follow.
+
+
 Date: 2026-08-31 · 7 commits ahead of `main` · working tree clean
 
 > **Update 2026-08-31 09:15 UTC.** The branch is now pushed, the service-role key and a

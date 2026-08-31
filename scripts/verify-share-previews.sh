@@ -6,7 +6,7 @@ set -euo pipefail
 
 SLUG="${1:-how-to-cook-pilau-properly}"
 WEB="${PUBLIC_WEB_URL:-https://video-monetization-platform-chi.vercel.app}"
-API="${SERVER_PUBLIC_URL:-https://video-monetization-platform-server.vercel.app}"
+API="${SERVER_PUBLIC_URL:-https://video-monetization-platform-production.up.railway.app}"
 
 echo "=== 1. OG HTML (all user agents must match) ==="
 for UA in \

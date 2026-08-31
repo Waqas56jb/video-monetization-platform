@@ -16,7 +16,7 @@ const list = (v) =>
 
 /** Live Vercel addresses — used when production env still says localhost. */
 export const DEPLOY_URLS = {
-  api: 'https://video-monetization-platform-server.vercel.app',
+  api: 'https://video-monetization-platform-production.up.railway.app',
   publicApp: 'https://video-monetization-platform-chi.vercel.app',
   adminApp: 'https://video-monetization-platform-admin.vercel.app',
 }

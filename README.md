@@ -113,12 +113,12 @@ normal flow knows they exist. Add `-- --delete` to clear them.
 
 | | |
 | --- | --- |
-| API | https://video-monetization-platform-server.vercel.app |
+| API | https://video-monetization-platform-production.up.railway.app |
 | Public app | https://video-monetization-platform-chi.vercel.app |
 | Control centre | https://video-monetization-platform-admin.vercel.app |
 
 Check the API first if anything looks wrong:
-`https://video-monetization-platform-server.vercel.app/health`
+`https://video-monetization-platform-production.up.railway.app/health`
 
 All three apps use these Vercel URLs end-to-end. Set the same values in each
 project's Vercel **Environment Variables** (see `server/.env.example`,
@@ -186,7 +186,7 @@ would exhaust Postgres's limit within minutes of real traffic.
 Root directory `client`, framework preset **Vite**.
 
 ```
-VITE_API_URL=https://video-monetization-platform-server.vercel.app
+VITE_API_URL=https://video-monetization-platform-production.up.railway.app
 ```
 
 ### 3 · Control centre
@@ -194,7 +194,7 @@ VITE_API_URL=https://video-monetization-platform-server.vercel.app
 Root directory `admin`, framework preset **Vite**.
 
 ```
-VITE_API_URL=https://video-monetization-platform-server.vercel.app
+VITE_API_URL=https://video-monetization-platform-production.up.railway.app
 ```
 
 Keep it on its own URL and do not link to it from the public site. It is not

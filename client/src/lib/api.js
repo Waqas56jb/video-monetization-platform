@@ -13,7 +13,10 @@ function resolveApiBase() {
   const fromEnv = import.meta.env.VITE_API_URL
   if (fromEnv) {
     const base = String(fromEnv).replace(/\/$/, '')
-    if (base === DEPLOY.legacyApi) return DEPLOY.api
+    /* A build can outlive a deployment: VITE_API_URL is baked in, so a cached
+       bundle or a stale project env may still name a host we no longer run.
+       Redirect rather than let it fail as an opaque network error. */
+    if (DEPLOY.legacyApis.some((h) => base === h)) return DEPLOY.api
     return base
   }
   return DEPLOY.api

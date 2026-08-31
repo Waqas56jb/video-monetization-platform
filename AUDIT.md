@@ -1,5 +1,14 @@
 # MTONYO+ Audit — 2026-08-31 — commit `4419c9c` (`main`, clean tree)
 
+> **2026-08-31 — the backend has since moved.** Every `…-server.vercel.app`
+> URL below refers to the API's Vercel deployment, which was retired on this date.
+> The API now runs on Railway at
+> `https://video-monetization-platform-production.up.railway.app`. The two
+> frontends are still Vercel projects. This document is left as written because it
+> is a record of what was measured at the time, and rewriting the hosts would make
+> the measurements unreproducible and the reasoning harder to follow.
+
+
 Live measurements in this report were taken 2026-08-31 ~08:15 UTC against the three
 production Vercel deployments. Every network figure quoted is from an actual request,
 not an estimate. Code-only conclusions are labelled.
