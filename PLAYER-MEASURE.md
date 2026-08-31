@@ -122,8 +122,12 @@ access — the picture actually moving, not an SDK event.
 | `rpreplay-final1589783013-2` | desktop | 407 | 1071 | 2459 | 4803 | 2559 | **6355** |
 | `rpreplay-final1589783013-2` | desktop · Fast 3G | 1338 | 1699 | 6702 | 10262 | 6814 | **13791** |
 | `rpreplay-final1589783013-2` | iPhone 13 | 772 | 1714 | 3939 | 6465 | 4054 | **8593** |
+| `rpreplay-final1589783013-2` | iPhone 13 · Fast 3G | 190 | 1090 | 6516 | 11249 | 6617 | **16282** |
 
-**Target is 2000. The best cell is 5686 and the worst is 14903.**
+**Target is 2000. The best cell is 5686 and the worst is 16282** — a portrait title on a
+throttled iPhone, sixteen seconds from tap to a moving picture. Every one of the twelve cells
+reached the player on all three runs, so none of these is a timeout or a failed load; they are
+all successful plays that simply took this long.
 
 Where the time goes, desktop unthrottled, `live-at-arusha-full-set`:
 
