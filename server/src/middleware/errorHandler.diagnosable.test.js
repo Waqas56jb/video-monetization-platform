@@ -74,3 +74,24 @@ test('a 500 with no request id still reports the class', async () => {
     process.env.NODE_ENV = saved
   }
 })
+
+test('a deliberate 5xx keeps its message — it was written to be read', async () => {
+  // These are 5xx and expected: the sign-in rate-limit note, the "service not
+  // responding, your account is unaffected" note, and the configuration errors
+  // that name the variable to fix. All were being replaced in production.
+  const { serviceUnavailable } = await import('../lib/errors.js')
+  const res = await call(
+    serviceUnavailable('Too many sign-in attempts in a short time. Wait a minute — your password is fine.')
+  )
+  assert.equal(res.status, 503)
+  assert.match(res.body.error.message, /your password is fine/)
+  assert.notEqual(res.body.error.message, 'Something went wrong on our side')
+})
+
+test('an unexpected 5xx is still masked', async () => {
+  // The distinction is the whole point: a stray throw's message was written for
+  // a developer and may carry a host, a query, or somebody's data.
+  const res = await call(new TypeError('connect ECONNREFUSED 10.0.0.4:5432'))
+  assert.equal(res.body.error.message, 'Something went wrong on our side')
+  assert.doesNotMatch(JSON.stringify(res.body), /ECONNREFUSED/)
+})

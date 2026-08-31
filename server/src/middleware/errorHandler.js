@@ -48,7 +48,24 @@ export function errorHandler(err, req, res, _next) {
         (ref ? ` [ref ${ref}]` : '')
     )
     if (err.stack) console.error(err.stack)
-    if (env.isProd) {
+
+    /**
+     * Only hide what we did not mean to say.
+     *
+     * `expected` marks an ApiError — one this codebase raised on purpose, with a
+     * message written for the person reading it. Several of those are 5xx and
+     * were being thrown away: "Too many sign-in attempts in a short time. Wait a
+     * minute and try again — your password is fine", "The sign-in service is not
+     * responding. Your account is unaffected", and the configuration errors that
+     * name the variable to fix. Every one of them was replaced in production by
+     * six words that say nothing, and the effect was invisible because it only
+     * happened where nobody was looking.
+     *
+     * An unexpected throw is the opposite case: its message was written for a
+     * developer and may carry a host, a query or a value from someone's account,
+     * so it is replaced and only its class survives.
+     */
+    if (env.isProd && !err.expected) {
       message = 'Something went wrong on our side'
       return res.status(status).json({
         error: {
