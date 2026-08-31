@@ -13,6 +13,26 @@
  *
  * Crawlers now get a 2 KB document with a same-origin `/og/card/{slug}.jpg`
  * immediately. share-meta is a short race for the real title, never a gate.
+ *
+ * TWO DOCUMENTS, ONE URL — and that is what `Vary` is for.
+ *
+ * This function answers `/watch/:slug` with either a 2 KB crawler document or
+ * the full SPA shell, and it decides which by reading `Sec-Fetch-Mode` /
+ * `Sec-Fetch-Dest` (see `isUnfurlFetch`). Those headers were not in `Vary`, so
+ * the Vercel edge stored whichever variant arrived first and served it to
+ * everyone for the next five minutes. Reproduced against production, both ways:
+ *
+ *   unfurl first, then a human taps the link -> the human gets the crawler
+ *   document: no `<div id="root">`, no script tag, no app. A dead end, for as
+ *   long as the entry lives.
+ *
+ *   human first, then WhatsApp Web unfurls -> the unfurl gets the React shell
+ *   and has to find og: tags inside it.
+ *
+ * So every response below declares the full set of headers this handler
+ * branches on. The crawler document additionally gets a much shorter edge life
+ * than the shell: they are not equally safe to hold. A stale shell still boots
+ * the app for whoever receives it; a stale crawler document is a broken page.
  */
 
 import { readFileSync, existsSync } from 'node:fs'
@@ -35,7 +55,52 @@ const WEB = publicWebOrigin()
 const SLUG_RE = /^[a-z0-9-]+$/
 const META_MEMO_MS = 5 * 60 * 1000
 const CRAWLER_META_MS = 600
+/**
+ * A browser waits for the real title too — but for a fraction of the time.
+ *
+ * This used to be `memoedShareMeta` alone: no network at all for a browser, on
+ * the reasoning that the SPA sets its own title and og: tags are for machines.
+ * Both halves of that are true and it still left a hole. Not every machine that
+ * reads og: tags announces itself: iMessage, Signal and several scrapers send a
+ * browser-shaped User-Agent AND `Sec-Fetch-Mode: navigate`, so they land in the
+ * branch below and are handed whatever this instance happened to know. On a cold
+ * instance that is `titleFromSlug()` — a de-hyphenated slug and no creator.
+ *
+ * So the browser path asks as well, with a budget small enough that a cold API
+ * cannot hold the first byte for long. The memo means a warm instance pays
+ * nothing, and the negative memo below means a *down* API is paid for once
+ * rather than on every request.
+ */
+const BROWSER_META_MS = 350
+/** How long a failed share-meta lookup is remembered, so an outage costs once. */
+const META_MISS_MS = 30 * 1000
 const metaMemo = new Map()
+const metaMiss = new Map()
+
+/**
+ * Everything this handler branches on, declared so a shared cache keys on it.
+ *
+ * `isUnfurlFetch` reads `Sec-Fetch-Dest` and `Sec-Fetch-Mode`; `Sec-Fetch-Site`
+ * is included because a cross-site fetch is the shape an unfurl arrives in and
+ * a same-origin one never is, so an intermediary that normalises the first two
+ * still cannot merge the variants. `User-Agent` stays for `isLinkPreviewBot`.
+ *
+ * One string, used by every response, because the failure mode of this list is
+ * a branch quietly not being covered by it.
+ */
+const VARY = 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding'
+
+/**
+ * A crawler document is cheap to rebuild and dangerous to keep.
+ *
+ * If the variant separation above ever fails again — a CDN that drops Vary, an
+ * intermediary that does not forward Sec-Fetch-* — this is what bounds the
+ * damage: a minute, not five. The shell keeps the longer life because a shell
+ * served to a crawler is merely suboptimal, while a crawler document served to
+ * a person is a page with no application in it.
+ */
+const CRAWLER_CACHE = 'public, s-maxage=60, stale-while-revalidate=300'
+const SHELL_CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=86400'
 
 let shellCache = null
 
@@ -96,19 +161,27 @@ function ogCardUrl(slug, sourceKey) {
 /**
  * What this instance already knows about a slug. Never a network call.
  *
- * A browser is handed this and nothing more. It runs JavaScript: it sets its
- * own title, and it does not read og: tags at all — so there is nothing a
- * cross-service round trip could give it that is worth delaying its first byte
- * for.
+ * This is the hot path for both documents: a warm instance answers from here
+ * and spends nothing. `loadShareMeta` consults it first and only reaches the
+ * API on a miss.
  */
 function memoedShareMeta(slug) {
   const hit = metaMemo.get(slug)
   return hit && Date.now() - hit.at < META_MEMO_MS ? hit.meta : null
 }
 
+/** A lookup that just failed is not worth repeating on the next request. */
+function recentlyMissed(slug) {
+  const at = metaMiss.get(slug)
+  return Boolean(at && Date.now() - at < META_MISS_MS)
+}
+
 async function loadShareMeta(slug, timeoutMs) {
   const hit = memoedShareMeta(slug)
   if (hit) return hit
+  /* The API is not answering for this slug. Do not spend the budget again —
+     the document below is complete without it, only less specific. */
+  if (recentlyMissed(slug)) return null
 
   let meta = null
   try {
@@ -121,7 +194,12 @@ async function loadShareMeta(slug, timeoutMs) {
     /* crawler HTML still goes out with the slug card URL */
   }
 
-  if (meta) metaMemo.set(slug, { meta, at: Date.now() })
+  if (meta) {
+    metaMemo.set(slug, { meta, at: Date.now() })
+    metaMiss.delete(slug)
+  } else {
+    metaMiss.set(slug, Date.now())
+  }
   return meta
 }
 
@@ -132,6 +210,20 @@ function stripHeadMeta(html) {
     .replace(/<meta[^>]*\bname=["'](twitter:|description)[^"']*["'][^>]*>/gi, '')
     .replace(/<link[^>]*\brel=["']canonical["'][^>]*>/gi, '')
     .replace(/<meta[^>]*\bname=["']twitter:[^"']*["'][^>]*>/gi, '')
+}
+
+/**
+ * `Title — Creator | MTONYO+`, and never `Title — MTONYO+ | MTONYO+`.
+ *
+ * The creator slot used to fall back to the site name while the suffix appended
+ * it unconditionally, so every document without a creator — the whole no-shell
+ * branch, and any cold-instance browser response — said MTONYO+ twice. Confirmed
+ * live before this change.
+ */
+function pageTitle(title, creator) {
+  const site = 'MTONYO+'
+  const by = String(creator || '').trim()
+  return by && by !== site ? `${title} — ${by} | ${site}` : `${title} | ${site}`
 }
 
 function buildMetaBlock({ canonical, title, creator, description, cardUrl }) {
@@ -146,7 +238,7 @@ function buildMetaBlock({ canonical, title, creator, description, cardUrl }) {
 <meta name="twitter:image" content="${escapeAttr(cardUrl)}">`
     : ''
 
-  return `<title>${escapeAttr(title)} — ${escapeAttr(creator || 'MTONYO+')} | MTONYO+</title>
+  return `<title>${escapeAttr(pageTitle(title, creator))}</title>
 <meta name="description" content="${escapeAttr(description)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTONYO+">
@@ -181,23 +273,28 @@ export default async function handler(req, res) {
   const pending = startReport(API, req, { asset: 'html', slug })
 
   /**
-   * A crawler races for the real title. A browser waits for nothing.
+   * Both race for the real title. The crawler is simply allowed to wait longer.
    *
-   * This used to await share-meta for everybody, up to 1.5s for a browser —
-   * before a single byte of HTML went out, on top of this function's own cold
-   * start and the API's inside it. Every direct open of a watch link paid it:
-   * a tap from WhatsApp, a refresh, a new tab. The memo is per-instance, so a
-   * cold instance always missed, which is precisely when it hurt most.
+   * The history matters here, because this has been wrong in both directions.
+   * It first awaited share-meta for everybody with a 1.5s budget, before a
+   * single byte went out, on top of this function's cold start and the API's
+   * inside it — and the memo is per-instance, so a cold instance always missed,
+   * which is exactly when it hurt most. That was removed, and browsers were
+   * given whatever this instance already happened to know.
    *
-   * Nothing was gained. A browser boots the SPA, which sets the title from the
-   * video it fetches anyway; og: tags are for machines that do not run
-   * JavaScript. So browsers get whatever this instance already happens to
-   * know, and are never held up learning more.
+   * Removing it entirely went too far the other way. `previewBot` is not the
+   * same question as "will anything read these og: tags": iMessage, Signal and
+   * several scrapers send a browser User-Agent with `Sec-Fetch-Mode: navigate`
+   * and land here, where a cold instance had nothing but `titleFromSlug()`.
+   *
+   * So both ask, and the budget carries the difference — 600ms for a crawler
+   * that will render the result, 350ms for a browser that is about to boot an
+   * SPA and set its own title anyway. `loadShareMeta` remembers a failure for
+   * 30s, so an API that is down is paid for once per instance and not once per
+   * request, which is the property the old 1.5s version lacked.
    */
   const meta = slug
-    ? previewBot
-      ? await loadShareMeta(slug, CRAWLER_META_MS)
-      : memoedShareMeta(slug)
+    ? await loadShareMeta(slug, previewBot ? CRAWLER_META_MS : BROWSER_META_MS)
     : null
   const title = meta?.title || (slug ? titleFromSlug(slug) : 'MTONYO+')
   const creator = meta?.creator || ''
@@ -216,11 +313,12 @@ export default async function handler(req, res) {
       image: cardUrl,
     })
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
-    res.setHeader('Vary', 'User-Agent, Accept-Encoding')
+    res.setHeader('Cache-Control', CRAWLER_CACHE)
+    res.setHeader('Vary', VARY)
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
+    res.setHeader('X-Doc', 'crawler')
     res.status(200)
     res.end(html)
     console.log(
@@ -246,9 +344,19 @@ export default async function handler(req, res) {
   }
 
   if (!shell) {
+    /**
+     * The shell could not be read or fetched, so this is a document with no
+     * application in it — the same dead end the Vary fix above exists to
+     * prevent, arriving by a different road. It must never be stored: a single
+     * bad minute on this branch would otherwise be pinned to the edge and
+     * served to everyone who taps the link.
+     */
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.setHeader('Cache-Control', 'public, s-maxage=60')
+    res.setHeader('Cache-Control', 'no-store')
+    res.setHeader('Vary', VARY)
     res.setHeader('X-Build', BUILD)
+    res.setHeader('X-Crawler', crawler)
+    res.setHeader('X-Doc', 'fallback')
     res.status(200)
     res.end(fallbackHtml({ slug }))
     await settleReport(pending)
@@ -271,11 +379,12 @@ export default async function handler(req, res) {
   )
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=86400')
-  res.setHeader('Vary', 'User-Agent, Accept-Encoding')
+  res.setHeader('Cache-Control', SHELL_CACHE_CONTROL)
+  res.setHeader('Vary', VARY)
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)
+  res.setHeader('X-Doc', 'shell')
   res.status(200)
   res.end(html)
 
