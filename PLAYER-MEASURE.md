@@ -165,3 +165,79 @@ six-second wait that is not going away this week.
 ---
 
 *Per-item changes and after-numbers follow below as they are produced.*
+
+---
+
+## Item 7 — the two gaps, named before touching anything
+
+Traced with in-frame resource timing plus the parent's full network log. Both gaps
+turned out to be **inside Cloudflare's iframe**, not in our code.
+
+### `iframe → video_el` (+1.9 s) — Cloudflare's embed SDK, with a redirect
+
+```
+ 861  200  iframe.videodelivery.net/<jwt>                          our iframe document
+1047  301  customer-….cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+2080  200  customer-….cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+2483  200  embed/925.684065c0.chunk.js  +  embed/10.8bc27614.chunk.js
+```
+
+One script, **1033 ms**, including a **301 redirect** that costs a whole extra round
+trip, then two more chunks. In-frame `performance` agrees: `sdk-iframe-integration`
+runs 189 → 1701 ms of the iframe's own timeline.
+
+**It is not our watchdog, not the 1500 ms `setPainted` failsafe, and not the manifest.**
+`StreamPlayer` cannot make Cloudflare's bootstrap faster. The only lever we hold is
+paying DNS and TLS for `iframe.videodelivery.net` and `customer-*.cloudflarestream.com`
+before the tap — which is item 6's preconnect, worth a few hundred milliseconds, not two
+seconds.
+
+### `canplay → playing` (+1.4–2.0 s) — segment buffering
+
+```
+3117  200  …/audio/13…      first audio segment
+3133  200  …/video/24…      first video segment
+3444  200  …/audio/13…      second
+3475  200  …/video/24…      second
+```
+
+The player buffers roughly two audio and two video segments before it starts. `unpaused`
+is already true well before `canplay`, so nothing is being refused and nothing is waiting
+on a gesture — this is data. **Also not ours.**
+
+### What item 7's own checklist actually found
+
+| sub-point | state |
+|---|---|
+| `preload=auto` | already set (`buildSrc`) |
+| `autoplay=true&muted=true` | already set |
+| iframe not lazy | confirmed — no `loading="lazy"` |
+| play on `canplay`, not a 900 ms poll | `canplay` listener already registered; the 900 ms interval is a watchdog **behind** it, not the primary path |
+| 1500 ms `setPainted` failsafe → 400 ms | cosmetic only — it decides when the frame stops being transparent, and the frame is revealed on document load long before playback |
+| ad player pre-mount | ad break already fetched in parallel |
+
+**So item 7 has almost nothing to give.** The changes it lists are either already in place
+or off the critical path.
+
+### Three things the trace found that the brief does not mention
+
+**1. `/api/videos/:slug` is fetched twice per play** — at 692 ms and again at 1269 ms, same
+URL, same row. That is two of the 3-SQL-plus-3-outbound-HTTP requests measured earlier, so
+the `graph.facebook.com` re-scrape ping fires **twice for every viewer who opens a video**.
+
+**2. Explore warms six playback payloads before any tap.** One per visible card, on idle.
+When they have not finished, they compete with the real request: in a cold trace
+`/api/videos` was pushed to 1442 ms and this video's own playback response to 962 ms. When
+they have finished, the tap costs **zero** playback requests — the warm cache serves it.
+The prefetch works; there is just far too much of it.
+
+**3. A consistent `400` from `videodelivery.net`** on a signed URL, on every play.
+
+### A correction to the baseline above
+
+The browser harness stamped `playback_done` on the first response whose URL contained
+`/playback`. With six prefetches in flight that was usually **another video's** payload, so
+the baseline's `playback` column read faster than the truth — ~500 ms where this video's own
+response had not arrived until ~960 ms. The harness now matches the slug under test. The
+`iframe`, `video_el`, `canplay` and `first_playing` columns were never affected, and those
+are the ones the conclusions rest on.

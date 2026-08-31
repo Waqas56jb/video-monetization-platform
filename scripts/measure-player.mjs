@@ -86,8 +86,18 @@ async function once(browser, profile, slug) {
     if (marks[k] === undefined) marks[k] = Date.now()
   }
 
+  /**
+   * Match the slug, not just the route.
+   *
+   * Explore warms every visible card, so six `/api/playback/...` responses are
+   * already in flight before the tap. Stamping the first one to arrive recorded
+   * a DIFFERENT video's prefetch and reported the API as faster than it was —
+   * ~500 ms when this video's own response had not landed until ~960 ms. The
+   * marks below are scoped to the video under test.
+   */
   page.on('response', (res) => {
     const u = res.url()
+    if (!u.includes(slug)) return
     if (u.includes('/api/videos/')) stamp('videos_done')
     else if (u.includes('/playback')) stamp('playback_done')
     else if (u.includes('/api/ads/')) stamp('ads_done')
