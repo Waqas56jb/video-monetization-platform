@@ -55,9 +55,19 @@ async function composeOnce(video) {
 
   const cached = await readCachedCard(slug, key)
   if (cached) {
-    uploadShareCardToStorage(slug, key, cached).catch(() => {})
+    /**
+     * Awaited, not fired and forgotten.
+     *
+     * This is the path the backfill takes for every card that is already in the
+     * database — which, when the bucket needs repairing, is all of them. The CLI
+     * closes the pool and exits in a `finally`, so an unawaited upload could be
+     * cut off mid-flight, and its result could never be reported either: every
+     * row printed 'skipped' whether the upload succeeded, failed, or was a no-op
+     * for a missing key. A repair you cannot verify is not a repair.
+     */
+    const uploaded = await uploadShareCardToStorage(slug, key, cached).catch(() => false)
     pingLinkPreview(slug)
-    return { jpeg: cached, sourceKey: key, skipped: true, ms: Date.now() - started }
+    return { jpeg: cached, sourceKey: key, skipped: true, uploaded, ms: Date.now() - started }
   }
 
   let poster = null
@@ -85,10 +95,10 @@ async function composeOnce(video) {
     creator: video.creator_name,
   })
   await writeCachedCard(slug, video.id, key, jpeg)
-  await uploadShareCardToStorage(slug, key, jpeg).catch(() => {})
+  const uploaded = await uploadShareCardToStorage(slug, key, jpeg).catch(() => false)
   pingLinkPreview(slug)
   log.info(`share card built slug=${slug} bytes=${jpeg.length} ms=${Date.now() - started}`)
-  return { jpeg, sourceKey: key, skipped: false, ms: Date.now() - started }
+  return { jpeg, sourceKey: key, skipped: false, uploaded, ms: Date.now() - started }
 }
 
 /**
@@ -111,6 +121,9 @@ export async function buildShareCard(videoId) {
       cardUrl: shareCardUrl(slug, result.sourceKey),
       bytes: result.jpeg?.length || 0,
       skipped: result.skipped,
+      /* Whether the Supabase bucket actually took it — the only signal that
+         separates a real repair from a run that quietly did nothing. */
+      uploaded: Boolean(result.uploaded),
       ms: result.ms,
       error: result.error || null,
     }))
@@ -209,6 +222,7 @@ export async function rebuildShareCards({ slug, all = false, stale = false, conc
         results.push({
           slug: video.slug,
           status: built.ok ? (built.skipped ? 'skipped' : 'built') : 'failed',
+          uploaded: Boolean(built.uploaded),
           ms: built.ms ?? Date.now() - started,
           bytes: built.bytes || 0,
           error: built.error || null,

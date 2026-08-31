@@ -118,7 +118,9 @@ export const capabilities = {
   // Sign-in needs only the public key; account records are written by us.
   auth: Boolean(env.supabase.url && env.supabase.anonKey && env.databaseUrl),
   email: Boolean(env.smtp.host && env.smtp.user && env.smtp.pass),
-  serviceRole: Boolean(env.supabase.serviceRoleKey), // optional, nothing depends on it
+  // Not optional any more: the share-card Storage bucket and admin user
+  // create/delete both need it, and both fail silently without it.
+  serviceRole: Boolean(env.supabase.serviceRoleKey),
   cloudflareStream: Boolean(env.cloudflare.accountId && env.cloudflare.apiToken),
   signedPlayback: Boolean(env.cloudflare.streamKeyId && env.cloudflare.streamKeyPem),
 }
@@ -131,5 +133,8 @@ export function missingConfig() {
   if (!capabilities.email) missing.push('SMTP_HOST + SMTP_USER + SMTP_PASS (reset links and staff invites)')
   if (!capabilities.cloudflareStream) missing.push('CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (Stream: Edit)')
   if (!capabilities.signedPlayback) missing.push('CLOUDFLARE_STREAM_KEY_ID + PEM (run: npm run db:check to generate)')
+  // Listed last because the API runs fine without it — it just serves every
+  // share card the slow way, which is invisible until a WhatsApp preview fails.
+  if (!capabilities.serviceRole) missing.push('SUPABASE_SERVICE_ROLE_KEY (share-card CDN uploads, admin user create/delete)')
   return missing
 }
