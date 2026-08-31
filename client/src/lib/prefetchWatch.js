@@ -1,4 +1,5 @@
-import api from '@/lib/api'
+import api, { getAccessToken } from '@/lib/api'
+import { warmEntryUsable } from '@/lib/warmEntry'
 
 export const STREAM_SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
 
@@ -83,26 +84,40 @@ const playbackCache = new Map()
 const adsCache = new Map()
 
 /**
- * A warmed payload is only good for as long as what is inside it.
+ * A warmed payload belongs to whoever was signed in when it was fetched.
  *
- * A preview playback token lives fifteen minutes. Cards warm themselves when
- * they scroll into view, so browsing Explore for a quarter of an hour and then
- * tapping a title handed the player a JWT that had already expired: a black
- * frame, "Connecting to player…", a twelve second timeout, and a Try again that
- * re-used the very same dead promise. Ten minutes leaves comfortable margin.
+ * These caches are keyed by video, and for a long time that was the whole key.
+ * But `/api/playback/:id/playback` answers *per viewer*: the same URL returns a
+ * preview to a stranger and the full film to the person who bought it. Cards
+ * warm themselves on scroll, so a payload fetched while signed out sat here for
+ * ten minutes and was then handed to whoever tapped that card next — including
+ * the owner, who was shown Unlock on a video they had already paid for, and the
+ * paywall at the preview cut-off.
+ *
+ * The reverse is worse and is the reason this is not merely a display bug: sign
+ * out, let someone else sign in on the same browser, and the previous viewer's
+ * *full* signed playback URL was still sitting in this map under that video's
+ * id, ready to be served to an account with no entitlement to it.
+ *
+ * So identity is part of the key. The access token stands in for the viewer:
+ * anonymous is `null`, and any change — sign in, sign out, switch account, a
+ * refresh that mints a new one — makes every earlier entry unusable. Discarding
+ * a still-valid entry after a token refresh costs one round trip; serving the
+ * wrong viewer's entitlement costs money or a false paywall.
  */
-const WARM_TTL_MS = 10 * 60 * 1000
+const authIdentity = () => getAccessToken() || null
 
 function cacheGet(map, key, fetch) {
   if (!key) return null
   const id = String(key)
+  const auth = authIdentity()
   const hit = map.get(id)
-  if (hit && Date.now() - hit.at < WARM_TTL_MS) return hit.promise
+  if (warmEntryUsable(hit, Date.now(), auth)) return hit.promise
   const promise = fetch(id).catch((err) => {
     map.delete(id)
     throw err
   })
-  map.set(id, { promise, at: Date.now() })
+  map.set(id, { promise, at: Date.now(), auth })
   return promise
 }
 
@@ -128,9 +143,11 @@ function takeFrom(map, idOrSlug) {
   const hit = map.get(key)
   if (!hit) return null
   map.delete(key)
-  /* Stale means the token inside it may already be refused. Better to spend a
-     round trip than to hand the player a JWT it cannot use. */
-  return Date.now() - hit.at < WARM_TTL_MS ? hit.promise : null
+  /* Stale means the token inside it may already be refused, and a different
+     viewer means it answers the wrong question entirely. Better to spend a
+     round trip than to hand the player a JWT it cannot use — or one it should
+     never have been given. */
+  return warmEntryUsable(hit, Date.now(), authIdentity()) ? hit.promise : null
 }
 
 /** Promise already warming, or null. Consumed so a later reload cannot reuse it. */

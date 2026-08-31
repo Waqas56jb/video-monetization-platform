@@ -34,6 +34,7 @@ import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches, playbackRouteMatches } from '@/lib/watchUrl'
 import { videoShape } from '@/lib/videoShape'
 import { takeWarmedVideo, takeWarmedPlayback, takeWarmedAds, dropWarmedWatch } from '@/lib/prefetchWatch'
+import { watchLockState } from '@/lib/watchLock'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
 
@@ -165,13 +166,13 @@ export default function Watch() {
    * A leftover payload from the previous title is not an answer. Access is
    * `user_id + video_id + successful purchase` and nothing else.
    */
-  const accessReady = Boolean(p) && !playback.loading
-  const locked = accessReady ? !p.access?.canWatchFull : false
-  const justPaid =
-    Boolean(justPaidFor) &&
-    (justPaidFor === videoId || justPaidFor === v?.id || justPaidFor === v?.slug)
-  const owned = justPaid || (accessReady && !locked)
-  const needsPayment = locked && Number(v?.priceTzs || 0) > 0 && !justPaid
+  const { accessReady, locked, justPaid, owned, needsPayment } = watchLockState({
+    playback: p,
+    loading: playback.loading,
+    justPaidFor,
+    videoId,
+    video: v,
+  })
   const signedIn = Boolean(getAccessToken())
 
   // A shared link should preview sensibly, and the tab should say what it is.

@@ -53,13 +53,31 @@ export function requireAuth() {
   }
 }
 
-/** Attach the user when a token is present, but allow anonymous callers. */
+/**
+ * Attach the user when a token is present, but allow anonymous callers.
+ *
+ * The swallowed error is deliberate — these routes must answer a stranger — but
+ * silently is not. `/api/playback/:id/playback` answers per viewer, so an expired
+ * token here returns a perfectly good `200` describing a preview, and the client
+ * has no way to tell that from genuinely not owning the video. It cannot refresh,
+ * because refreshing is triggered by a 401 that never comes. The viewer sees
+ * Unlock on a film they paid for, and the only cure is signing out and back in.
+ *
+ * So: still 200, still anonymous, but say so in a header. A caller that sent a
+ * token and gets this back knows to refresh and ask again. It is only set when a
+ * token was actually presented — a signed-out viewer is not a problem to report.
+ */
 export function optionalAuth() {
-  return async (req, _res, next) => {
+  return async (req, res, next) => {
+    const presentedToken = Boolean(bearer(req))
     try {
       req.user = (await attachUser(req)) || null
     } catch {
-      req.user = null // an invalid token simply means "not signed in" here
+      req.user = null
+      if (presentedToken) {
+        req.authRejected = true
+        res.setHeader('X-Auth-Status', 'expired')
+      }
     }
     next()
   }

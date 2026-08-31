@@ -101,6 +101,17 @@ app.use(
       cb(null, isAllowedOrigin(origin))
     },
     credentials: true,
+    /**
+     * The apps are on a different origin, and a cross-origin response only
+     * exposes a handful of headers to JavaScript unless it is told otherwise.
+     * Both of these are read by the client, so without this they arrive at the
+     * browser and are then invisible to the code that needs them:
+     *
+     * `X-Auth-Status` tells a caller its token was rejected on a route that
+     * answers anonymously anyway — without it the client cannot know to refresh.
+     * `X-Build` is how a deploy is confirmed from the browser console.
+     */
+    exposedHeaders: ['X-Auth-Status', 'X-Build'],
   })
 )
 

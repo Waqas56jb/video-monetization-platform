@@ -1,5 +1,6 @@
 import { getItem, setItem, removeItem } from './safeStorage'
 import { DEPLOY } from './deployUrls'
+import { refreshTokenRejected } from './sessionRules'
 
 /**
  * The single door to the backend.
@@ -121,11 +122,17 @@ async function refreshAccessToken() {
         }
 
         /**
-         * The server has looked at the refresh token and said no. That is a
-         * real answer, and the session is genuinely finished.
+         * Only end the session when the server actually judged the token.
+         *
+         * Every non-2xx used to land here, so one 429 or a 502 during a deploy
+         * signed the viewer out mid-session — and since the app then looks
+         * anonymous, a video they had paid for came back showing Unlock, with
+         * nothing on screen saying they had been logged out. See sessionRules.js.
          */
-        clearSession()
-        announceExpiry()
+        if (refreshTokenRejected(res.status)) {
+          clearSession()
+          announceExpiry()
+        }
         return null
       })
       .catch(() => {
@@ -185,6 +192,21 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
       const fresh = await refreshAccessToken()
       if (fresh) return request(path, { method, body, auth, retry: false, signal })
     }
+  }
+
+  /**
+   * A 200 that quietly means "we did not believe your token".
+   *
+   * Routes that serve anonymous callers — the playback endpoint above all —
+   * answer 200 with a preview when the token has expired, because from their
+   * side an unknown viewer is a normal viewer. No 401 is ever produced, so the
+   * block above never runs, and the person who bought the film is shown Unlock.
+   * The server now says so in a header; this acts on it exactly as it would on a
+   * 401, once.
+   */
+  if (token && retry && res.headers.get('X-Auth-Status') === 'expired' && getRefreshToken()) {
+    const fresh = await refreshAccessToken()
+    if (fresh) return request(path, { method, body, auth, retry: false, signal })
   }
 
   if (res.status === 204) return null
