@@ -119,9 +119,20 @@ test('a purchase of A remounts Watch and cannot unlock B', () => {
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
   assert.match(src, /justPaidFor/)
   assert.match(src, /playbackRouteMatches/)
-  assert.match(src, /justPaidFor === v\?\.id/)
   assert.match(src, /setJustPaidFor\(v\?\.id \|\| videoId\)/)
   assert.match(src, /showLockGate/)
+
+  /**
+   * The rule that `justPaidFor` is compared against this video — rather than
+   * being a boolean that stayed true on the next one — moved to
+   * `@/lib/watchLock.js`, where it is tested by being run instead of matched.
+   * What is left here is that the page defers to it.
+   */
+  assert.match(src, /import \{ watchLockState \} from '@\/lib\/watchLock'/)
+  assert.match(src, /const \{ accessReady, locked, justPaid, owned, needsPayment \} = watchLockState\(/)
+
+  const rule = readFileSync(join(dir, '../lib/watchLock.js'), 'utf8')
+  assert.match(rule, /justPaidFor === video\?\.id/)
 })
 
 test('the iframe URL is pinned to its source — a growing startAt never reloads the player', () => {

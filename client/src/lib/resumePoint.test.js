@@ -75,3 +75,30 @@ test('paying without watching still starts at the beginning', () => {
     1
   )
 })
+
+/**
+ * The end-to-end version of the same rule, written while diagnosing "a video I
+ * bought shows Unlock". Once the paywall is cleared the film has to open where
+ * the preview stopped, and 217s is the real preview length of the title the
+ * report was about — `live-at-arusha-full-set`, 217 of 653 seconds.
+ */
+test('stopped at 217 s → the full player starts at 217', () => {
+  // The paywall halts the preview: the player reports 0, the page captured 217.
+  assert.equal(
+    resumePoint({ captured: 217, watchedTo: 0, remembered: 0, stopsAt: 217, previewEnded: true }),
+    217
+  )
+  // And with nothing captured, the preview's own stop still carries it.
+  assert.equal(resumePoint({ stopsAt: 217, previewEnded: true }), 217)
+  // Never past the end of the preview when that is all the evidence there is.
+  assert.ok(resumePoint({ stopsAt: 217, previewEnded: true }) <= 217)
+})
+
+test('the resume second survives the round trip into the player as a number', () => {
+  // StreamPlayer builds `startAt` from this; a string or NaN silently starts
+  // the film at zero, which is the original complaint all over again.
+  const from = resumePoint({ captured: 217, stopsAt: 217, previewEnded: true })
+  assert.equal(typeof from, 'number')
+  assert.ok(Number.isFinite(from))
+  assert.equal(Math.floor(from), 217)
+})
