@@ -28,8 +28,21 @@ import {
   instagramHref,
   isTouchMobile,
   tiktokHref,
-  whatsappHref,
 } from '@/lib/socialShare'
+/**
+ * WhatsApp is its own module, and deliberately not socialShare's version.
+ *
+ * socialShare exported a whatsappHref pointing at api.whatsapp.com. On iPad that
+ * loads a marketing page rather than the app and produced the client's report,
+ * verbatim: "Something went wrong. The application couldn't be opened." The
+ * correct implementation had already been written here and nothing imported it.
+ *
+ * All three are taken, not just the URL. `whatsapp://` is the right scheme for a
+ * phone and it fails silently when WhatsApp is not installed — where the old
+ * https URL at least loaded something. `whatsappFallback` is what covers that,
+ * so importing the href alone would trade one dead end for another.
+ */
+import { whatsappFallback, whatsappHref, whatsappTarget } from '@/lib/whatsappShare'
 import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
@@ -165,7 +178,18 @@ export default function ShareSheet({ open, video, share, onClose }) {
     }
     warm()
     const href = whatsappHref(shareUrl)
-    if (isTouchMobile()) {
+    /**
+     * The target follows the URL, not the touchscreen.
+     *
+     * This branched on isTouchMobile(), which is true for an iPad — so an iPad
+     * navigated the whole page away to a web URL it could perfectly well have
+     * opened in a tab. whatsappTarget() asks the narrower question: only a phone
+     * is leaving for a native app, and only a phone should lose this page.
+     */
+    if (whatsappTarget() === '_self') {
+      /* Armed before the navigation, because the tap has already gone to the
+         app scheme by the time it runs — a device with WhatsApp never sees it. */
+      whatsappFallback(shareUrl)()
       window.location.href = href
     } else {
       window.open(href, '_blank', 'noopener,noreferrer')

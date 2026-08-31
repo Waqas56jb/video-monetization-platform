@@ -10,7 +10,7 @@ import {
   playbackRouteMatches,
   whatsappShareText,
 } from './watchUrl.js'
-import { whatsappHref } from './socialShare.js'
+import { whatsappHref, whatsappTarget } from './whatsappShare.js'
 import { authUrl, safeNext } from './nextPath.js'
 import { adCanSkip, adSkipRules } from './adSkip.js'
 
@@ -58,12 +58,86 @@ test('WhatsApp payload is the share URL only — OG card supplies title and post
   assert.equal(text.endsWith('.mp4'), false)
 })
 
-test('WhatsApp opens the official send URL with only the watch link', () => {
+/** Pretend to be a device for the length of one assertion. */
+function asDevice(navigatorLike, run) {
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', {
+    value: navigatorLike,
+    configurable: true,
+    writable: true,
+  })
+  try {
+    run()
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'navigator', had)
+    else delete globalThis.navigator
+  }
+}
+
+const IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
+const IPAD_AS_MAC =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+const MAC = IPAD_AS_MAC
+
+test('WhatsApp never goes through api.whatsapp.com', () => {
+  // That URL loads a marketing page rather than the app, and is what produced
+  // the client's iPad report: "Something went wrong. The application couldn't
+  // be opened." The previous version of this test asserted it, so the suite
+  // was defending the bug.
   const url = `${ORIGIN}/watch/studio-session-track-4`
-  const href = whatsappHref(url)
-  assert.equal(href.startsWith('https://api.whatsapp.com/send?text='), true)
-  assert.ok(href.includes(encodeURIComponent(url)))
-  assert.equal(href.includes('.mp4'), false)
+  for (const nav of [
+    { userAgent: IPHONE, platform: 'iPhone', maxTouchPoints: 5 },
+    { userAgent: IPAD_AS_MAC, platform: 'MacIntel', maxTouchPoints: 5 },
+    { userAgent: MAC, platform: 'MacIntel', maxTouchPoints: 0 },
+  ]) {
+    asDevice(nav, () => {
+      assert.doesNotMatch(whatsappHref(url), /api\.whatsapp\.com/)
+    })
+  }
+})
+
+test('a phone gets the app scheme and leaves the page; everything else opens a tab', () => {
+  const url = `${ORIGIN}/watch/studio-session-track-4`
+
+  asDevice({ userAgent: IPHONE, platform: 'iPhone', maxTouchPoints: 5 }, () => {
+    assert.equal(whatsappHref(url).startsWith('whatsapp://send?text='), true)
+    assert.equal(whatsappTarget(), '_self')
+  })
+
+  // iPadOS reports itself as a Mac; only maxTouchPoints gives it away. It has
+  // no reliable WhatsApp app, so it takes the web URL — in a new tab, rather
+  // than navigating the watch page away as the old touch-based branch did.
+  asDevice({ userAgent: IPAD_AS_MAC, platform: 'MacIntel', maxTouchPoints: 5 }, () => {
+    assert.equal(whatsappHref(url).startsWith('https://web.whatsapp.com/send?text='), true)
+    assert.equal(whatsappTarget(), '_blank')
+  })
+
+  asDevice({ userAgent: MAC, platform: 'MacIntel', maxTouchPoints: 0 }, () => {
+    assert.equal(whatsappHref(url).startsWith('https://web.whatsapp.com/send?text='), true)
+    assert.equal(whatsappTarget(), '_blank')
+  })
+})
+
+test('the WhatsApp payload is the watch URL and nothing else', () => {
+  // A caption before the link pushes the URL out of WhatsApp's first-link
+  // detection, and it then sends a paragraph plus a tiny site icon instead of
+  // the poster card.
+  const url = `${ORIGIN}/watch/studio-session-track-4?s=abc`
+  asDevice({ userAgent: IPHONE, platform: 'iPhone', maxTouchPoints: 5 }, () => {
+    const href = whatsappHref(url)
+    assert.equal(href, `whatsapp://send?text=${encodeURIComponent(url)}`)
+    assert.equal(href.includes('.mp4'), false)
+  })
+})
+
+test('socialShare no longer exports a WhatsApp URL for anyone to pick by mistake', async () => {
+  const socialShare = await import('./socialShare.js')
+  assert.equal('whatsappHref' in socialShare, false)
+  // The helpers other screens depend on must survive the removal.
+  assert.equal(typeof socialShare.isTouchMobile, 'function')
+  assert.equal(typeof socialShare.instagramHref, 'function')
+  assert.equal(typeof socialShare.tiktokHref, 'function')
 })
 
 test('More… payload is title + url only (no caption text)', () => {

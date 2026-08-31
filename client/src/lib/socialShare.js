@@ -57,10 +57,15 @@ export function facebookHref(watchUrl) {
   return web
 }
 
-/** Universal WhatsApp share — opens the app on a phone, WhatsApp Web on a laptop. */
-export function whatsappHref(watchUrl) {
-  return `https://api.whatsapp.com/send?text=${encodeURIComponent(String(watchUrl || '').trim())}`
-}
+/**
+ * WhatsApp deliberately does not live here — see `@/lib/whatsappShare`.
+ *
+ * There was a `whatsappHref` in this file returning an api.whatsapp.com URL. On
+ * iPad that opens a marketing page instead of the app and produced the reported
+ * "Something went wrong. The application couldn't be opened." It is removed
+ * rather than left beside the correct one, because the two were interchangeable
+ * at the import site and the wrong one had already been picked once.
+ */
 
 export function socialTarget() {
   return isTouchMobile() ? '_self' : '_blank'
