@@ -43,14 +43,42 @@ export async function warmJwks() {
   }
 }
 
+/**
+ * Build a Supabase client, and say so plainly when the configuration is wrong.
+ *
+ * `createClient` validates its arguments and throws a bare `Error` — "Invalid
+ * supabaseUrl", "supabaseKey is required" — which reached the error handler as
+ * an unrecognised throw and became a 500 reading "Something went wrong on our
+ * side". Sign-in was down on the live site with that as the only symptom, and
+ * the cause was unreachable without the hosting dashboard.
+ *
+ * It is a 503: the service genuinely cannot do the work, and it is our
+ * configuration at fault rather than the caller's request. The library's own
+ * message is passed through because it describes a variable an operator sets,
+ * not anything belonging to the person signing in — the same contract as the
+ * "Supabase is not configured" message above it.
+ */
+function build(keyName, make) {
+  try {
+    return make()
+  } catch (err) {
+    throw serviceUnavailable(
+      `Supabase rejected this server's configuration: ${err.message} ` +
+        `Check SUPABASE_URL and ${keyName} on the host.`
+    )
+  }
+}
+
 export function anonClient() {
   if (!env.supabase.url || !env.supabase.anonKey) {
     throw serviceUnavailable('Supabase is not configured (SUPABASE_URL / SUPABASE_ANON_KEY)')
   }
   if (!anon) {
-    anon = createClient(env.supabase.url, env.supabase.anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    anon = build('SUPABASE_ANON_KEY', () =>
+      createClient(env.supabase.url, env.supabase.anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    )
   }
   return anon
 }
@@ -63,9 +91,11 @@ export function supabaseAdmin() {
     )
   }
   if (!admin) {
-    admin = createClient(env.supabase.url, env.supabase.serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    admin = build('SUPABASE_SERVICE_ROLE_KEY', () =>
+      createClient(env.supabase.url, env.supabase.serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    )
   }
   return admin
 }
