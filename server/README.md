@@ -8,12 +8,26 @@ Node.js API for the MTONYO+ video monetization platform.
 
 Everything lives in `server/`. Nothing backend sits outside it.
 
-> **Before any CLI deploy:** the Vercel project lives in the **client's** team, not the
-> developer's. Run `vercel login` with the invited account first, then `vercel link` — the
-> old `server/.vercel/` link pointed at `video-monetization-platform-backend`, a project
-> that no longer exists, so `vercel` from here targeted nothing. Cloudflare's Stream
-> webhook was aimed at that same dead host from 9 to 31 August and every
-> encoding notification in that window was lost; see `scripts/reconcile-stream.mjs`.
+> **Hosting: Railway, and only Railway.** `https://video-monetization-platform-production.up.railway.app`
+> — a persistent process running `npm start`, deployed from `main`. Region is a dashboard
+> setting here, not a file in this repository, and it matters: the database is in Supabase
+> `eu-west-1`, and every kilometre between them is paid on every query. See `RAILWAY-MOVE.md`.
+>
+> **Do not deploy this directory to Vercel.** It was there until 2026-08-31 and the move is
+> deliberate. `server/vercel.json` and `server/api/index.js` are both gone, so a Vercel build
+> from here now fails rather than quietly serving a second, stale copy of the API. The two
+> nightly crons that lived in that `vercel.json` are now in-process (`src/jobs/scheduler.js`)
+> — that is the part of the move most easily lost, because a cron that stops is invisible
+> from outside for days.
+>
+> The frontends (`client/`, `admin/`) **do** stay on Vercel, in the **client's** team rather
+> than the developer's — `vercel login` with the invited account before linking either.
+>
+> Why any of this is worth reading: the old backend host was
+> `video-monetization-platform-backend.vercel.app`, a project that no longer exists.
+> Cloudflare's Stream webhook stayed aimed at it from 9 to 31 August and every encoding
+> notification in that window was lost. The webhook now points at Railway with signature
+> verification on; `scripts/reconcile-stream.mjs` repaired the damage.
 
 ---
 

@@ -3,7 +3,7 @@
  * Creator-application flow against a running API.
  *
  *   node scripts/test-creator-apply-flow.js
- *   node scripts/test-creator-apply-flow.js https://video-monetization-platform-server.vercel.app
+ *   node scripts/test-creator-apply-flow.js https://video-monetization-platform-production.up.railway.app
  *
  * Registers a throwaway viewer (even when asking for Create), submits the
  * full application, and checks that the studio is still closed.

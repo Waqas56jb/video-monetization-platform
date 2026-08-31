@@ -59,7 +59,7 @@ export function healShareCard(slug, onRefresh) {
   healing.add(slug)
 
   const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '') ||
-    'https://video-monetization-platform-server.vercel.app'
+    'https://video-monetization-platform-production.up.railway.app'
 
   fetch(`${apiBase}/api/share-card/${encodeURIComponent(slug)}/ensure`, { method: 'POST' })
     .then(() =>

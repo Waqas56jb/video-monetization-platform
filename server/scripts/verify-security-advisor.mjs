@@ -93,14 +93,14 @@ if (url && anon) {
 
 let api = { videos: null, stats: null, share: null }
 try {
-  const v = await fetch('https://video-monetization-platform-server.vercel.app/api/videos?limit=1')
+  const v = await fetch('https://video-monetization-platform-production.up.railway.app/api/videos?limit=1')
   const body = await v.json()
   api.videos = { status: v.status, count: Array.isArray(body.videos) ? body.videos.length : null }
 } catch (err) {
   api.videos = { error: err.message }
 }
 try {
-  const s = await fetch('https://video-monetization-platform-server.vercel.app/api/stats')
+  const s = await fetch('https://video-monetization-platform-production.up.railway.app/api/stats')
   api.stats = { status: s.status }
 } catch (err) {
   api.stats = { error: err.message }

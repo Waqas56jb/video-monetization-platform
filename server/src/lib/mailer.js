@@ -49,10 +49,11 @@ async function getTransport() {
       /**
        * Fail fast and loudly.
        *
-       * Without these, a refused or black-holed connection sits there until
-       * `maxDuration` (30s in vercel.json) kills the whole request, producing no
-       * error anyone can read. Ten seconds is far longer than a healthy SMTP
-       * handshake ever needs.
+       * Without these, a refused or black-holed connection just sits there. On
+       * Vercel a 30s `maxDuration` eventually killed the request, producing no
+       * error anyone could read; on Railway nothing kills it at all, so the
+       * caller waits on a socket that is never going to answer. Ten seconds is
+       * far longer than a healthy SMTP handshake ever needs.
        */
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,

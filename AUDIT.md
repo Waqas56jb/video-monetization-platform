@@ -1,5 +1,14 @@
 # MTONYO+ Audit — 2026-08-31 — commit `4419c9c` (`main`, clean tree)
 
+> **2026-08-31 — the backend has since moved.** Every `…-server.vercel.app`
+> URL below refers to the API's Vercel deployment, which was retired on this date.
+> The API now runs on Railway at
+> `https://video-monetization-platform-production.up.railway.app`. The two
+> frontends are still Vercel projects. This document is left as written because it
+> is a record of what was measured at the time, and rewriting the hosts would make
+> the measurements unreproducible and the reasoning harder to follow.
+
+
 Live measurements in this report were taken 2026-08-31 ~08:15 UTC against the three
 production Vercel deployments. Every network figure quoted is from an actual request,
 not an estimate. Code-only conclusions are labelled.
@@ -825,6 +834,28 @@ the repo.
    cannot measure whether 1–3 worked. Do it *with* them, not after.
 
 **Tier 2 — the player wait (Medium, server)**
+
+> **Revised 2026-08-31, after the backend moved to Railway.** Two of these items were
+> written for a serverless host and no longer apply the same way; the rest got *more*
+> valuable, not less. See `RAILWAY-MOVE.md` for the measurements.
+>
+> - **Cold start is no longer the problem.** Railway runs one persistent process, so there
+>   is no per-request cold start to pay and no keep-warm to schedule. Item 10's "consider a
+>   keep-warm, which needs a paid Vercel plan" is **obsolete** — do not act on it.
+> - **Item 5 (Sharp off the cold path) survives but for a different reason.** It no longer
+>   saves a cold start per request; it saves boot time on deploy and restart, and keeps a
+>   native image library out of a process that serves payments. Worth keeping, lower value.
+> - **Items 6, 7, 8, 9 became the main event.** Measured after the move: a database round
+>   trip costs roughly **51 ms** from Railway against roughly **0 ms** from Vercel's Dublin
+>   region, which sat beside Supabase in `eu-west-1`. So cutting `GET /api/videos/:slug`
+>   from six queries to one is worth ~250 ms on Railway where it was worth ~40 ms on Vercel.
+>   Serial queries are now the dominant cost on this path.
+> - **`includeFiles` for `client/api/watch` still applies unchanged.** That function is a
+>   Vercel serverless function on the *frontend* project, which did not move.
+> - **New, and it outranks all of the above:** the API and the database are no longer
+>   co-located. Moving the Railway service to a European region would remove that ~51 ms
+>   per query outright — more than every code change in this tier combined. Check the
+>   region in the Railway dashboard first; it is a setting, not a code change.
 
 5. Lazy-import `getFallbackShareCard` in `shareCardServe.js` so `sharp` leaves the cold path.
 6. Remove `readCardStatus` from `GET /api/videos/:id` — store `card_ready` as a boolean
