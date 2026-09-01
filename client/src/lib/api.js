@@ -385,7 +385,17 @@ export const api = {
   },
 
   library: {
+    /* All four rows in one response — Purchased, Continue Watching, My List and
+       Recently Watched. Four separate calls would be four requests every time
+       the tab is opened, against a limiter of 120 a minute. */
     list: () => get('/api/library'),
+    /* Home wants the one small row, not a whole library. */
+    continueWatching: (limit = 12) => get(`/api/library/continue?limit=${limit}`),
+    saved: () => get('/api/library/saved'),
+    save: (videoId) => post(`/api/library/saved/${encodeURIComponent(videoId)}`),
+    unsave: (videoId) => del(`/api/library/saved/${encodeURIComponent(videoId)}`),
+    /* Hides the row; the resume position is kept, so reopening still continues. */
+    forget: (videoId) => del(`/api/library/history/${encodeURIComponent(videoId)}`),
     purchases: () => get('/api/library/purchases'),
     entitlement: (videoId) => get(`/api/library/entitlement/${videoId}`),
   },

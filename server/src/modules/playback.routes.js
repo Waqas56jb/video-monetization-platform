@@ -419,10 +419,15 @@ const progressHandlers = [
         : seconds
 
       await query(
+        /* `hidden_at = null` on conflict: watching more of a video that was
+           removed from history puts it back. Somebody who removed a film and
+           then went back to it plainly wants it in their list again, and making
+           them find a second control to undo the first is the kind of thing the
+           client has already had to point out. */
         `insert into watch_progress (user_id, video_id, seconds, updated_at)
          values ($1,$2,$3, now())
          on conflict (user_id, video_id)
-         do update set seconds = excluded.seconds, updated_at = now()`,
+         do update set seconds = excluded.seconds, updated_at = now(), hidden_at = null`,
         [req.user.id, video.id, capped]
       )
 

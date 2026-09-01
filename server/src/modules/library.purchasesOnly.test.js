@@ -4,10 +4,16 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const src = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'library.routes.js'),
-  'utf8'
-)
+const dir = dirname(fileURLToPath(import.meta.url))
+const routes = readFileSync(join(dir, 'library.routes.js'), 'utf8')
+/**
+ * The queries moved to `lib/libraryRows.js` when My Library grew its other three
+ * rows. The promise below is about the QUERY, not about which file it sits in,
+ * so this reads both — narrowing it to whichever file still happened to match
+ * would have quietly stopped testing anything.
+ */
+const rows = readFileSync(join(dir, '..', 'lib', 'libraryRows.js'), 'utf8')
+const src = routes + rows
 
 /**
  * My Library lists purchases, and only purchases.
@@ -23,6 +29,20 @@ test('the library reads purchases, scoped to the caller and to active rows', () 
   assert.match(src, /from purchases pu/)
   assert.match(src, /where pu\.user_id = \$1 and pu\.status = 'active'/)
   assert.match(src, /from purchases where user_id = \$1 and status = 'active'/)
+})
+
+/**
+ * And the three new rows are the viewer's own history, keyed the same way.
+ *
+ * Continue Watching, My List and Recently Watched all read tables scoped to
+ * `user_id = $1`. A row that leaked another viewer's history would be the same
+ * class of mistake as a library that listed somebody else's purchases.
+ */
+test('every library row is scoped to the caller', () => {
+  assert.match(rows, /from watch_progress wp[\s\S]*?where wp\.user_id = \$1/)
+  assert.match(rows, /from saved_videos sv[\s\S]*?where sv\.user_id = \$1/)
+  // Hidden rows stay out of both history rows.
+  assert.match(rows, /wp\.hidden_at is null/)
 })
 
 test('nothing in the library is decided by staff or creator access', () => {

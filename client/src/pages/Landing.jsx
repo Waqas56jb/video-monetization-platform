@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/components/landing/Hero'
 import Marquee from '@/components/landing/Marquee'
+import ContinueWatching from '@/components/landing/ContinueWatching'
 import Trending from '@/components/landing/Trending'
 import HowItWorks from '@/components/landing/HowItWorks'
 import AccessModels from '@/components/landing/AccessModels'
@@ -42,6 +43,10 @@ export default function Landing() {
       <Header />
       <Hero />
       <Marquee />
+      {/* Above Trending, and only for a signed-in viewer with something to
+          continue. It renders nothing otherwise, so the page is unchanged for
+          everybody else. */}
+      <ContinueWatching />
       <Trending />
       <HowItWorks />
       <AccessModels />

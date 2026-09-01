@@ -23,6 +23,7 @@ import ReportDialog from '@/components/watch/ReportDialog'
 import MoreLikeThis from '@/components/watch/MoreLikeThis'
 import BusyButton from '@/components/ui/BusyButton'
 import FollowButton from '@/components/ui/FollowButton'
+import SaveButton from '@/components/ui/SaveButton'
 import { ErrorState } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { API_BASE, getAccessToken, mediaUrl } from '@/lib/api'
@@ -1123,6 +1124,9 @@ export default function Watch() {
                   <span className="ob-short">{accessReason.short}</span>
                 </span>
               )}
+              {/* Next to Share, because they are the same kind of decision:
+                  "keep this" and "send this". */}
+              <SaveButton videoId={v.id} className="btn-sm" />
               <BusyButton
                 className="btn btn-ghost btn-sm"
                 busy={shareOpening}

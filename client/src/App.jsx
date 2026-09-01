@@ -4,6 +4,7 @@ import { ToastProvider } from '@/context/ToastContext'
 import { ProgressProvider, useProgress } from '@/context/ProgressContext'
 import { AuthProvider } from '@/context/AuthContext'
 import { FollowProvider } from '@/context/FollowContext'
+import { SavedProvider } from '@/context/SavedContext'
 import Preloader from '@/components/layout/Preloader'
 import BackgroundFX from '@/components/layout/BackgroundFX'
 import ScrollToTop from '@/components/layout/ScrollToTop'
@@ -75,6 +76,7 @@ export default function App() {
       <AuthProvider>
       {/* Inside AuthProvider: it only asks who you follow once it knows who you are. */}
       <FollowProvider>
+      <SavedProvider>
       <Preloader />
       <BackgroundFX />
       <ScrollToTop />
@@ -100,6 +102,7 @@ export default function App() {
         <Route path="/legal/:doc" element={<Legal />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </SavedProvider>
       </FollowProvider>
       </AuthProvider>
       </ProgressProvider>

@@ -388,6 +388,31 @@ input,select,textarea{font-family:inherit}
 .follow-sm svg{width:13px;height:13px}
 .follow-md{padding:11px 20px;font-size:13.5px}
 .follow-btn.is-following{color:var(--muted)}
+
+/* ---------- SAVE / MY LIST ---------- */
+/* Above the stretched card link (z-index 1) so it takes its own tap. Sized 36px
+   so it clears the 40px tap-target bar on touch once its padding is counted. */
+.save-pin{position:absolute;top:10px;right:10px;z-index:3;width:36px;height:36px;display:grid;place-items:center;
+  border:0;border-radius:50%;background:rgba(10,10,18,.62);color:#fff;cursor:pointer;
+  backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent;transition:background .25s,color .25s}
+.save-pin.is-saved{background:rgba(245,197,24,.94);color:#1a1200}
+.save-pin[aria-busy='true']{opacity:.85}
+.save-btn{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px}
+.save-btn.is-saved{color:var(--gold);border-color:rgba(245,197,24,.45)}
+
+/* ---------- MY LIBRARY ROWS ---------- */
+.lib-row{margin-bottom:34px}
+.lib-row-head{margin-bottom:14px}
+.lib-row-head h3{font-family:'Sora';font-size:17px;font-weight:800}
+.lib-row-head p{color:var(--muted2);font-size:12.5px;margin-top:3px}
+.lib-item{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0}
+.lib-item .vid-card{flex:1}
+.lib-progress{height:4px;border-radius:99px;background:var(--border2);overflow:hidden}
+.lib-progress span{display:block;height:100%;background:var(--gold);border-radius:99px}
+/* Top-LEFT, because the Save pin owns the top-right corner of every poster. */
+.lib-forget{position:absolute;top:10px;left:10px;z-index:3;width:36px;height:36px;display:grid;place-items:center;
+  border:0;border-radius:50%;background:rgba(10,10,18,.62);color:#fff;cursor:pointer;
+  backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent}
 .vid-meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border2);padding-top:13px}
 .vid-price{font-family:'Sora';font-weight:800;color:var(--gold);font-size:16px}
 .vid-price small{font-size:10.5px;color:var(--muted2);display:block;font-weight:600;font-family:'Inter'}

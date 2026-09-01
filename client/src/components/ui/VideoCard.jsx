@@ -4,6 +4,7 @@ import { Play } from 'lucide-react'
 import Icon from './Icon'
 import Reveal from './Reveal'
 import FollowButton from './FollowButton'
+import SaveButton from './SaveButton'
 import useInView from '@/hooks/useInView'
 import { prefetchWatch, prefetchWatchLight, prefetchWatchChunk } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
@@ -127,6 +128,10 @@ export default function VideoCard({
           />
         )}
         <span className="vid-shade" aria-hidden="true" />
+        {/* Top-right of the poster, above the stretched link so it takes its own
+            tap. Icon only: the tile has no room for a label and the tooltip and
+            aria-label carry the meaning. */}
+        {id && <SaveButton videoId={id} size="sm" />}
         {time && <span className="vid-time">{time}</span>}
         <div className="vid-play">
           <span>
