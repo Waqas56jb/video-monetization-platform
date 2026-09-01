@@ -12,3 +12,6 @@ dist/
 
 # Real production test credentials — never commit
 E2E-ACCOUNTS.md
+
+# render-smoke build output
+.smoke-out/
