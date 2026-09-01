@@ -965,7 +965,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 /* --- true mobile viewport height (avoids the iOS 100vh address-bar jump) --- */
 @supports (height:100dvh){
   .hero{min-height:min(100dvh,920px)}
-  .auth-wrap,.dash,.page{min-height:100dvh}
+  /* `.explore` was the one full-height section this block missed. On iOS the URL
+     bar collapses as you scroll, 100vh changes with it, and the section resizes
+     under the finger — which is both the blank strip at the bottom of Explore
+     and the "screen vibrates" the client reported on iPad. */
+  .auth-wrap,.dash,.page,.explore{min-height:100dvh}
   .sidebar{height:100dvh}
   #preloader,.landing-boot{height:100dvh}
   .modal-card{max-height:88dvh}
