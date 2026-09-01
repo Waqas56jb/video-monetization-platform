@@ -41,10 +41,25 @@ export function videoRouteMatches(idOrSlug, video) {
  * Playback JSON is per video. After /watch/A → /watch/B the previous
  * payload can still be in memory until the next fetch returns — that
  * payload must not decide B's lock, badge, or iframe.
+ *
+ * `routeKey` is the `:idOrSlug` from the address, and it is what lets the page
+ * accept a payload before `/api/videos` has answered. Requiring the loaded video
+ * row made the player wait for a second request that had nothing to add: on
+ * production the playback response lands at ~500 ms and the iframe did not mount
+ * until ~1150 ms, purely because the id it was being compared against arrived
+ * with the other one.
+ *
+ * The guard it exists for is unchanged. A payload for A is still refused on B's
+ * route, because A's payload carries neither B's id nor B's slug. Passing no
+ * `routeKey` keeps the original behaviour exactly, so callers that do have the
+ * video row are unaffected.
  */
-export function playbackRouteMatches(playback, video) {
-  if (!playback || !video?.id) return false
-  return playback.videoId === video.id
+export function playbackRouteMatches(playback, video, routeKey = null) {
+  if (!playback) return false
+  if (video?.id) return playback.videoId === video.id
+  if (!routeKey) return false
+  const key = decodeURIComponent(String(routeKey))
+  return key === playback.videoId || key === playback.slug
 }
 
 export function whatsappShareText(watchUrl) {
