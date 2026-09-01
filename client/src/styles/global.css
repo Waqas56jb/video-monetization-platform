@@ -361,8 +361,25 @@ input,select,textarea{font-family:inherit}
 .vid-play svg{width:24px;height:24px;margin-left:3px}
 .vid-info{padding:18px}
 .vid-info h4{font-size:15.5px;font-weight:700;margin-bottom:5px;line-height:1.4}
-.vid-info .by{font-size:12.5px;color:var(--muted2);display:flex;align-items:center;gap:7px;margin-bottom:14px}
+/* The whole tile is this one link. `::after` stretches it over the card so a tap
+   anywhere activates a real anchor and navigates on the first tap; the creator
+   link and Follow sit above it on z-index 2 and take their own taps. */
+.vid-open{color:inherit;text-decoration:none;font:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;display:block;width:100%}
+.vid-open::after{content:'';position:absolute;inset:0;z-index:1}
+.vid-info .by{font-size:12.5px;color:var(--muted2);display:flex;align-items:center;gap:7px;margin-bottom:14px;min-height:26px}
 .vid-info .by img{width:22px;height:22px;border-radius:50%;object-fit:cover}
+.vid-by-link{position:relative;z-index:2;color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;min-width:0;border-radius:8px}
+.vid-by-link>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vid-by-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- FOLLOW ---------- */
+.follow-btn{position:relative;z-index:2;display:inline-flex;align-items:center;gap:7px;flex-shrink:0}
+.follow-btn .follow-count{opacity:.75;font-variant-numeric:tabular-nums}
+.follow-btn[aria-busy='true']{opacity:.85}
+.follow-sm{margin-left:auto;padding:5px 11px;font-size:11.5px;font-weight:700;border-radius:99px;min-height:32px}
+.follow-sm svg{width:13px;height:13px}
+.follow-md{padding:11px 20px;font-size:13.5px}
+.follow-btn.is-following{color:var(--muted)}
 .vid-meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border2);padding-top:13px}
 .vid-price{font-family:'Sora';font-weight:800;color:var(--gold);font-size:16px}
 .vid-price small{font-size:10.5px;color:var(--muted2);display:block;font-weight:600;font-family:'Inter'}
@@ -736,7 +753,15 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .creator-row img{width:54px;height:54px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)}
 .creator-row b{display:flex;align-items:center;gap:6px;font-family:'Sora';font-size:16px}
 .creator-row small{color:var(--muted2);font-size:12.5px}
-.creator-row .btn{margin-left:auto}
+.creator-row-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Same stretched-link pattern as the cards: the name carries the only link and
+   covers the row, so tapping the row still opens the profile on the first tap,
+   while Follow and Profile sit above it and take their own taps. */
+.creator-open{color:inherit;text-decoration:none}
+.creator-open::after{content:'';position:absolute;inset:0;z-index:1}
+.creator-row-actions>*{position:relative;z-index:2}
+.creator-row{transition:border-color .25s}
+.creator-row:hover{border-color:var(--purple)}
 .watch-desc{color:var(--muted);font-size:14.8px;line-height:1.85;background:var(--card);border:1px solid var(--border2);border-radius:18px;padding:24px}
 
 /* ---------- MODALS ---------- */
@@ -896,7 +921,8 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .hstat span{font-size:9.5px;letter-spacing:.2px}
   .cta-wrap{padding:60px 22px}
   .watch-info-top{flex-direction:column}
-  .creator-row .btn{margin-left:0;width:100%}
+  .creator-row-actions{margin-left:0;width:100%}
+  .creator-row-actions>*{flex:1 1 auto;justify-content:center}
   .ctrl-hide-sm{display:none}
   .pb-free-full{display:none}
   .pb-free-short{display:inline}
@@ -3104,8 +3130,8 @@ html.is-touch .btn:active{transform:scale(.97)}
   text-decoration:none;cursor:default;pointer-events:none;
 }
 .pw-share-card > small{display:block;margin-top:8px;color:var(--muted2);font-size:11.5px;line-height:1.5}
-a.creator-row{color:inherit;text-decoration:none;transition:border-color .25s}
-a.creator-row:hover{border-color:var(--purple)}
+/* `a.creator-row` is gone: the row is a <div> since Follow moved into it, and
+   its hover and colour rules moved up beside `.creator-row` itself. */
 
 /* The header is fixed, so every page has to open below it. This one did not,
    and the Back button sat underneath it at every width. */

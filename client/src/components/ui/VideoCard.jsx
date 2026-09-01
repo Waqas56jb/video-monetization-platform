@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Play } from 'lucide-react'
 import Icon from './Icon'
 import Reveal from './Reveal'
+import FollowButton from './FollowButton'
 import useInView from '@/hooks/useInView'
 import { prefetchWatch, prefetchWatchLight, prefetchWatchChunk } from '@/lib/prefetchWatch'
 import { useProgress } from '@/context/ProgressContext'
@@ -11,6 +12,18 @@ import { markPerf } from '@/lib/perfLog'
 /**
  * The trending / library video card. Used on the landing grid and inside the
  * dashboard library, with the same hover-zoom + pulsing play button.
+ *
+ * THE CARD IS NO LONGER ONE BIG ANCHOR. It carries two more controls now — the
+ * creator's name, which goes to their page, and Follow — and an anchor inside an
+ * anchor is invalid HTML that browsers resolve by silently closing the outer
+ * one, which breaks the card in ways that differ per engine.
+ *
+ * The pattern instead: the card is an `<article>`, the title holds the only link
+ * to the video, and `.vid-open::after` stretches that link over the whole tile.
+ * A tap anywhere still activates a real anchor — so it still navigates natively
+ * on the first tap, which is the behaviour the client reported and which was
+ * fixed at some cost — while the creator link and Follow sit above it on their
+ * own stacking level and take their own taps.
  *
  * Prefer `to` + `state` (real Link) so navigation is native and starts on the
  * first tap. `onClick` remains for rare non-route actions.
@@ -32,6 +45,7 @@ export default function VideoCard({
     author,
     avatar,
     byline,
+    creatorId,
     price,
     priceNote,
     priceColor,
@@ -83,6 +97,19 @@ export default function VideoCard({
     if (inView) prefetchWatchChunk()
   }, [inView])
 
+  const name = author || byline
+
+  /* The one control that opens the video, stretched over the whole tile. */
+  const opener = to ? (
+    <Link className="vid-open" to={to} state={state}>
+      {title}
+    </Link>
+  ) : (
+    <button className="vid-open" type="button" onClick={onClick}>
+      {title}
+    </button>
+  )
+
   const body = (
     <>
       <div className="vid-thumb">
@@ -108,12 +135,27 @@ export default function VideoCard({
         </div>
       </div>
       <div className="vid-info">
-        <h4>{title}</h4>
+        <h4>{opener}</h4>
         <div className="by">
-          {avatar && showImg && (
-            <img src={avatar} alt="" loading={imgLoading} decoding="async" />
+          {/* The creator is reachable from the card, not only from the watch
+              page — every share link and every Explore tap used to land on
+              Watch, which made the creator the one thing you could not get to. */}
+          {creatorId ? (
+            <Link className="vid-by-link" to={`/creator/${creatorId}`}>
+              {avatar && showImg && (
+                <img src={avatar} alt="" loading={imgLoading} decoding="async" />
+              )}
+              <span>{name}</span>
+            </Link>
+          ) : (
+            <>
+              {avatar && showImg && (
+                <img src={avatar} alt="" loading={imgLoading} decoding="async" />
+              )}
+              <span>{name}</span>
+            </>
           )}
-          {author || byline}
+          {creatorId && <FollowButton creatorId={creatorId} size="sm" showCount={false} />}
         </div>
         <div className="vid-meta">
           <div className="vid-price" style={priceColor ? { color: priceColor } : undefined}>
@@ -137,31 +179,16 @@ export default function VideoCard({
   }
 
   if (reveal) {
-    if (to) {
-      return (
-        <Reveal as={Link} to={to} state={state} delay={delay} {...shared}>
-          {body}
-        </Reveal>
-      )
-    }
     return (
-      <Reveal as="button" type="button" delay={delay} onClick={onClick} {...shared}>
+      <Reveal as="article" delay={delay} {...shared}>
         {body}
       </Reveal>
     )
   }
 
-  if (to) {
-    return (
-      <Link ref={ref} to={to} state={state} {...shared}>
-        {body}
-      </Link>
-    )
-  }
-
   return (
-    <button ref={ref} type="button" onClick={onClick} {...shared}>
+    <article ref={ref} {...shared}>
       {body}
-    </button>
+    </article>
   )
 }

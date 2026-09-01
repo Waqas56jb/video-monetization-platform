@@ -22,6 +22,7 @@ import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
 import MoreLikeThis from '@/components/watch/MoreLikeThis'
 import BusyButton from '@/components/ui/BusyButton'
+import FollowButton from '@/components/ui/FollowButton'
 import { ErrorState } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
 import api, { getAccessToken, mediaUrl } from '@/lib/api'
@@ -1081,11 +1082,22 @@ export default function Watch() {
             </div>
           </div>
 
+          {/**
+            * The creator row, and the one place almost all traffic can follow from.
+            *
+            * Follow existed only on the creator's own page, which nothing links
+            * to from here — every share link and every Explore tap lands on this
+            * page, so the feature was effectively invisible. It is a real button
+            * now, next to the Profile pill.
+            *
+            * The row stopped being one big anchor to make room for it: a button
+            * inside an anchor is invalid and browsers resolve it by closing the
+            * anchor early. Same pattern as the cards — the name carries the only
+            * link and `.creator-open::after` stretches it across the row, so
+            * tapping the row still opens the profile on the first tap.
+            */}
           {v.creator && (
-            <Link
-              className="creator-row"
-              to={v.creator.id ? `/creator/${v.creator.id}` : '/explore'}
-            >
+            <div className="creator-row">
               {v.creator.avatarUrl ? (
                 <img src={mediaUrl(v.creator.avatarUrl)} alt="" />
               ) : (
@@ -1093,15 +1105,28 @@ export default function Watch() {
               )}
               <div>
                 <b>
-                  {v.creator.name}
+                  <Link
+                    className="creator-open"
+                    to={v.creator.id ? `/creator/${v.creator.id}` : '/explore'}
+                  >
+                    {v.creator.name}
+                  </Link>
                   {v.creator.verified && (
                     <BadgeCheck className="verified-tick" aria-label="Verified creator" />
                   )}
                 </b>
                 <small>View creator profile</small>
               </div>
-              <span className="btn btn-ghost btn-sm">Profile</span>
-            </Link>
+              <div className="creator-row-actions">
+                <FollowButton creatorId={v.creator.id} followers={v.creator.followers} />
+                <Link
+                  className="btn btn-ghost btn-sm creator-profile-link"
+                  to={v.creator.id ? `/creator/${v.creator.id}` : '/explore'}
+                >
+                  Profile
+                </Link>
+              </div>
+            </div>
           )}
 
           {v.description && <div className="watch-desc">{v.description}</div>}

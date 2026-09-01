@@ -21,6 +21,10 @@ export function toCard(v, { owned = false } = {}) {
     title: v.title,
     author: v.creator?.name || null,
     avatar: v.creator?.avatarUrl || null,
+    /* The card turns the byline into a link and offers Follow, so it needs who
+       the creator IS, not only what they are called. Already in every payload
+       that carries `creator`; it was simply being dropped here. */
+    creatorId: v.creator?.id || null,
 
     tag: owned
       ? v.isPublished === false

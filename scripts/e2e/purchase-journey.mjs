@@ -28,6 +28,16 @@ const BASE = process.env.BASE || 'https://video-monetization-platform-chi.vercel
 const API = process.env.API || 'https://video-monetization-platform-production.up.railway.app'
 const BUY = process.env.BUY || 'rpreplay-final1589783013-2'
 const SECOND = process.env.SECOND || 'live-at-arusha-full-set'
+/**
+ * RUNS repeats only the leg the brief asks for five of: preview stop -> Unlock ->
+ * Pay -> sheet closes -> kind:full from the API -> the film continues from the
+ * stop point. Everything else in the journey (library, logout, the second title,
+ * declined and cancelled) is proved once, on run 1, because repeating it would
+ * cost four more production accounts a run to re-prove something that does not
+ * vary. Each run still uses its own never-paid viewer, because a repeat on an
+ * account that already owns the film would assert nothing.
+ */
+const RUNS = Number(process.env.RUNS || 1)
 
 const ok = (c, m) => { console.log(`  ${c ? 'PASS' : 'FAIL'}  ${m}`); return Boolean(c) }
 const fails = []
@@ -38,6 +48,9 @@ const PROFILES = {
   'Pixel 7': { engine: 'chromium', full: true, opts: { ...devices['Pixel 7'] } },
   'webkit desktop': { engine: 'webkit', full: false, opts: { viewport: { width: 1440, height: 900 } } },
   'iPhone 14': { engine: 'webkit', full: false, opts: { ...devices['iPhone 14'] } },
+  /* The size B2 names. iPhone 14 is 390x664, so it does not actually exercise
+     the smallest screen the sheet has to fit — an iPhone SE / 8 does. */
+  '375x667 webkit': { engine: 'webkit', full: false, opts: { ...devices['iPhone SE'], viewport: { width: 375, height: 667 } } },
 }
 const only = process.env.PROFILES ? process.env.PROFILES.split(',').map((s) => s.trim()) : Object.keys(PROFILES)
 
@@ -58,13 +71,26 @@ async function apiToken(email, password) {
     body: JSON.stringify({ email, password, side: 'viewer' }),
   })
   const j = await r.json().catch(() => ({}))
-  return j?.accessToken || j?.token || j?.session?.access_token || null
+  return j?.session?.accessToken || j?.accessToken || j?.session?.access_token || j?.token || null
 }
 
-async function playbackKind(token, videoId) {
-  const r = await fetch(`${API}/api/playback/${videoId}`, { headers: { authorization: `Bearer ${token}` } })
+/**
+ * What the SERVER says this viewer may watch — the only entitlement evidence
+ * that counts. `playback.kind` is `preview` or `full`; `stopsAtSeconds` is where
+ * a preview is cut and is also the number the resume assertion is measured
+ * against, because it is the site's own figure rather than the harness's guess.
+ */
+async function entitlement(token, videoId) {
+  const r = await fetch(`${API}/api/playback/${videoId}/playback`, { headers: { authorization: `Bearer ${token}` } })
   const j = await r.json().catch(() => ({}))
-  return { status: r.status, kind: j?.kind ?? j?.playback?.kind ?? null, body: j }
+  return {
+    status: r.status,
+    kind: j?.playback?.kind ?? null,
+    stopsAt: j?.playback?.stopsAtSeconds ?? j?.access?.freePreviewSeconds ?? null,
+    canWatchFull: j?.access?.canWatchFull ?? null,
+    price: j?.access?.priceTzs ?? null,
+    duration: j?.durationSeconds ?? null,
+  }
 }
 
 async function videoMeta(slug) {
@@ -106,9 +132,22 @@ async function seekTo(page, seconds) {
 async function signIn(page, email, password) {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 90000 })
   await page.waitForSelector('#login-id', { timeout: 30000 })
+  /* Let the auth panel finish arriving before touching it. Without this the
+     first Pixel 7 run died on "element is not stable / detached from the DOM":
+     the submit button was still being moved by the panel's entrance animation
+     and then replaced by a re-render, and Playwright — correctly — refuses to
+     click a moving target. That is the harness racing the page, not a defect. */
+  await page.waitForTimeout(1500)
   await page.evaluate(AUTOFILL('#login-id', email))
   await page.evaluate(AUTOFILL('#login-pass', password))
-  await page.locator('button[type=submit]').first().click()
+  const submit = page.locator('button[type=submit]').first()
+  try {
+    await submit.click({ timeout: 15000 })
+  } catch {
+    // Still moving. The values are already in the DOM, so submitting the form
+    // itself posts exactly what a click would have.
+    await page.evaluate(() => document.querySelector('form')?.requestSubmit?.())
+  }
   for (let i = 0; i < 60; i++) {
     await page.waitForTimeout(500)
     if (!new URL(page.url()).pathname.startsWith('/login')) return true
@@ -149,8 +188,7 @@ const buyMeta = await videoMeta(BUY)
 const secondMeta = await videoMeta(SECOND)
 const buyId = buyMeta.id
 const secondId = secondMeta.id
-const previewSec = Number(buyMeta.previewSeconds ?? buyMeta.preview_seconds ?? 60)
-console.log(`\nvideo under test:   ${BUY} → ${buyId}   preview ${previewSec}s   ${buyMeta.priceTzs ?? buyMeta.price_tzs} TZS`)
+console.log(`video under test:   ${BUY} -> ${buyId}`)
 console.log(`second paid title:  ${SECOND} → ${secondId}`)
 
 /**
@@ -182,7 +220,11 @@ for (const name of only) {
   page.on('request', (r) => { if (r.url().includes('/api/')) reqs.push({ t: Date.now(), url: r.url().split('?')[0].split('/api')[1] }) })
   page.on('response', (r) => { if (r.status() === 429) saw429 += 1 })
 
-  const row = { profile: name }
+ for (let run = 1; run <= RUNS; run++) {
+  const firstRun = run === 1
+  if (RUNS > 1) console.log(`
+  ---------- run ${run} of ${RUNS}`)
+  const row = { profile: name, run }
   const t0 = Date.now()
 
   console.log('  --- a viewer who has never paid for anything')
@@ -190,8 +232,11 @@ for (const name of only) {
   accounts.push({ profile: name, ...viewer })
   console.log(`  ${viewer.email}   landed on ${new URL(viewer.landedOn).pathname}${viewer.shown ? `   (${viewer.shown.trim().slice(0, 80)})` : ''}`)
   if (!check(Boolean(viewer.token), 'the new account can sign in through the API')) { await browser.close(); continue }
-  const before = await playbackKind(viewer.token, buyId)
-  check(before.kind !== 'full', `before paying, /api/playback returns kind=${before.kind} (not full)`)
+  const before = await entitlement(viewer.token, buyId)
+  // The cut-off comes from the server, not from a constant here: a preview this
+  // harness guessed wrong would seek past the stop and prove nothing.
+  const previewSec = Number(before.stopsAt ?? 20)
+  check(before.kind !== 'full', `before paying the server grants kind=${before.kind}, canWatchFull=${before.canWatchFull}, cut-off ${previewSec}s of ${before.duration}s`)
 
   await signIn(page, viewer.email, viewer.password)
   await page.goto(`${BASE}/watch/${BUY}`, { waitUntil: 'domcontentloaded', timeout: 90000 })
@@ -206,14 +251,43 @@ for (const name of only) {
       if (s && s.paused && s.t >= previewSec - 4) { stoppedAt = s.t; break }
       await page.waitForTimeout(500)
     }
+    if (stoppedAt === null) {
+      // Say whether there was a player at all, so a stalled Cloudflare frame is
+      // never reported as "the preview does not stop".
+      const frames = page.frames().filter((f) => /videodelivery|cloudflarestream/.test(f.url())).length
+      console.log(`        no player state: ${frames} Cloudflare frame(s) on the page`)
+    }
     check(stoppedAt !== null, `the preview stops by itself at ${stoppedAt?.toFixed?.(1)}s (cut-off ${previewSec}s)`)
     row.stoppedAt = stoppedAt
   }
 
-  /* ---- the paywall, and the sheet -------------------------------------- */
+  /* ---- the paywall, and the sheet --------------------------------------
+     One reload before giving up. A watch page that has not produced its Unlock
+     button in thirty seconds has not loaded, and a harness that throws there
+     reports "the paywall is broken" for what is a slow cold start — while a
+     harness that silently retries for ever would hide a real one. So: retry
+     once, and say that it was retried. */
   const unlock = page.locator('button', { hasText: /unlock/i }).first()
-  const unlockSeen = await unlock.isVisible({ timeout: 20000 }).catch(() => false)
-  check(unlockSeen, 'the paywall offers Unlock')
+  let unlockSeen = await unlock.isVisible({ timeout: 30000 }).catch(() => false)
+  let reloaded = false
+  if (!unlockSeen) {
+    reloaded = true
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 })
+    await page.waitForTimeout(4000)
+    unlockSeen = await unlock.isVisible({ timeout: 30000 }).catch(() => false)
+  }
+  if (!check(unlockSeen, `the paywall offers Unlock${reloaded ? ' (after one reload)' : ''}`)) {
+    const diag = await page.evaluate(() => ({
+      url: location.pathname,
+      buttons: [...document.querySelectorAll('button')].map((b) => b.textContent.trim().slice(0, 24)).filter(Boolean).slice(0, 12),
+      frames: document.querySelectorAll('iframe').length,
+      body: document.body.innerText.replace(/[\s ]+/g, ' ').trim().slice(0, 160),
+    })).catch(() => null)
+    console.log(`        page state: ${JSON.stringify(diag)}`)
+    summary.push(row)
+    continue
+  }
+  row.reloadedForPaywall = reloaded
   await unlock.click()
   await page.waitForSelector('.pay-modal', { timeout: 20000 })
   check(true, 'the payment sheet opens')
@@ -269,7 +343,14 @@ for (const name of only) {
     await page.waitForTimeout(700)
   }
 
-  /* ---- pay ------------------------------------------------------------- */
+  /* ---- pay -------------------------------------------------------------
+     Type the number, the way a person does, rather than leaning on the sandbox
+     pre-fill. That pre-fill only appears once `/api/stats/platform` has come
+     back and told the sheet it is in test mode; a Pay tap that beats it finds an
+     empty field and a validation error, which is correct behaviour and useless
+     as a test. Real M-Pesa in Milestone 3 has no pre-fill at all, so typing is
+     also the journey that will still exist then. */
+  await page.locator('#pay-phone').fill('0712345678')
   const payBtn = page.locator('.pay-modal button[type=submit]').first()
   const tPay = Date.now()
   await payBtn.click()
@@ -278,11 +359,16 @@ for (const name of only) {
     await page.waitForTimeout(250)
     if (!(await page.locator('.pay-modal').count())) { closed = Date.now() - tPay; break }
   }
+  if (closed === null) {
+    // Say what the sheet was showing instead of leaving the next reader to guess.
+    const stuck = await page.locator('.pay-modal .modal-card').first().textContent({ timeout: 1000 }).catch(() => null)
+    console.log(`        sheet still open, showing: ${(stuck || '').replace(/\s+/g, ' ').trim().slice(0, 160)}`)
+  }
   check(closed !== null, `the sheet closes itself${closed !== null ? ` after ${closed} ms` : ' — it did not'}`)
   row.sheetClosedMs = closed
 
   /* ---- entitlement, from the API, before anything is claimed ----------- */
-  const after = await playbackKind(viewer.token, buyId)
+  const after = await entitlement(viewer.token, buyId)
   check(after.kind === 'full', `/api/playback/${BUY} now returns kind=${after.kind}`)
   row.kindAfter = after.kind
 
@@ -301,6 +387,14 @@ for (const name of only) {
     check(Boolean(resumed) && !resumed.paused, 'and it is playing, with no second Play button')
   }
 
+  /* ---- everything below is proved once, on run 1 ----------------------- */
+  if (!firstRun) {
+    summary.push(row)
+    await ctx.clearCookies()
+    await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear() } catch {} }).catch(() => {})
+    continue
+  }
+
   /* ---- My Library ------------------------------------------------------ */
   await page.goto(`${BASE}/dashboard?tab=library`, { waitUntil: 'domcontentloaded', timeout: 90000 })
   await page.waitForTimeout(7000)
@@ -312,11 +406,11 @@ for (const name of only) {
   await ctx.clearCookies()
   const backIn = await signIn(page, viewer.email, viewer.password)
   check(backIn, 'signs back in with one submit')
-  const afterRelogin = await playbackKind(await apiToken(viewer.email, viewer.password), buyId)
+  const afterRelogin = await entitlement(await apiToken(viewer.email, viewer.password), buyId)
   check(afterRelogin.kind === 'full', `after logout→login it is still kind=${afterRelogin.kind}`)
 
   /* ---- a second paid title is still locked ----------------------------- */
-  const secondKind = await playbackKind(viewer.token, secondId)
+  const secondKind = await entitlement(viewer.token, secondId)
   check(secondKind.kind !== 'full', `a second paid title stays locked (kind=${secondKind.kind})`)
   await page.goto(`${BASE}/watch/${SECOND}`, { waitUntil: 'domcontentloaded', timeout: 90000 })
   await page.waitForTimeout(5000)
@@ -339,7 +433,7 @@ for (const name of only) {
     }
     check(Boolean(msg), `"Test ${outcome}" reaches a failure screen`)
     check(Boolean(msg) && /try again/i.test(msg), `and says what happened + offers Try again — "${(msg || '').slice(0, 100)}"`)
-    const stillLocked = await playbackKind(viewer.token, secondId)
+    const stillLocked = await entitlement(viewer.token, secondId)
     check(stillLocked.kind !== 'full', `the video is still locked after a ${outcome} payment (kind=${stillLocked.kind})`)
     await page.locator('.pay-failed button', { hasText: /try again/i }).first().click()
     await page.waitForTimeout(900)
@@ -363,12 +457,13 @@ for (const name of only) {
   check(saw429 === 0, `nothing was rate limited (${saw429} × 429)`)
 
   summary.push(row)
+ }
   await browser.close()
 }
 
 console.log(`\n${'='.repeat(66)}\n### summary`)
 for (const r of summary) {
-  console.log(`  ${r.profile.padEnd(18)} sheet closed ${String(r.sheetClosedMs).padStart(5)} ms  kind=${r.kindAfter}  ${r.resumedAt != null ? `resumed ${r.resumedAt.toFixed(1)}s (stop ${r.stoppedAt?.toFixed(1)}s)` : ''}  ${r.requests} req, peak ${r.peakPerMin}/min`)
+  console.log(`  ${(r.profile + (r.run > 1 ? ` #${r.run}` : '')).padEnd(21)} sheet closed ${String(r.sheetClosedMs).padStart(5)} ms  kind=${r.kindAfter}  ${r.resumedAt != null ? `resumed ${r.resumedAt.toFixed(1)}s (stop ${r.stoppedAt?.toFixed(1)}s)` : ''}  ${r.requests} req, peak ${r.peakPerMin}/min`)
 }
 console.log('')
 console.log('accounts created by this run (reverse with server/scripts/cleanup-e2e.mjs):')

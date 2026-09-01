@@ -346,6 +346,9 @@ export const api = {
   creators: {
     follow: (id) => post(`/api/creators/${encodeURIComponent(id)}/follow`),
     unfollow: (id) => del(`/api/creators/${encodeURIComponent(id)}/follow`),
+    /* Every creator this viewer follows, in one request, so a grid of cards can
+       each show the right state without asking per card. */
+    following: () => get('/api/creators/following'),
   },
 
   videos: {
