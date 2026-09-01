@@ -18,17 +18,19 @@ genuinely still need a phone is at the end of this document.
 
 1. [Speed and freezing](#1-speed-and-freezing)
 2. [The player never looks stuck](#2-the-player-never-looks-stuck)
-3. [Payment, unlocking and resuming](#3-payment-unlocking-and-resuming)
-4. [Logging in](#4-logging-in)
-5. [Taps that needed two tries](#5-taps-that-needed-two-tries)
-6. [Scrolling, blank space and things moving](#6-scrolling-blank-space-and-things-moving)
-7. [Sharing and WhatsApp](#7-sharing-and-whatsapp)
-8. [Following a creator](#8-following-a-creator)
-9. [My Library — the four rows](#9-my-library--the-four-rows)
-10. [Reaching the creator from anywhere](#10-reaching-the-creator-from-anywhere)
-11. [The numbers behind "3.5 seconds"](#11-the-numbers-behind-35-seconds)
-12. [What still needs a phone](#12-what-still-needs-a-phone)
-13. [Test data on production](#13-test-data-on-production)
+3. [The advert on a Free + Ads video](#3-the-advert-on-a-free--ads-video)
+4. [Payment, unlocking and resuming](#4-payment-unlocking-and-resuming)
+5. [Logging in](#5-logging-in)
+6. [Taps that needed two tries](#6-taps-that-needed-two-tries)
+7. [Scrolling, blank space and things moving](#7-scrolling-blank-space-and-things-moving)
+8. [Sharing and WhatsApp](#8-sharing-and-whatsapp)
+9. [Following a creator](#9-following-a-creator)
+10. [My Library — the four rows](#10-my-library--the-four-rows)
+11. [Reaching the creator from anywhere](#11-reaching-the-creator-from-anywhere)
+12. [The other items you reported](#12-the-other-items-you-reported)
+13. [The numbers behind "3.5 seconds"](#13-the-numbers-behind-35-seconds)
+14. [What still needs a phone](#14-what-still-needs-a-phone)
+15. [Test data on production](#15-test-data-on-production)
 
 ---
 
@@ -54,12 +56,27 @@ four. The player is created as soon as we know what to play.
 
 **HOW TESTED.** Chrome and Safari, production, medians of five runs with a warm-up discarded.
 
-| | before | after |
-|---|---|---|
-| Home shows its first card — desktop, cold | 3339 ms | **2336 ms** |
-| Home shows its first card — iPhone profile, cold | 6519 ms | **2502 ms** |
-| Home shows its first card — iPhone profile, warm | 1170 ms | **898 ms** |
-| Tap a video → picture, iPhone profile | — | **3.1–3.6 s** |
+| | at the start | after the first round | **now** |
+|---|---|---|---|
+| Home shows its first card — desktop, cold | 3339 ms | 2336 ms | **1822 ms** |
+| Home shows its first card — desktop, warm | 1022 ms | 1047 ms | **1021 ms** |
+| Home shows its first card — iPhone profile, cold | 6519 ms | 2502 ms | **2064 ms** |
+| Home shows its first card — iPhone profile, warm | 1170 ms | 898 ms | **~1050 ms** |
+| Tap a video → picture, iPhone profile | — | 3108 / 3585 / 3218 ms | **2390 / 2807 / 3396 ms** |
+
+Home is now roughly **twice as fast to show its first card** as when this started, cold, on both
+a desktop and a phone. Two of the three videos start 700–800 ms sooner than the recorded
+baseline; the third is 178 ms slower, which is 5.5 % on a measurement whose own spread across
+runs is 1.5 seconds.
+
+**One figure moved the wrong way and it should not be rounded away.** The *warm* iPhone
+first-card time went from 898 ms to about 1050 ms. The cause was measured, not guessed: the
+JavaScript bundle grew by 5.8 % (421,688 → 445,949 bytes) to carry the four features added in
+this round — Follow, My List, Continue Watching and the Save control. A warm visit already has
+that file cached and spends its time reading it, which is exactly where extra code shows up. No
+new network requests were added: signed out, Home still makes the same three. If that 150 ms
+matters more than the features, the honest way to get it back is to load those parts only on the
+pages that use them — not to remove them.
 
 **The freeze going back to Home does not reproduce.** Measured on both engines: going back from
 a video to Home takes **62–169 ms** on Chrome, and **65 ms** in the cross-browser suite. Whatever
@@ -67,7 +84,7 @@ you experienced, it is not this navigation as the site stands today. If it happe
 note the time — the server logs can be lined up against it.
 
 **The part we cannot remove is Cloudflare's**, and it is about 3.5 seconds of the wait. The full
-trace is in section 11, written out so you can check it yourself.
+trace is in section 13, written out so you can check it yourself.
 
 ---
 
@@ -100,7 +117,43 @@ timer starts when the player is created.
 
 ---
 
-## 3 · Payment, unlocking and resuming
+## 3 · The advert on a Free + Ads video
+
+**PROBLEM.** "Advert loading…" sat on screen. The skip countdown started while the screen was
+still black, so the countdown ran before the advert had shown anything.
+
+**ROOT CAUSE.** The countdown was started when the advert was *requested* rather than when it
+had picture. And the overlay had no time limit of its own — if the advert never arrived, nothing
+took the overlay away.
+
+**FIX MADE.** The countdown starts from the advert's own media time, so it cannot run over a
+black screen. The overlay clears on failure rather than waiting for ever, and the content
+underneath stays paused until the advert is genuinely done.
+
+**HOW TESTED — and this is the item with the biggest gap, so it is worth being exact.**
+
+On **Chrome**, in the cross-browser suite, on three profiles — desktop, a Pixel 7 and a phone on
+Fast 3G — the content reaches picture in **0.6 to 0.9 seconds** and **no advert overlay is left
+on screen**. That is a pass on every Chrome profile.
+
+On **Safari it could not be judged at all**, and no conclusion should be drawn from that in
+either direction. The Safari engine available for automated testing has no Media Source
+Extensions, which is what Cloudflare's player uses, so on it *no* video plays — the advert, the
+film, everything sits at zero. An earlier round of this work read that as "on Safari the Free +
+Ads path does not play at all" and **that reading was wrong and has been retracted**: it was the
+test environment, not the product.
+
+What did survive that investigation, and is real: the advert overlay **does** clear — measured at
+4–8 seconds, with the advert state going from loading to nothing and the layer being removed. So
+the "spinner stuck for ever" reading was wrong as well.
+
+**Free + Ads is not known to be broken on Safari. It is untested there**, and it is item 2 on the
+checklist for your devices. Please run it five times on each — an advert fault that happens once
+in five is still a fault.
+
+---
+
+## 4 · Payment, unlocking and resuming
 
 **PROBLEM.** After paying, the video restarted from the beginning instead of continuing. There
 was also a report that buying one video unlocked others.
@@ -153,7 +206,7 @@ across the whole journey: **41–47 requests in the busiest minute, against a li
 
 ---
 
-## 4 · Logging in
+## 5 · Logging in
 
 **PROBLEM.** "Login never works the first time." And after logging in, you were not returned to
 what you were doing.
@@ -186,7 +239,7 @@ arriving — the wait is the trip to the server, not the site.
 
 ---
 
-## 5 · Taps that needed two tries
+## 6 · Taps that needed two tries
 
 **PROBLEM.** On iPhone and iPad, buttons and cards often needed two taps.
 
@@ -217,7 +270,7 @@ that looked unguarded were inside a touch-only block, where hover rules exist pr
 
 ---
 
-## 6 · Scrolling, blank space and things moving
+## 7 · Scrolling, blank space and things moving
 
 **PROBLEM.** "The screen vibrates when I scroll." A blank band at the bottom of pages. The page
 jumping around as it loads.
@@ -252,7 +305,7 @@ your iPhone, and it is on the checklist.
 
 ---
 
-## 7 · Sharing and WhatsApp
+## 8 · Sharing and WhatsApp
 
 **PROBLEM.** Sharing to WhatsApp delivered a bare link with no picture. On iPad it said *"The
 application couldn't be opened."* The Share button froze for 60–90 seconds.
@@ -282,7 +335,7 @@ box.
 
 ---
 
-## 8 · Following a creator
+## 9 · Following a creator
 
 **PROBLEM.** Follows did not stick.
 
@@ -328,7 +381,7 @@ reach you, fixed, and a test now exists specifically to stop it happening again.
 
 ---
 
-## 9 · My Library — the four rows
+## 10 · My Library — the four rows
 
 **PROBLEM.** You asked for Continue Watching, Purchased, My List and Recently Watched. Only
 Purchased existed.
@@ -381,7 +434,7 @@ never "delivered". The page reported success and nothing was stored. It would ha
 
 ---
 
-## 10 · Reaching the creator from anywhere
+## 11 · Reaching the creator from anywhere
 
 **PROBLEM.** A creator's name appeared on every card as plain text. The only way to reach their
 page was from a video page.
@@ -397,7 +450,32 @@ the real sheet with WhatsApp in it. Cards: the creator's name goes to the creato
 
 ---
 
-## 11 · The numbers behind "3.5 seconds"
+## 12 · The other items you reported
+
+Shorter entries, because these were fixed in earlier rounds of this work. Each one names where
+the detail lives so you can check it, and says plainly which were re-tested in this round and
+which were not.
+
+| What you reported | Cause | Fix | Where the evidence is |
+|---|---|---|---|
+| **The duration says 3:37 but playback runs to about 5:00** | The card showed the full film's running time while a preview was playing to its own cut-off — two different numbers for two different things, with nothing saying which was which. | The preview stop is the player's own `stopsAtSeconds`, and it is what the paywall triggers on. | Re-tested in this round: the preview halts at 216.9 s against a 217 s cut-off, on every Chrome profile in the cross-browser suite. |
+| **Portrait and square videos render tiny inside a black box** | The player stage was always 16:9, so a 886×1920 video became a thin strip in the middle. | The stage takes the file's own shape and grows to the available height. | `videoShape.js` and its tests; the portrait title `rpreplay-final1589783013-2` is one of the three in the speed harness and is in this round's numbers. |
+| **The top progress bar animates for ever** | iOS fires two events for one tap, so a tap that did not navigate started the bar twice and left it up for its full 8-second cap. | One warm per card, whichever event arrives first. | Verified in the earlier round with the tap-and-swipe-away test; `VideoCard.test.js` locks it in and runs on every build. |
+| **The homepage jumps around on first load** | Content arriving after first paint with no space reserved for it. | Fixed sizes for the pieces that arrive late. | Re-tested in this round: **layout shift 0.0000** on all four profiles, against an industry threshold of 0.1. |
+| **A video that had not been approved appeared on Explore** | The public listing did not filter on review status. | It does, and a database rule enforces it as well as the code. | `AUDIT.md` §E21 and the migration that added the publish guard. Not re-tested in this round. |
+| **Supabase warned that tables were publicly readable** | Row-level security was not enabled on every table. | Enabled everywhere, with a rule that locks any new table automatically. | Migrations 011, 025 and 026. This round added two tables and both were checked: RLS on, PostgREST revoked, four per-user policies each. |
+| **Instagram, TikTok and Facebook open the phone's share sheet rather than the app** | Those platforms do not accept a pre-filled share link from a web page — this is their behaviour, not ours. | The sheet says so, and offers copy-link. | `AUDIT.md` §C15. Unchanged, and it is not something that can be fixed from our side. |
+| **Anchor links land underneath the header; a blank area near the bottom** | Pages opened with less top padding than the fixed header is tall. | Every page allows for the header's height, and a test fails the build if one does not. | Re-tested in this round: no blank strip anywhere on four profiles, and the header-padding test runs on every build. |
+| **The logo is not clickable on some pages** | It was a plain image on pages that were not the homepage. | It is a link everywhere. | `AUDIT.md` §D20. Not re-tested in this round. |
+| **A Paid Premiere should become Free + Ads when its window ends** | The job existed but its schedule did not. | Scheduled, with the expiry logic under test. | `premiere.expire.test.js` and `scheduler.test.js`, both in the 115 server tests that pass. |
+
+**Two things in that table are honest gaps rather than claims**: the unapproved-video listing and
+the logo were fixed and verified earlier and were *not* re-tested in this round. If you would
+like either re-checked, it is a small piece of work.
+
+---
+
+## 13 · The numbers behind "3.5 seconds"
 
 The section below is reproduced exactly as it was written, including the caveat at the end,
 because it is the honest account of what the remaining wait is made of and who owns it.
@@ -457,7 +535,7 @@ of the wait is now shorter than it was.
 
 ---
 
-## 12 · What still needs a phone
+## 14 · What still needs a phone
 
 Everything below is on `BROWSER-CHECKLIST.md` with exact steps. These are not outstanding
 defects — they are the things no automated browser can reach.
@@ -480,7 +558,7 @@ four engines, but iOS deciding on its own to discard a tab is its own case.
 
 ---
 
-## 13 · Test data on production
+## 15 · Test data on production
 
 To prove that buying a video actually works — rather than assume it — test accounts were created
 on the live site and used to buy videos through the normal payment screen.
