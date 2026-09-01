@@ -35,9 +35,33 @@ test('the API still starts a long-running server on PORT', () => {
 
 test('share-meta does not load Sharp on the public GET path', () => {
   const src = readFileSync(join(root, 'src/lib/shareMeta.js'), 'utf8')
+  // The builder pulls in Sharp and opentype. It may only ever be reached
+  // dynamically, from a path that has already decided a card is missing.
   assert.doesNotMatch(src, /from ['"]\.\/buildShareCard\.js['"]/)
-  assert.match(src, /from ['"]\.\/shareCardCache\.js['"]/)
   assert.match(src, /import\(['"]\.\/buildShareCard\.js['"]\)/)
+})
+
+test('card status comes from the video row, not a second table', () => {
+  // This used to require an import of shareCardCache, because the cheapest
+  // answer available was a select there. Migration 030 put the boolean on
+  // `videos`, so the cheapest answer is now no query at all — and requiring the
+  // old import would force the round trip back.
+  const src = readFileSync(join(root, 'src/lib/shareMeta.js'), 'utf8')
+  /* Comments out first. The file explains in prose that it *used to* call
+     readCardStatus, and a naive match on the identifier fails on that sentence —
+     which is a test asserting its own documentation away. */
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  assert.doesNotMatch(
+    code,
+    /readCardStatus/,
+    'readCardStatus calls ensureShareCardTable, which issues three DDL statements'
+  )
+  assert.match(code, /card_ready \? 'ready' : 'building'/)
+
+  // And the route that gates the player must select the column it now reads.
+  const videos = readFileSync(join(root, 'src/modules/videos.routes.js'), 'utf8')
+  assert.match(videos, /SELECT_PUBLIC_OWNED/, 'the single-video route joins the purchase itself')
+  assert.match(videos, /_purchase_id/)
 })
 
 test('videos and playback do not statically import the share-card builder', () => {

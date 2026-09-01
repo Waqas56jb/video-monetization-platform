@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import { one } from '../db/pool.js'
 import { env } from '../config/env.js'
 import { publicOgCardUrl, publicWatchUrl } from './publicWatchUrl.js'
-import { readCardStatus } from './shareCardCache.js'
 import { log } from './logger.js'
 import { SHARE_CARD_BUCKET, versionedCardPath } from './shareCardObjectPath.js'
 
@@ -45,11 +44,24 @@ function shareUrlWithSource(watchUrl, sourceKey) {
   return `${watchUrl}${watchUrl.includes('?') ? '&' : '?'}s=${encodeURIComponent(sourceKey)}`
 }
 
+/**
+ * Card status from the row, not from a second table.
+ *
+ * This called `readCardStatus`, which calls `ensureShareCardTable`, which issues
+ * three DDL statements before its select — on the request the watch page waits
+ * on before it can build the player. Four round trips to learn one boolean that
+ * changes at most once per card build.
+ *
+ * `videos.card_ready` (migration 030) holds the same answer on the row this
+ * function is already handed. A row selected without the column reads as not
+ * ready, which is the safe direction: it shows a loading pill and queues a
+ * build, rather than promising a card that is not there.
+ */
 export async function sharePayloadFromRow(row) {
   if (!row?.slug || !(row.is_published && row.review_status === 'approved')) return null
   const sourceKey = shareSourceKey(row)
   const watchUrl = publicWatchUrl(env.publicWebUrl, row.slug)
-  const cardStatus = await readCardStatus(row.slug, sourceKey)
+  const cardStatus = row.card_ready ? 'ready' : 'building'
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${row.slug} status=${cardStatus}`)
@@ -71,9 +83,18 @@ export async function sharePayloadFromRow(row) {
 export async function loadShareMeta(slug) {
   if (!SLUG_RE.test(slug)) return null
   const video = await one(
-    `select v.id, v.slug, v.title, v.description, v.thumbnail_url, v.custom_thumbnail_url,
-            v.preview_uid, v.cloudflare_uid, v.duration_seconds, v.free_preview_seconds,
-            v.is_published, v.review_status,
+    /**
+     * `v.*` rather than a column list, so this survives being deployed before
+     * migration 030 runs.
+     *
+     * Naming `v.card_ready` explicitly would make this query fail outright until
+     * the column exists — and this is the crawler's share-meta path, so the
+     * failure would land on WhatsApp previews, which is precisely what the
+     * previous tier was fixing. With `v.*`, a missing column simply reads as
+     * `undefined`, the status falls back to 'building', and a rebuild is queued.
+     * Slower, correct, and self-correcting the moment the migration lands.
+     */
+    `select v.*,
             coalesce(cp.display_name, p.full_name) as creator_name,
             coalesce(cp.verified, false) as creator_verified
        from videos v
@@ -88,7 +109,9 @@ export async function loadShareMeta(slug) {
 
   const sourceKey = shareSourceKey(video)
   const watchUrl = publicWatchUrl(env.publicWebUrl, video.slug)
-  const cardStatus = await readCardStatus(video.slug, sourceKey)
+  /* Same as sharePayloadFromRow: the boolean rides on the row this query
+     already fetched, instead of a second table plus a schema check. */
+  const cardStatus = video.card_ready ? 'ready' : 'building'
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${video.slug} status=${cardStatus}`)

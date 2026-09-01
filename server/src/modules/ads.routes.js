@@ -6,7 +6,7 @@ import { validate } from '../middleware/validate.js'
 import { optionalAuth } from '../middleware/auth.js'
 import { adBreaksFor, adEligibility, pickCampaign, adPayload, recordImpression } from '../services/ads.js'
 import { getSettings } from '../services/settings.js'
-import { slugFallbacks } from '../lib/videoKey.js'
+import { videoKeyParams, whereIdOrSlug } from '../lib/videoLookup.js'
 import { expireIfDue } from '../jobs/premiere.js'
 
 const router = Router()
@@ -21,10 +21,11 @@ const router = Router()
  */
 const videoForAds = (idOrSlug) =>
   one(
-    `select id, title, creator_id, category, access_type, ads_enabled, is_published,
-            duration_seconds, premiere_ends_at
-       from videos where (id::text = $1 or slug = any($2::text[])) and deleted_at is null`,
-    [idOrSlug, slugFallbacks(idOrSlug)]
+    `select v.id, v.title, v.creator_id, v.category, v.access_type, v.ads_enabled,
+            v.is_published, v.duration_seconds, v.premiere_ends_at
+       from videos v
+      where ${whereIdOrSlug('v')} and v.deleted_at is null`,
+    videoKeyParams(idOrSlug)
   )
 
 /**

@@ -14,6 +14,7 @@ import { ensureClips } from './playback.routes.js'
 import { storeImage, removeImage } from '../services/uploads.js'
 import { normalizeCategory, isKnownCategory } from '../lib/categories.js'
 import { slugFallbacks, isUuidKey } from '../lib/videoKey.js'
+import { videoKeyParams, whereIdOrSlug } from '../lib/videoLookup.js'
 import { expireIfDue } from '../jobs/premiere.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
 import { dimensionsFromCloudflare } from '../lib/videoShape.js'
@@ -92,6 +93,31 @@ const SELECT_PUBLIC = `
     from videos v
     join profiles p on p.id = v.creator_id
     left join creator_profiles cp on cp.user_id = v.creator_id`
+
+/**
+ * The same row, plus whether THIS viewer already owns it.
+ *
+ * Only the single-video route needs this. It used to fetch the video, then let
+ * `resolveAccess` fetch the purchase separately — two round trips for one
+ * question, on the request the watch page waits on before it can build the
+ * player. `loadWatchContext` in playback.routes.js has always fetched both
+ * together; this is that shape, for the other half of the pair.
+ *
+ * Kept apart from `SELECT_PUBLIC` because the list route selects hundreds of
+ * rows and has no viewer-specific question to ask.
+ */
+const SELECT_PUBLIC_OWNED = `
+  select v.*, p.full_name as creator_name, p.avatar_url as creator_avatar,
+         cp.display_name as creator_display, coalesce(cp.verified, false) as creator_verified,
+         pu.id as _purchase_id, pu.purchased_at as _purchased_at
+    from videos v
+    join profiles p on p.id = v.creator_id
+    left join creator_profiles cp on cp.user_id = v.creator_id
+    left join purchases pu
+      on $3::uuid is not null
+     and pu.video_id = v.id
+     and pu.user_id = $3::uuid
+     and pu.status = 'active'`
 
 const withCreatorName = (row) =>
   row ? { ...row, creator_name: row.creator_display || row.creator_name } : row
@@ -707,6 +733,21 @@ router.get(
     const isUuid = isUuidKey(key)
     const keys = slugFallbacks(key)
 
+    /**
+     * One query for the row AND this viewer's purchase.
+     *
+     * This selected the video, then `resolveAccess` selected the purchase, then
+     * `sharePayloadFromRow` asked a second table whether a share card existed —
+     * and that last question ran `create table if not exists`, `alter table …
+     * enable row level security` and `revoke all` before its select on every
+     * cold isolate. Seven serial round trips on the request the watch page waits
+     * on before it can build the player.
+     *
+     * The purchase join is the same shape `loadWatchContext` uses in
+     * playback.routes.js, which has always fetched both together. The card
+     * status now rides on `v.card_ready` (migration 030). `SELECT_PUBLIC` is
+     * `v.*`, so the column comes along without being named.
+     */
     let row = await one(
       /**
        * Typed uuid or slug array — never `v.id::text`.
@@ -719,16 +760,25 @@ router.get(
        * the scan sits directly in front of the first frame — and it grows with
        * the catalogue.
        */
-      `${SELECT_PUBLIC} where v.deleted_at is null
-         and (($1::uuid is not null and v.id = $1::uuid) or v.slug = any($2::text[]))`,
-      [isUuid ? key : null, keys]
+      `${SELECT_PUBLIC_OWNED}
+        where v.deleted_at is null
+          and (($1::uuid is not null and v.id = $1::uuid) or v.slug = any($2::text[]))`,
+      [isUuid ? key : null, keys, req.user?.id || null]
     )
     if (!row) throw notFound('Video not found')
 
     row = await expireIfDue(row)
 
     const isOwnerOrAdmin = req.user && (req.user.id === row.creator_id || req.user.role === 'admin')
-    const access = await resolveAccess({ video: row, userId: req.user?.id, userRole: req.user?.role })
+    /* The purchase came back on the row above, so pass it in rather than let
+       resolveAccess spend another round trip asking the same question. `null`
+       is a real answer here — `undefined` is what makes it re-query. */
+    const access = await resolveAccess({
+      video: row,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      purchase: row._purchase_id ? { id: row._purchase_id, purchased_at: row._purchased_at } : null,
+    })
 
     /**
      * A purchase outlives publication.
@@ -870,10 +920,13 @@ router.post(
     })
   ),
   asyncHandler(async (req, res) => {
+    /* Fourth site of the same pattern — not in the brief, found by grep after
+       fixing the three that were. Reporting a video is rare, but a scan is a
+       scan and it grows with the catalogue like the others. */
     const video = await one(
-      `select id, title, creator_id from videos
-        where deleted_at is null and (id::text = $1 or slug = any($2::text[]))`,
-      [req.params.id, slugFallbacks(req.params.id)]
+      `select v.id, v.title, v.creator_id from videos v
+        where v.deleted_at is null and ${whereIdOrSlug('v')}`,
+      videoKeyParams(req.params.id)
     )
     if (!video) throw notFound('Video not found')
 

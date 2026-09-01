@@ -1,6 +1,6 @@
-import { one, many } from '../db/pool.js'
+import { one, many, query } from '../db/pool.js'
 import { capabilities, env } from '../config/env.js'
-import { slugFallbacks } from './videoKey.js'
+import { videoKeyParams, whereIdOrSlug } from './videoLookup.js'
 import { brandShareCard } from './shareCard.js'
 import { readCachedCard, writeCachedCard, ensureShareCardTable, readCardStatus } from './shareCardCache.js'
 import { uploadShareCardToStorage } from './shareCardStorage.js'
@@ -11,15 +11,14 @@ import * as cf from './cloudflare.js'
 const composing = new Map()
 
 async function videoByKey(key) {
-  const keys = slugFallbacks(String(key || ''))
   return one(
     `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
        from videos v
        join profiles p on p.id = v.creator_id
        left join creator_profiles cp on cp.user_id = v.creator_id
       where v.deleted_at is null
-        and (v.id::text = $1 or v.slug = any($2::text[]))`,
-    [key, keys]
+        and ${whereIdOrSlug('v')}`,
+    videoKeyParams(key)
   )
 }
 
@@ -66,6 +65,18 @@ async function composeOnce(video) {
      * for a missing key. A repair you cannot verify is not a repair.
      */
     const uploaded = await uploadShareCardToStorage(slug, key, cached).catch(() => false)
+    /**
+     * The cached path has to set the flag too, or it can never become true.
+     *
+     * A card built before migration 030 existed, or one the backfill's weaker
+     * slug-match missed, lands here on every subsequent build: the bytes are
+     * already cached, so the compose below never runs and never writes the
+     * column. The watch page would then report 'building' for a card that has
+     * been sitting there for weeks, and queue a pointless rebuild each time.
+     */
+    if (!video.card_ready) {
+      await query('update videos set card_ready = true where id = $1', [video.id]).catch(() => {})
+    }
     pingLinkPreview(slug)
     return { jpeg: cached, sourceKey: key, skipped: true, uploaded, ms: Date.now() - started }
   }
@@ -96,6 +107,15 @@ async function composeOnce(video) {
   })
   await writeCachedCard(slug, video.id, key, jpeg)
   const uploaded = await uploadShareCardToStorage(slug, key, jpeg).catch(() => false)
+  /**
+   * Tell the video row its card exists.
+   *
+   * The watch path reads `videos.card_ready` rather than asking
+   * `share_card_cache`, because that question cost four round trips in front of
+   * the player (migration 030). This is the one place that answer changes, so it
+   * is the one place that has to write it.
+   */
+  await query('update videos set card_ready = true where id = $1', [video.id]).catch(() => {})
   pingLinkPreview(slug)
   log.info(`share card built slug=${slug} bytes=${jpeg.length} ms=${Date.now() - started}`)
   return { jpeg, sourceKey: key, skipped: false, uploaded, ms: Date.now() - started }

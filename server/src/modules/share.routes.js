@@ -7,7 +7,7 @@ import { thumbnailFor } from '../services/entitlement.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
 
-import { slugFallbacks } from '../lib/videoKey.js'
+import { videoKeyParams, whereIdOrSlug } from '../lib/videoLookup.js'
 import { publicWatchUrl } from '../lib/publicWatchUrl.js'
 import { shareSourceKey, shareCardUrl } from '../lib/shareMeta.js'
 import { handleShareCard } from '../lib/shareCardServe.js'
@@ -18,15 +18,14 @@ import { log } from '../lib/logger.js'
 const router = Router()
 
 async function videoByKey(key) {
-  const keys = slugFallbacks(key)
   return one(
     `select v.*, coalesce(cp.display_name, p.full_name) as creator_name
        from videos v
        join profiles p on p.id = v.creator_id
        left join creator_profiles cp on cp.user_id = v.creator_id
       where v.deleted_at is null
-        and (v.id::text = $1 or v.slug = any($2::text[]))`,
-    [key, keys]
+        and ${whereIdOrSlug('v')}`,
+    videoKeyParams(key)
   )
 }
 
@@ -280,12 +279,11 @@ router.post(
 router.get(
   '/:id/clip.mp4',
   asyncHandler(async (req, res) => {
-    const keys = slugFallbacks(req.params.id)
     const video = await one(
-      `select slug, social_clip_uid, is_published, review_status
-         from videos
-        where (id::text = any($1) or slug = any($1)) and deleted_at is null`,
-      [keys]
+      `select v.slug, v.social_clip_uid, v.is_published, v.review_status
+         from videos v
+        where ${whereIdOrSlug('v')} and v.deleted_at is null`,
+      videoKeyParams(req.params.id)
     )
     if (!video?.social_clip_uid) throw notFound('No clip for this video')
     if (!(video.is_published && video.review_status === 'approved')) {
