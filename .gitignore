@@ -9,3 +9,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Real production test credentials — never commit
+E2E-ACCOUNTS.md
