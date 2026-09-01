@@ -5,27 +5,54 @@ import { log } from './logger.js'
 const mem = new Map()
 let tableReady = false
 
+/**
+ * Three DDL statements, at most once per isolate — and once per isolate even
+ * when several requests race.
+ *
+ * `tableReady` was only set *after* the awaits, so every caller that arrived
+ * while the first was still in flight saw `false` and issued its own
+ * `create table if not exists` + `alter table` + `revoke`. Concurrent DDL takes
+ * locks against each other, and this sat in front of the watch page's video
+ * request, so a burst of first requests to a cold isolate serialised on schema
+ * work none of them needed.
+ *
+ * Holding the promise rather than the boolean makes the racers await the same
+ * attempt. A failure clears it, so a genuine problem is retried rather than
+ * cached as permanent.
+ */
+let ensuring = null
+
 export async function ensureShareCardTable() {
   if (tableReady) return true
-  try {
-    await query(`
-      create table if not exists share_card_cache (
-        slug       text primary key,
-        video_id   uuid not null,
-        jpeg       bytea not null,
-        built_at   timestamptz not null default now(),
-        source_key text not null
-      )`)
-    // Runtime create must not re-open PostgREST. 021 missed this; 025 is the
-    // schema lock. Keep the same close here if this runs before migrate.
-    await query('alter table share_card_cache enable row level security')
-    await query('revoke all on table share_card_cache from anon, authenticated, public')
-    tableReady = true
-    return true
-  } catch (err) {
-    log.warn('share_card_cache table:', err.message)
-    return false
-  }
+  if (ensuring) return ensuring
+
+  ensuring = (async () => {
+    try {
+      await query(`
+        create table if not exists share_card_cache (
+          slug       text primary key,
+          video_id   uuid not null,
+          jpeg       bytea not null,
+          built_at   timestamptz not null default now(),
+          source_key text not null
+        )`)
+      // Runtime create must not re-open PostgREST. 021 missed this; 025 is the
+      // schema lock. Keep the same close here if this runs before migrate.
+      await query('alter table share_card_cache enable row level security')
+      await query('revoke all on table share_card_cache from anon, authenticated, public')
+      tableReady = true
+      return true
+    } catch (err) {
+      log.warn('share_card_cache table:', err.message)
+      return false
+    } finally {
+      /* Only a success is remembered, via tableReady. Clearing this lets a
+         transient failure be retried instead of poisoning the isolate. */
+      ensuring = null
+    }
+  })()
+
+  return ensuring
 }
 
 function asBuffer(value) {
