@@ -1,9 +1,10 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, BadgeCheck, Eye, MapPin, Play } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Eye, MapPin, Play, Share2 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
 import FollowButton from '@/components/ui/FollowButton'
+import ShareSheet from '@/components/watch/ShareSheet'
 import Icon from '@/components/ui/Icon'
 import { ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { compact } from '@/hooks/useApi'
@@ -12,15 +13,54 @@ import { socialIcon, socialLabel } from '@/lib/socialLinks'
 import api, { mediaUrl } from '@/lib/api'
 import useGoBack from '@/hooks/useGoBack'
 import { useAuth } from '@/context/AuthContext'
+import { useNotify } from '@/context/ToastContext'
+import { useState } from 'react'
 
-function Grid({ videos }) {
+/**
+ * Watch and Share, on every release.
+ *
+ * A creator page is where somebody decides whether this person is worth
+ * following — and where they are most likely to want to send one of the
+ * releases to a friend. Until now the only way to share a video was to open it
+ * first and find the button on the watch page.
+ *
+ * Share opens the SAME sheet the watch page uses, rather than a second, simpler
+ * one. The sheet needs a `share` payload that only `GET /api/videos/:slug`
+ * carries, so it is fetched when the button is pressed — one request, and only
+ * for the release somebody actually chose. Loading it for every card up front
+ * would be a request per card on a page that can hold a whole catalogue.
+ */
+function ReleaseActions({ video, onShare, sharing }) {
+  return (
+    <div className="release-actions">
+      <Link className="btn btn-gold btn-sm" to={videoLink(video)} state={{ preview: toCard(video) }}>
+        <Play size={15} />
+        Watch
+      </Link>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        onClick={() => onShare(video)}
+        aria-busy={sharing || undefined}
+      >
+        <Share2 size={15} />
+        {sharing ? 'Opening…' : 'Share'}
+      </button>
+    </div>
+  )
+}
+
+function Grid({ videos, onShare, sharingId }) {
   if (!videos?.length) return null
   return (
     <div className="vid-grid">
       {videos.map((v) => {
         const card = toCard(v)
         return (
-          <VideoCard key={v.id} video={card} to={videoLink(v)} state={{ preview: card }} />
+          <div className="release" key={v.id}>
+            <VideoCard video={card} to={videoLink(v)} state={{ preview: card }} />
+            <ReleaseActions video={v} onShare={onShare} sharing={sharingId === v.id} />
+          </div>
         )
       })}
     </div>
@@ -39,8 +79,27 @@ export default function CreatorProfile() {
   const goBack = useGoBack('/explore')
   const { user } = useAuth()
   const profile = useApi(() => api.auth.creator(creatorId), [creatorId])
+  const notify = useNotify()
   const c = profile.data
   const videos = c?.videos || []
+
+  /* One sheet for the whole page. `sharingId` is only so the pressed button can
+     say "Opening…" while its payload is on the way. */
+  const [sharingId, setSharingId] = useState(null)
+  const [shareFor, setShareFor] = useState(null)
+
+  const openShare = async (video) => {
+    if (sharingId) return
+    setSharingId(video.id)
+    try {
+      const res = await api.videos.one(video.slug || video.id)
+      setShareFor({ video: res.video, share: res.share })
+    } catch (err) {
+      notify.error(err?.message || 'Could not open sharing for this video')
+    } finally {
+      setSharingId(null)
+    }
+  }
 
   return (
     <>
@@ -149,20 +208,25 @@ export default function CreatorProfile() {
                       </span>
                     </div>
                   </Link>
+                  <ReleaseActions
+                    video={c.featured}
+                    onShare={openShare}
+                    sharing={sharingId === c.featured.id}
+                  />
                 </section>
               )}
 
               {c.latest?.length > 0 && (
                 <section className="creator-section">
                   <h2>Latest releases</h2>
-                  <Grid videos={c.latest} />
+                  <Grid videos={c.latest} onShare={openShare} sharingId={sharingId} />
                 </section>
               )}
 
               {c.mostWatched?.length > 0 && videos.length > 1 && (
                 <section className="creator-section">
                   <h2>Most watched</h2>
-                  <Grid videos={c.mostWatched} />
+                  <Grid videos={c.mostWatched} onShare={openShare} sharingId={sharingId} />
                 </section>
               )}
 
@@ -171,10 +235,19 @@ export default function CreatorProfile() {
                 {!videos.length ? (
                   <p className="creator-empty">No published videos yet.</p>
                 ) : (
-                  <Grid videos={videos} />
+                  <Grid videos={videos} onShare={openShare} sharingId={sharingId} />
                 )}
               </section>
             </>
+          )}
+
+          {shareFor && (
+            <ShareSheet
+              open
+              video={shareFor.video}
+              share={shareFor.share}
+              onClose={() => setShareFor(null)}
+            />
           )}
 
           <p className="creator-foot">

@@ -338,6 +338,14 @@ input,select,textarea{font-family:inherit}
 
 /* ---------- TRENDING CARDS ---------- */
 .vid-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+/* A release on a creator page: the card, then Watch and Share beneath it. The
+   card itself is untouched — these sit under it, so nothing about the grid or
+   the tile changes anywhere else on the site. */
+.release{display:flex;flex-direction:column;gap:10px;min-width:0}
+.release .vid-card{flex:1}
+.release-actions{display:flex;gap:10px}
+.release-actions>*{flex:1;justify-content:center}
+.creator-featured+.release-actions{margin-top:12px;max-width:340px}
 .vid-card{
   background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);
   overflow:hidden;transition:border-color .45s cubic-bezier(.22,1,.36,1),box-shadow .45s cubic-bezier(.22,1,.36,1),transform .45s cubic-bezier(.22,1,.36,1);

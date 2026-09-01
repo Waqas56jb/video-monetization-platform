@@ -70,13 +70,31 @@ test('pages that open under the fixed header allow for its height', () => {
  * moment a test tried to click Unlock.
  */
 test('every stretched card link is contained by its own card', () => {
-  /* Plain string search, not a built regex: the selectors contain `.` and `::`
-     and the escaping is easy to get wrong in a way that makes the test pass by
-     matching nothing. */
+  /**
+   * Find a rule by its own selector, not by a substring of the sheet.
+   *
+   * Two earlier versions of this helper were wrong, and both were wrong in the
+   * direction that makes a test pass when it should not:
+   *
+   *   indexOf('.vid-card{')  also matched `.release .vid-card{flex:1}` and read
+   *                          that rule's declarations instead.
+   *   a flat /sel{decls}/ scan desynchronises at the first NESTED brace — this
+   *                          sheet has `@keyframes marquee{to{...}}` — after
+   *                          which every rule it reports is a fragment.
+   *
+   * What separates `.vid-card` the rule from `.vid-card` inside a longer
+   * selector is the character in front of it: a combinator or a comma means it
+   * is part of something bigger. Anything else — a line break, a closing brace —
+   * means the rule starts here.
+   */
+  const COMBINATORS = ' ,>+~'
   const declarations = (selector) => {
-    const at = css.indexOf(selector + '{')
-    if (at < 0) return null
-    return css.slice(at + selector.length + 1, css.indexOf('}', at))
+    const needle = selector + '{'
+    for (let at = css.indexOf(needle); at !== -1; at = css.indexOf(needle, at + 1)) {
+      if (at > 0 && COMBINATORS.includes(css[at - 1])) continue
+      return css.slice(at + needle.length, css.indexOf('}', at))
+    }
+    return null
   }
 
   for (const [overlay, card] of [
