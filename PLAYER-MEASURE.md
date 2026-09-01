@@ -346,3 +346,63 @@ attempts, three different failures, all caught by measurement rather than review
 not to be retried. The `width`/`height` fields stay in the payload: they are two values from
 a row the route already reads, they are inert today, and they are what any future attempt
 would need first.
+
+---
+
+## Disputed chunk timing — resolved
+
+**Verdict: instrument error.** The 17–21 s figure was a service-worker revalidation being
+mistaken for the load the page actually used. The offending line is
+`scratchpad/homenav.mjs:15` — `page.on('response', …)`, which reports **network** responses
+only.
+
+The page is service-worker controlled (`/sw.js`, 5,648 bytes, `caches.open` ×3 plus a
+`revalidate` path). On a warm visit the chunk comes from the cache, so the page never waits on
+the network — but the service worker still refreshes it in the background, and that later
+network response is what the listener stamped. It was timing something the viewer never waited
+for.
+
+### What the page actually used — `performance.getEntriesByType('resource')`, 5 measured runs
+
+| | chunk `Watch-_Y0hYEwP.js` | | | | `/api/videos/:id` |
+|---|---|---|---|---|---|
+| | start | duration | end | transfer | end |
+| **cold** run 1 | 5740 | 2584 | 8324 | 15,791 | 15566 |
+| cold run 2 | 2329 | 210 | 2539 | 15,791 | 5870 |
+| cold run 3 | 1227 | 254 | 1481 | 15,791 | 4793 |
+| cold run 4 | 14420 | 4874 | 19294 | 15,791 | 24248 |
+| cold run 5 | 2071 | 2444 | 4515 | 15,791 | 7842 |
+| **cold median** | — | **2444** | **4515** | 15,791 | 7842 |
+| **warm** (5 runs) | 507–1298 | **2–4** | 601–1300 | **0 — cache** | 4258–6057 |
+| **warm median** | — | **3** | **829** | 0 | 4383 |
+
+All times are milliseconds from the start of the Home navigation, not from the click — a
+client-side route change keeps the same document, so resource timing keeps counting from the
+original load.
+
+### The CDN, independently
+
+`curl` on the exact chunk URL, five times: TTFB **0.42–0.84 s**, total **0.46–1.14 s**,
+46,570 bytes, `HTTP 200` every time.
+
+Three instruments, one answer: the chunk downloads in about half a second from the CDN, in
+2–4 ms from the service-worker cache, and at worst 4.9 s on a cold network run. **Nothing
+supports 17–21 s of loading.**
+
+### The part that is real, and is not the chunk
+
+Cold `start` times vary from 1,227 to 14,420 ms, and that variance is genuine. The chunk is not
+requested until a card enters the viewport, and **Home takes 2.3–8.6 s to render its cards** —
+measured separately, five runs, all producing 8 links. On a cold visit the prefetch therefore
+begins late, and one run in five did not produce a card at all inside 60 s.
+
+That is worth attention on its own terms. It is not what the disputed figure claimed, and it is
+a Home-render question rather than a chunk-delivery one.
+
+### What this does not settle
+
+The same script reported `playerDiv` and `iframe` at ~21 s from the click. Those marks share
+`homenav.mjs`'s clock and its flaws, and they are not corroborated by anything. The
+authoritative player numbers remain the ones at the top of this file — 3108 / 3585 / 3218 ms,
+median of 5 with a discarded warm-up, from a harness that was itself corrected twice and
+cross-checked against a CPU profile. `homenav.mjs` should not be cited again.

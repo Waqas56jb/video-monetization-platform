@@ -50,6 +50,12 @@ Newly measured — Chromium only, median of 5, one warm-up discarded, 2026-09-01
 Over 1 s and worth work: **Explore's category filter** (1.3–2.7 s) and **Home → second video**
 (1.1–2.3 s).
 
+> **CLOSED 2026-09-01 — instrument error.** The chunk was never slow: resource timing shows
+> 2–4 ms warm and a 2,444 ms cold median, and curl fetches it in 0.46–1.14 s. The 17–21 s mark
+> was a service-worker background revalidation caught by a `page.on('response')` listener. Full
+> working in PLAYER-MEASURE.md, "Disputed chunk timing — resolved". What *is* real: Home takes
+> 2.3–8.6 s to render its cards, which delays when the chunk is requested at all.
+
 **One number is disputed and is deliberately not reported as a finding.** A breakdown run put
 the lazy `Watch-*.js` chunk — and therefore the player — at ~17–21 s from both Home and Explore,
 while the API answered in 0.7–1.6 s. That contradicts the repeatedly measured 3.1 s tap→playing
