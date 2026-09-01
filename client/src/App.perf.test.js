@@ -40,4 +40,16 @@ test('the API origin has a warm connection before the bundle asks for data', () 
 
   // Video segments come from videodelivery.net, not the embed host.
   assert.match(html, /rel="preconnect" href="https:\/\/videodelivery\.net"/)
+
+  /**
+   * The origin that does the work must be the origin that is warmed.
+   *
+   * Preconnect is per-origin, so a hint on the apex `cloudflarestream.com` warms
+   * nothing for `customer-<id>.cloudflarestream.com` — and traced on production
+   * that subdomain serves the embed SDK (1033 ms including a 301), both of its
+   * chunks, and every media segment. The apex hint had already been added once
+   * to fix this exact class of miss; it landed one level too high.
+   */
+  assert.match(html, /rel="preconnect" href="https:\/\/customer-[a-z0-9]+\.cloudflarestream\.com"/)
+  assert.match(html, /rel="dns-prefetch" href="https:\/\/customer-[a-z0-9]+\.cloudflarestream\.com"/)
 })

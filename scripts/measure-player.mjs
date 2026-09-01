@@ -59,12 +59,19 @@ const FAST_3G = {
   uploadThroughput: (750 * 1024) / 8,
 }
 
-const PROFILES = [
+const ALL_PROFILES = [
   { name: 'desktop', device: null, throttle: null },
   { name: 'desktop · Fast 3G', device: null, throttle: FAST_3G },
   { name: 'iPhone 13', device: devices['iPhone 13'], throttle: null },
   { name: 'iPhone 13 · Fast 3G', device: devices['iPhone 13'], throttle: FAST_3G },
 ]
+
+/* `--profile iPhone` narrows the matrix; the full run is twelve cells and takes
+   long enough that a targeted comparison is usually what is wanted. */
+const ONLY_PROFILE = arg('profile', null)
+const PROFILES = ONLY_PROFILE
+  ? ALL_PROFILES.filter((p) => p.name.toLowerCase().includes(ONLY_PROFILE.toLowerCase()))
+  : ALL_PROFILES
 
 const median = (xs) => {
   const s = [...xs].filter((n) => Number.isFinite(n)).sort((a, b) => a - b)
@@ -179,7 +186,23 @@ async function once(browser, profile, slug) {
 
 /* A real viewer tapped a card, which is a gesture; make the headless run agree
    so an autoplay block is a finding rather than an artefact of the harness. */
-const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] })
+/**
+ * A real viewer tapped a card, which is a gesture; make the headless run agree
+ * so an autoplay block is a finding rather than an artefact of the harness.
+ *
+ * ALLOW_CORS exists for preview deployments only. A Vercel preview gets a fresh
+ * hostname per deploy, and the API's allow-list names the two production origins,
+ * so every preview is refused before it can fetch anything. That is a real
+ * problem for the deploy-and-verify workflow, and it is orthogonal to timing —
+ * so for measurement the browser is told to skip the check. Never for production
+ * numbers, and never anywhere but this harness.
+ */
+const browser = await chromium.launch({
+  args: [
+    '--autoplay-policy=no-user-gesture-required',
+    ...(process.env.ALLOW_CORS ? ['--disable-web-security'] : []),
+  ],
+})
 const rows = []
 
 for (const video of VIDEOS) {

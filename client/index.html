@@ -66,6 +66,26 @@
      one origin on the critical path was the one being warmed nowhere, and its
      handshake was paid cold on every visit. -->
 <link rel="preconnect" href="https://cloudflarestream.com" crossorigin>
+<!-- ...but not from the apex. Traced on production, every one of those requests
+     goes to the account's own delivery subdomain:
+
+       1047  301  customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration…js
+       2080  200  (same, after the redirect)  <- 1033 ms for one script
+       2483  200  embed/925…chunk.js + embed/10…chunk.js
+       3117  200  …/audio/13… and …/video/24…  <- every media segment
+
+     Preconnect is per-origin, so the apex hint above warms nothing for these.
+     The origin doing all the work was the one origin never being warmed — the
+     same mistake as the videodelivery.net one this comment already records,
+     one level further down.
+
+     The subdomain is account-specific and opaque, and it is public: it appears
+     in every network log of every play. Hardcoded because it cannot be derived
+     from the playback URL, which names iframe.videodelivery.net instead. If the
+     account ever changes, the cost of this being stale is one wasted DNS
+     lookup — a hint that misses is not an error. -->
+<link rel="preconnect" href="https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com" crossorigin>
+<link rel="dns-prefetch" href="https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com">
 <!-- videodelivery.net is still the poster host, fetched first-party by Watch. -->
 <link rel="preconnect" href="https://videodelivery.net" crossorigin>
 <link rel="dns-prefetch" href="https://videodelivery.net">
