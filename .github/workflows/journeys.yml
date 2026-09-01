@@ -1,0 +1,93 @@
+# The read-only journeys, on every push to main.
+#
+# WHY PRODUCTION AND NOT A PREVIEW. Two settings, neither of them code, make a
+# preview deployment untestable end to end:
+#
+#   · the API's CORS_ORIGINS names only the two production hostnames, so every
+#     call from a preview is answered 403 ORIGIN_NOT_ALLOWED before it reaches a
+#     route;
+#   · Cloudflare Stream's allowed-domains list does not include preview
+#     hostnames, so the player frame answers "This video has not been configured
+#     to be allowed on this domain."
+#
+# A suite pointed at a preview would fail almost every journey for reasons that
+# have nothing to do with the change under test, and a job that is always red is
+# a job nobody reads. Working in PLAYER-MEASURE.md.
+#
+# WHY READ-ONLY. The full matrix signs in and buys things. Those are real rows on
+# a live system — payments, purchases, a creator's share — and running them on
+# every push would fill the client's revenue figures with test data. The paid
+# journeys stay a deliberate, local act with an account that is documented and
+# reversible (server/scripts/cleanup-e2e.mjs).
+#
+# It waits for the deployment before it looks. A push triggers Vercel and Railway
+# at the same moment as this workflow, so testing immediately tests the previous
+# build — which is worse than not testing, because it passes.
+
+name: journeys
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: 'Comma-separated profiles (blank = all)'
+        required: false
+        default: ''
+
+concurrency:
+  # One at a time. Two runs driving the same production site would fight over the
+  # rate limiter and report each other's throttling as a failure.
+  group: journeys
+  cancel-in-progress: false
+
+jobs:
+  journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright and its browsers
+        run: |
+          npm init -y --scope=@mtonyo >/dev/null 2>&1 || true
+          npm i --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium webkit firefox
+
+      - name: Unit suites and builds
+        run: |
+          cd client && npm ci && npm run verify
+          cd ../server && npm ci && npm test
+
+      - name: Wait for this commit to be live
+        env:
+          API: https://video-monetization-platform-production.up.railway.app
+        run: |
+          # X-Build carries the deployed commit. Poll until it is this one, so
+          # the journeys below test the code that was just pushed rather than
+          # whatever was there a minute ago.
+          for i in $(seq 1 60); do
+            live=$(curl -sI "$API/api/health" | tr -d '\r' | awk 'tolower($1)=="x-build:"{print $2}')
+            echo "attempt $i — live build: ${live:-unknown}, wanted: $GITHUB_SHA"
+            case "$GITHUB_SHA" in
+              "$live"*) echo "deployed"; exit 0 ;;
+            esac
+            sleep 20
+          done
+          echo "::warning::the API never reported this commit; running against whatever is live"
+
+      - name: Read-only journeys, all profiles
+        env:
+          PLAYWRIGHT_MODULE: playwright
+          PROFILES: ${{ github.event.inputs.profiles }}
+        run: node scripts/e2e/matrix.mjs --read-only
+
+      - name: Share previews
+        run: bash scripts/verify-share-previews.sh
+        continue-on-error: true
