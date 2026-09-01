@@ -577,272 +577,13 @@ export default function Watch() {
 
   /* ------------------------------------------------------------ shells */
 
-  /**
-   * Where playback actually begins — worked out ONCE per player, not per render.
-   *
-   * The server's figure wins: it is the only one that survives a refresh. The
-   * local hint fills the gap between paying and the reloaded playback arriving.
-   *
-   * Why this is pinned rather than derived every time: `recallProgress` reads a
-   * position that playback itself keeps advancing, so computing this on each
-   * render produced a number that climbed while the film was running. The
-   * player took that as "start somewhere else", rebuilt its iframe and
-   * restarted the video — a freeze of several seconds, triggered by something
-   * as innocent as tapping Share. The start point belongs to the player, so it
-   * is decided when the player is created and then left alone.
-   *
-   * The key is the one the player is mounted under, so a genuinely new player
-   * — the full film arriving after payment — does get a fresh answer.
-   */
-  const playerKey = p?.playback?.iframe ? `${p.videoId}-${p.playback.kind}` : null
-  if (playerKey && startFrom.current.key !== playerKey) {
-    startFrom.current = {
-      key: playerKey,
-      value: justPaid
-        ? /* The moment they pay, where they were in this tab is the truth. The
-             server's figure can still be a stale, larger number from an earlier
-             visit, and taking the larger of the two would throw them forward
-             past film they have not seen. */
-          resumeHint
-        : Math.max(
-            Number(p?.playback?.resumeFromSeconds || 0),
-            resumeHint,
-            /* Covers the visitor who watched the preview before signing in — the
-               server had nobody to record it against at the time. */
-            recallProgress(videoId)
-          ),
-    }
-  }
-  const resumeAt = startFrom.current.value
-
-  const shape = videoShape(v?.width || measured?.width, v?.height || measured?.height)
-  /** After preview: cinematic lock on the player — payment sheet only on tap. */
-  const showLockGate =
-    needsPayment &&
-    (previewOver || (accessReady && !p?.playback?.iframe && !p?.previewPending && !p?.unavailable))
-
-  /**
-   * The player, built once and rendered in the same place whatever else the
-   * page is doing.
-   *
-   * It used to live only in the full render, below two early returns that wait
-   * for /api/videos. So the iframe could not be created until a request the
-   * player does not need had come back — measured at 645 ms of pure waiting.
-   *
-   * Held as one value and rendered at an identical position in every branch, so
-   * React keeps the same StreamPlayer instance when the video row lands. Putting
-   * a second copy in the skeleton branch would look right and be worse: the
-   * player would unmount and remount, and the viewer would pay for a second cold
-   * iframe. That is what the harness checks — one video_el per play.
-   */
-  const playerStage = (
-          <div
-            className={`player ${showLockGate ? 'is-gated' : ''} is-${shape.orientation}`.trim()}
-            style={{
-              '--player-aspect': shape.aspect,
-              '--player-ratio': String(shape.ratio),
-            }}
-          >
-            {/* Somebody who opened this on a shared link has nothing of ours
-                behind them, and a bare navigate(-1) would take them off the site
-                — back to WhatsApp, usually. Explore is the useful destination
-                there. */}
-            <button className="pl-back" onClick={goBack} aria-label="Go back">
-              <ArrowLeft />
-            </button>
-
-            {waitingForPlayback && !p?.playback?.iframe ? (
-              <div className="stream-shell is-booting">
-                {v?.thumbnailUrl ? (
-                  <img
-                    className="stream-poster"
-                    src={mediaUrl(v?.thumbnailUrl)}
-                    alt=""
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
-                )}
-              </div>
-            ) : p?.unavailable && !p?.playback?.iframe ? (
-              <div className="player-empty">
-                <AlertTriangle />
-                <b>This video is unavailable</b>
-                <p>The file is not ready to play. Try another title.</p>
-              </div>
-            ) : p?.previewPending && !p?.playback?.iframe ? (
-              <div className="stream-shell is-booting">
-                {v?.thumbnailUrl ? (
-                  <img
-                    className="stream-poster"
-                    src={mediaUrl(v?.thumbnailUrl)}
-                    alt=""
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
-                )}
-                <p className="stream-boot-msg">Preview is being prepared</p>
-              </div>
-            ) : playback.error && !p?.playback?.iframe ? (
-              <div className="player-empty">
-                <AlertTriangle />
-                <b>This video could not start</b>
-                <p>
-                  {playback.error && playback.error !== 'Something went wrong'
-                    ? playback.error
-                    : 'Check your connection and try again. Nothing was charged.'}
-                </p>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
-                  Try again
-                </button>
-              </div>
-            ) : p?.playback?.iframe ? (
-              <>
-                <StreamPlayer
-                  key={playerKey}
-                  src={p.playback.iframe}
-                  title={v?.title}
-                  /* The server's stored position is the authority; the local hint
-                     only covers the moment straight after payment, before the
-                     reloaded playback has come back. */
-                  startAt={resumeAt}
-                  seekRequest={seekTo}
-                  positionRef={livePosition}
-                  autoplay={!activeAd}
-                  playOnReady={!activeAd}
-                  paused={Boolean(activeAd)}
-                  onMediaSize={
-                    v?.width && v?.height
-                      ? undefined
-                      : (size) => setMeasured((was) => was || size)
-                  }
-                  /**
-                   * Where the free preview ends, enforced by the player itself.
-                   *
-                   * The page used to do this by showing the paywall over the
-                   * top when the clock passed the number — which never stopped
-                   * the film. The preview is its own Cloudflare clip, cut when
-                   * previews were five minutes long, so a video stating 3:37
-                   * kept playing underneath the paywall until 5:00.
-                   */
-                  stopAt={p.playback.kind === 'preview' ? Number(p.playback.stopsAtSeconds || 0) : 0}
-                  onStopReached={() => {
-                    capturePosition()
-                    watchedTo.current = Math.max(watchedTo.current, previewSeconds)
-                    rememberProgress(videoId, watchedTo.current, { force: true })
-                    previewRanOut.current = true
-                    setPreviewOver(true)
-                    reportProgress(previewSeconds, { force: true })
-                  }}
-                  onPlaying={() => {
-                    /* Preview clip firing play must not drop the "Unlocked" veil
-                       or the full film never remounts at the resume second. */
-                    if (justPaid && p.playback.kind !== 'full') return
-                    if (activeAd) return
-                    setContinueReady(true)
-                  }}
-                  onRetry={() => playback.reload()}
-                  onEnded={() => {
-                    if (needsPayment) {
-                      watchedTo.current = Math.max(watchedTo.current, previewSeconds)
-                      rememberProgress(videoId, watchedTo.current, { force: true })
-                      previewRanOut.current = true
-                      setPreviewOver(true)
-                      reportProgress(previewSeconds, { force: true })
-                      return
-                    }
-                    runBreak('post_roll')
-                  }}
-                  onTimeUpdate={(current) => {
-                    if (activeAd) return
-                    const prev = watchedTo.current
-                    if (current < 2 && prev > 8) {
-                      /* Preview clip reset to 0 after ending — keep the stop. */
-                    } else {
-                      watchedTo.current = Math.max(prev, current || 0)
-                    }
-                    reportProgress(watchedTo.current)
-
-                    if (needsPayment && previewSeconds && current >= previewSeconds - 0.4) {
-                      watchedTo.current = Math.max(watchedTo.current, previewSeconds)
-                      previewRanOut.current = true
-                      setPreviewOver(true)
-                      reportProgress(previewSeconds, { force: true })
-                    }
-
-                    if (!needsPayment) {
-                      mainProgress.current = current
-                      const mid = adAt('mid_roll')
-                      if (mid?.atSeconds != null && current >= mid.atSeconds) runBreak('mid_roll')
-                    }
-                  }}
-                />
-                {activeAd && (
-                  <div className="player-ad-layer">
-                    <AdBreak ad={activeAd} videoId={v?.id || p.videoId} playId={playId} onFinished={adFinished} />
-                  </div>
-                )}
-                {needsPayment && !previewOver && (
-                  /* Spell out how much of the film this preview is. The client
-                     could not tell a paid video from a free one because nothing
-                     on screen said the video ran longer than the preview. */
-                  <div className="preview-flag">
-                    <Lock size={13} />
-                    Free preview
-                    {previewSeconds ? ` · ${duration(previewSeconds)}` : ''}
-                    {v.durationSeconds ? ` of ${duration(v.durationSeconds)}` : ''}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="player-empty">
-                <AlertTriangle />
-                <b>{p?.note || 'This video is not ready to play yet'}</b>
-                <p>Check your connection, or try again in a moment.</p>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
-                  Try again
-                </button>
-              </div>
-            )}
-
-            {justPaid && !continueReady && (
-              <div className="continue-veil" aria-live="polite">
-                <span className="pay-dots" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-                <b>Unlocked</b>
-                <small>
-                  {resumeAt > 2
-                    ? `Resuming from ${duration(Math.floor(resumeAt))}`
-                    : 'Continuing from where the preview stopped…'}
-                </small>
-              </div>
-            )}
-
-            {showLockGate && (
-              <LockGate
-                priceLabel={tzs(v.priceTzs)}
-                /* The gate says what this particular release model buys. */
-                accessType={v.accessType}
-                onUnlock={openCheckout}
-              />
-            )}
-          </div>
-  )
-
   const videoReady = v && videoRouteMatches(videoId, v)
 
   /* Paint from card data immediately — never a blank wait for the API. */
   if ((video.loading || !videoReady) && !(video.error && !v)) {
     return (
       <Shell>
-        <div className="watch-wrap">
-          {playerStage}
-          <WatchSkeleton preview={routePreview} />
-        </div>
+        <WatchSkeleton preview={routePreview} />
       </Shell>
     )
   }
@@ -885,6 +626,43 @@ export default function Watch() {
 
   const previewSeconds = Number(p?.playback?.stopsAtSeconds || v.freePreviewSeconds || 0)
 
+  /**
+   * Where playback actually begins — worked out ONCE per player, not per render.
+   *
+   * The server's figure wins: it is the only one that survives a refresh. The
+   * local hint fills the gap between paying and the reloaded playback arriving.
+   *
+   * Why this is pinned rather than derived every time: `recallProgress` reads a
+   * position that playback itself keeps advancing, so computing this on each
+   * render produced a number that climbed while the film was running. The
+   * player took that as "start somewhere else", rebuilt its iframe and
+   * restarted the video — a freeze of several seconds, triggered by something
+   * as innocent as tapping Share. The start point belongs to the player, so it
+   * is decided when the player is created and then left alone.
+   *
+   * The key is the one the player is mounted under, so a genuinely new player
+   * — the full film arriving after payment — does get a fresh answer.
+   */
+  const playerKey = p?.playback?.iframe ? `${v?.id}-${p.playback.kind}` : null
+  if (playerKey && startFrom.current.key !== playerKey) {
+    startFrom.current = {
+      key: playerKey,
+      value: justPaid
+        ? /* The moment they pay, where they were in this tab is the truth. The
+             server's figure can still be a stale, larger number from an earlier
+             visit, and taking the larger of the two would throw them forward
+             past film they have not seen. */
+          resumeHint
+        : Math.max(
+            Number(p?.playback?.resumeFromSeconds || 0),
+            resumeHint,
+            /* Covers the visitor who watched the preview before signing in — the
+               server had nobody to record it against at the time. */
+            recallProgress(videoId)
+          ),
+    }
+  }
+  const resumeAt = startFrom.current.value
 
   /** Why this video is playing in full — see the badge below. */
   const accessReason = (() => {
@@ -899,6 +677,11 @@ export default function Watch() {
   })()
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(0, Number(v.durationSeconds || 0) - previewSeconds)
+  const shape = videoShape(v.width || measured?.width, v.height || measured?.height)
+  /** After preview: cinematic lock on the player — payment sheet only on tap. */
+  const showLockGate =
+    needsPayment &&
+    (previewOver || (accessReady && !p?.playback?.iframe && !p?.previewPending && !p?.unavailable))
 
   const openCheckout = () => {
     if (!needsPayment) return
@@ -929,7 +712,202 @@ export default function Watch() {
   return (
     <Shell>
       <div className="watch-wrap">
-        {playerStage}
+        <div
+          className={`player ${showLockGate ? 'is-gated' : ''} is-${shape.orientation}`.trim()}
+          style={{
+            '--player-aspect': shape.aspect,
+            '--player-ratio': String(shape.ratio),
+          }}
+        >
+          {/* Somebody who opened this on a shared link has nothing of ours
+              behind them, and a bare navigate(-1) would take them off the site
+              — back to WhatsApp, usually. Explore is the useful destination
+              there. */}
+          <button className="pl-back" onClick={goBack} aria-label="Go back">
+            <ArrowLeft />
+          </button>
+
+          {waitingForPlayback && !p?.playback?.iframe ? (
+            <div className="stream-shell is-booting">
+              {v.thumbnailUrl ? (
+                <img
+                  className="stream-poster"
+                  src={mediaUrl(v.thumbnailUrl)}
+                  alt=""
+                  draggable={false}
+                />
+              ) : (
+                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
+            </div>
+          ) : p?.unavailable && !p?.playback?.iframe ? (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>This video is unavailable</b>
+              <p>The file is not ready to play. Try another title.</p>
+            </div>
+          ) : p?.previewPending && !p?.playback?.iframe ? (
+            <div className="stream-shell is-booting">
+              {v.thumbnailUrl ? (
+                <img
+                  className="stream-poster"
+                  src={mediaUrl(v.thumbnailUrl)}
+                  alt=""
+                  draggable={false}
+                />
+              ) : (
+                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
+              <p className="stream-boot-msg">Preview is being prepared</p>
+            </div>
+          ) : playback.error && !p?.playback?.iframe ? (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>This video could not start</b>
+              <p>
+                {playback.error && playback.error !== 'Something went wrong'
+                  ? playback.error
+                  : 'Check your connection and try again. Nothing was charged.'}
+              </p>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
+                Try again
+              </button>
+            </div>
+          ) : p?.playback?.iframe ? (
+            <>
+              <StreamPlayer
+                key={`${v.id}-${p.playback.kind}`}
+                src={p.playback.iframe}
+                title={v.title}
+                /* The server's stored position is the authority; the local hint
+                   only covers the moment straight after payment, before the
+                   reloaded playback has come back. */
+                startAt={resumeAt}
+                seekRequest={seekTo}
+                positionRef={livePosition}
+                autoplay={!activeAd}
+                playOnReady={!activeAd}
+                paused={Boolean(activeAd)}
+                onMediaSize={
+                  v.width && v.height
+                    ? undefined
+                    : (size) => setMeasured((was) => was || size)
+                }
+                /**
+                 * Where the free preview ends, enforced by the player itself.
+                 *
+                 * The page used to do this by showing the paywall over the
+                 * top when the clock passed the number — which never stopped
+                 * the film. The preview is its own Cloudflare clip, cut when
+                 * previews were five minutes long, so a video stating 3:37
+                 * kept playing underneath the paywall until 5:00.
+                 */
+                stopAt={p.playback.kind === 'preview' ? previewSeconds : 0}
+                onStopReached={() => {
+                  capturePosition()
+                  watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                  rememberProgress(videoId, watchedTo.current, { force: true })
+                  previewRanOut.current = true
+                  setPreviewOver(true)
+                  reportProgress(previewSeconds, { force: true })
+                }}
+                onPlaying={() => {
+                  /* Preview clip firing play must not drop the "Unlocked" veil
+                     or the full film never remounts at the resume second. */
+                  if (justPaid && p.playback.kind !== 'full') return
+                  if (activeAd) return
+                  setContinueReady(true)
+                }}
+                onRetry={() => playback.reload()}
+                onEnded={() => {
+                  if (needsPayment) {
+                    watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                    rememberProgress(videoId, watchedTo.current, { force: true })
+                    previewRanOut.current = true
+                    setPreviewOver(true)
+                    reportProgress(previewSeconds, { force: true })
+                    return
+                  }
+                  runBreak('post_roll')
+                }}
+                onTimeUpdate={(current) => {
+                  if (activeAd) return
+                  const prev = watchedTo.current
+                  if (current < 2 && prev > 8) {
+                    /* Preview clip reset to 0 after ending — keep the stop. */
+                  } else {
+                    watchedTo.current = Math.max(prev, current || 0)
+                  }
+                  reportProgress(watchedTo.current)
+
+                  if (needsPayment && previewSeconds && current >= previewSeconds - 0.4) {
+                    watchedTo.current = Math.max(watchedTo.current, previewSeconds)
+                    previewRanOut.current = true
+                    setPreviewOver(true)
+                    reportProgress(previewSeconds, { force: true })
+                  }
+
+                  if (!needsPayment) {
+                    mainProgress.current = current
+                    const mid = adAt('mid_roll')
+                    if (mid?.atSeconds != null && current >= mid.atSeconds) runBreak('mid_roll')
+                  }
+                }}
+              />
+              {activeAd && (
+                <div className="player-ad-layer">
+                  <AdBreak ad={activeAd} videoId={v.id} playId={playId} onFinished={adFinished} />
+                </div>
+              )}
+              {needsPayment && !previewOver && (
+                /* Spell out how much of the film this preview is. The client
+                   could not tell a paid video from a free one because nothing
+                   on screen said the video ran longer than the preview. */
+                <div className="preview-flag">
+                  <Lock size={13} />
+                  Free preview
+                  {previewSeconds ? ` · ${duration(previewSeconds)}` : ''}
+                  {v.durationSeconds ? ` of ${duration(v.durationSeconds)}` : ''}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="player-empty">
+              <AlertTriangle />
+              <b>{p?.note || 'This video is not ready to play yet'}</b>
+              <p>Check your connection, or try again in a moment.</p>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
+                Try again
+              </button>
+            </div>
+          )}
+
+          {justPaid && !continueReady && (
+            <div className="continue-veil" aria-live="polite">
+              <span className="pay-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+              <b>Unlocked</b>
+              <small>
+                {resumeAt > 2
+                  ? `Resuming from ${duration(Math.floor(resumeAt))}`
+                  : 'Continuing from where the preview stopped…'}
+              </small>
+            </div>
+          )}
+
+          {showLockGate && (
+            <LockGate
+              priceLabel={tzs(v.priceTzs)}
+              /* The gate says what this particular release model buys. */
+              accessType={v.accessType}
+              onUnlock={openCheckout}
+            />
+          )}
+        </div>
+
         {/* Compact unlock CTA under the player — never auto-open the payment sheet. */}
         {needsPayment && (
           <div className={`unlock-bar ${previewOver ? 'is-urgent' : ''}`.trim()}>
