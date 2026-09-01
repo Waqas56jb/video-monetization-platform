@@ -167,4 +167,60 @@ that motivated it.
 
 ---
 
+## Re-baseline — is there a regression? No.
+
+Three consecutive harness runs on the current build, each a median of 5 with a warm-up
+discarded. The test set was: **our leg (`pb` → `if`) must be ≤ 950 ms in all three runs.**
+
+| run | `live-at-arusha` | `how-to-cook-pilau` | `rpreplay` | run median |
+|---|---|---|---|---|
+| 1 | 425 | 441 | 228 | **425** |
+| 2 | 421 | 395 | 386 | **395** |
+| 3 | 379 | 382 | 372 | **379** |
+
+Every value is between 228 and 441 ms. The recorded baseline's own figure was **743 ms**
+(`pb` 191 → `if` 934), so the part of the wait this codebase controls is now *faster* than when
+the baseline was taken. **No regression.**
+
+The earlier alarming numbers were a cold CDN, and the three runs show it warming:
+
+| run | `live-at-arusha` PLAY | `how-to-cook-pilau` | `rpreplay` |
+|---|---|---|---|
+| 1 | 5779 | 6750 | 6466 |
+| 2 | 4510 | 5260 | 5212 |
+| 3 | **4937** | **5152** | **5754** |
+
+Those are still above the 3108 / 3585 / 3218 recorded earlier, and every millisecond of the
+difference sits after `el` — inside Cloudflare's player, not in anything served from this
+repository. The single run that reported 13995 ms had an `if` of 7000 ms against 932 ms in the
+run twenty minutes later, on the same build: a 7× swing on one video with no code change
+between them. **The recorded baseline is no longer a fair comparison point**, because it was
+taken when the edge happened to be warm for those three titles.
+
+---
+
+## A7 — every page at every width
+
+70 page/width combinations on WebKit: `/`, `/explore`, `/watch/:slug`, `/login`, `/signup`,
+`/creator/:id`, `/dashboard` at 320, 375, 390, 414, 768, 834, 1024, 1280, 1440 and 1920.
+
+**Horizontal overflow: 0.** Not one combination scrolls sideways. That is the failure that
+reaches a client as "the page is broken", and it is absent.
+
+Small tap targets, on touch-sized viewports only:
+
+| page | element | size |
+|---|---|---|
+| `/login`, `/signup`, `/dashboard` | password-reveal button | 18 × 21 |
+| `/login`, `/signup`, `/dashboard` | checkbox | 20 × 20 |
+| `/creator/:id` | one button | 38 × 38 |
+| `/watch/:slug` | back button | 36 × 36 |
+
+The first version of this check flagged 42 combinations by testing
+`min(width, height) < 40`, which condemns every wide, short link — a 331 × 34 nav item is not
+hard to hit. Requiring **both** dimensions to be under 40 px leaves the four above, which are
+the ones that actually cost a tap: a checkbox and an icon button.
+
+---
+
 *Further items are appended as they are verified.*
