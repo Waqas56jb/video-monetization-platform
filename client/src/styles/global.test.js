@@ -54,3 +54,46 @@ test('pages that open under the fixed header allow for its height', () => {
   assert.ok(m, '.creator-page rule is missing')
   assert.match(m[1], /padding:calc\(var\(--header-h\)/)
 })
+
+/**
+ * A stretched link must be trapped by its own card.
+ *
+ * `.vid-open::after` and `.creator-open::after` are `position:absolute;inset:0`
+ * — the pattern that makes a whole tile clickable without nesting one anchor
+ * inside another. `inset:0` resolves against the nearest POSITIONED ancestor,
+ * so if the card itself is not positioned the overlay escapes to whatever is,
+ * and silently swallows every control below it.
+ *
+ * That is not hypothetical. `.creator-row` was missing `position:relative`, and
+ * its overlay spread across the watch page and ate the Unlock button — a viewer
+ * on a phone could not buy the video. It was invisible in review and obvious the
+ * moment a test tried to click Unlock.
+ */
+test('every stretched card link is contained by its own card', () => {
+  /* Plain string search, not a built regex: the selectors contain `.` and `::`
+     and the escaping is easy to get wrong in a way that makes the test pass by
+     matching nothing. */
+  const declarations = (selector) => {
+    const at = css.indexOf(selector + '{')
+    if (at < 0) return null
+    return css.slice(at + selector.length + 1, css.indexOf('}', at))
+  }
+
+  for (const [overlay, card] of [
+    ['.vid-open::after', '.vid-card'],
+    ['.creator-open::after', '.creator-row'],
+  ]) {
+    const spread = declarations(overlay)
+    assert.ok(spread, `${overlay} rule is missing`)
+    assert.match(spread, /position:absolute/, `${overlay} must be absolutely positioned`)
+    assert.match(spread, /inset:0/, `${overlay} must cover its card`)
+
+    const holder = declarations(card)
+    assert.ok(holder, `${card} rule is missing`)
+    assert.match(
+      holder,
+      /position:relative/,
+      `${card} must be position:relative, or ${overlay} escapes it and covers unrelated controls`
+    )
+  }
+})

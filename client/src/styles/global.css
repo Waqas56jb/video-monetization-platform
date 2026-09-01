@@ -749,7 +749,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .watch-info .meta span{display:flex;align-items:center;gap:6px}
 .watch-info .meta svg{width:15px;height:15px;flex-shrink:0}
 .watch-actions{display:flex;gap:12px;flex-wrap:wrap}
-.creator-row{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border2);padding:18px 22px;border-radius:18px;margin-bottom:26px;flex-wrap:wrap}
+.creator-row{position:relative;display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--border2);padding:18px 22px;border-radius:18px;margin-bottom:26px;flex-wrap:wrap}
 .creator-row img{width:54px;height:54px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)}
 .creator-row b{display:flex;align-items:center;gap:6px;font-family:'Sora';font-size:16px}
 .creator-row small{color:var(--muted2);font-size:12.5px}
