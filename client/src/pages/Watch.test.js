@@ -422,3 +422,37 @@ test('paying from that gate resumes where the preview stopped, never at zero', (
   assert.match(rp, /const from = Math\.max\(seen, watched, saved\)/)
   assert.match(rp, /if \(stop > 2 && previewEnded\) return stop/)
 })
+
+test('the player says something while it is still coming, and offers a retry', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  /**
+   * ~3.5 s of the wait is Cloudflare's floor, so a silent poster for that long
+   * is the normal case. These stages do not make it faster; they stop it looking
+   * broken while it is slow.
+   */
+  assert.match(src, /const BOOT_STAGE_MS = \[1500, 5000, 12000\]/)
+  assert.match(src, /'Connecting…'/)
+  assert.match(src, /'Slow connection — still connecting'/)
+
+  /**
+   * The retry could never render before. `waitingForPlayback` was gated on
+   * `!playback.error`, so the timeout set the error, the shell unmounted, and
+   * the viewer went straight to a failure screen without being offered the
+   * cheaper option of waiting a moment longer. The shell now survives it.
+   */
+  assert.match(src, /playback\.loading \|\| Boolean\(playback\.error\)/)
+  assert.doesNotMatch(src, /!playback\.error && \(playback\.loading/)
+
+  /* Stage 3 must not sit behind the request's own timeout, or the error wins. */
+  assert.match(src, /timeoutMs: 12_000/)
+  assert.match(src, /bootStage >= 3 &&/)
+  assert.match(src, /Try again/)
+})
+
+test('a purchase with nothing watched explains why it starts at zero', () => {
+  // resumePoint returns 0 for someone who paid without watching the preview.
+  // On screen that looks identical to the film forgetting their position.
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+  assert.match(src, /starting from the beginning, you hadn't watched the preview/)
+})

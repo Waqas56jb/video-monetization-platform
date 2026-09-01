@@ -47,6 +47,16 @@ import WatchSkeleton from '@/components/watch/WatchSkeleton'
  * arrives is the free preview clip and nothing else. That is why this cannot
  * be defeated with devtools, unlike a client-side counter.
  */
+/**
+ * When each reassurance appears, in milliseconds from arriving on the page.
+ *
+ * The last one carries a retry. It has to fire at or before the playback
+ * request's own timeout, or the request errors first and the viewer is handed a
+ * failure screen without ever having been offered the cheaper option of waiting
+ * a little longer.
+ */
+const BOOT_STAGE_MS = [1500, 5000, 12000]
+
 export default function Watch() {
   const { videoId } = useParams()
   const navigate = useNavigate()
@@ -137,13 +147,32 @@ export default function Watch() {
   const playback = useApi(
     () => takeWarmedPlayback(videoId) || api.playback(videoId),
     [videoId],
-    { timeoutMs: 20_000 }
+    { timeoutMs: 12_000 }
   )
   const adBreaks = useApi(
     () => takeWarmedAds(videoId) || api.ads.breaks(videoId),
     [videoId]
   )
   const [previewAttempt, setPreviewAttempt] = useState(0)
+
+  /**
+   * Say something while the player is still coming.
+   *
+   * ~3.5 s of the wait is Cloudflare's own floor (PLAYER-MEASURE.md), so a
+   * silent poster for that long is the normal case, not the exception — and on
+   * a slow connection it ran to twenty seconds with nothing on screen but a
+   * still frame. These stages do not make anything faster; they stop it looking
+   * broken while it is being slow, which is the part the client actually saw.
+   *
+   * Elapsed time rather than request state, because what matters is how long the
+   * viewer has been staring at it, not which promise is outstanding.
+   */
+  const [bootStage, setBootStage] = useState(0)
+  useEffect(() => {
+    setBootStage(0)
+    const timers = BOOT_STAGE_MS.map((ms, i) => setTimeout(() => setBootStage(i + 1), ms))
+    return () => timers.forEach(clearTimeout)
+  }, [videoId, previewAttempt])
 
   /* Drop the top progress bar once this page has painted a shell. */
   useEffect(() => {
@@ -154,8 +183,15 @@ export default function Watch() {
   const share = shareLive ?? video.data?.share
   const playbackRow = playback.data
   const p = playbackRouteMatches(playbackRow, v) ? playbackRow : null
+  /**
+   * `!playback.error` used to be part of this, and it is why the retry could
+   * never appear: the 20 s timeout set the error, this went false, the shell
+   * unmounted, and the viewer was thrown straight to a failure screen. The shell
+   * now survives the timeout and offers the retry itself; a genuine failure is
+   * still reported inside it rather than in place of it.
+   */
   const waitingForPlayback =
-    !playback.error && (playback.loading || (Boolean(v?.id) && Boolean(playbackRow) && !p))
+    playback.loading || Boolean(playback.error) || (Boolean(v?.id) && Boolean(playbackRow) && !p)
   /**
    * Only decide lock state after playback access is known for THIS video.
    *
@@ -514,10 +550,19 @@ export default function Watch() {
     setPreviewOver(false)
     setResumeHint(from)
 
+    /**
+     * Say why it starts where it starts.
+     *
+     * `resumePoint` deliberately begins at zero for someone who paid without
+     * watching the preview — there is no position to return to. On screen that
+     * is indistinguishable from the film having forgotten where they were, and
+     * it is the kind of thing a client reports as a bug. One clause removes the
+     * ambiguity.
+     */
     showToast(
       from > 5
         ? `Unlocked — continuing from ${duration(Math.floor(from))}`
-        : 'Unlocked — continuing the video'
+        : "Unlocked — starting from the beginning, you hadn't watched the preview"
     )
 
     const saveThenReload = async () => {
@@ -738,6 +783,39 @@ export default function Watch() {
                 />
               ) : (
                 <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
+
+              {/* Stage 0 is the poster on its own — most plays never leave it. */}
+              {bootStage >= 1 && (
+                <div className="stream-boot" role="status" aria-live="polite">
+                  <p className="stream-boot-msg">
+                    {bootStage >= 3
+                      ? 'Still not starting'
+                      : bootStage >= 2
+                        ? 'Slow connection — still connecting'
+                        : 'Connecting…'}
+                  </p>
+                  {bootStage >= 3 && (
+                    <>
+                      <p className="stream-boot-sub">
+                        {playback.error && playback.error !== 'Something went wrong'
+                          ? playback.error
+                          : 'Nothing has been charged.'}
+                      </p>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        type="button"
+                        onClick={() => {
+                          setBootStage(0)
+                          setPreviewAttempt((n) => n + 1)
+                          playback.reload()
+                        }}
+                      >
+                        Try again
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           ) : p?.unavailable && !p?.playback?.iframe ? (
