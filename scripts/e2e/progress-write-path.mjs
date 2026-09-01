@@ -150,7 +150,13 @@ for (const profile of PROFILES) {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
       document.dispatchEvent(new Event('visibilitychange'))
     })
-    await page.waitForTimeout(400)
+    /* Two seconds between "hidden" and the tab being destroyed, for the same
+       reason as the WebKit branch below: sendBeacon outlives the DOCUMENT, not
+       the browser process, and `context.close()` in the same breath takes the
+       network stack with it. Chromium desktop happened to win that race and
+       Pixel 7 lost it — which measured the harness, not the site. A real tab is
+       reclaimed seconds after it goes hidden, not milliseconds. */
+    await page.waitForTimeout(2000)
 
     // Kill it. Nothing still in flight survives this.
     await ctx.close()

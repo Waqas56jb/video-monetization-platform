@@ -1,6 +1,10 @@
 # Verification log
 
 Evidence for each item. Command output, test output or measurement — no entry without one.
+
+Headings follow PROMPT-10's lettering. Where an item came from PROMPT-7 under a different letter
+— PROMPT-7's C1 is PROMPT-10's A3 — both are given, because "C1" otherwise names two unrelated
+pieces of work in the same file.
 Production is `main` on Railway + two Vercel projects. Measurements are median of 5 with one
 warm-up discarded unless stated.
 
@@ -123,7 +127,7 @@ blocks are skipped now.
 
 ---
 
-## C1 — scroll jank, WebKit
+## A3 (PROMPT-7 C1) — scroll jank, WebKit
 
 Scripted 10-second scroll, top to bottom and back.
 
@@ -264,6 +268,247 @@ from this location, not client code.
 Playwright's 30-second default timeout on a poll for the error banner, charged to the login on
 every clean iteration. With an explicit 500 ms the same runs report 1.7–11 s of poll
 granularity, and the direct measurement above gives the real figure.
+
+---
+
+
+## B1–B3 — the payment journey
+
+`scripts/e2e/purchase-journey.mjs`. **A viewer who has never paid, per profile and per run** —
+created through the production sign-up form, not the API. A shared account would own the film
+after the first run and every later run would be testing a video it had already bought, which is
+the one thing this must not do.
+
+**Entitlement is read from the server before the picture is believed.** `playback.kind` on
+`/api/playback/:id/playback` is `preview` or `full`; a film that appears to play proves nothing
+about what was granted. The resume assertion runs only after `kind: full` comes back, and only
+on Chromium, where a player can actually decode.
+
+| profile | runs | one-submit journey | resume within 5 s of the sheet closing | sheet closed |
+|---|---|---|---|---|
+| chromium desktop | 5 | 5/5 | **5/5** — 20.0s against a 19.9s stop | 7278–10043 ms |
+| Pixel 7 · chromium | 5 | 5/5 | **5/5** — 20.0s against a 19.9s stop | 7425–8317 ms |
+| webkit desktop | 1 | layout + sheet | *not judgeable here (no MSE)* | 10750 ms |
+| iPhone 14 · webkit | 1 | layout + sheet | *not judgeable here* | 8588 ms |
+| 375×667 · webkit | 1 | layout + sheet | *not judgeable here* | 7563 ms |
+
+Every profile also passed, in the same run: the preview stopping by itself at its own cut-off,
+My Library listing the film, logout → login leaving it `kind: full`, a **second** paid title
+staying `kind: preview` with its own Unlock button, and both failure paths —
+
+```
+Test declined   → "Payment not completed · Insufficient balance in the mobile money account
+                   · Nothing was charged. You can try again with the same number."  → Try again
+Test cancelled  → "Payment cancelled · The customer cancelled the payment on their phone
+                   · Nothing was charged."                                          → Try again
+```
+
+— with `kind` still `preview` after each, checked from the API, and Try again returning to the
+form.
+
+### B2 — the sheet with a keyboard up
+
+`interactive-widget=resizes-content` was already on the viewport meta, so a keyboard shortens the
+layout viewport. That is emulated exactly: the viewport is cut by 48 % with the number field
+focused, which is what a soft keyboard does and what no headless browser will do on its own.
+
+| | 375×667 | iPhone 14 (390×664) |
+|---|---|---|
+| sheet fits with no scrolling | ✅ | ✅ |
+| Pay button, keyboard down | 498–545 of 667 | 500–547 of 664 |
+| number field, keyboard up | **91–140 of 347** | **90–141 of 345** |
+| Pay button, keyboard up | **160–209 of 347** | **161–210 of 345** |
+
+Both stay on screen. Nothing had to be changed for this.
+
+### B3 — the rate limiter
+
+The production limit is **120 requests per minute per IP**. Every `/api/` request the journey
+makes is stamped and the busiest 60-second window read off afterwards:
+
+| profile | requests | busiest 60 s | headroom | 429s |
+|---|---|---|---|---|
+| chromium desktop | 41–42 over ~78 s | **41** | 79 | 0 |
+| Pixel 7 | 47 over 78 s | **47** | 73 | 0 |
+| webkit desktop | 37 over 88 s | **34** | 86 | 0 |
+| iPhone 14 | 36 over 74 s | **36** | 84 | 0 |
+
+**The polling was 1/s and is now 2 s** (`2d81a43`). A mobile-money prompt lives three minutes; at
+one a second a single open sheet is 180 requests against a 120/min limit shared with everything
+else the page is doing, so a viewer who left the sheet open while browsing could rate-limit their
+own purchase. At 2 s the worst case is 90 over three minutes, and the sandbox's ~3 s settlement is
+still caught on the second tick.
+
+The give-up test went with it: `elapsed > 180` counted ticks, so it only meant three minutes while
+the interval happened to be one second. Changing the cadence would have silently doubled it to six.
+It is measured against the clock now.
+
+**An instrument fault worth recording, because it produced a false failure first.** The harness
+clicked Pay before `/api/stats/platform` had come back, so the sandbox had not yet pre-filled the
+test number, and an empty field failed validation — correct behaviour, and useless as a test. The
+harness types the number now, which is also the journey that will still exist when the real M-Pesa
+gateway replaces the sandbox and there is no pre-fill at all.
+
+---
+
+## C1 (retention) — Follow
+
+### CLI, against production
+
+`server/scripts/follow-cli.mjs`:
+
+```
+### follow, twice
+  POST  → 200 {"isFollowing":true,"followers":1}
+  POST  → 200 {"isFollowing":true,"followers":1}   (same call again)
+  PASS  the second does not count twice
+  PASS  the count matches the graph (1 rows)
+  PASS  and creator_profiles.followers matches too — the trigger, not the route
+
+### the one request a page of cards makes
+  GET /api/creators/following → 200 {"creatorIds":[...]}
+
+### a blocked creator — the case that used to trap followers for ever
+  POST   .../follow → 404   PASS  you cannot start following a blocked creator
+  DELETE .../follow → 200   PASS  but an existing follower CAN get out (this was 404 before)
+  restored → status=active
+
+### drift across every creator on the site
+  14 creators, 0 disagreeing with the follows table
+```
+
+### The trigger, on live data
+
+Migration **031 applied to production at 2026-09-01 18:56:45**.
+
+```
+creator b9e30da9… starts at 1
+after an INSERT the trigger says: 2
+after a DELETE  the trigger says: 1
+rows disagreeing with the graph: 0
+```
+
+And the case the migration exists for — a viewer's account being deleted, which cascades their
+follow rows away — inside a transaction that was rolled back, so production is untouched:
+
+```
+creator 5b6f439b… followers = 1
+deleting one of their followers: 962361c8…
+AFTER the cascaded delete → creator_profiles.followers = 0 , follows rows = 0
+AGREE — the trigger corrected the cascade
+rolled back — production is untouched
+```
+
+Before 031 that count would have stayed at 1 for ever with nothing to recompute it.
+
+### Browser — `scripts/e2e/follow-ui.mjs`
+
+```
+### webkit desktop
+  PASS  the watch page offers Follow on the creator row
+  PASS  the label flips while the request is still in flight ("Follow" → "Following")
+  PASS  and it stays followed once the server answers
+  PASS  still Following after a reload
+  PASS  cards carry Follow (8 of 8 cards)
+  PASS  and the creator's name is a link (8 of 8 cards)
+  PASS  tapping a card still opens the video on tap #1 (/watch/rpreplay-final1589783013-2)
+  PASS  the creator's name goes to their page, not the video (/creator/007df911…)
+  PASS  the follow survives logout → login
+```
+
+The optimistic assertion is measured **against the network, not a stopwatch**: the follow request
+is held open by the harness and the label has to have changed while it is still in flight. A
+timing threshold would pass on a fast connection for the wrong reason.
+
+### A bug this work introduced, and how it was caught
+
+`.creator-open::after` is `position:absolute;inset:0` — the stretched link that keeps the whole
+row clickable without nesting an anchor inside an anchor. `.creator-row`, unlike `.vid-card`,
+never declared `position:relative`, so the overlay escaped its row and spread across the watch
+column. **On a phone the viewer could not press Unlock.** It was invisible in review and showed up
+as a click timeout on Pixel 7:
+
+```
+<a class="creator-open" …> from <div class="watch-info">…</div> subtree intercepts pointer events
+```
+
+Fixed in `18eb81c`, with a test that asserts every stretched link in the sheet is contained by a
+positioned card. Reverting the fix makes that test fail with the reason spelled out, which is how
+it was checked.
+
+---
+
+## C2 (retention) — the creator, reachable; releases, shareable
+
+`scripts/e2e/creator-page.mjs`, three profiles, against production.
+
+```
+### webkit desktop / iPhone 14 · webkit / chromium desktop      (identical on all three)
+  PASS  the page lists releases (6)
+  PASS  every release has a Watch button (7)
+  PASS  every release has a Share button (7)
+  PASS  no horizontal overflow (scrollWidth - innerWidth = -10 / 0 / 0)
+  PASS  Watch opens the video (/watch/live-at-arusha-full-set)
+  PASS  Share opens the share sheet
+        sheet says: SHARE THIS VIDEO WhatsApp and Facebook show this poster card…
+  PASS  and it is the real sheet — WhatsApp is in it, not a cut-down copy
+```
+
+Seven Watch and seven Share controls for six releases: the featured release carries them too.
+
+**The creator link on cards** is covered in the C1 block above — 8 of 8 cards on Explore, with
+the card still opening the video on tap #1 and the byline going to `/creator/:id` rather than to
+the film.
+
+**Why the same sheet and not a simpler one.** A second share dialog would be a second thing to
+keep in step with the watch page, and the WhatsApp path in it is the one the client reported and
+the one that took the work. It needs a `share` payload only `GET /api/videos/:slug` carries, so
+it is fetched when the button is pressed — one request, for the release somebody actually chose,
+rather than one per tile on a page that can hold a whole catalogue.
+
+**Instrument correction.** The first run reported "Share does not open" on all three engines.
+`isVisible()` reports the current state and does not wait, and the sheet only appears after that
+round trip. With `waitFor` the same runs pass everywhere.
+
+---
+
+## C3 (retention) — the Continue Watching write path
+
+`scripts/e2e/progress-write-path.mjs`. The row is read back from the API, never from the page.
+
+| profile | played to 0:42, backgrounded, tab killed | pause writes immediately |
+|---|---|---|
+| chromium desktop | **42 s** stored (bar: 42 ± 3) | 62 s after a pause at 0:62 |
+| Pixel 7 · chromium | **42 s** stored | 62 s after a pause at 0:62 |
+| webkit desktop | beacon accepted → **49 s** stored (49 sent) | — |
+| iPhone 14 · webkit | beacon accepted → **49 s** stored (49 sent) | — |
+
+WebKit cannot play here, so it proves the half it can: `navigator.sendBeacon` exists on that engine
+(`sendBeacon: true, fetch keepalive: true`) and a beacon sent from the real page to the real
+endpoint stores a position — which is precisely the half that was broken.
+
+**Two real defects were found here, and the second only by watching the wire.**
+
+1. `pagehide` flushed through the ordinary API client. A document that is unloading has its
+   in-flight requests cancelled, so on a phone that write usually never arrived at all.
+2. **`navigator.sendBeacon` can only issue a POST**, and the route was registered for `PUT` alone.
+   Every beacon was answered **404** — silently, because sendBeacon returns true for "queued" and
+   never for "delivered". The page reported success and nothing was stored. The first run of this
+   harness said `server row … 1s (sent 49)` with the beacon "accepted", which is exactly what that
+   failure looks like from outside.
+
+```
+REQ  POST …/api/playback/85bd6939…/progress "text/plain;charset=utf-8"
+RES  404
+REQ  PUT  …/api/playback/85bd6939…/progress "text/plain;charset=UTF-8" {"seconds":78,"token":"eyJ…
+RES  202  {"saved":true,"seconds":78}
+```
+
+**Instrument correction.** The first Chromium attempt closed the browser context 400 ms after the
+tab went hidden. `sendBeacon` outlives the *document*, not the browser process, so that destroyed
+the network stack before anything went out — Chromium desktop happened to win that race and Pixel 7
+lost it. Two seconds represents a tab the system reclaims after it is backgrounded; the assertion,
+reading the row from the server, is unchanged.
 
 ---
 
