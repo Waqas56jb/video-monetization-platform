@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
 import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
 import { getAccessToken } from '@/lib/api'
+import { loginHref } from '@/lib/loginReturn'
 
 const LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -21,6 +22,7 @@ const LINKS = [
 /** Full-screen mobile navigation overlay. */
 export default function MobileMenu({ open, onClose }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { authed, loading } = useRole()
   const signedIn = authed || (loading && Boolean(getAccessToken()))
   const goToSection = useSectionLink()
@@ -86,7 +88,7 @@ export default function MobileMenu({ open, onClose }) {
           </>
         ) : (
           <>
-            <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('/login')}>
+            <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo(loginHref(location))}>
               Log in
             </button>
             <button type="button" className="btn btn-gold btn-block" onClick={() => goTo('/signup?side=creator')}>

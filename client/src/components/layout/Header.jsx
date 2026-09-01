@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Library, LogIn, Menu, Sparkles } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import MobileMenu from './MobileMenu'
@@ -7,6 +7,7 @@ import useScrolled from '@/hooks/useScrolled'
 import useSectionLink from '@/hooks/useSectionLink'
 import { useRole } from '@/context/AuthContext'
 import { getAccessToken } from '@/lib/api'
+import { loginHref } from '@/lib/loginReturn'
 
 const NAV_LINKS = [
   { to: '/explore', label: 'Explore' },
@@ -22,6 +23,7 @@ export default function Header({ solid = false }) {
   const scrolled = useScrolled(40)
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { authed, loading } = useRole()
   /* Token in hand → show library chrome immediately. Waiting for /me used to
      paint Log in, then swap to Dashboard — the header jump on first load. */
@@ -79,7 +81,7 @@ export default function Header({ solid = false }) {
               <>
                 <button
                   className="btn btn-ghost btn-sm nav-cta-login"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate(loginHref(location))}
                 >
                   <LogIn size={18} />
                   <span className="btn-label">Log in</span>
