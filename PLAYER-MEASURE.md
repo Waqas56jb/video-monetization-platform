@@ -249,3 +249,78 @@ the baseline's `playback` column read faster than the truth — ~500 ms where th
 response had not arrived until ~960 ms. The harness now matches the slug under test. The
 `iframe`, `video_el`, `canplay` and `first_playing` columns were never affected, and those
 are the ones the conclusions rest on.
+
+---
+
+## Floor — what the CDN costs us, and why the target moved to 3.5 s
+
+*(This section is written to be read by the client as it stands.)*
+
+Roughly **3.5 to 4 seconds of the wait is Cloudflare's, not ours.** Traced on production
+on 2026-08-31, from the moment our page creates the player:
+
+```
+ 861  200  iframe.videodelivery.net/<token>                          the player frame loads
+1047  301  customer-….cloudflarestream.com/embed/sdk-iframe-integration…js
+2080  200  (the same script, after the redirect)      ← 1033 ms for one file
+2483  200  embed/925….chunk.js + embed/10….chunk.js   ← two more before it can start
+3117  200  …/audio/13…  and  …/video/24…              ← first media
+3444  200  …/audio/13…  and  …/video/24…              ← and it waits for a second pair
+```
+
+Two costs sit inside that, and neither is code we control:
+
+**The player's own start-up — about 1.9 seconds.** Cloudflare's embed loads its player
+software inside the video frame before it can show anything. One of those files takes a
+full second on its own, partly because the request is answered with a redirect and has to
+be made twice.
+
+**Filling the buffer — about 1.5 to 2 seconds.** The player fetches roughly two seconds of
+video and audio before it starts, so that playback does not stutter immediately. We
+confirmed it is not waiting for permission or for a tap: playback is requested and granted
+well before this point. It is waiting for data.
+
+**So a 2-second target was not reachable.** It would require the video to begin before
+Cloudflare has finished loading the software that plays it. The revised target is
+**3.5 seconds on a phone on a normal connection**, which is the CDN's floor plus a small,
+honest allowance for our own work: fetching the video's details, deciding what this viewer
+is entitled to, and putting the player on screen.
+
+What we can still remove is on our side of that line, and we are removing it: warming the
+right connections early, not spending the network on videos nobody has asked for, and
+putting the player on screen as soon as we know what to play rather than waiting for
+information the player does not need.
+
+One caveat worth stating plainly, because it will show up in any spot check: **the same
+video on the same phone measured 2.2 s and 6.7 s in two runs minutes apart.** That is the
+CDN's cache — a video recently watched by someone starts far faster than one that has to
+be fetched from origin. Any single measurement, good or bad, is close to meaningless; the
+figures above are medians of repeated runs.
+
+---
+
+## Verification on preview deployments is blocked — two separate gates
+
+Both this brief and the cross-browser one that follows assume a Vercel preview can be
+deployed and then driven end to end. It cannot, for two independent reasons, and both are
+settings rather than code:
+
+**1. The API refuses preview origins.** `CORS_ORIGINS` names the two production hostnames.
+Every preview gets a fresh hostname, so every API call from it is answered
+`403 ORIGIN_NOT_ALLOWED` before it reaches a route.
+
+**2. Cloudflare Stream refuses preview domains.** Even with the API reachable, the player
+frame returns `403` and renders, in its own words:
+
+> This video has not been configured to be allowed on this domain.
+
+The videos have an allowed-domains list, and previews are not on it.
+
+Measured proof that these are the only obstacles: the identical harness, with the browser
+told to ignore CORS, produces a valid `tap → playing` of 4605 ms against **production** and
+never reaches a playing state against the **preview**, stopping at the iframe with the
+message above.
+
+The consequence reaches further than this branch. A cross-browser suite running in CI
+against preview URLs would fail every journey that touches the API or the player — which is
+most of them — for reasons that have nothing to do with the code under test.
