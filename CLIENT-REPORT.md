@@ -22,6 +22,12 @@ created on the live site and used to buy three videos through the normal payment
 | Behind the Fame — A Coast Documentary | 2,500 TZS |
 | WhatsApp Video 2026-08-15 | 1,000 TZS |
 
+"WhatsApp Video 2026-08-15" is itself a test upload: the title is the raw filename it
+arrived with, there is no description or category, and no poster was ever chosen for it —
+the site is showing a frame taken automatically from the video. It will be unpublished
+before handover, together with "80915499123 FD8FEAC4…", which is the same kind of test
+upload. Both are currently visible on Explore, so both have already been seen.
+
 **No money changed hands.** The site is running its sandbox payment provider, so these are
 test transactions end to end — nothing was charged to any card or mobile-money account, and
 nothing is owed to anyone.
