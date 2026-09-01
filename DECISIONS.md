@@ -205,3 +205,45 @@ baseline's own range of `[875-1416]`.
 for four features the client asked for, on the warm path only, on a throttled phone profile. If
 it needs to come back, the honest lever is code-splitting the two contexts behind the routes that
 use them, not removing the features.
+
+---
+
+## 2026-09-01 · A7's screenshot grid did not exist, and the item was recorded as done
+
+Found while assembling the final artefacts. A7's measurements were real and recorded — 70
+page/width combinations, zero horizontal overflow, four small tap targets named — but the
+screenshot grid the item calls for had never been produced, and `e2e/screens/` did not exist. An
+item is not finished because its numbers are.
+
+`scripts/e2e/screens.mjs` now produces it: 7 public pages x 10 widths x 2 engines, composed into
+14 strips rather than 140 loose files, each width captioned and the caption turning red with the
+excess if that combination scrolls sideways. None do.
+
+**JPEG at quality 72, not PNG.** The first run wrote 11.8 MB of PNG. That is a lot of repository
+for photographs of a dark web page, and the difference at quality 72 is invisible. 1.36 MB after.
+
+**The WebKit watch strip needed a note.** It shows "This video could not be played… Try again" at
+every width — which is the Step 2 failure state working correctly on an engine with no Media
+Source Extensions, not a defect. `e2e/screens/README.md` says so, because an artefact that can be
+misread is worse than no artefact.
+
+**Not covered by the grid:** `/dashboard` and the admin screens, which need a session. Their
+widths were measured in A7's original pass; only the pictures are missing.
+
+---
+
+## 2026-09-01 · Four test accounts per purchase-journey profile, and why there are so many
+
+`scripts/e2e/purchase-journey.mjs` creates a **fresh viewer for every run**, not one shared
+account. The first assertion of the journey is that the film is locked; a shared account would
+own it after the first run, and every later run would be testing a video it had already bought —
+which is the one thing that journey must not do.
+
+Five runs on each of two Chromium profiles plus one on each of three WebKit profiles is thirteen
+accounts, each with one 500 TZS sandbox purchase. They are all `e2e+…@mtonyo.test` and all
+reversed by `server/scripts/cleanup-e2e.mjs`, which refunds through the admin path so the
+creator's share goes back with the sale rather than being left behind.
+
+**Alternative considered:** reusing one account and buying a different title each run. Rejected —
+there are only four paid titles, two of which are the test uploads now unpublished, so it does
+not reach five runs and it makes each run test a different video.

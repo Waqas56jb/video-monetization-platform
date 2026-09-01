@@ -565,13 +565,19 @@ on the live site and used to buy videos through the normal payment screen.
 
 | | |
 |---|---|
-| Accounts | `e2e+…@mtonyo.test` — the original one plus one per test run of the purchase journey |
-| Created | 1 September 2026, through the ordinary sign-up form |
-| Purchases | 3 on the original account (5,000 / 2,500 / 1,000 TZS) plus 500 TZS per purchase-journey run |
+| Accounts | **27**, all `e2e+…@mtonyo.test` |
+| Created | 1 September 2026, every one through the ordinary sign-up form |
+| Active purchases | **22**, totalling **18,000 TZS** of sandbox value |
 
 Each run of the purchase journey needs an account that has **never paid for anything**, because
-an account that already owns the film would not be testing anything. That is why there are
-several rather than one.
+an account that already owns the film would not be testing anything at all — the first thing the
+journey asserts is that the video is locked. Five runs on each of two Chrome profiles, one on
+each of three Safari profiles, plus a few from earlier attempts, is where the number comes from.
+Most bought the cheapest paid title at 500 TZS; the original account bought three at 5,000,
+2,500 and 1,000.
+
+Every one of them is listed by the cleanup script, which has been run in dry-run mode to confirm
+it finds all 27 accounts and all 22 purchases.
 
 **No money changed hands.** The site is running its sandbox payment provider, so these are test
 transactions end to end — nothing was charged to any card or mobile-money account, and nothing is
