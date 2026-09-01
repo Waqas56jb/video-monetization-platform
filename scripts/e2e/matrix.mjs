@@ -195,8 +195,33 @@ const JOURNEYS = [
     async run({ page, t }) {
       await page.goto(`${BASE}/watch/${FREE_SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
       await page.waitForTimeout(3000)
-      const shell = await page.locator('.watch-stage, .player-shell, .ph-stage, iframe').count()
-      t(shell > 0, 'a stage is on screen within 3 s, not a blank box')
+      /**
+       * The classes the page actually renders, not invented ones.
+       *
+       * The first version looked for `.watch-stage, .player-shell, .ph-stage,
+       * iframe`. Three of those four do not exist in this codebase, so the
+       * assertion was really "the Cloudflare iframe has attached within three
+       * seconds" — a timing test wearing a "never blank" label. It passed on
+       * four profiles because the iframe happened to be quick and failed on the
+       * iPad because it was not, which told us nothing about either.
+       *
+       * What the page actually puts on screen while it waits is
+       * `.stream-shell.is-booting` with a poster inside it, then `.stream-boot`
+       * carrying the words. Once playback resolves, the iframe. Any of those is
+       * "not a blank box"; the absence of all of them is the reported fault.
+       */
+      const shown = await page.evaluate(() => ({
+        shell: Boolean(document.querySelector('.stream-shell')),
+        poster: Boolean(document.querySelector('.stream-poster')),
+        words: document.querySelector('.stream-boot-msg')?.textContent?.trim() || null,
+        frame: document.querySelectorAll('iframe').length,
+        fallback: Boolean(document.querySelector('.stream-fallback')),
+      }))
+      t(
+        shown.shell || shown.poster || shown.frame > 0 || shown.fallback,
+        `something is on screen at 3 s — shell:${shown.shell} poster:${shown.poster} frame:${shown.frame}` +
+        `${shown.words ? ` words:"${shown.words}"` : ''}`
+      )
       t((await noOverflow(page)) <= 0, 'no horizontal overflow')
     },
   },
