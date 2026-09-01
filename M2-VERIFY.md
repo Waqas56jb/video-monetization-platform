@@ -512,4 +512,115 @@ reading the row from the server, is unchanged.
 
 ---
 
+
+## C4 / C5 / C6 (retention) — My List, the four rows, Remove from history
+
+### Migrations, on production
+
+```
+applying 032_saved_videos.sql               ok  applied  2026-09-01 19:37:58
+applying 033_watch_progress_hidden_at.sql   ok  applied  2026-09-01 19:37:59
+```
+
+Schema, read back from the live database:
+
+```
+RLS:        saved_videos=true   watch_progress=true
+policies:   saved_videos_own_delete(DELETE)  saved_videos_own_insert(INSERT)
+            saved_videos_own_read(SELECT)    saved_videos_own_update(UPDATE)
+anon/authenticated grants: NONE (revoked)
+watch_progress.hidden_at:  timestamp with time zone
+indexes:    saved_videos_pkey  saved_videos_user_idx
+            watch_progress_pkey  watch_progress_user_idx  watch_progress_user_visible_idx
+```
+
+Four policies, RLS on, PostgREST revoked — the same protection `watch_progress` has, copied
+rather than reinvented.
+
+### CLI, against production — `server/scripts/library-cli.mjs`
+
+```
+### My List — save, twice, then unsave
+  POST  → 200 {"videoId":"85bd6939…","saved":true}
+  POST  → 200 {"videoId":"85bd6939…","saved":true}   (same call again)
+  PASS  saving twice is one row, not an error
+  PASS  and the database holds exactly one row (1)
+  PASS  GET /api/library/saved lists it
+  PASS  with a poster — the column list the blank-card bug came from
+
+### the four rows, in one request
+  GET /api/library → 200  keys: videos, purchased, continueWatching, myList, recentlyWatched, savedIds
+  counts — purchased 3, continue 3, myList 1, recent 3
+  PASS  My List carries the video just saved
+  PASS  and the saved ids ride along, so cards cost no extra request
+  PASS  `videos` still means Purchased — the old shape is intact
+
+### Remove from history — hides the row, keeps the position
+  history row: 85bd6939… at 62s
+  PASS  it is in Recently Watched before hiding
+  DELETE /api/library/history/… → 200 {"hidden":true}
+  PASS  it is gone from Recently Watched
+  PASS  and gone from Continue Watching — one table, both rows
+  database row: seconds=62, hidden_at=set
+  PASS  THE POSITION IS KEPT — the row was hidden, not deleted
+  PASS  reopening the film still resumes (resumeFromSeconds=62)
+
+### watching more of a hidden video puts it back
+  PASS  hidden_at is cleared — no second control needed to undo the first
+  PASS  and it is back in Recently Watched
+```
+
+The hiding assertions are checked against the **database** as well as the API, because "it
+disappeared from the row" and "the position was thrown away" look identical from outside and
+only one of them is the intended behaviour.
+
+### Browser — `scripts/e2e/library-ui.mjs`
+
+| profile | rows, in order | Save flips before the round trip | Remove from history | C6: requests to open |
+|---|---|---|---|---|
+| chromium desktop | Continue Watching · Purchased · My List · Recently Watched | ✅ | 3 → 2, still gone after a reload | **5** of 8 |
+| webkit desktop | same four, same order | ✅ | 2 → 1, still gone | **5** of 8 |
+| iPhone 14 · webkit | same four, same order | ✅ | 1 → 0, still gone | **6** of 8 |
+
+```
+/auth/me×1  /inbox×1  /library×1  /library/saved×1  /creators/following×1
+```
+
+**One batched `/api/library` carries all four rows.** The extra `/library/saved` is
+`SavedContext` populating itself for the Save buttons; it is one request for the whole app, not
+one per card, and it is inside the budget. iPhone's sixth is a poster fetch, not an API call for
+data.
+
+---
+
+## C7 (retention) — the two test uploads are off the public site
+
+Through `POST /api/admin/videos/:id/unpublish`, not an UPDATE: the route writes an audit row,
+notifies the creator and returns its own message. A direct write to `is_published` would look
+identical in the videos table, skip all of that, and prove nothing about the route an
+administrator will actually use.
+
+```
+### whatsapp-video-2026-08-15-at-11-50-34-pm
+  buyer before: kind=full owned=true
+  POST /api/admin/videos/a324d192…/unpublish → 200 Unpublished — buyers keep their access
+  PASS  it is off Explore
+  buyer after:  kind=full owned=true
+  PASS  THE BUYER KEEPS FULL ACCESS — a purchase does not vanish with a listing
+  PASS  and it is still in their library
+
+### 80915499123-fd8feac4-6609-4d3e-8739-d3a2cdde7f76
+  POST /api/admin/videos/4b8f6f4d…/unpublish → 200 Unpublished — buyers keep their access
+  PASS  it is off Explore
+```
+
+Both are gone from Explore. The e2e account had bought the first one, and it is still `kind:
+full` and still on their shelf — which is the promise the library banner makes, tested rather
+than asserted.
+
+The staff account used is the seeded demo moderator, whose password is published in
+`src/cli/demo.js` for exactly this. No real administrator's credentials were touched.
+
+---
+
 *Further items are appended as they are verified.*
