@@ -133,32 +133,21 @@ for (const [name, make] of CASES) {
 }
 
 /**
- * The player's frame must not change shape when /api/videos lands.
+ * The frame-stability comparison that used to live here is gone with Route B.
  *
- * This is why mounting early was slower the first time: the wrapper rendered
- * 16:9 from playback alone, then swapped its class and its CSS custom properties
- * when the video row arrived — underneath a cross-origin iframe still starting
- * up, which cost Cloudflare's player about 900 ms. Comparing the two renders is
- * the requirement stated directly, rather than a source shape standing in for it.
+ * It asserted that the player's wrapper markup was identical before and after
+ * /api/videos landed — a requirement that only exists if the player is mounted
+ * from the playback response alone. Route B is closed (see PLAYER-MEASURE.md), so
+ * the player mounts only once the video row is present, there is no "before" to
+ * compare against, and the check would fail for the right reason — which is still
+ * a failing check.
+ *
+ * It earned its keep while it ran: it caught a fixture missing the new
+ * width/height, cases rendered without a matching <Route> so useParams was empty
+ * and the "playback resolved" case was silently testing the loading shell, and a
+ * call site still passing two arguments to a three-argument helper. Worth
+ * restoring verbatim if the player is ever mounted early again.
  */
-const stage = (markup) => {
-  const m = String(markup).match(/class="player[^"]*"[^>]*?style="[^"]*"/)
-  return m ? m[0] : null
-}
-const early = stage(html['Watch · playback resolved, video still pending'])
-const late = stage(html['Watch · both resolved'])
-console.log('')
-console.log('  frame, playback only : ' + (early || '(not found)'))
-console.log('  frame, both resolved : ' + (late || '(not found)'))
-if (!early || !late) {
-  failed += 1
-  console.log('  FAIL  could not find the player wrapper in one of the renders')
-} else if (early !== late) {
-  failed += 1
-  console.log('  FAIL  the player frame changes when /api/videos lands — the iframe is resized mid-boot')
-} else {
-  console.log('  PASS  the player frame is identical before and after the video row lands')
-}
 
 console.log(`\n${failed ? `${failed} page(s) threw on render` : 'every page rendered'}`)
 process.exit(failed ? 1 : 0)

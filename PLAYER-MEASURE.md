@@ -324,3 +324,25 @@ message above.
 The consequence reaches further than this branch. A cross-browser suite running in CI
 against preview URLs would fail every journey that touches the API or the player — which is
 most of them — for reasons that have nothing to do with the code under test.
+
+---
+
+## Route B is closed
+
+Mounting the player from the playback response, before `/api/videos` lands, was attempted
+three times and is not worth having. The first attempt crashed the watch page in production
+with a temporal dead zone. The second measured about twice as slow — and then turned out
+never to have mounted early at all: the call site still passed two arguments to a
+three-argument `playbackRouteMatches`, so `p` stayed null until the video row arrived. It had
+added the cost of the idea without the idea. The third fixed that and sent `width`/`height`
+in the playback payload so the frame could be built at the right shape immediately, which the
+render smoke confirmed byte-for-byte. It was still worse: **8808 / 7440 / 9692 ms against a
+baseline of 3108 / 3585 / 3218**, the iframe attached no earlier (1435 / 963 / 957 ms against
+~920), and the mount counter went from a clean `[1,1,1,1,1]` to `[1,2,2,1,1]`, `[3,3,2,3,3]`,
+`[2,1,2,2,1]` — the player is now genuinely remounting when the video row lands, which is a
+second cold iframe and explains the whole regression. The theory was that ~230–380 ms of
+waiting could be removed; what it actually costs is a rebuild of Cloudflare's player. Three
+attempts, three different failures, all caught by measurement rather than review. Closed —
+not to be retried. The `width`/`height` fields stay in the payload: they are two values from
+a row the route already reads, they are inert today, and they are what any future attempt
+would need first.

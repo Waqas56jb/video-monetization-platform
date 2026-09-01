@@ -19,15 +19,10 @@ test('Watch does not block the film iframe on ad-break loading', () => {
 test('after payment Watch drops the warmed preview and waits for the full film', () => {
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
   assert.match(src, /dropWarmedWatch/)
-  /* The player's key is now the single `playerKey`, derived from the playback
-     payload — the same string used to be written out twice, here and where
-     startFrom is pinned, and they could drift. */
-  assert.match(src, /key=\{playerKey\}/)
+  assert.match(src, /key=\{`\$\{v\.id\}-\$\{p\.playback\.kind\}`\}/)
   assert.doesNotMatch(src, /justPaid \? 'paid'/)
   assert.match(src, /justPaid && p\.playback\.kind !== 'full'/)
-  /* The stop point comes from playback rather than the video row, so the player
-     needs nothing from /api/videos to know where a preview ends. */
-  assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? Number\(p\.playback\.stopsAtSeconds \|\| 0\) : 0\}/)
+  assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? previewSeconds : 0\}/)
 })
 
 test('nothing of ours is ever drawn over the Cloudflare player', () => {
@@ -238,16 +233,8 @@ test('the start second is decided once per player, not on every render', () => {
 
   // The pin key must be the key the player is mounted under, or the two can
   // disagree about which film they are describing.
-  /**
-   * The key is built from the playback payload, not the video row.
-   *
-   * That is what lets the player mount before /api/videos has answered — and it
-   * has to be ONE expression, used both to pin startFrom and as the element key,
-   * or the two disagree for the window where v is still null and the start point
-   * is recomputed against a key the player is not mounted under.
-   */
-  assert.match(src, /const playerKey = p\?\.playback\?\.iframe \? `\$\{p\.videoId\}-\$\{p\.playback\.kind\}` : null/)
-  assert.match(src, /key=\{playerKey\}/)
+  assert.match(src, /const playerKey = p\?\.playback\?\.iframe \? `\$\{v\?\.id\}-\$\{p\.playback\.kind\}` : null/)
+  assert.match(src, /key=\{`\$\{v\.id\}-\$\{p\.playback\.kind\}`\}/)
 
   // A start point belongs to one video.
   assert.match(src, /startFrom\.current = \{ key: null, value: 0 \}/)
@@ -434,32 +421,4 @@ test('paying from that gate resumes where the preview stopped, never at zero', (
   const rp = readFileSync(join(dir, '../lib/resumePoint.js'), 'utf8')
   assert.match(rp, /const from = Math\.max\(seen, watched, saved\)/)
   assert.match(rp, /if \(stop > 2 && previewEnded\) return stop/)
-})
-
-test('the player is one value rendered at one position, not two copies', () => {
-  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
-
-  /**
-   * Route B. The player used to exist only in the full render, below two early
-   * returns that wait for /api/videos — so the iframe could not be created until
-   * a request the player does not need had come back.
-   *
-   * It is now built once and rendered at an identical position in both branches.
-   * The obvious alternative — a second copy inside the skeleton — looks right and
-   * is worse: React would unmount and remount it when the video row lands, and
-   * the viewer would pay for a second cold iframe. So: exactly one definition,
-   * and every render site is a reference to it.
-   *
-   * The property this protects is checked for real by the browser harness, which
-   * counts one video_el per play. A source test cannot see a remount; it can
-   * only stop the shape that causes one.
-   */
-  assert.equal((src.match(/const playerStage = \(/g) || []).length, 1)
-  assert.equal((src.match(/\{playerStage\}/g) || []).length, 2)
-  assert.equal((src.match(/className=\{`player /g) || []).length, 1)
-
-  /* Both render sites are the first child of .watch-wrap, which is what makes
-     the position identical rather than merely similar. */
-  const sites = [...src.matchAll(/<div className="watch-wrap">\s+\{playerStage\}/g)]
-  assert.equal(sites.length, 2, 'playerStage must lead .watch-wrap in both branches')
 })
