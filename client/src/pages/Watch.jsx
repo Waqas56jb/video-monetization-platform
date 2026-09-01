@@ -25,12 +25,13 @@ import BusyButton from '@/components/ui/BusyButton'
 import FollowButton from '@/components/ui/FollowButton'
 import { ErrorState } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, daysUntil, ACCESS_LABEL } from '@/hooks/useApi'
-import api, { getAccessToken, mediaUrl } from '@/lib/api'
+import api, { API_BASE, getAccessToken, mediaUrl } from '@/lib/api'
 import { resumePoint } from '@/lib/resumePoint'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 import useGoBack from '@/hooks/useGoBack'
 import { rememberProgress, recallProgress } from '@/lib/watchProgress'
+import { beaconProgress } from '@/lib/progressBeacon'
 import { warmShareFromMeta, healShareCard } from '@/lib/warmShare'
 import { videoRouteMatches, playbackRouteMatches } from '@/lib/watchUrl'
 import { videoShape } from '@/lib/videoShape'
@@ -410,17 +411,51 @@ export default function Watch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, v?.id])
 
-  /* Leaving the page mid-film should still be resumable. */
+  /**
+   * Leaving the page mid-film should still be resumable — and this is the write
+   * that used to be lost.
+   *
+   * `pagehide` fired and called `reportProgress`, which sends an ordinary PUT.
+   * A document that is unloading has its in-flight requests CANCELLED, so on a
+   * phone that request usually never arrived: the viewer backgrounded the tab,
+   * the system reclaimed it, and the position they came back to was whatever the
+   * ten-second timer had last managed to save. `navigator.sendBeacon` is the one
+   * transport the platform promises to deliver after the page is gone.
+   *
+   * `visibilitychange` is here as well as `pagehide`, and it is the more
+   * important of the two on iOS: a tab that is backgrounded and then killed by
+   * the system may never fire `pagehide` at all, but it always goes hidden
+   * first. Writing on hidden means the position is already saved before the
+   * decision to kill the tab is even taken.
+   *
+   * The local copy is written on the same beat, for the signed-out viewer who
+   * has no account to write to yet.
+   */
   useEffect(() => {
     const flush = () => {
-      if (watchedTo.current > 0) reportProgress(watchedTo.current, { force: true })
+      const at = Math.floor(watchedTo.current || 0)
+      if (at <= 0) return
+      rememberProgress(videoId, at, { force: true })
+      if (!signedIn || !v?.id) return
+      const sent = beaconProgress({
+        apiBase: API_BASE,
+        token: getAccessToken(),
+        videoId: v.id,
+        seconds: at,
+      })
+      if (!sent) reportProgress(at, { force: true })
+    }
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flush()
     }
     window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onHide)
     return () => {
       window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onHide)
       flush()
     }
-  }, [reportProgress])
+  }, [reportProgress, signedIn, v?.id, videoId])
 
   /**
    * Pick up an interrupted purchase.
@@ -908,6 +943,26 @@ export default function Watch() {
                     return
                   }
                   runBreak('post_roll')
+                }}
+                /* Pausing and seeking are deliberate: the position they leave
+                   behind is the one the viewer expects to return to, and waiting
+                   for the ten-second timer after either loses up to ten seconds
+                   of it. Pause matters most — on a phone it is usually the last
+                   thing that happens before the tab goes away. */
+                onPaused={(at) => {
+                  if (activeAd) return
+                  watchedTo.current = Math.max(watchedTo.current, at || 0)
+                  reportProgress(watchedTo.current, { force: true })
+                }}
+                onSeeked={(at) => {
+                  if (activeAd) return
+                  /* A seek BACKWARDS is the viewer saying "I want to be here",
+                     so this one number replaces the high-water mark rather than
+                     being max()'d with it — otherwise rewinding and closing the
+                     tab returns them to the furthest point they ever reached,
+                     which is exactly what they just chose to leave. */
+                  watchedTo.current = at || 0
+                  reportProgress(watchedTo.current, { force: true })
                 }}
                 onTimeUpdate={(current) => {
                   if (activeAd) return

@@ -129,8 +129,25 @@ async function seekTo(page, seconds) {
   return false
 }
 
-async function signIn(page, email, password) {
+async function signIn(page, ctx, email, password) {
+  /**
+   * Sign OUT first, and mean it.
+   *
+   * The login page bounces a visitor who is already signed in — correctly, it is
+   * what stops you logging in twice. So a run that inherited the previous run's
+   * session never saw the form at all: it was redirected away, this function
+   * returned true, and the run went on to test the PREVIOUS run's account, which
+   * had already bought the film. That is how Pixel 7 run 2 reported "no Unlock
+   * button" on a page that was quietly saying "Purchased during the premiere".
+   *
+   * Whether it happened at all came down to a race — whether AuthContext had
+   * resolved before the form rendered — which is why the same harness passed
+   * five times on one profile and failed on the next.
+   */
+  await ctx.clearCookies()
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 90000 })
+  await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear() } catch {} }).catch(() => {})
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 })
   await page.waitForSelector('#login-id', { timeout: 30000 })
   /* Let the auth panel finish arriving before touching it. Without this the
      first Pixel 7 run died on "element is not stable / detached from the DOM":
@@ -238,7 +255,7 @@ for (const name of only) {
   const previewSec = Number(before.stopsAt ?? 20)
   check(before.kind !== 'full', `before paying the server grants kind=${before.kind}, canWatchFull=${before.canWatchFull}, cut-off ${previewSec}s of ${before.duration}s`)
 
-  await signIn(page, viewer.email, viewer.password)
+  await signIn(page, ctx, viewer.email, viewer.password)
   await page.goto(`${BASE}/watch/${BUY}`, { waitUntil: 'domcontentloaded', timeout: 90000 })
   await page.waitForTimeout(4000)
 
@@ -404,7 +421,7 @@ for (const name of only) {
   /* ---- log out, log back in, still full -------------------------------- */
   await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear() } catch {} })
   await ctx.clearCookies()
-  const backIn = await signIn(page, viewer.email, viewer.password)
+  const backIn = await signIn(page, ctx, viewer.email, viewer.password)
   check(backIn, 'signs back in with one submit')
   const afterRelogin = await entitlement(await apiToken(viewer.email, viewer.password), buyId)
   check(afterRelogin.kind === 'full', `after logout→login it is still kind=${afterRelogin.kind}`)

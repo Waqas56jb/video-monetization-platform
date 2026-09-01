@@ -46,6 +46,12 @@ export default function StreamPlayer({
   autoplay = false,
   onEnded,
   onTimeUpdate,
+  /* Pausing and seeking are the two moments a viewer decides where they are.
+     Waiting for the ten-second timer after either one loses up to ten seconds
+     of position, and pausing is very often the last thing that happens before
+     the tab is closed. */
+  onPaused,
+  onSeeked,
   /**
    * Second to begin at.
    *
@@ -145,6 +151,10 @@ export default function StreamPlayer({
   onMediaSizeRef.current = onMediaSize
   const onTimeUpdateRef = useRef(onTimeUpdate)
   onTimeUpdateRef.current = onTimeUpdate
+  const onPausedRef = useRef(onPaused)
+  onPausedRef.current = onPaused
+  const onSeekedRef = useRef(onSeeked)
+  onSeekedRef.current = onSeeked
   const onEndedRef = useRef(onEnded)
   onEndedRef.current = onEnded
   /* Read through refs: the listener is attached once per source, and must not
@@ -377,6 +387,24 @@ export default function StreamPlayer({
           }
         }
         player.addEventListener('timeupdate', haltIfDue)
+        /**
+         * Report the position on pause and after a seek, not only on the timer.
+         *
+         * Both are deliberate acts by the viewer, and the position they leave
+         * behind is the one they will expect to come back to. `pause` matters
+         * most: on a phone it is what usually happens immediately before the tab
+         * goes away, so it is the last chance to record anything at all.
+         */
+        const announcePosition = () => {
+          const at = Number(player.currentTime) || 0
+          if (at > 0) onPausedRef.current?.(at)
+        }
+        const announceSeek = () => {
+          const at = Number(player.currentTime) || 0
+          if (at > 0) onSeekedRef.current?.(at)
+        }
+        player.addEventListener('pause', announcePosition)
+        player.addEventListener('seeked', announceSeek)
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
         const shown = () => {

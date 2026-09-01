@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
 import { one, query } from '../db/pool.js'
 import { asyncHandler, notFound, forbidden } from '../lib/errors.js'
 import { optionalAuth } from '../middleware/auth.js'
@@ -360,6 +360,37 @@ router.get(
  */
 router.put(
   '/:id/progress',
+  /**
+   * A position sent by a page that is closing arrives as a BEACON, and a beacon
+   * cannot carry an Authorization header.
+   *
+   * `fetch` and XHR are cancelled when a document unloads, so the old pagehide
+   * flush usually wrote nothing at all — the tab closed and took the request
+   * with it. `navigator.sendBeacon` is the one transport the platform promises
+   * to deliver afterwards, and it sends a body and nothing else: no headers, and
+   * no preflight, so anything but a simple content type is dropped in silence.
+   *
+   * So a beacon arrives as `text/plain` carrying `{seconds, token}`, and this
+   * turns it back into the request the route already knows how to handle. The
+   * token is the same access token the header would have carried, over the same
+   * TLS, checked by the same `optionalAuth` — nothing here decides what anybody
+   * may watch, and it applies to this one route.
+   */
+  express.text({ type: ['text/plain'], limit: '2kb' }),
+  (req, _res, next) => {
+    if (typeof req.body !== 'string' || !req.body) return next()
+    try {
+      const parsed = JSON.parse(req.body)
+      req.body = { seconds: parsed?.seconds }
+      if (!req.headers.authorization && parsed?.token) {
+        req.headers.authorization = `Bearer ${parsed.token}`
+      }
+    } catch {
+      // Not our beacon. Leave it to fail the usual way.
+      req.body = {}
+    }
+    next()
+  },
   optionalAuth(),
   asyncHandler(async (req, res) => {
     if (!req.user) return res.status(202).json({ saved: false, reason: 'not signed in' })
