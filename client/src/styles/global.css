@@ -2749,10 +2749,14 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .pw-viz-discover .share-og-meta small{font-size:11.5px}
 .pw-viz-discover .share-og-meta em{margin-top:4px;font-size:10px;padding:5px 8px}
 .pw-viz-discover .share-og-stats{right:8px;bottom:10px}
-/* Hover only where there is a pointer: on a phone this fires on the first tap
-   and moves the card out from under the finger. */
-@media(hover:hover){
-  a.pw-og-stage:hover{transform:translateY(-3px);border-color:var(--border)}
+/* Hover only where there is a real pointer.
+   `hover: hover` alone is not enough: an iPad with a Magic Keyboard reports it,
+   and so do some touch configurations, so the first tap is spent applying the
+   hover state and moving the card out from under the finger. `pointer: fine`
+   is the discriminator, and `html:not(.is-touch)` is this file's own runtime
+   guard — every other moving hover rule uses both (see the block at ~2818). */
+@media (hover: hover) and (pointer: fine){
+  html:not(.is-touch) a.pw-og-stage:hover{transform:translateY(-3px);border-color:var(--border)}
 }
 .pw-og-stage:focus-visible{outline:2px solid var(--purple2);outline-offset:3px}
 
