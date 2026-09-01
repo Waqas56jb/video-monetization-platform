@@ -112,7 +112,10 @@ for (const profile of PROFILES) {
       }
       row.ms = Date.now() - t0
       row.landed = landed
-      row.ok = row.submits === 1 && !row.error && landed === `/watch/${SLUG}`
+      // The Unlock route adds `?unlock=1` to the destination on purpose, so it
+      // can hand the sheet back; the assertion is "the same video", not "the
+      // same string".
+      row.ok = row.submits === 1 && !row.error && Boolean(landed) && landed.split('?')[0] === `/watch/${SLUG}`
     } catch (e) {
       row.error = String(e).split('\n')[0].slice(0, 140)
     }

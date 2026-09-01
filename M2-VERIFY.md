@@ -223,4 +223,48 @@ the ones that actually cost a tap: a checkbox and an icon button.
 
 ---
 
+## A6 — login in one attempt, and back to the video
+
+`scripts/e2e/login-one-attempt.mjs`. A fresh context per run — no cookies, no storage, no
+service worker carried over, which is what a private window is. The fields are filled the way
+**autofill** fills them: `el.value` assigned through the native setter and **no event
+dispatched**. `page.fill()` would be worthless here, because it fires the very `input` event
+that Safari's autofill omits — the event whose absence is the whole bug.
+
+Entered through the control a viewer would actually press, from a real `/watch/:slug` while
+signed out, so the assertion covers the whole route and not just the form.
+
+| entry | profile | one submit → back on the video | login URL carried the video |
+|---|---|---|---|
+| header Log in | webkit desktop 1440x900 | **5/5** | 5/5 |
+| header Log in | iPhone 14 · webkit | **5/5** | 5/5 |
+| Unlock | webkit desktop 1440x900 | **5/5** | 5/5 |
+| Unlock | iPhone 14 · webkit | **5/5** | 5/5 |
+
+**20/20.** Never a second submit, never an error banner, never the dashboard.
+
+**A real defect was found by this item and fixed** (`ca6b60e`). Before the fix the same harness
+read `next carried 0/5` on both profiles and landed on `/dashboard?tab=library` every time: the
+Unlock button carried the destination, but the two **Log in** buttons in the chrome — desktop
+header and mobile menu — went to a bare `/login`. A viewer part-way through a preview who used
+the header instead of Unlock signed in perfectly and lost the film. The autofill half was
+already fixed and was 5/5 before this run as well; only the return leg was broken.
+
+Click → landed, measured against the API response rather than a poll:
+
+```
+desktop  click→landed 3441 ms   POST /api/auth/login 200 @+3427
+iphone   click→landed 1406 ms   POST /api/auth/login 200 @+1377
+```
+
+The page redirects within ~15 ms of the token arriving; the wait is the round trip to Railway
+from this location, not client code.
+
+**Instrument correction.** The first run of this harness reported 41 s logins. That was
+Playwright's 30-second default timeout on a poll for the error banner, charged to the login on
+every clean iteration. With an explicit 500 ms the same runs report 1.7–11 s of poll
+granularity, and the direct measurement above gives the real figure.
+
+---
+
 *Further items are appended as they are verified.*
