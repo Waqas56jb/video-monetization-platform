@@ -56,7 +56,7 @@ test('card status comes from the video row, not a second table', () => {
     /readCardStatus/,
     'readCardStatus calls ensureShareCardTable, which issues three DDL statements'
   )
-  assert.match(code, /card_ready \? 'ready' : 'building'/)
+  assert.match(code, /card_source_key === sourceKey \? 'ready' : 'building'/)
 
   // And the route that gates the player must select the column it now reads.
   const videos = readFileSync(join(root, 'src/modules/videos.routes.js'), 'utf8')

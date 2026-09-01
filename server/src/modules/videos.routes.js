@@ -745,7 +745,7 @@ router.get(
      *
      * The purchase join is the same shape `loadWatchContext` uses in
      * playback.routes.js, which has always fetched both together. The card
-     * status now rides on `v.card_ready` (migration 030). `SELECT_PUBLIC` is
+     * status now rides on `v.card_source_key` (migration 030). `SELECT_PUBLIC` is
      * `v.*`, so the column comes along without being named.
      */
     let row = await one(

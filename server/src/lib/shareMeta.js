@@ -52,16 +52,22 @@ function shareUrlWithSource(watchUrl, sourceKey) {
  * on before it can build the player. Four round trips to learn one boolean that
  * changes at most once per card build.
  *
- * `videos.card_ready` (migration 030) holds the same answer on the row this
- * function is already handed. A row selected without the column reads as not
- * ready, which is the safe direction: it shows a loading pill and queues a
- * build, rather than promising a card that is not there.
+ * `videos.card_source_key` (migration 030) holds the answer on the row this
+ * function is already handed. It stores the key rather than a flag, so the
+ * staleness test readCardStatus made survives: a card built before the title or
+ * poster changed no longer matches, and is rebuilt. A boolean could not express
+ * that — nothing would ever set it back — so a drifted card would claim to be
+ * ready for ever.
+ *
+ * A row selected without the column reads as not ready, which is the safe
+ * direction: a loading pill and a queued build, rather than promising a card
+ * that is not there.
  */
 export async function sharePayloadFromRow(row) {
   if (!row?.slug || !(row.is_published && row.review_status === 'approved')) return null
   const sourceKey = shareSourceKey(row)
   const watchUrl = publicWatchUrl(env.publicWebUrl, row.slug)
-  const cardStatus = row.card_ready ? 'ready' : 'building'
+  const cardStatus = row.card_source_key === sourceKey ? 'ready' : 'building'
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${row.slug} status=${cardStatus}`)
@@ -87,7 +93,7 @@ export async function loadShareMeta(slug) {
      * `v.*` rather than a column list, so this survives being deployed before
      * migration 030 runs.
      *
-     * Naming `v.card_ready` explicitly would make this query fail outright until
+     * Naming `v.card_source_key` explicitly would make this query fail outright until
      * the column exists — and this is the crawler's share-meta path, so the
      * failure would land on WhatsApp previews, which is precisely what the
      * previous tier was fixing. With `v.*`, a missing column simply reads as
@@ -109,9 +115,9 @@ export async function loadShareMeta(slug) {
 
   const sourceKey = shareSourceKey(video)
   const watchUrl = publicWatchUrl(env.publicWebUrl, video.slug)
-  /* Same as sharePayloadFromRow: the boolean rides on the row this query
-     already fetched, instead of a second table plus a schema check. */
-  const cardStatus = video.card_ready ? 'ready' : 'building'
+  /* Same as sharePayloadFromRow: the key rides on the row this query already
+     fetched, instead of a second table plus a schema check. */
+  const cardStatus = video.card_source_key === sourceKey ? 'ready' : 'building'
 
   if (cardStatus !== 'ready') {
     log.error(`share card missing for approved video slug=${video.slug} status=${cardStatus}`)

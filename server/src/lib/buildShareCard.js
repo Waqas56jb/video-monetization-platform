@@ -68,14 +68,14 @@ async function composeOnce(video) {
     /**
      * The cached path has to set the flag too, or it can never become true.
      *
-     * A card built before migration 030 existed, or one the backfill's weaker
-     * slug-match missed, lands here on every subsequent build: the bytes are
-     * already cached, so the compose below never runs and never writes the
-     * column. The watch page would then report 'building' for a card that has
-     * been sitting there for weeks, and queue a pointless rebuild each time.
+     * A card built before migration 030 existed lands here on every subsequent
+     * build: the bytes are already cached, so the compose below never runs and
+     * never writes the column. The watch page would then report 'building' for a
+     * card that has been sitting there for weeks, and queue a pointless rebuild
+     * each time.
      */
-    if (!video.card_ready) {
-      await query('update videos set card_ready = true where id = $1', [video.id]).catch(() => {})
+    if (video.card_source_key !== key) {
+      await query('update videos set card_source_key = $2 where id = $1', [video.id, key]).catch(() => {})
     }
     pingLinkPreview(slug)
     return { jpeg: cached, sourceKey: key, skipped: true, uploaded, ms: Date.now() - started }
@@ -110,12 +110,13 @@ async function composeOnce(video) {
   /**
    * Tell the video row its card exists.
    *
-   * The watch path reads `videos.card_ready` rather than asking
+   * The watch path reads `videos.card_source_key` rather than asking
    * `share_card_cache`, because that question cost four round trips in front of
    * the player (migration 030). This is the one place that answer changes, so it
-   * is the one place that has to write it.
+   * is the one place that has to write it — and it writes the key, so a later
+   * change to the title or poster makes this card stale by itself.
    */
-  await query('update videos set card_ready = true where id = $1', [video.id]).catch(() => {})
+  await query('update videos set card_source_key = $2 where id = $1', [video.id, key]).catch(() => {})
   pingLinkPreview(slug)
   log.info(`share card built slug=${slug} bytes=${jpeg.length} ms=${Date.now() - started}`)
   return { jpeg, sourceKey: key, skipped: false, uploaded, ms: Date.now() - started }
