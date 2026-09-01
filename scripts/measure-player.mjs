@@ -73,9 +73,22 @@ const PROFILES = ONLY_PROFILE
   ? ALL_PROFILES.filter((p) => p.name.toLowerCase().includes(ONLY_PROFILE.toLowerCase()))
   : ALL_PROFILES
 
+const clean = (xs) => [...xs].filter((n) => Number.isFinite(n)).sort((a, b) => a - b)
 const median = (xs) => {
-  const s = [...xs].filter((n) => Number.isFinite(n)).sort((a, b) => a - b)
+  const s = clean(xs)
   return s.length ? s[Math.floor((s.length - 1) / 2)] : null
+}
+/**
+ * The spread matters as much as the middle here.
+ *
+ * The same video on the same profile measured 2226 ms and 6706 ms minutes apart,
+ * because a title recently watched by someone is already at Cloudflare's edge and
+ * one that is not has to be fetched from origin. A median with no range invites
+ * a single lucky or unlucky run to be read as a change.
+ */
+const spread = (xs) => {
+  const s = clean(xs)
+  return s.length ? `${s[0]}–${s[s.length - 1]}` : '—'
 }
 
 async function once(browser, profile, slug) {
@@ -207,6 +220,16 @@ const rows = []
 
 for (const video of VIDEOS) {
   for (const profile of PROFILES) {
+    /**
+     * One warm-up play, discarded.
+     *
+     * The first play of a title pays for whatever is not yet at the CDN edge, and
+     * that cost lands on whichever run happens to go first — so it moves between
+     * the "before" and "after" columns at random and reads as a result. Warming
+     * once puts every measured run on the same footing.
+     */
+    await once(browser, profile, video.slug)
+
     const runs = []
     for (let i = 0; i < RUNS; i++) runs.push(await once(browser, profile, video.slug))
     rows.push({
@@ -222,6 +245,7 @@ for (const video of VIDEOS) {
       canplay: median(runs.map((r) => r.canplay)),
       unpaused: median(runs.map((r) => r.unpaused)),
       playing: median(runs.map((r) => r.playing)),
+      playingRange: spread(runs.map((r) => r.playing)),
       method: runs.find((r) => r.method !== 'none')?.method || 'none',
       hits: runs.filter((r) => r.playing !== null).length,
     })
@@ -231,7 +255,7 @@ for (const video of VIDEOS) {
         `pb=${String(last.playback ?? '-').padStart(5)} if=${String(last.iframe ?? '-').padStart(5)} ` +
         `el=${String(last.videoEl ?? '-').padStart(5)} meta=${String(last.metadata ?? '-').padStart(6)} ` +
         `canplay=${String(last.canplay ?? '-').padStart(6)} unpaused=${String(last.unpaused ?? '-').padStart(6)} ` +
-        `PLAY=${String(last.playing ?? '-').padStart(6)}`
+        `PLAY=${String(last.playing ?? '-').padStart(6)} [${last.playingRange}]`
     )
   }
 }
@@ -239,12 +263,12 @@ for (const video of VIDEOS) {
 await browser.close()
 
 console.log(`\nBase: ${BASE}   runs per cell: ${RUNS}   all figures ms from tap, median\n`)
-console.log('| video | profile | videos | playback | ads | iframe | video el | metadata | canplay | unpaused | first_playing | via |')
-console.log('|---|---|---|---|---|---|---|---|---|---|---|---|')
+console.log('| video | profile | videos | playback | ads | iframe | video el | metadata | canplay | unpaused | first_playing | min–max | via |')
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|---|')
 for (const r of rows) {
   const c = (v) => (v === null ? '—' : v)
   console.log(
-    `| \`${r.slug}\` | ${r.profile} | ${c(r.videos)} | ${c(r.playback)} | ${c(r.ads)} | ${c(r.iframe)} | ${c(r.videoEl)} | ${c(r.metadata)} | ${c(r.canplay)} | ${c(r.unpaused)} | **${c(r.playing)}** | ${r.method} |`
+    `| \`${r.slug}\` | ${r.profile} | ${c(r.videos)} | ${c(r.playback)} | ${c(r.ads)} | ${c(r.iframe)} | ${c(r.videoEl)} | ${c(r.metadata)} | ${c(r.canplay)} | ${c(r.unpaused)} | **${c(r.playing)}** | ${r.playingRange} | ${r.method} |`
   )
 }
 console.log(JSON.stringify(rows))
