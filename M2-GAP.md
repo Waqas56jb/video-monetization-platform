@@ -12,7 +12,7 @@ Sources: `AUDIT.md`, `PLAYER-MEASURE.md`, `TIER1-VERIFY.md`, `RAILWAY-MOVE.md`,
 
 | # | Client's item | Status | Evidence | What the client sees today |
 |---|---|---|---|---|
-| 1 | Performance / freezing | **Partial** | tap→playing 3108 / 3585 / 3218 ms, PLAYER-MEASURE.md 2026-09-01 | Playback is fixed and measured. Navigation timings are **not** — see §1, one number is disputed |
+| 1 | Performance / freezing | **Partial** | tap→playing 3108 / 3585 / 3218 ms, PLAYER-MEASURE.md 2026-09-01 | Playback fixed and measured. Back-to-Home is 62–169 ms, so the reported freeze does not reproduce. Home takes 2.3–8.6 s to render its cards — see §1 |
 | 2 | Video startup speed | **Done (floor reached)** | PLAYER-MEASURE.md "Floor", 2026-09-01 | 3.1–3.6 s typical, ~3.5 s of it Cloudflare's. Item 8 "never frozen" **not built** |
 | 3 | Sharing / WhatsApp | **Done** | D1 run 2026-09-01, 8/8 videos | Crawler doc, per-video title, 1200×630 JPEG 16–57 KB, cache HIT, shell for humans |
 | 4 | Payment resume | **Done** | A2 15/15, 2026-09-01 | Buys, resumes at the preview stop, survives logout→login |
@@ -56,14 +56,17 @@ Over 1 s and worth work: **Explore's category filter** (1.3–2.7 s) and **Home 
 > working in PLAYER-MEASURE.md, "Disputed chunk timing — resolved". What *is* real: Home takes
 > 2.3–8.6 s to render its cards, which delays when the chunk is requested at all.
 
-**One number is disputed and is deliberately not reported as a finding.** A breakdown run put
-the lazy `Watch-*.js` chunk — and therefore the player — at ~17–21 s from both Home and Explore,
-while the API answered in 0.7–1.6 s. That contradicts the repeatedly measured 3.1 s tap→playing
-and the ~920 ms iframe attach in the same file. One of the two is wrong and I have not
-established which. Four separate instrument errors were found and corrected during this
-session's measurements, so an unexplained 20× disagreement is treated as a suspect instrument,
-not as a result. **This needs resolving before anyone acts on it**, and it is the first thing
-in the build order.
+**The 17–21 s chunk figure that was disputed here was wrong, and is now explained.** It came
+from a `page.on('response')` listener, which sees network responses only; the page is
+service-worker controlled, so a warm visit takes the chunk from cache and never waits on the
+network, while the worker refreshes it in the background — and that later response is what got
+stamped. Resource timing, curl and the CDN all agree the chunk is fast. Working in
+PLAYER-MEASURE.md, "Disputed chunk timing — resolved".
+
+**What survived the investigation is a different problem: Home takes 2.3–8.6 s to render its
+cards** (five runs, all eventually producing 8 links; one separate run produced none inside
+60 s). Nothing is prefetched until a card enters the viewport, so a slow Home delays everything
+that follows it. That is worth its own look, and it is not what the disputed figure claimed.
 
 ---
 
@@ -238,9 +241,10 @@ Same nested-anchor constraint as item 9.
 
 ## 12. Build order
 
-1. **Resolve the disputed navigation number** (§1). Nothing else in performance should be
-   touched until it is known whether the Watch chunk really takes 17–21 s or the instrument is
-   wrong. It is one afternoon, and every other performance decision depends on the answer.
+1. ~~Resolve the disputed navigation number~~ — **done 2026-09-01, instrument error.** What
+   replaces it: **Home takes 2.3–8.6 s to render its cards**, and nothing prefetches until one
+   appears. That delays every journey starting from Home, and it is now the performance item
+   with the largest unexplained cost.
 2. **Get WebKit running**, or accept that C1–C7 and Part E cannot be verified here and decide
    who runs them. This blocks six of the eleven items' acceptance.
 3. **Item 8's "never frozen" states** — including the retry button that currently cannot render.
