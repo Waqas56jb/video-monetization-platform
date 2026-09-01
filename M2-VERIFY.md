@@ -811,4 +811,37 @@ deleting.
 
 ---
 
+
+## A7 — the screenshot grid that was missing
+
+A7's measurements were recorded and are above: 70 page/width combinations, zero horizontal
+overflow, four small tap targets named. **The screenshot grid it was supposed to leave behind
+was never produced**, and an item is not finished because its numbers are.
+
+`scripts/e2e/screens.mjs` — 7 public pages × 10 widths × 2 engines = **140 combinations**,
+composed into 14 strips under `e2e/screens/`, one per page per engine, each width captioned.
+
+```
+14 strips written to e2e/screens
+No horizontal overflow anywhere.
+```
+
+**Horizontal overflow: 0 of 140.** The captions turn red and print the excess if a combination
+scrolls sideways; none do.
+
+Two things the grid shows that a number could not. The Follow control, the Save pin and the
+creator link all render correctly at every width down to 320 px, and the watch page's creator
+row wraps its Follow and Profile buttons rather than pushing them off the edge.
+
+**The WebKit watch strip shows a failure message at every width, and that is correct.** It reads
+*"This video could not be played. Check your connection and try again"* with a working Try again
+button — which is the Step 2 work doing its job on an engine with no Media Source Extensions.
+The Chromium strip of the same page shows the player. This is called out in
+`e2e/screens/README.md` so nobody reads the artefact as a defect.
+
+The strips are JPEG at quality 72: as PNG the same grid was **11.8 MB**, which is a lot of
+repository for photographs of a dark web page. **1.36 MB** after, and the difference is invisible.
+
+---
+
 *Further items are appended as they are verified.*
