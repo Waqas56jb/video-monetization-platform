@@ -114,10 +114,9 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
 
   const watch = (paymentId) => {
     clearInterval(polling.current)
-    let elapsed = 0
+    const startedAt = Date.now()
 
     const tick = async () => {
-      elapsed += 1
       try {
         const res = await api.payments.one(paymentId)
         setPayment(res.payment)
@@ -137,16 +136,33 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
         /* a blip is not a failed payment — keep waiting */
       }
 
-      // Mobile money prompts expire; after three minutes, stop pretending.
-      if (elapsed > 180) {
+      /**
+       * Mobile money prompts expire; after three minutes, stop pretending.
+       *
+       * Measured against the clock, not counted in ticks. It used to be
+       * `elapsed > 180` incremented once per tick, which only meant three
+       * minutes while the interval happened to be one second — changing the
+       * cadence silently doubled the give-up time.
+       */
+      if (Date.now() - startedAt > 180_000) {
         clearInterval(polling.current)
         setError('We did not hear back from your phone. Nothing was charged — try again.')
         setStep('failed')
       }
     }
 
-    // Sandbox settles in ~3s — poll every second so success appears promptly.
-    polling.current = setInterval(tick, 1000)
+    /**
+     * Every two seconds, not every one.
+     *
+     * A three-minute prompt at 1/s is 180 requests from a single open sheet,
+     * against a 120-per-minute limit shared with everything else the page is
+     * doing — so a viewer who kept the sheet open while browsing could rate-limit
+     * their own purchase. At 2 s the worst case is 90 requests over three
+     * minutes and the sandbox's ~3 s settlement is still caught on the second
+     * tick. The first probe stays at 2.5 s so a fast settlement is not made to
+     * wait for the cadence.
+     */
+    polling.current = setInterval(tick, 2000)
     setTimeout(tick, 2500)
   }
 
