@@ -76,9 +76,14 @@ export default function Hero() {
    * anything.
    */
   const trending = useApi(
-    landingFetcher(LANDING_KEYS.trending1, () => api.videos.list({ sort: 'trending', limit: 1 })),
+    /* The top trending video, taken from the list Trending already fetches.
+       This used to be its own `limit: 1` request — a strict subset of the
+       `limit: 8` one, so Home opened four API calls where three would do, and
+       the extra one competed with the request that gates the first card. Same
+       key, same shape, `videos[0]` unchanged. */
+    landingFetcher(LANDING_KEYS.trending8, () => api.videos.list({ sort: 'trending', limit: 8 })),
     [],
-    { initialData: readLanding(LANDING_KEYS.trending1) }
+    { initialData: readLanding(LANDING_KEYS.trending8) }
   )
   const featured = trending.data?.videos?.[0] || null
 

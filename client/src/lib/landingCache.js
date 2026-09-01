@@ -46,6 +46,9 @@ export function landingFetcher(key, fetch) {
 export const LANDING_KEYS = {
   stats: 'stats.platform',
   topCreators: 'stats.topCreators',
-  trending1: 'videos.trending.1',
+  /* trending1 is gone: Hero and Features take videos[0] from the same
+     `trending8` payload Trending fetches, so Home makes one list request
+     instead of two. Left out rather than deprecated — an unused key invites
+     someone to use it again. */
   trending8: 'videos.trending.8',
 }
