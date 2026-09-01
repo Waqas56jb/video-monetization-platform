@@ -15,7 +15,27 @@ export function shareSourceKey(video) {
     video?.preview_uid ||
     video?.cloudflare_uid ||
     ''
-  const raw = `${thumb}|${video?.title || ''}|${video?.creator_name || ''}`
+  /**
+   * The creator's public name, however this row spelled it.
+   *
+   * Two queries feed this function and they build `creator_name` differently:
+   * buildShareCard and loadShareMeta select `coalesce(cp.display_name,
+   * p.full_name)`, while videos.routes' SELECT_PUBLIC selects `p.full_name` and
+   * puts the display name in a separate `creator_display`. So the same video
+   * hashed to two different keys depending on who asked.
+   *
+   * That was harmless while the key only ever round-tripped within one call
+   * site. It stopped being harmless when migration 030 made the route compare
+   * its own key against the one the builder stored: six of eight published
+   * videos mismatched, reported 'building' for a card that was current, and
+   * queued a rebuild on every single watch request.
+   *
+   * Resolving the display name here makes both shapes agree without changing
+   * what any endpoint returns — SELECT_PUBLIC still reports `p.full_name` as
+   * the creator's name; only the hash sees the same value from both sides.
+   */
+  const creator = video?.creator_display || video?.creator_name || ''
+  const raw = `${thumb}|${video?.title || ''}|${creator}`
   return createHash('sha1').update(raw).digest('hex').slice(0, 10)
 }
 
