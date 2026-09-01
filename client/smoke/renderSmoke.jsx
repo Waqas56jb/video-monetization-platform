@@ -21,7 +21,7 @@
  */
 import './domShim.js'
 import { renderToString } from 'react-dom/server'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from '@/context/ToastContext'
 import { ProgressProvider } from '@/context/ProgressContext'
 import { AuthProvider } from '@/context/AuthContext'
@@ -51,6 +51,11 @@ const VIDEO = {
 const PLAYBACK = {
   videoId: VIDEO.id,
   slug: VIDEO.slug,
+  /* The payload carries the frame's shape so the player can be built at the
+     right size before /api/videos lands — the fixture has to match, or the
+     comparison below tests a payload the server no longer sends. */
+  width: VIDEO.width,
+  height: VIDEO.height,
   title: VIDEO.title,
   durationSeconds: 653,
   accessType: 'ppv_forever',
@@ -76,12 +81,27 @@ const PLAYBACK = {
  */
 globalThis.__SMOKE__ = { video: null, playback: null, videoError: null }
 
+/**
+ * Rendered through a real route, not as a bare element.
+ *
+ * Watch reads `useParams().videoId`, and without a matching <Route> that is
+ * undefined — so playbackRouteMatches refuses the payload, `p` is null, and the
+ * "playback resolved, video pending" case silently tests the loading shell
+ * instead of the state it is named after. The frame comparison below is what
+ * exposed that: both renders showed the default 16:9 because neither had a
+ * player in it.
+ */
 function frame(node) {
   return (
     <MemoryRouter initialEntries={['/watch/live-at-arusha-full-set']}>
       <ToastProvider>
         <ProgressProvider>
-          <AuthProvider>{node}</AuthProvider>
+          <AuthProvider>
+            <Routes>
+              <Route path="/watch/:videoId" element={node} />
+              <Route path="*" element={node} />
+            </Routes>
+          </AuthProvider>
         </ProgressProvider>
       </ToastProvider>
     </MemoryRouter>
@@ -100,15 +120,44 @@ const CASES = [
 ]
 
 let failed = 0
+const html = {}
 for (const [name, make] of CASES) {
   try {
-    renderToString(frame(make()))
+    html[name] = renderToString(frame(make()))
     console.log(`  PASS  ${name}`)
   } catch (err) {
     failed += 1
     console.log(`  FAIL  ${name}`)
     console.log(`        ${String(err && err.message).split('\n')[0]}`)
   }
+}
+
+/**
+ * The player's frame must not change shape when /api/videos lands.
+ *
+ * This is why mounting early was slower the first time: the wrapper rendered
+ * 16:9 from playback alone, then swapped its class and its CSS custom properties
+ * when the video row arrived — underneath a cross-origin iframe still starting
+ * up, which cost Cloudflare's player about 900 ms. Comparing the two renders is
+ * the requirement stated directly, rather than a source shape standing in for it.
+ */
+const stage = (markup) => {
+  const m = String(markup).match(/class="player[^"]*"[^>]*?style="[^"]*"/)
+  return m ? m[0] : null
+}
+const early = stage(html['Watch · playback resolved, video still pending'])
+const late = stage(html['Watch · both resolved'])
+console.log('')
+console.log('  frame, playback only : ' + (early || '(not found)'))
+console.log('  frame, both resolved : ' + (late || '(not found)'))
+if (!early || !late) {
+  failed += 1
+  console.log('  FAIL  could not find the player wrapper in one of the renders')
+} else if (early !== late) {
+  failed += 1
+  console.log('  FAIL  the player frame changes when /api/videos lands — the iframe is resized mid-boot')
+} else {
+  console.log('  PASS  the player frame is identical before and after the video row lands')
 }
 
 console.log(`\n${failed ? `${failed} page(s) threw on render` : 'every page rendered'}`)

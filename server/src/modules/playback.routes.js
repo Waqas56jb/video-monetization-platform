@@ -220,6 +220,19 @@ router.get(
        * the slug is in the address bar and the id is already on the line above.
        */
       slug: video.slug,
+      /**
+       * The frame's shape, so the player can be built at the right size on the
+       * first try.
+       *
+       * Mounting before `/api/videos` lands means the aspect ratio is unknown,
+       * so the wrapper renders 16:9 and then changes class and CSS custom
+       * properties underneath a cross-origin iframe that is still starting up.
+       * Measured, Cloudflare's player pays about 900 ms for that resize — more
+       * than the wait that mounting early removes. These two fields are already
+       * on the row this route selected, so they cost nothing to send.
+       */
+      width: video.width || null,
+      height: video.height || null,
       title: video.title,
       durationSeconds: video.duration_seconds,
       accessType: video.access_type,
