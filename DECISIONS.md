@@ -145,3 +145,63 @@ direct database write would have skipped.
 | `033_watch_progress_hidden_at.sql` | 2026-09-01 19:37:59 |
 
 Each was run immediately after the commit that added it, and `db:status` printed afterwards.
+
+---
+
+## 2026-09-01 · The cross-browser matrix's journey numbering is reconstructed
+
+PROMPT-7's Part E is not in this repository — it was a brief, not a file — so journeys 1-10 and
+13 in `scripts/e2e/matrix.mjs` are reconstructed from the client's reported faults and the work
+done against them. Each journey states in its own title what it actually checks, so the number
+is a label rather than a claim. 11 and 12 are named and skipped as instructed, because "skipped"
+and "does not exist" are different things and the real-device checklist depends on knowing which.
+
+If the original list turns up and the numbering disagrees, the journeys are what matter and the
+numbers can be moved.
+
+---
+
+## 2026-09-01 · CI runs the read-only journeys only, and against production
+
+`.github/workflows/journeys.yml`. Two decisions in one.
+
+**Read-only.** The full matrix signs in and buys things, and those are real rows on a live
+system — payments, purchases, a creator's share. Running them on every push would fill the
+client's revenue figures with test data. The paid journeys stay a deliberate local act with a
+documented, reversible account.
+
+**Against production, not a preview.** A preview deployment cannot be driven end to end at all:
+`CORS_ORIGINS` names only the two production hostnames, and Cloudflare Stream's allowed-domains
+list excludes preview hostnames. A suite pointed at a preview would fail almost every journey for
+reasons unrelated to the change, and a job that is always red is a job nobody reads. The workflow
+polls `X-Build` until the pushed commit is live before it looks, so it tests what was pushed
+rather than what was there a minute ago.
+
+**Alternative considered:** unblocking previews by adding a wildcard to `CORS_ORIGINS` and to
+Cloudflare's allowed domains. Rejected for this run — both are production settings with a
+security dimension, and neither is a code change this brief authorises.
+
+---
+
+## 2026-09-01 · Home's warm first-card figure moved from 898 ms to about 1050 ms, and why
+
+Recorded because it is the one measurement in E1 that did not improve, and rounding it away would
+be the wrong kind of report.
+
+Three of the four Home figures improved — desktop cold 2336 → 1822, iPhone cold 2502 → 2064,
+desktop warm 1047 → 1021. The iPhone **warm** figure moved the other way, to roughly 1050 ms.
+
+**The cause is measured.** The bundle grew from 421,688 to 445,949 bytes (+5.8 %), built from
+`71bd206` and from the current commit in a throwaway worktree so the two are comparable. That is
+the Follow context, the saved-videos context, the two new controls and the home Continue Watching
+row — the features this run added. A warm visit has the bundle in cache and spends its time
+parsing and mounting it, which is exactly where a larger bundle shows up.
+
+Signed out, Home still makes exactly three API requests and the Continue Watching section renders
+nothing, so no network cost was added to the signed-out path. The figure sits inside the recorded
+baseline's own range of `[875-1416]`.
+
+**Not treated as a regression to fix**, and the reasoning should be visible: it is 5.8 % more code
+for four features the client asked for, on the warm path only, on a throttled phone profile. If
+it needs to come back, the honest lever is code-splitting the two contexts behind the routes that
+use them, not removing the features.

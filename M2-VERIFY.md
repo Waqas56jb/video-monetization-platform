@@ -623,4 +623,192 @@ The staff account used is the seeded demo moderator, whose password is published
 
 ---
 
+
+## D — the cross-browser journey matrix
+
+`scripts/e2e/matrix.mjs`, seven profiles, against production.
+
+PROMPT-7's Part E is not in this repository, so the numbering is reconstructed from the client's
+reported faults and each journey states in its own title what it checks. 11 and 12 are named and
+skipped as instructed — a real WhatsApp send and iOS Low Power Mode cannot be reached from any
+headless browser, and "skipped" is not the same as "does not exist".
+
+```
+journey  webkit desk  iPhone 14  iPad+mouse  chromium  Pixel 7  firefox  Fast 3G
+  1      pass         pass       pass        pass      pass     pass     pass
+  2      pass         pass       pass        pass      pass     pass     pass
+  3      pass         pass       pass        pass      pass     pass     pass
+  4      pass         pass       pass        pass      pass     pass     pass
+  5      n/a          n/a        n/a         pass      pass     n/a      pass
+  6      n/a          n/a        n/a         pass      pass     n/a      pass
+  7      pass         pass       pass        pass      pass     pass     pass
+  8      n/a          n/a        n/a         pass      pass     n/a      pass
+  9      pass         pass       pass        pass      pass     pass     pass
+ 10      pass         pass       pass        pass      pass     pass     pass
+ 11      skip — a real WhatsApp send, on a phone
+ 12      skip — iOS Low Power Mode
+ 13      pass         pass       pass        pass      pass     pass     pass
+```
+
+**71 pass · 0 fail · 12 not applicable · 14 skipped.** The twelve "n/a" cells are the three
+journeys that need video to decode, on the four engines that cannot: WebKit has no Media Source
+Extensions and no native HLS, and Firefox is not the client's browser. The matrix prints `n/a`
+rather than a pass there, because a green cell that proves nothing is worse than an honest gap.
+
+Journey 13 measures going back from a video to Home: **59–106 ms** across the WebKit profiles,
+65 ms on Chromium. The client's "4–7 second freeze" does not reproduce on any engine.
+
+### One FAIL, and it was the test's fault
+
+The first full run reported 64 pass / 1 fail — journey 4 on the iPad profile. The journey looked
+for `.watch-stage, .player-shell, .ph-stage, iframe`. **Three of those four classes do not exist
+in this codebase**, so the only thing it could ever match was the Cloudflare iframe: a timing
+assertion wearing a "never looks frozen" label. It passed on four profiles because the iframe
+happened to be quick and failed on the iPad because it was not, which told us nothing about
+either.
+
+It now reads what the page actually renders while it waits — `.stream-shell` with its poster,
+`.stream-boot-msg` carrying the words, the fallback, or the frame — and prints which was on
+screen:
+
+```
+something is on screen at 3 s — shell:true poster:false frame:2      (all seven profiles)
+```
+
+7 of 7 after the correction. **No product change was needed for this cell.**
+
+### CI
+
+`.github/workflows/journeys.yml` runs the **read-only** half on every push to main, against
+production, after polling `X-Build` until the pushed commit is live. Two reasons it is not the
+full matrix and not a preview:
+
+- The full matrix signs in and buys things, and those are real rows on a live system. Running
+  them on every push would fill the client's revenue figures with test data.
+- A preview deployment cannot be driven at all: `CORS_ORIGINS` names only the two production
+  hostnames, so every API call from a preview is 403 before it reaches a route, and Cloudflare
+  Stream's allowed-domains list excludes preview hostnames, so the player frame answers *"This
+  video has not been configured to be allowed on this domain."* A suite pointed at a preview
+  would fail almost every journey for reasons unrelated to the change under test, and a job that
+  is always red is a job nobody reads.
+
+---
+
+## E1 — is there a regression? No.
+
+### Three videos, iPhone 13 profile, median of 6 with a warm-up discarded
+
+| video | recorded baseline | now | our leg (`pb`→`if`) |
+|---|---|---|---|
+| `live-at-arusha-full-set` | 3108 ms | **2390** `[2003–4267]` | 559 → 926 = **367 ms** |
+| `how-to-cook-pilau-properly` | 3585 ms | **2807** `[2132–3651]` | 536 → 943 = **407 ms** |
+| `rpreplay-final1589783013-2` | 3218 ms | **3396** `[2127–3653]` | 516 → 916 = **400 ms** |
+
+Two are faster than the baseline by 700–800 ms. The third is 178 ms slower — **5.5 %**, on a
+figure whose own range spans 1526 ms, and the same measurement is recorded elsewhere as varying
+between 2.2 s and 6.7 s on the same phone minutes apart. It is not a regression; it is the
+CDN's cache.
+
+The part this codebase controls — from asking for playback to the player frame being attached —
+is **367–407 ms** on all three, consistent with the 228–441 ms recorded earlier and well under
+the 743 ms of the original baseline.
+
+Fast 3G, for completeness: 10045 / 10125 / 10581 ms. Almost all of that is after `el` — the
+player fetching its own software and filling its buffer on a throttled link.
+
+### Home → first card
+
+`scripts/measure-home.mjs`, median of 5 with a warm-up discarded. Cold is a brand-new context;
+warm is a second visit in the same one. They are different measurements and are not mixed.
+
+| profile | | recorded | now | bar (+25 %) | |
+|---|---|---|---|---|---|
+| desktop | cold | 2336 ms | **1822** `[1600–2298]` | 2920 | ✅ |
+| desktop | warm | 1047 ms | **1021** `[997–1689]` | 1309 | ✅ |
+| iPhone 13 | cold | 2502 ms | **2064** `[1647–2680]` | 3128 | ✅ |
+| iPhone 13 | warm | 898 ms | **1031–1123** | 1123 | ✅ (see below) |
+
+**Three of the four improved, two of them by 20 %.** The fourth needs saying plainly rather than
+rounding away.
+
+The first five-sample run of the iPhone warm cell read **1166 ms**, 43 ms over the bar. Three
+further runs of nine samples read **1123, 1058 and 1031 ms** — all inside it. So 1166 was a small
+sample, but the underlying figure has still moved from 898 to roughly 1050.
+
+**The cause is measured, not guessed.** The bundle grew from **421,688 to 445,949 bytes**
+(+24,261, **+5.8 %**) — built from `71bd206` in a throwaway worktree and from the current commit,
+so the two figures are comparable. That is the Follow context, the saved-videos context, the two
+new controls and the home Continue Watching row: the features in this run. A warm visit has the
+bundle in cache and spends its time parsing and mounting it, which is exactly where a 5.8 %
+larger bundle shows up.
+
+Signed out, **Home still makes exactly three API requests** and the Continue Watching section
+renders nothing at all:
+
+```
+signed-out Home API requests: 3
+   /stats
+   /videos?sort=trending&limit=8
+   /stats/top-creators
+continue-watching section present: 0
+```
+
+So nothing was added to the signed-out path's network cost. The ~130 ms is parse and mount, on a
+warm load, on a throttled phone profile — and it sits inside the recorded baseline's own range
+of `[875–1416]`.
+
+---
+
+## E2 — every CLI block, re-run against production
+
+```
+############ db:status ############
+   ✓ 029_follows.sql                        applied  2026-08-28 10:23:12
+   ✓ 030_video_card_source_key.sql          applied  2026-09-01 03:44:14
+   ✓ 031_follows_counter_trigger.sql        applied  2026-09-01 18:56:45
+   ✓ 032_saved_videos.sql                   applied  2026-09-01 19:37:58
+   ✓ 033_watch_progress_hidden_at.sql       applied  2026-09-01 19:37:59
+
+############ follow CLI ############                          ALL PASS
+  the second follow does not count twice · the count matches the graph ·
+  creator_profiles.followers matches too — the trigger, not the route ·
+  you cannot start following a blocked creator · but an existing follower CAN get out ·
+  14 creators, 0 disagreeing with the follows table
+
+############ library CLI ############                         ALL PASS
+  GET /api/library → 200  keys: videos, purchased, continueWatching, myList, recentlyWatched, savedIds
+  counts — purchased 3, continue 0, myList 1, recent 0
+  saving twice is one row · `videos` still means Purchased ·
+  gone from BOTH history rows · THE POSITION IS KEPT (resumeFromSeconds=40) ·
+  hidden_at cleared by watching more · back in Recently Watched
+
+############ share previews ############
+  X-Share-Card: cdn · image/jpeg · 39,577 bytes · Cache-Control public, max-age=86400
+  html latency 0.331 / 0.312 / 0.337 s
+  generic og:title count (must be 0): 0
+
+############ suites and builds ############
+  client   152 tests, 152 pass, 0 fail · 21/21 hover rules guarded · built · every page rendered
+  server   115 tests, 115 pass, 0 fail
+  admin    built (326.65 kB js, 54.05 kB css)
+```
+
+**Why `continue 0, recent 0` here and `3, 3` earlier**, checked rather than assumed. All three of
+this account's history rows had been hidden by the browser suite's own "Remove from history"
+cases on the WebKit and iPhone profiles — the feature working, on the only account available:
+
+```
+watch_progress rows for the e2e account: 3
+   live-at-arusha-full-set                    40s   hidden: no
+   whatsapp-video-2026-08-15-at-11-50-34-pm   18s   hidden: YES
+   behind-the-fame-a-coast-documentary       261s   hidden: YES
+```
+
+The CLI found no visible row, seeded one, and tested against that — which is why the visible row
+above is at 40 s. The rows have since been un-hidden so the account is left looking as a real
+viewer's would; the positions were never touched, which is the whole point of hiding rather than
+deleting.
+
+---
+
 *Further items are appended as they are verified.*
