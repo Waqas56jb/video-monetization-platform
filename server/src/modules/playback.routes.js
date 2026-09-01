@@ -358,64 +358,79 @@ router.get(
  * nothing about whether they may watch 5:01 — that is decided from `purchases`,
  * per user and per video, every time playback is requested.
  */
-router.put(
-  '/:id/progress',
-  /**
-   * A position sent by a page that is closing arrives as a BEACON, and a beacon
-   * cannot carry an Authorization header.
-   *
-   * `fetch` and XHR are cancelled when a document unloads, so the old pagehide
-   * flush usually wrote nothing at all — the tab closed and took the request
-   * with it. `navigator.sendBeacon` is the one transport the platform promises
-   * to deliver afterwards, and it sends a body and nothing else: no headers, and
-   * no preflight, so anything but a simple content type is dropped in silence.
-   *
-   * So a beacon arrives as `text/plain` carrying `{seconds, token}`, and this
-   * turns it back into the request the route already knows how to handle. The
-   * token is the same access token the header would have carried, over the same
-   * TLS, checked by the same `optionalAuth` — nothing here decides what anybody
-   * may watch, and it applies to this one route.
-   */
-  express.text({ type: ['text/plain'], limit: '2kb' }),
-  (req, _res, next) => {
-    if (typeof req.body !== 'string' || !req.body) return next()
-    try {
-      const parsed = JSON.parse(req.body)
-      req.body = { seconds: parsed?.seconds }
-      if (!req.headers.authorization && parsed?.token) {
-        req.headers.authorization = `Bearer ${parsed.token}`
+/**
+ * The same handler on PUT and on POST, and the second one is not decoration.
+ *
+ * `navigator.sendBeacon` can only issue a POST. There is no option, no second
+ * argument, no way to ask for anything else — so every beacon this client sends
+ * arrived at a route registered for PUT alone and was answered with 404. The
+ * page cannot tell: sendBeacon returns true for 'queued', never for
+ * 'delivered', so the whole path failed in complete silence and the position
+ * was simply never stored. It was found by watching the wire, not by reading
+ * the code.
+ *
+ * The write is an upsert keyed on (user, video), so it is idempotent and the
+ * verb carries no meaning here beyond which one the transport is able to use.
+ */
+const progressHandlers = [
+    /**
+     * A position sent by a page that is closing arrives as a BEACON, and a beacon
+     * cannot carry an Authorization header.
+     *
+     * `fetch` and XHR are cancelled when a document unloads, so the old pagehide
+     * flush usually wrote nothing at all — the tab closed and took the request
+     * with it. `navigator.sendBeacon` is the one transport the platform promises
+     * to deliver afterwards, and it sends a body and nothing else: no headers, and
+     * no preflight, so anything but a simple content type is dropped in silence.
+     *
+     * So a beacon arrives as `text/plain` carrying `{seconds, token}`, and this
+     * turns it back into the request the route already knows how to handle. The
+     * token is the same access token the header would have carried, over the same
+     * TLS, checked by the same `optionalAuth` — nothing here decides what anybody
+     * may watch, and it applies to this one route.
+     */
+    express.text({ type: ['text/plain'], limit: '2kb' }),
+    (req, _res, next) => {
+      if (typeof req.body !== 'string' || !req.body) return next()
+      try {
+        const parsed = JSON.parse(req.body)
+        req.body = { seconds: parsed?.seconds }
+        if (!req.headers.authorization && parsed?.token) {
+          req.headers.authorization = `Bearer ${parsed.token}`
+        }
+      } catch {
+        // Not our beacon. Leave it to fail the usual way.
+        req.body = {}
       }
-    } catch {
-      // Not our beacon. Leave it to fail the usual way.
-      req.body = {}
-    }
-    next()
-  },
-  optionalAuth(),
-  asyncHandler(async (req, res) => {
-    if (!req.user) return res.status(202).json({ saved: false, reason: 'not signed in' })
+      next()
+    },
+    optionalAuth(),
+    asyncHandler(async (req, res) => {
+      if (!req.user) return res.status(202).json({ saved: false, reason: 'not signed in' })
 
-    const seconds = Math.max(0, Math.floor(Number(req.body?.seconds) || 0))
-    const video = await videoByKey(req.params.id)
-    if (!video) throw notFound('Video not found')
+      const seconds = Math.max(0, Math.floor(Number(req.body?.seconds) || 0))
+      const video = await videoByKey(req.params.id)
+      if (!video) throw notFound('Video not found')
 
-    // Cap at the running time; a player occasionally reports a position slightly
-    // past the end, and a stored position beyond the film is meaningless.
-    const capped = video.duration_seconds
-      ? Math.min(seconds, Number(video.duration_seconds))
-      : seconds
+      // Cap at the running time; a player occasionally reports a position slightly
+      // past the end, and a stored position beyond the film is meaningless.
+      const capped = video.duration_seconds
+        ? Math.min(seconds, Number(video.duration_seconds))
+        : seconds
 
-    await query(
-      `insert into watch_progress (user_id, video_id, seconds, updated_at)
-       values ($1,$2,$3, now())
-       on conflict (user_id, video_id)
-       do update set seconds = excluded.seconds, updated_at = now()`,
-      [req.user.id, video.id, capped]
-    )
+      await query(
+        `insert into watch_progress (user_id, video_id, seconds, updated_at)
+         values ($1,$2,$3, now())
+         on conflict (user_id, video_id)
+         do update set seconds = excluded.seconds, updated_at = now()`,
+        [req.user.id, video.id, capped]
+      )
 
-    res.status(202).json({ saved: true, seconds: capped })
-  })
-)
+      res.status(202).json({ saved: true, seconds: capped })
+    })
+]
+router.put('/:id/progress', ...progressHandlers)
+router.post('/:id/progress', ...progressHandlers)
 
 /**
  * A video's poster image.
