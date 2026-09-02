@@ -47,7 +47,11 @@ test('VideoCard warms on intent, and only once per card', () => {
  */
 test('the card does not warm for a press meant for one of its own controls', () => {
   const src = readFileSync(join(dir, 'VideoCard.jsx'), 'utf8')
-  assert.match(src, /closest\?\.\('button, a:not\(\.vid-open\)'\)\) return/)
+  /* `:not(.vid-open)` on BOTH halves: the opener is a <button> in the non-route
+     variant, so a bare `button` would make the card refuse to warm for the very
+     press that opens it. */
+  const guard = /closest\?\.\('button:not\(\.vid-open\), a:not\(\.vid-open\)'\)\) return/g
+  assert.match(src, guard)
   // and it is on both entry points, not just the tap one
-  assert.equal((src.match(/closest\?\.\('button, a:not\(\.vid-open\)'\)\) return/g) || []).length, 2)
+  assert.equal((src.match(guard) || []).length, 2)
 })

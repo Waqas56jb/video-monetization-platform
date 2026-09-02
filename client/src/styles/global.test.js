@@ -84,35 +84,43 @@ test('pages that open under the fixed header allow for its height', () => {
 })
 
 /**
- * A stretched link must be trapped by its own card.
+ * The card's opening link must cover the card, and the controls must beat it.
  *
- * `.vid-open::after` and `.creator-open::after` are `position:absolute;inset:0`
- * — the pattern that makes a whole tile clickable without nesting one anchor
- * inside another. `inset:0` resolves against the nearest POSITIONED ancestor,
- * so if the card itself is not positioned the overlay escapes to whatever is,
- * and silently swallows every control below it.
+ * This started as a `::after` pseudo-element and shipped broken. `.vid-card:active`
+ * applies `opacity:.92` and a transform, so the card becomes a stacking context
+ * mid-press and the pseudo-element lost to the poster image between mousedown and
+ * mouseup — the two landed on different elements, `click` fired on their common
+ * ancestor, and the link never activated. Only the title worked, and pressing the
+ * picture just left the top progress bar running. The client found it.
  *
- * That is not hypothetical. `.creator-row` was missing `position:relative`, and
- * its overlay spread across the watch page and ate the Unlock button — a viewer
- * on a phone could not buy the video. It was invisible in review and obvious the
- * moment a test tried to click Unlock.
+ * A real element does not have that problem. What this test pins is the shape:
+ * the opener covers the card, the card is its containing block, and every control
+ * a viewer is meant to press sits above it.
  */
-test('every stretched card link is contained by its own card', () => {
-  for (const [overlay, card] of [
-    ['.vid-open::after', '.vid-card'],
-    ['.creator-open::after', '.creator-row'],
-  ]) {
-    const spread = declarations(overlay)
-    assert.ok(spread, `${overlay} rule is missing`)
-    assert.match(spread, /position:absolute/, `${overlay} must be absolutely positioned`)
-    assert.match(spread, /inset:0/, `${overlay} must cover its card`)
+test('the card opener covers the card, and the controls sit above it', () => {
+  const opener = declarations('.vid-open')
+  assert.ok(opener, '.vid-open rule is missing')
+  assert.match(opener, /position:absolute/, '.vid-open must cover the tile')
+  assert.match(opener, /inset:0/, '.vid-open must cover the tile')
+  assert.doesNotMatch(
+    opener,
+    /::after/,
+    'the opener is a real element now — a pseudo-element loses to the poster under :active'
+  )
 
-    const holder = declarations(card)
-    assert.ok(holder, `${card} rule is missing`)
-    assert.match(
-      holder,
-      /position:relative/,
-      `${card} must be position:relative, or ${overlay} escapes it and covers unrelated controls`
+  const card = declarations('.vid-card')
+  assert.ok(card, '.vid-card rule is missing')
+  assert.match(card, /position:relative/, 'the card must be the containing block for its opener')
+
+  const z = (decls) => Number((decls.match(/z-index:(\d+)/) || [])[1] ?? NaN)
+  const openerZ = z(opener)
+  assert.ok(Number.isFinite(openerZ), '.vid-open needs an explicit z-index')
+  for (const control of ['.save-pin', '.vid-by-link', '.follow-btn', '.lib-forget']) {
+    const rule = declarations(control)
+    assert.ok(rule, `${control} rule is missing`)
+    assert.ok(
+      z(rule) > openerZ,
+      `${control} (z-index ${z(rule)}) must sit above the card opener (z-index ${openerZ}) or it cannot be pressed`
     )
   }
 })

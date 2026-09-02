@@ -381,19 +381,23 @@ input,select,textarea{font-family:inherit}
 .vid-play svg{width:24px;height:24px;margin-left:3px}
 .vid-info{padding:18px}
 .vid-info h4{font-size:15.5px;font-weight:700;margin-bottom:5px;line-height:1.4}
-/* The whole tile is this one link. `::after` stretches it over the card so a tap
-   anywhere activates a real anchor and navigates on the first tap; the creator
-   link and Follow sit above it on z-index 2 and take their own taps. */
-.vid-open{color:inherit;text-decoration:none;font:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;display:block;width:100%}
-.vid-open::after{content:'';position:absolute;inset:0;z-index:1}
+/* The whole tile is this one link — a REAL element, last child of the card,
+   covering it. It was a `::after` pseudo-element first and that shipped broken:
+   `.vid-card:active` applies opacity and a transform, the card becomes a
+   stacking context mid-press, and the pseudo-element then lost to the poster
+   image between mousedown and mouseup, so `click` fired on their common ancestor
+   and the link never activated. Only the title worked. See VideoCard.jsx.
+   The controls that take their own presses sit above it at z-index 4. */
+.vid-open{position:absolute;inset:0;z-index:1;border-radius:inherit;background:none;border:0;padding:0;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;font:inherit;color:transparent}
 .vid-info .by{font-size:12.5px;color:var(--muted2);display:flex;align-items:center;gap:7px;margin-bottom:14px;min-height:26px}
 .vid-info .by img{width:22px;height:22px;border-radius:50%;object-fit:cover}
-.vid-by-link{position:relative;z-index:2;color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;min-width:0;border-radius:8px}
+.vid-by-link{position:relative;z-index:4;color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;min-width:0;border-radius:8px}
 .vid-by-link>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vid-by-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* ---------- FOLLOW ---------- */
-.follow-btn{position:relative;z-index:2;display:inline-flex;align-items:center;gap:7px;flex-shrink:0}
+.follow-btn{position:relative;z-index:4;display:inline-flex;align-items:center;gap:7px;flex-shrink:0}
 .follow-btn .follow-count{opacity:.75;font-variant-numeric:tabular-nums}
 .follow-btn[aria-busy='true']{opacity:.85}
 .follow-sm{margin-left:auto;padding:5px 11px;font-size:11.5px;font-weight:700;border-radius:99px;min-height:32px}
@@ -404,12 +408,12 @@ input,select,textarea{font-family:inherit}
 /* ---------- SAVE / MY LIST ---------- */
 /* Above the stretched card link (z-index 1) so it takes its own tap. Sized 36px
    so it clears the 40px tap-target bar on touch once its padding is counted. */
-.save-pin{position:absolute;top:10px;right:10px;z-index:3;width:36px;height:36px;display:grid;place-items:center;
+.save-pin{position:absolute;top:10px;right:10px;z-index:4;width:36px;height:36px;display:grid;place-items:center;
   border:0;border-radius:50%;background:rgba(10,10,18,.62);color:#fff;cursor:pointer;
   backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent;transition:background .25s,color .25s}
 .save-pin.is-saved{background:rgba(245,197,24,.94);color:#1a1200}
 .save-pin[aria-busy='true']{opacity:.85}
-.save-btn{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px}
+.save-btn{position:relative;z-index:4;display:inline-flex;align-items:center;gap:8px}
 .save-btn.is-saved{color:var(--gold);border-color:rgba(245,197,24,.45)}
 
 /* ---------- MY LIBRARY ROWS ---------- */
@@ -422,7 +426,7 @@ input,select,textarea{font-family:inherit}
 .lib-progress{height:4px;border-radius:99px;background:var(--border2);overflow:hidden}
 .lib-progress span{display:block;height:100%;background:var(--gold);border-radius:99px}
 /* Top-LEFT, because the Save pin owns the top-right corner of every poster. */
-.lib-forget{position:absolute;top:10px;left:10px;z-index:3;width:36px;height:36px;display:grid;place-items:center;
+.lib-forget{position:absolute;top:10px;left:10px;z-index:4;width:36px;height:36px;display:grid;place-items:center;
   border:0;border-radius:50%;background:rgba(10,10,18,.62);color:#fff;cursor:pointer;
   backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent}
 .vid-meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border2);padding-top:13px}

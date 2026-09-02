@@ -14,17 +14,31 @@ import { markPerf } from '@/lib/perfLog'
  * The trending / library video card. Used on the landing grid and inside the
  * dashboard library, with the same hover-zoom + pulsing play button.
  *
- * THE CARD IS NO LONGER ONE BIG ANCHOR. It carries two more controls now — the
- * creator's name, which goes to their page, and Follow — and an anchor inside an
- * anchor is invalid HTML that browsers resolve by silently closing the outer
- * one, which breaks the card in ways that differ per engine.
+ * THE CARD IS NOT ONE BIG ANCHOR. It carries three more controls now — the
+ * creator's name, Follow, and Save — and an anchor inside an anchor is invalid
+ * HTML that browsers resolve by silently closing the outer one, which breaks the
+ * card differently in every engine.
  *
- * The pattern instead: the card is an `<article>`, the title holds the only link
- * to the video, and `.vid-open::after` stretches that link over the whole tile.
- * A tap anywhere still activates a real anchor — so it still navigates natively
- * on the first tap, which is the behaviour the client reported and which was
- * fixed at some cost — while the creator link and Follow sit above it on their
- * own stacking level and take their own taps.
+ * So the card is an `<article>`, and the link that opens the video is a REAL
+ * ELEMENT — the last child, absolutely positioned over the whole tile. The
+ * controls sit above it on a higher z-index and take their own presses.
+ *
+ * IT WAS A `::after` PSEUDO-ELEMENT FIRST, AND THAT SHIPPED BROKEN.
+ * The client found it: only the title opened a video, and pressing the picture
+ * did nothing except leave the top progress bar running. Two things were wrong.
+ * `.vid-play` covered the whole poster above the overlay — fixed by making every
+ * decorative layer `pointer-events:none`. But even after that the poster still
+ * would not navigate, and the reason is worth writing down: `.vid-card:active`
+ * applies `opacity:.92` and a transform, which turns the card into a stacking
+ * context mid-press, and the pseudo-element then lost to the poster image
+ * between mousedown and mouseup — so the two landed on different elements and
+ * the browser fired `click` on their common ancestor instead of on the link.
+ * Measured, not guessed: while the button was held, `elementFromPoint` over the
+ * poster returned the `<img>`, and with a real anchor in the same place it
+ * returns the anchor and the press navigates.
+ *
+ * A real element does not have that problem, and it is also far easier to reason
+ * about than a pseudo-element competing with its siblings.
  *
  * Prefer `to` + `state` (real Link) so navigation is native and starts on the
  * first tap. `onClick` remains for rare non-route actions.
@@ -80,7 +94,7 @@ export default function VideoCard({
    * having hung. Anything that is its own control handles its own press.
    */
   const warm = (e) => {
-    if (e?.target?.closest?.('button, a:not(.vid-open)')) return
+    if (e?.target?.closest?.('button:not(.vid-open), a:not(.vid-open)')) return
     if (warmed.current) return
     warmed.current = true
     markPerf('cardTap')
@@ -98,7 +112,7 @@ export default function VideoCard({
    * on touch there is no hover, so the tap path above is the one that matters.
    */
   const hover = (e) => {
-    if (e?.target?.closest?.('button, a:not(.vid-open)')) return
+    if (e?.target?.closest?.('button:not(.vid-open), a:not(.vid-open)')) return
     if (warmed.current) return
     prefetchWatchLight(slug || id)
   }
@@ -111,15 +125,15 @@ export default function VideoCard({
 
   const name = author || byline
 
-  /* The one control that opens the video, stretched over the whole tile. */
+  /**
+   * The one control that opens the video: a real element covering the tile,
+   * rendered last so nothing decorative can paint over it. Its accessible name
+   * is the title, which is drawn separately in normal flow.
+   */
   const opener = to ? (
-    <Link className="vid-open" to={to} state={state}>
-      {title}
-    </Link>
+    <Link className="vid-open" to={to} state={state} aria-label={title} />
   ) : (
-    <button className="vid-open" type="button" onClick={onClick}>
-      {title}
-    </button>
+    <button className="vid-open" type="button" onClick={onClick} aria-label={title} />
   )
 
   const body = (
@@ -151,7 +165,7 @@ export default function VideoCard({
         </div>
       </div>
       <div className="vid-info">
-        <h4>{opener}</h4>
+        <h4>{title}</h4>
         <div className="by">
           {/* The creator is reachable from the card, not only from the watch
               page — every share link and every Explore tap used to land on
@@ -184,6 +198,7 @@ export default function VideoCard({
           </span>
         </div>
       </div>
+      {opener}
     </>
   )
 
