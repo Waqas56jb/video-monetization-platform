@@ -6,12 +6,17 @@ import { useToast } from '@/context/ToastContext'
 import { useRole } from '@/context/AuthContext'
 
 /**
- * Sidebar menu, filtered by role.
+ * Sidebar menu, filtered by the SIDES this account actually has.
  *
- * A viewer only sees the watching side of the product — their library, what
- * they have paid for, and the route to becoming a creator. A creator sees all
- * of that plus the studio, because on MTONYO+ one account both watches and
- * sells. `roles` on each group/item decides who sees what.
+ * It used to filter by a single role on the assumption that one account both
+ * watches and sells — so a Create-only account was offered My Library and My
+ * Purchases, which belong to a Watch account it does not have. Watch and Create
+ * are separate accounts that share an email and a password: each is signed up
+ * for on its own, and the menu shows what has been signed up for.
+ *
+ * `roles` still decides which group an item belongs to; `sides` decides whether
+ * that group is shown at all. When a side is missing the menu offers to add it,
+ * because that is now something a person can do for themselves.
  */
 const GROUPS = [
   {
@@ -54,7 +59,7 @@ const GROUPS = [
 export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onClose }) {
   const navigate = useNavigate()
   const showToast = useToast()
-  const { role, signOut, isCreator, accountSide, setAccountSide, accountRole } = useRole()
+  const { role, signOut, isCreator, accountSide, setAccountSide, accountRole, sides } = useRole()
   const [signingOut, setSigningOut] = useState(false)
   // Staff who open the public app get the creator menu, not an empty sidebar.
   /**
@@ -90,7 +95,16 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
     }
   }
 
+  /**
+   * Staff see everything: an administrator's account is not two sides, and
+   * hiding the studio from them would break the review work they do in it.
+   */
+  const staff = role === 'admin' || role === 'sub_admin'
+  const hasWatch = staff || sides?.viewer !== false
+  const hasStudio = staff || Boolean(sides?.creator) || isCreator
+
   const visible = GROUPS.filter((g) => g.roles.includes(menuRole))
+    .filter((g) => (g.label === 'Watch' ? hasWatch : g.label === 'Creator Studio' ? hasStudio : true))
     .map((g) => ({
       ...g,
       items: g.items.filter(
@@ -104,6 +118,15 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
     // A group whose every item was filtered out should not leave a heading
     // floating over nothing.
     .filter((g) => g.items.length > 0)
+
+  /**
+   * The side this account does not have, offered as something to add.
+   *
+   * Signing up on the missing side with the same email and password opens it —
+   * that is the whole of it now — so this is a link to that sign-up rather than
+   * to an application anyone has to wait on.
+   */
+  const missingSide = !staff && !hasWatch ? 'viewer' : !staff && !hasStudio ? 'creator' : null
 
   const activate = (item) => {
     if (item.tab) return onTab(item.tab, item.filter ? { filter: item.filter } : {})
@@ -150,6 +173,31 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
             })}
           </Fragment>
         ))}
+
+        {/**
+          * The side this account does not have.
+          *
+          * Watch and Create are separate accounts on one email, so an account
+          * with only one of them is normal — but it should be able to see that,
+          * and to add the other. Signing up on the missing side with the same
+          * email and password opens it.
+          */}
+        {missingSide && (
+          <Fragment>
+            <div className="side-label">{missingSide === 'creator' ? 'Start Selling' : 'Start Watching'}</div>
+            <button
+              className="side-link"
+              type="button"
+              onClick={() => {
+                onClose()
+                navigate(`/signup?side=${missingSide}`)
+              }}
+            >
+              <Icon name={missingSide === 'creator' ? 'rocket' : 'library'} />
+              {missingSide === 'creator' ? 'Add a Creator account' : 'Add a Watch account'}
+            </button>
+          </Fragment>
+        )}
 
         <div className="side-foot">
           {accountRole === 'admin' && isCreator && (
