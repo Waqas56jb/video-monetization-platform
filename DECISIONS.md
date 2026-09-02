@@ -247,3 +247,57 @@ creator's share goes back with the sale rather than being left behind.
 **Alternative considered:** reusing one account and buying a different title each run. Rejected —
 there are only four paid titles, two of which are the test uploads now unpublished, so it does
 not reach five runs and it makes each run test a different video.
+
+---
+
+## 2026-09-02 · The card only opened from its title — the worst bug of this run, and it shipped
+
+The client found it within minutes of the handover: pressing a video's **picture** did nothing
+except leave the top progress bar spinning; only the title worked. It was mine, from the card
+restructure that made room for Follow and Save, and the suite had passed it seven times over.
+
+**Two faults, one symptom.** `.vid-play` is `position:absolute;inset:0;z-index:2` and covered the
+whole poster above the overlay — fixed by making every decorative layer `pointer-events:none`.
+And the overlay was a `::after` pseudo-element that lost the press outright: `.vid-card:active`
+applies `opacity:.92` and a transform, the card becomes a stacking context mid-press, and the
+pseudo-element then lost to the poster image. mousedown landed on the anchor, mouseup on the
+`<img>`, so `click` fired on their common ancestor and the link never activated.
+
+**Decided: a real element, not a tuned pseudo-element.** The opener is the last child of the card,
+absolutely positioned over it, title drawn separately and carried as the accessible name,
+controls at z-index 4. I could not explain the pseudo-element's behaviour from first principles
+even after finding it, and code whose correctness rests on that is not code to keep. Verified by
+injecting a real anchor into the live page before writing any of it.
+
+**Alternative considered:** raising the pseudo-element's z-index. Rejected — it treats the symptom
+and leaves the same fragility, and the arrangement had already surprised me twice.
+
+**The test failure is the more important half.** Journey 3 and the follow suite clicked
+`.vid-open` — the title — so both passed on seven profiles while the target anyone actually aims
+at was dead. A test that presses the one part of a control nobody uses is not a test of that
+control. Both press the poster now, and `scripts/e2e/card-press.mjs` presses every part of a card
+on five profiles: 45 checks.
+
+**They press coordinates, not elements**, and that is not incidental. `locator.click()` refuses
+when a different element would receive the event — precisely what a correct overlay causes — so
+element-based clicking reported the *fixed* site as broken on all seven profiles. Any future test
+of a covered control has to press the point.
+
+---
+
+## 2026-09-02 · Three harness faults that each reported the site as broken when it was not
+
+Recorded together because the pattern is the point: during this fix, more of my time went on
+false failures than on the real one, and each looked exactly like a product defect.
+
+- **The price row sat at y 888-931 in a 900 px window.** "Press its centre" pressed a point below
+  the window. Reported as "the price row does not navigate". Fixed by scrolling in and clamping.
+- **Signed out, pressing Save navigates to sign in**, carrying the page. The pin disappearing is
+  correct behaviour; the probe read it as the pin being broken and timed out looking for it. Now
+  asserted in both states.
+- **Playwright refuses to click an element when another would receive the event.** That refusal is
+  a correct overlay working, and it read as seven profiles failing.
+
+The lesson worth keeping: when a harness and a browser disagree, find out which one is lying
+before touching the product. Every one of these would have led to a change that made the site
+worse.

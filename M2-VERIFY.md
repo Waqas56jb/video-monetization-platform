@@ -844,4 +844,104 @@ repository for photographs of a dark web page. **1.36 MB** after, and the differ
 
 ---
 
+
+## The card that only opened from its title — found by the client, missed by this suite
+
+The client reported it plainly: tapping a video's **title** opened it; tapping the **picture**,
+the card, or the frame did nothing except leave the top progress bar spinning, so the page looked
+hung. They were right, it was mine, and the suite had passed it seven times over.
+
+### What was wrong — two faults, one symptom
+
+**1 · The play icon covered the whole poster.** `.vid-play` is
+`position:absolute;inset:0;z-index:2` and the stretched link overlay was at z-index 1, so every
+press on the picture landed on a decorative div. Proved before changing anything:
+
+```
+elementFromPoint at the poster's centre → <svg> inside div.vid-play, closest <a>: NO
+click on the poster → DID NOT NAVIGATE
+click on the title  → /watch/rpreplay-final1589783013-2
+```
+
+**2 · The overlay was a pseudo-element, and it lost the press.** After making every decorative
+layer `pointer-events:none`, `elementFromPoint` returned the anchor — and the poster **still**
+would not navigate. The event log said why:
+
+```
+pointerdown  → A.vid-open
+mousedown    → A.vid-open
+mouseup      → IMG.is-on          ← a different element
+click        → ARTICLE.vid-card   ← so click fired on their common ancestor
+```
+
+A press that begins and ends on different elements never activates the link. Holding the button
+down showed the cause:
+
+```
+before press:      under cursor = A.vid-open   card opacity 1     transform none
+WHILE HELD DOWN:   under cursor = IMG.is-on    card opacity 0.92  transform matrix(1,0,0,1,0,0)
+```
+
+`.vid-card:active` applies `opacity:.92` and a transform. Both make the card a stacking context
+mid-press, and the `::after` then lost to the poster image underneath it.
+
+Two hypotheses were tested and discarded before that one: disabling the `:active` **transform**
+alone changed nothing, and `.vid-thumb` turned out not to be a stacking context at all.
+
+### The fix
+
+The link that opens a card is a **real element** now — the last child, absolutely positioned over
+the tile, with the title drawn separately in normal flow and carried as the link's accessible
+name. Controls that take their own presses moved to z-index 4, above it. Confirmed on the live
+page before writing any code: substituting a real anchor in the same position made the held-down
+`elementFromPoint` return the anchor and the press navigate.
+
+The pseudo-element version is gone rather than tuned. I could not explain its behaviour from
+first principles even after finding it, and code whose correctness rests on that is not code to
+keep.
+
+**The second half of the same symptom:** `pointerdown` on Save or Follow bubbled to the card and
+started the progress bar, which then ran its full eight-second cap with no navigation to stop it.
+`warm` now ignores presses that landed on one of the card's own controls.
+
+### Why the suite missed it, which matters more
+
+Journey 3 and the follow suite both clicked `.vid-open` — **the title**. They passed on seven
+profiles while the poster, which is the target anyone actually aims at, was dead. A test that
+presses the one part of a control nobody uses is not a test of that control.
+
+They press the poster now, and `scripts/e2e/card-press.mjs` presses every part of a card on five
+profiles — **45 checks, all green**:
+
+| | chromium | webkit | iPhone 14 | iPad + mouse | Pixel 7 |
+|---|---|---|---|---|---|
+| the poster's centre resolves to the card link | ✅ | ✅ | ✅ | ✅ | ✅ |
+| one press on the poster | ✅ | ✅ | ✅ | ✅ | ✅ |
+| one press on the title | ✅ | ✅ | ✅ | ✅ | ✅ |
+| one press on the price row | ✅ | ✅ | ✅ | ✅ | ✅ |
+| one press on the creator's name → their page | ✅ | ✅ | ✅ | ✅ | ✅ |
+| signed out, Save → sign in carrying the page | ✅ | ✅ | ✅ | ✅ | ✅ |
+| signed in, Save toggles on one press | ✅ | ✅ | ✅ | ✅ | ✅ |
+| …without opening the video | ✅ | ✅ | ✅ | ✅ | ✅ |
+| no progress bar left running after Save | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**It presses coordinates, not elements.** `locator.click()` refuses when a different element would
+receive the event — which is exactly what a correct overlay causes — so element-based clicking
+reported the fixed site as broken on all seven profiles. A finger has no such scruples.
+
+Three of the harness's own faults are recorded in its header, because each one reported the site
+as broken when it was not: the price row sitting past the bottom edge of the window, a signed-out
+Save press correctly navigating to sign in, and Playwright's actionability refusal above.
+
+### Unit guards
+
+Two, and each was checked by reverting the fix and watching it fail with the reason named:
+
+- every decorative layer over the poster must be `pointer-events:none`, and the pressable controls
+  must not be;
+- the opener must cover the card, the card must be its containing block, and every control must
+  have a **numerically higher** z-index than the opener.
+
+---
+
 *Further items are appended as they are verified.*

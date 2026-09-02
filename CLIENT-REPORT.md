@@ -22,15 +22,16 @@ genuinely still need a phone is at the end of this document.
 4. [Payment, unlocking and resuming](#4-payment-unlocking-and-resuming)
 5. [Logging in](#5-logging-in)
 6. [Taps that needed two tries](#6-taps-that-needed-two-tries)
-7. [Scrolling, blank space and things moving](#7-scrolling-blank-space-and-things-moving)
-8. [Sharing and WhatsApp](#8-sharing-and-whatsapp)
-9. [Following a creator](#9-following-a-creator)
-10. [My Library — the four rows](#10-my-library--the-four-rows)
-11. [Reaching the creator from anywhere](#11-reaching-the-creator-from-anywhere)
-12. [The other items you reported](#12-the-other-items-you-reported)
-13. [The numbers behind "3.5 seconds"](#13-the-numbers-behind-35-seconds)
-14. [What still needs a phone](#14-what-still-needs-a-phone)
-15. [Test data on production](#15-test-data-on-production)
+7. [The card that only opened from its title](#7-the-card-that-only-opened-from-its-title)
+8. [Scrolling, blank space and things moving](#8-scrolling-blank-space-and-things-moving)
+9. [Sharing and WhatsApp](#9-sharing-and-whatsapp)
+10. [Following a creator](#10-following-a-creator)
+11. [My Library — the four rows](#11-my-library--the-four-rows)
+12. [Reaching the creator from anywhere](#12-reaching-the-creator-from-anywhere)
+13. [The other items you reported](#13-the-other-items-you-reported)
+14. [The numbers behind "3.5 seconds"](#14-the-numbers-behind-35-seconds)
+15. [What still needs a phone](#15-what-still-needs-a-phone)
+16. [Test data on production](#16-test-data-on-production)
 
 ---
 
@@ -84,7 +85,7 @@ you experienced, it is not this navigation as the site stands today. If it happe
 note the time — the server logs can be lined up against it.
 
 **The part we cannot remove is Cloudflare's**, and it is about 3.5 seconds of the wait. The full
-trace is in section 13, written out so you can check it yourself.
+trace is in section 14, written out so you can check it yourself.
 
 ---
 
@@ -270,7 +271,56 @@ that looked unguarded were inside a touch-only block, where hover rules exist pr
 
 ---
 
-## 7 · Scrolling, blank space and things moving
+## 7 · The card that only opened from its title
+
+**PROBLEM.** You reported this after the last handover, and you were right. Pressing a video's
+**title** opened it. Pressing the **picture**, or anywhere else on the card, did nothing — except
+start the loading bar at the top of the screen, which then kept going. The page looked hung.
+
+**ROOT CAUSE. This one was ours, and it was new.** Adding Follow and Save to the cards meant the
+card could no longer be one big link — a button inside a link is invalid HTML that browsers
+resolve by quietly breaking the link. The replacement was an invisible layer over the tile that
+carried the link. Two things were wrong with it.
+
+- The pulsing play icon is stretched over the whole picture, and it sat **above** that invisible
+  layer. Every press on the poster hit the icon, which does nothing.
+- Even after that was fixed, the picture still did not open. When you press a card it dims
+  slightly and shrinks — that press effect changes how the browser stacks the layers *while your
+  finger is down*, and the invisible layer lost to the poster image mid-press. The press started
+  on the link and finished on the image, and a press that starts and ends on two different things
+  never counts as a click.
+
+**FIX MADE.** Everything decorative over the picture is now ignored by presses. And the layer
+that opens the video is a **real element** rather than a generated one, so it cannot be
+re-stacked out from under your finger. The loading bar was the second half of the same complaint:
+pressing Save or Follow also started it, and those never navigate, so it ran to its eight-second
+limit with nothing happening. It no longer starts for presses meant for those buttons.
+
+**HOW TESTED.** A new suite presses **every part of a card** on five profiles — Chrome desktop,
+Safari desktop, iPhone 14, iPad with a mouse, and a Pixel 7. Nine checks each, 45 in total, all
+passing:
+
+| | result |
+|---|---|
+| one press on the **picture** | opens the video, on all five |
+| one press on the title | opens the video, on all five |
+| one press on the price row | opens the video, on all five |
+| one press on the creator's name | opens the creator's page, on all five |
+| Save, signed out | goes to sign in, carrying the page you were on |
+| Save, signed in | toggles on one press, does not open the video |
+| the loading bar after a Save press | not left running |
+
+**Why our tests did not catch it, which is the part worth telling you.** They were clicking the
+**title** — the one part of the card that was never broken — and so they passed on all seven
+browser profiles while the picture was dead. A test that presses the part nobody aims at is not a
+test. They press the picture now, and the new suite presses every part.
+
+I am sorry this reached you. It was found in a minute of real use and should have been found
+before it shipped.
+
+---
+
+## 8 · Scrolling, blank space and things moving
 
 **PROBLEM.** "The screen vibrates when I scroll." A blank band at the bottom of pages. The page
 jumping around as it loads.
@@ -305,7 +355,7 @@ your iPhone, and it is on the checklist.
 
 ---
 
-## 8 · Sharing and WhatsApp
+## 9 · Sharing and WhatsApp
 
 **PROBLEM.** Sharing to WhatsApp delivered a bare link with no picture. On iPad it said *"The
 application couldn't be opened."* The Share button froze for 60–90 seconds.
@@ -335,7 +385,7 @@ box.
 
 ---
 
-## 9 · Following a creator
+## 10 · Following a creator
 
 **PROBLEM.** Follows did not stick.
 
@@ -381,7 +431,7 @@ reach you, fixed, and a test now exists specifically to stop it happening again.
 
 ---
 
-## 10 · My Library — the four rows
+## 11 · My Library — the four rows
 
 **PROBLEM.** You asked for Continue Watching, Purchased, My List and Recently Watched. Only
 Purchased existed.
@@ -434,7 +484,7 @@ never "delivered". The page reported success and nothing was stored. It would ha
 
 ---
 
-## 11 · Reaching the creator from anywhere
+## 12 · Reaching the creator from anywhere
 
 **PROBLEM.** A creator's name appeared on every card as plain text. The only way to reach their
 page was from a video page.
@@ -450,7 +500,7 @@ the real sheet with WhatsApp in it. Cards: the creator's name goes to the creato
 
 ---
 
-## 12 · The other items you reported
+## 13 · The other items you reported
 
 Shorter entries, because these were fixed in earlier rounds of this work. Each one names where
 the detail lives so you can check it, and says plainly which were re-tested in this round and
@@ -475,7 +525,7 @@ like either re-checked, it is a small piece of work.
 
 ---
 
-## 13 · The numbers behind "3.5 seconds"
+## 14 · The numbers behind "3.5 seconds"
 
 The section below is reproduced exactly as it was written, including the caveat at the end,
 because it is the honest account of what the remaining wait is made of and who owns it.
@@ -535,7 +585,7 @@ of the wait is now shorter than it was.
 
 ---
 
-## 14 · What still needs a phone
+## 15 · What still needs a phone
 
 Everything below is on `BROWSER-CHECKLIST.md` with exact steps. These are not outstanding
 defects — they are the things no automated browser can reach.
@@ -558,7 +608,7 @@ four engines, but iOS deciding on its own to discard a tab is its own case.
 
 ---
 
-## 15 · Test data on production
+## 16 · Test data on production
 
 To prove that buying a video actually works — rather than assume it — test accounts were created
 on the live site and used to buy videos through the normal payment screen.
