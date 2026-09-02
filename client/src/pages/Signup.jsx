@@ -99,20 +99,22 @@ export default function Signup() {
         postedRole === 'creator' || role === 'creator' ? 'creator' : 'viewer'
       const result = await signUp({ ...form, fullName, phone, email, password, role: wanted, side: wanted })
 
+      /**
+       * Go where the account was actually made.
+       *
+       * This used to send every Create signup to the application form, because
+       * the server made them a viewer and told the client to go and apply. The
+       * side that was created is now the side that was asked for, so a Create
+       * signup lands in the studio and a Watch signup lands in the library — or
+       * back at whatever they were doing before they were asked to sign up.
+       */
+      const madeSide = result.side === 'creator' ? 'creator' : 'viewer'
       const afterSignup =
-        wanted === 'creator' || result.needsCreatorApplication
-          ? dashboardPath('become')
-          : next || dashboardPath('viewer')
+        madeSide === 'creator' ? dashboardPath('creator') : next || dashboardPath('viewer')
 
       if (result.needsEmailConfirmation) {
         setConfirmSent(true)
         setBusy(false)
-        return
-      }
-
-      if (result.needsCreatorApplication) {
-        showToast('Account created. Complete your application so the team can review you.')
-        timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)
         return
       }
 
@@ -125,16 +127,18 @@ export default function Signup() {
 
       if (result.signInFailed || !result.session) {
         showToast('Account created. Please sign in to continue.')
+        /* On the side just created — sending them to the Watch login after a
+           Create signup is how you get refused at your own front door. */
         timer.current = setTimeout(
-          () => navigate(authUrl('login', afterSignup, { side: 'viewer' }), { replace: true }),
+          () => navigate(authUrl('login', afterSignup, { side: madeSide }), { replace: true }),
           900
         )
         return
       }
 
       showToast(
-        wanted === 'creator'
-          ? 'Account created. Complete your application so the team can review you.'
+        madeSide === 'creator'
+          ? 'Your creator account is ready. Upload a video and submit it for review.'
           : 'Your viewer account is ready.'
       )
       timer.current = setTimeout(() => navigate(afterSignup, { replace: true }), 400)

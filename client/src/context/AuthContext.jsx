@@ -147,8 +147,16 @@ export function AuthProvider({ children }) {
       role: wanted,
       side: wanted,
     })
-    const asApplicant = Boolean(data.needsCreatorApplication)
-    const resolved = asApplicant ? 'viewer' : data.side === 'creator' ? 'creator' : wanted
+    /**
+     * The side the SERVER says it created, not the one we hoped for.
+     *
+     * This used to force 'viewer' whenever the response carried
+     * `needsCreatorApplication`, which was every Create signup — so a person who
+     * asked for a Create account was put on the Watch side by the client as well
+     * as by the server. Signup now creates the side that was chosen, and this
+     * follows it; `wanted` is only the fallback for an older response shape.
+     */
+    const resolved = data.side === 'creator' ? 'creator' : data.side === 'viewer' ? 'viewer' : wanted
     if (data.session) {
       saveSession(data.session)
       persistAccountSide(resolved)

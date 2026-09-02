@@ -12,6 +12,7 @@ import {
   setAuthPassword,
   getSides,
   enableViewerSide,
+  ensureCreatorSide,
 } from '../lib/authdb.js'
 import { sendMail, passwordResetEmail, passwordChangedEmail } from '../lib/mailer.js'
 import { asyncHandler, badRequest, conflict, forbidden, notFound, unauthorized } from '../lib/errors.js'
@@ -96,6 +97,39 @@ const shape = (profile, session) => ({
 })
 
 /* --------------------------------------------------------------- register */
+
+/**
+ * Signing up creates the side you chose, and only that side.
+ *
+ * IT USED TO ALWAYS CREATE A WATCH ACCOUNT. Choosing "I want to Create" opened a
+ * viewer account, set `needsCreatorApplication`, and sent the person to an
+ * application queue — so somebody who asked for a Create account got a Watch
+ * account they never asked for and was then refused at the Create login. That is
+ * the fault the client reported, in their words: "I created account for creator
+ * and it created my account as viewer."
+ *
+ * The rule now, and it is the same rule in both directions:
+ *
+ *   side=creator  →  a Create account. `creator_profiles` + role creator.
+ *                    `viewer_enabled` stays false.
+ *   side=viewer   →  a Watch account. `viewer_enabled` true, no creator row.
+ *
+ * ONE EMAIL CAN HOLD BOTH, but each side is created separately. Signing up again
+ * on the other side with the same email and the correct password adds it. Asking
+ * for a side you already have is a 409 that says so.
+ *
+ * WHAT THIS DOES NOT CHANGE, and the distinction matters. A Create account opens
+ * the studio: upload a video, fill in its details, submit it. It does NOT publish
+ * anything. Every video still becomes public only when an administrator approves
+ * it — `review_status = 'approved'` and `is_published`, set by the admin route,
+ * checked on every public listing and on the watch path. So self-serve signup
+ * moves the gate from "who may enter the studio" to "what may reach viewers",
+ * which is where the client's own review queue already was.
+ *
+ * Nothing here grants free viewing either: watching somebody else's paid video is
+ * decided by `purchases`, and the only bypasses are being staff or being that
+ * video's own owner. A creator role is neither.
+ */
 router.post(
   '/register',
   validate(registerSchema),
@@ -108,16 +142,38 @@ router.post(
     const settings = await getSettings()
     if (!settings.registrations_open) throw forbidden('Registrations are closed at the moment')
 
-    /**
-     * One auth user per email.
-     *   Watch  → profiles.viewer_enabled
-     *   Create → only after an administrator approves an application
-     *
-     * "I want to Create" used to insert creator_profiles on the spot. That
-     * skipped the queue. Signing up to Create now opens a viewer account and
-     * sends them to apply. Same-side Watch signup again → 409. Watch attach
-     * on an existing creator login still works. Wrong password → 401.
-     */
+    /** Open exactly one side on a profile that already exists. */
+    const openSide = async (profile) => {
+      if (wanted === 'creator') {
+        const { profile: fresh } = await ensureCreatorSide(profile, { fullName, phone })
+        return fresh
+      }
+      await enableViewerSide(profile.id)
+      return one('select * from profiles where id = $1', [profile.id])
+    }
+
+    const alreadyHas = (sides) => (wanted === 'creator' ? sides.creator : sides.viewer)
+
+    const answer = async (profile, { created, attached }) => {
+      const sides = await getSides(profile.id)
+      const { session, signInNote } = await trySignIn(email, password)
+      return {
+        ...shape(profile, session),
+        side: wanted,
+        intendedSide: wanted,
+        /* The application queue is no longer the way into the studio, so a
+           Create signup is not sent to it. It remains for verification and
+           payout details, which are a separate thing from having an account. */
+        needsCreatorApplication: false,
+        sides,
+        attached,
+        created,
+        needsEmailConfirmation: false,
+        ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
+      }
+    }
+
+    /* ------------------------------------------- an email we already know */
     const existingAuth = await findAuthUserByEmail(email)
     if (existingAuth) {
       const passwordOk = await verifyPassword(existingAuth.id, password)
@@ -129,99 +185,81 @@ router.post(
       }
 
       let profile = await one('select * from profiles where id = $1', [existingAuth.id])
+
+      /* An auth user with no profile row: build one on the side they asked for,
+         rather than defaulting it to Watch as this used to. */
       if (!profile) {
         profile = await one(
           `insert into profiles (id, email, full_name, phone, role, viewer_enabled)
            values ($1,$2,$3,$4,$5,$6) returning *`,
-          [existingAuth.id, email, fullName, phone || null, 'viewer', true]
+          [
+            existingAuth.id,
+            email,
+            fullName,
+            phone || null,
+            wanted === 'creator' ? 'creator' : 'viewer',
+            wanted === 'viewer',
+          ]
         )
-        const sides = await getSides(profile.id)
-        const { session, signInNote } = await trySignIn(email, password)
-        return res.status(200).json({
-          ...shape(profile, session),
-          side: 'viewer',
-          intendedSide: wanted,
-          needsCreatorApplication: wanted === 'creator',
-          sides,
-          attached: false,
-          created: false,
-          needsEmailConfirmation: false,
-          ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
-        })
+        if (wanted === 'creator') profile = await openSide(profile)
+        return res.status(200).json(await answer(profile, { created: true, attached: false }))
       }
 
       if (profile.status === 'blocked') throw forbidden('This account has been blocked')
 
       const sidesBefore = await getSides(profile.id)
-      if (wanted === 'viewer' && sidesBefore.viewer) {
-        throw conflict('This email already has a Watch account. Please log in.', {
-          code: 'ALREADY_REGISTERED',
-          details: { side: 'viewer' },
-        })
-      }
-      if (wanted === 'creator' && sidesBefore.creator) {
-        throw conflict('This email already has a Creator account. Please log in.', {
-          code: 'ALREADY_REGISTERED',
-          details: { side: 'creator' },
-        })
+      if (alreadyHas(sidesBefore)) {
+        throw conflict(
+          wanted === 'creator'
+            ? 'This email already has a Create account. Please log in on Create.'
+            : 'This email already has a Watch account. Please log in on Watch.',
+          { code: 'ALREADY_REGISTERED', details: { side: wanted } }
+        )
       }
 
-      if (wanted === 'viewer') {
-        await enableViewerSide(profile.id)
-        profile = await one('select * from profiles where id = $1', [profile.id])
-      } else if (!sidesBefore.viewer) {
-        await enableViewerSide(profile.id)
-        profile = await one('select * from profiles where id = $1', [profile.id])
-      }
-
-      const sides = await getSides(profile.id)
-      const { session, signInNote } = await trySignIn(email, password)
-      return res.status(200).json({
-        ...shape(profile, session),
-        side: 'viewer',
-        intendedSide: wanted,
-        needsCreatorApplication: wanted === 'creator',
-        sides,
-        attached: wanted === 'viewer',
-        created: false,
-        needsEmailConfirmation: false,
-        ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
-      })
+      profile = await openSide(profile)
+      return res.status(200).json(await answer(profile, { created: false, attached: true }))
     }
 
-    /**
-     * Fresh email: always a viewer. Creator tools open only after review.
-     * People who picked Create are signed in on Watch and sent to apply.
-     */
+    /* ------------------------------------------------------- a new email */
     const { profile } = await transaction(
       async (client) => {
         const authUser = await createAuthUser({ email, password, fullName, phone }, client)
 
         const { rows } = await client.query(
           `insert into profiles (id, email, full_name, phone, role, viewer_enabled)
-           values ($1,$2,$3,$4,'viewer', true) returning *`,
-          [authUser.id, email, fullName, phone || null]
+           values ($1,$2,$3,$4,$5,$6) returning *`,
+          [
+            authUser.id,
+            email,
+            fullName,
+            phone || null,
+            wanted === 'creator' ? 'creator' : 'viewer',
+            wanted === 'viewer',
+          ]
         )
+
+        /* In the SAME transaction as the profile. A creator whose profile row
+           exists without its creator_profiles row is a login that can pass the
+           Create door and then find no studio behind it. */
+        if (wanted === 'creator') {
+          await client.query(
+            `insert into creator_profiles (user_id, display_name, payout_phone)
+             values ($1,$2,$3)
+             on conflict (user_id) do nothing`,
+            [authUser.id, fullName || email, phone || null]
+          )
+        }
+
         return { profile: rows[0] }
       },
       { actorRole: 'system' }
     )
 
-    const sides = await getSides(profile.id)
-    const { session, signInNote } = await trySignIn(email, password)
-    res.status(201).json({
-      ...shape(profile, session),
-      side: 'viewer',
-      intendedSide: wanted,
-      needsCreatorApplication: wanted === 'creator',
-      sides,
-      attached: false,
-      created: true,
-      needsEmailConfirmation: false,
-      ...(signInNote ? { signInFailed: true, message: signInNote } : {}),
-    })
+    res.status(201).json(await answer(profile, { created: true, attached: false }))
   })
 )
+
 
 /* ------------------------------------------------------------------ login */
 router.post(
@@ -246,17 +284,31 @@ router.post(
     const sides = await getSides(profile.id)
     const staff = isStaff(profile.role)
 
+    /**
+     * You may only log in on a side you actually have.
+     *
+     * The two sides are separate accounts that happen to share an email and a
+     * password, so having one says nothing about the other. The message names
+     * the way out — signing up on the missing side — because it is now a thing
+     * the person can do for themselves. It used to say "apply and wait for us to
+     * approve you", which was true when the Create side could only be granted by
+     * an administrator and is not true any more.
+     */
     if (!staff) {
       if (side === 'creator' && !sides.creator) {
         throw forbidden(
-          'This email does not have creator access yet. Log in on Watch and apply — creator tools open after we approve you.',
-          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides) } }
+          sides.viewer
+            ? 'This email has a Watch account but no Create account. Sign up on Create — same email, same password — and the studio opens straight away.'
+            : 'This email does not have a Create account. Sign up on Create to make one.',
+          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides), missing: 'creator' } }
         )
       }
       if (side === 'viewer' && !sides.viewer) {
         throw forbidden(
-          'This email is a Creator account. Log in on Create, or sign up on Watch to add a viewer side.',
-          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides) } }
+          sides.creator
+            ? 'This email has a Create account but no Watch account. Sign up on Watch — same email, same password — to watch and buy videos.'
+            : 'This email does not have a Watch account. Sign up on Watch to make one.',
+          { code: 'WRONG_SIDE', details: { existingSide: existingSideLabel(sides), missing: 'viewer' } }
         )
       }
     }

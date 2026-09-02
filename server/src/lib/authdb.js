@@ -297,9 +297,17 @@ export async function enableViewerSide(userId) {
 /**
  * Open the Create side on an existing login.
  *
- * Do not call this from register or login. Creator access is granted only
- * when an administrator approves an application (admin.routes.js). This
- * helper is leftover for staff tooling that already checked permission.
+ * Register calls this now. It used not to: the Create side could only be granted
+ * by an administrator approving an application, which meant somebody who signed
+ * up asking for a Create account was given a Watch account instead and then
+ * refused at the Create login. Signing up on Create makes a Create account.
+ *
+ * What that grants is the studio — upload, edit, submit for review. It does not
+ * publish anything: a video reaches viewers only when an administrator approves
+ * it, which is unchanged and is checked on every public listing and on the watch
+ * path. The admin approval route still calls the same shape of insert, so there
+ * is one kind of creator in the database rather than two.
+ *
  * Returns { profile, created } so callers can tell attach from no-op.
  */
 export async function ensureCreatorSide(profile, { fullName, phone } = {}) {

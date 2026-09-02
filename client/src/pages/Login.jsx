@@ -170,29 +170,39 @@ export default function Login() {
         {error && (
           <div className="form-error" role="alert">
             <span>{error}</span>
-            {errorCode === 'WRONG_SIDE' && wrongSide && (
+            {/**
+              * Two ways out of a wrong-side login, and both are now real.
+              *
+              * The side you asked for does not exist on this email. Either you
+              * meant the other one — switch — or you want this one, in which
+              * case you sign up for it with the same email and password. The
+              * second link used to say "Apply to become a creator", which was
+              * the only route when an administrator had to grant the Create
+              * side. Signing up on Create makes the account now.
+              */}
+            {errorCode === 'WRONG_SIDE' && (
               <>
-                <button
-                  type="button"
-                  className="link-btn"
-                  style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
-                  onClick={() => {
-                    setSide(wrongSide)
-                    setError(null)
-                    setErrorCode(null)
-                    setWrongSide(null)
-                  }}
-                >
-                  Switch to {sideLabel(wrongSide)} login
-                </button>
-                {side === 'creator' && (
-                  <Link
-                    to={authUrl('signup', '/dashboard?tab=become', { side: 'creator' })}
-                    style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
+                {wrongSide && (
+                  <button
+                    type="button"
+                    className="link-btn"
+                    style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
+                    onClick={() => {
+                      setSide(wrongSide)
+                      setError(null)
+                      setErrorCode(null)
+                      setWrongSide(null)
+                    }}
                   >
-                    Apply to become a creator
-                  </Link>
+                    Switch to {sideLabel(wrongSide)} login
+                  </button>
                 )}
+                <Link
+                  to={authUrl('signup', next, { side, email: form.email })}
+                  style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
+                >
+                  Create a {sideLabel(side)} account for this email
+                </Link>
               </>
             )}
           </div>
