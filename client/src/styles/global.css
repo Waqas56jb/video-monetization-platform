@@ -357,14 +357,26 @@ input,select,textarea{font-family:inherit}
 .vid-card:active{transform:scale(.97);transition:transform 80ms ease;opacity:.92}
 .vid-thumb{position:relative;height:190px;overflow:hidden}
 .vid-thumb img{width:100%;height:100%;object-fit:cover;transition:.7s}
-.vid-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,10,18,.85))}
-.vid-tag{position:absolute;top:12px;left:12px;z-index:2;font-size:10.5px;font-weight:800;letter-spacing:.7px;padding:6px 12px;border-radius:99px;backdrop-filter:blur(6px)}
+/* ---------------------------------------------------------------------------
+   EVERY DECORATIVE LAYER OVER THE POSTER IS pointer-events:none.
+   The card is opened by a stretched link (`.vid-open::after`, z-index 1) that
+   covers the whole tile. `.vid-play` is `position:absolute;inset:0;z-index:2`,
+   so it covered the ENTIRE poster and sat above that link: every tap on the
+   picture hit a decorative div, went nowhere, and — because pointerdown still
+   warmed the card — left the top progress bar running for its full 8-second
+   cap. The card looked hung. Only the title worked.
+   These layers exist to be looked at, never pressed. The controls that ARE
+   pressable keep their own z-index and their pointer events: .save-pin (3),
+   .vid-by-link and .follow-btn (2).
+   --------------------------------------------------------------------------- */
+.vid-thumb::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 40%,rgba(10,10,18,.85))}
+.vid-tag{position:absolute;top:12px;left:12px;z-index:2;pointer-events:none;font-size:10.5px;font-weight:800;letter-spacing:.7px;padding:6px 12px;border-radius:99px;backdrop-filter:blur(6px)}
 .tag-ppv{background:rgba(245,197,24,.92);color:#1a1200}
 .tag-prem{background:rgba(124,58,237,.92);color:#fff}
 .tag-free{background:rgba(34,197,94,.9);color:#03180a}
 .tag-owned{background:rgba(34,197,94,.92);color:#03180a}
-.vid-time{position:absolute;bottom:12px;right:12px;z-index:2;background:rgba(0,0,0,.72);font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px}
-.vid-play{position:absolute;inset:0;display:grid;place-items:center;z-index:2;opacity:0;transition:.4s}
+.vid-time{position:absolute;bottom:12px;right:12px;z-index:2;pointer-events:none;background:rgba(0,0,0,.72);font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px}
+.vid-play{position:absolute;inset:0;display:grid;place-items:center;z-index:2;opacity:0;transition:.4s;pointer-events:none}
 .vid-play span{width:58px;height:58px;border-radius:50%;background:rgba(245,197,24,.95);display:grid;place-items:center;color:#1a1200;box-shadow:0 0 40px rgba(245,197,24,.6);animation:pulse 2s infinite}
 .vid-play svg{width:24px;height:24px;margin-left:3px}
 .vid-info{padding:18px}
@@ -2188,7 +2200,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   grid-column:1/-1;font-size:13px;color:var(--muted);font-weight:600;margin:0 0 4px;
 }
 .is-shimmer .skeleton{background-size:200% 100%;animation:shimmer 1.4s linear infinite}
-.vid-thumb-placeholder{position:absolute;inset:0;background:var(--card2);z-index:0}
+.vid-thumb-placeholder{position:absolute;inset:0;background:var(--card2);z-index:0;pointer-events:none}
 .vid-thumb img{opacity:0;transition:opacity .35s ease}
 .vid-thumb img.is-on{opacity:1}
 .explore-updating-pill{

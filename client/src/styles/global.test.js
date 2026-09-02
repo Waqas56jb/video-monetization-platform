@@ -5,6 +5,34 @@ import { fileURLToPath } from 'node:url'
 
 const css = readFileSync(fileURLToPath(new URL('./global.css', import.meta.url)), 'utf8')
 
+/**
+ * Find a rule by its own selector, not by a substring of the sheet.
+ *
+ * Two earlier versions of this helper were wrong, and both were wrong in the
+ * direction that makes a test pass when it should not:
+ *
+ *   indexOf('.vid-card{')  also matched `.release .vid-card{flex:1}` and read
+ *                          that rule's declarations instead.
+ *   a flat /sel{decls}/ scan desynchronises at the first NESTED brace — this
+ *                          sheet has `@keyframes marquee{to{...}}` — after
+ *                          which every rule it reports is a fragment.
+ *
+ * What separates `.vid-card` the rule from `.vid-card` inside a longer
+ * selector is the character in front of it: a combinator or a comma means it
+ * is part of something bigger. Anything else — a line break, a closing brace —
+ * means the rule starts here.
+ */
+const COMBINATORS = ' ,>+~'
+function declarations(selector) {
+  const needle = selector + '{'
+  for (let at = css.indexOf(needle); at !== -1; at = css.indexOf(needle, at + 1)) {
+    if (at > 0 && COMBINATORS.includes(css[at - 1])) continue
+    return css.slice(at + needle.length, css.indexOf('}', at))
+  }
+  return null
+}
+
+
 /** Every selector in the sheet, one per rule, comments stripped. */
 function selectors(sheet) {
   const out = []
@@ -70,33 +98,6 @@ test('pages that open under the fixed header allow for its height', () => {
  * moment a test tried to click Unlock.
  */
 test('every stretched card link is contained by its own card', () => {
-  /**
-   * Find a rule by its own selector, not by a substring of the sheet.
-   *
-   * Two earlier versions of this helper were wrong, and both were wrong in the
-   * direction that makes a test pass when it should not:
-   *
-   *   indexOf('.vid-card{')  also matched `.release .vid-card{flex:1}` and read
-   *                          that rule's declarations instead.
-   *   a flat /sel{decls}/ scan desynchronises at the first NESTED brace — this
-   *                          sheet has `@keyframes marquee{to{...}}` — after
-   *                          which every rule it reports is a fragment.
-   *
-   * What separates `.vid-card` the rule from `.vid-card` inside a longer
-   * selector is the character in front of it: a combinator or a comma means it
-   * is part of something bigger. Anything else — a line break, a closing brace —
-   * means the rule starts here.
-   */
-  const COMBINATORS = ' ,>+~'
-  const declarations = (selector) => {
-    const needle = selector + '{'
-    for (let at = css.indexOf(needle); at !== -1; at = css.indexOf(needle, at + 1)) {
-      if (at > 0 && COMBINATORS.includes(css[at - 1])) continue
-      return css.slice(at + needle.length, css.indexOf('}', at))
-    }
-    return null
-  }
-
   for (const [overlay, card] of [
     ['.vid-open::after', '.vid-card'],
     ['.creator-open::after', '.creator-row'],
@@ -113,5 +114,38 @@ test('every stretched card link is contained by its own card', () => {
       /position:relative/,
       `${card} must be position:relative, or ${overlay} escapes it and covers unrelated controls`
     )
+  }
+})
+
+/**
+ * The picture on a card must not swallow the tap that opens the video.
+ *
+ * The card is opened by a stretched link — `.vid-open::after`, absolutely
+ * positioned over the whole tile at z-index 1. `.vid-play` is
+ * `position:absolute;inset:0;z-index:2`, so it covered the ENTIRE poster and
+ * sat above that link. Every tap on the picture hit a decorative div, went
+ * nowhere, and — because pointerdown still warmed the card — left the top
+ * progress bar running for its eight-second cap. The card looked hung, and only
+ * the title worked. The client found it; the suite did not, because journey 3
+ * was clicking the title.
+ *
+ * These layers exist to be looked at, never pressed.
+ */
+test('nothing decorative over the poster can take a tap', () => {
+  for (const layer of ['.vid-thumb::after', '.vid-tag', '.vid-time', '.vid-play', '.vid-shade', '.vid-thumb-placeholder']) {
+    const rule = declarations(layer)
+    assert.ok(rule, `${layer} rule is missing`)
+    assert.match(
+      rule,
+      /pointer-events:none/,
+      `${layer} sits over the poster and would swallow the tap that opens the video`
+    )
+  }
+
+  /* And the controls that ARE meant to be pressed keep their own events. */
+  for (const control of ['.save-pin', '.vid-by-link', '.follow-btn']) {
+    const rule = declarations(control)
+    assert.ok(rule, `${control} rule is missing`)
+    assert.doesNotMatch(rule, /pointer-events:none/, `${control} has to stay pressable`)
   }
 })

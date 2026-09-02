@@ -70,7 +70,17 @@ export default function VideoCard({
    * thing to rely on. `warmed` makes it explicit.
    */
   const warmed = useRef(false)
-  const warm = () => {
+  /**
+   * Warm the video, but not when the press was meant for something else.
+   *
+   * `warm` starts the top progress bar, and the bar is stopped by the
+   * navigation that follows. Save and Follow sit on the card and do not
+   * navigate, so a press on either used to start a bar that then ran for its
+   * full eight-second cap with nothing happening — which reads as the page
+   * having hung. Anything that is its own control handles its own press.
+   */
+  const warm = (e) => {
+    if (e?.target?.closest?.('button, a:not(.vid-open)')) return
     if (warmed.current) return
     warmed.current = true
     markPerf('cardTap')
@@ -87,7 +97,8 @@ export default function VideoCard({
    * waiting for. A pointer resting on a card is the earliest honest signal, and
    * on touch there is no hover, so the tap path above is the one that matters.
    */
-  const hover = () => {
+  const hover = (e) => {
+    if (e?.target?.closest?.('button, a:not(.vid-open)')) return
     if (warmed.current) return
     prefetchWatchLight(slug || id)
   }

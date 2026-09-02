@@ -34,3 +34,20 @@ test('VideoCard warms on intent, and only once per card', () => {
   assert.doesNotMatch(src, /requestIdleCallback/)
   assert.match(src, /if \(inView\) prefetchWatchChunk\(\)/)
 })
+
+/**
+ * A press meant for Save or Follow must not start the top progress bar.
+ *
+ * `warm` starts that bar, and the bar is stopped by the navigation that
+ * follows. Save and Follow sit on the card and do not navigate, so pressing
+ * either used to start a bar that then ran for its full eight-second cap with
+ * nothing happening — which reads as the page having hung. That is half of what
+ * the client reported as "the loader keeps running"; the other half was the
+ * poster swallowing the tap entirely.
+ */
+test('the card does not warm for a press meant for one of its own controls', () => {
+  const src = readFileSync(join(dir, 'VideoCard.jsx'), 'utf8')
+  assert.match(src, /closest\?\.\('button, a:not\(\.vid-open\)'\)\) return/)
+  // and it is on both entry points, not just the tap one
+  assert.equal((src.match(/closest\?\.\('button, a:not\(\.vid-open\)'\)\) return/g) || []).length, 2)
+})

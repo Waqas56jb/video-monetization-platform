@@ -118,10 +118,15 @@ for (const profile of PROFILES) {
   check(cardCreatorLinks > 0, `and the creator's name is a link (${cardCreatorLinks} of ${cards} cards)`)
 
   /* A card is still one tap to the video, which is what the restructure risked. */
+  /* The POSTER, not the title. Clicking the title proved nothing about the part
+     of the card people actually press — see matrix.mjs journey 3. */
   const before = page.url()
-  await page.locator('.vid-card .vid-open').first().click()
+  await page.locator('.vid-card .vid-thumb').first().click()
   await page.waitForTimeout(2500)
-  check(page.url() !== before && /\/watch\//.test(page.url()), `tapping a card still opens the video on tap #1 (${new URL(page.url()).pathname})`)
+  check(
+    page.url() !== before && /\/watch\//.test(page.url()),
+    `tapping a card's picture still opens the video on tap #1 (${page.url() === before ? 'DID NOT NAVIGATE' : new URL(page.url()).pathname})`
+  )
 
   /* ...and the creator link goes to the creator, not to the video. */
   await page.goto(`${BASE}/explore`, { waitUntil: 'domcontentloaded', timeout: 90000 })

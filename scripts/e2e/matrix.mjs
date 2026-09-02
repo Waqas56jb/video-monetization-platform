@@ -175,17 +175,33 @@ const JOURNEYS = [
     title: 'A card opens its own watch page on the first tap',
     everywhere: true,
     async run({ page, t }) {
-      await page.goto(`${BASE}/explore`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-      await page.waitForSelector('.vid-card .vid-open', { timeout: 60000 })
-      await page.waitForTimeout(2000)
-      const before = page.url()
-      /* One tap. The whole point: on an iPad with a mouse the first tap used to
-         be swallowed applying a hover state. */
-      await page.locator('.vid-card .vid-open').first().tap({ timeout: 20000 }).catch(async () => {
-        await page.locator('.vid-card .vid-open').first().click({ timeout: 20000 })
-      })
-      await page.waitForTimeout(4000)
-      t(page.url() !== before && /\/watch\//.test(page.url()), `→ ${new URL(page.url()).pathname}`)
+      /**
+       * TAP THE PICTURE, not the title.
+       *
+       * This journey used to click `.vid-open` — the title link — and passed on
+       * every profile while the poster, which is what anyone actually taps, did
+       * nothing at all: `.vid-play` covered the whole thumbnail above the
+       * stretched link and swallowed the tap. The client found that; this suite
+       * did not, because it was pressing the one part of the card that was never
+       * broken. The big target is the one worth testing.
+       */
+      for (const [what, sel] of [['the poster', '.vid-thumb'], ['the title', '.vid-open']]) {
+        await page.goto(`${BASE}/explore`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+        await page.waitForSelector('.vid-card .vid-open', { timeout: 60000 })
+        await page.waitForTimeout(2500)
+        const before = page.url()
+        const target = page.locator(`.vid-card ${sel}`).first()
+        /* One tap. On an iPad with a mouse the first tap used to be swallowed
+           applying a hover state. */
+        await target.tap({ timeout: 20000 }).catch(async () => {
+          await target.click({ timeout: 20000 })
+        })
+        await page.waitForTimeout(4000)
+        t(
+          page.url() !== before && /\/watch\//.test(page.url()),
+          `${what} opens the video on tap #1 (${page.url() === before ? 'DID NOT NAVIGATE' : new URL(page.url()).pathname})`
+        )
+      }
     },
   },
   {
