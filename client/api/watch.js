@@ -42,6 +42,8 @@ import {
   escapeAttr,
   isLinkPreviewBot,
   isUnfurlFetch,
+  setPublicCors,
+  handlePreflight,
   previewCopy,
 } from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
@@ -265,6 +267,16 @@ function fallbackHtml({ slug }) {
 
 export default async function handler(req, res) {
   const started = Date.now()
+
+  /* Before anything else, and before any share-meta lookup: a preflight is a
+     question about permissions, and answering it with the document's work
+     spends a round trip on a request that renders nothing. */
+  if (handlePreflight(req, res)) return
+
+  /* Every path below is public and readable cross-origin — including the two
+     that used to answer without it, the fallback document and any error. */
+  setPublicCors(res)
+
   const slug = parseSlug(req)
   const ua = req.headers['user-agent'] || ''
   const crawler = detectCrawler(ua)
@@ -315,7 +327,6 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('Cache-Control', CRAWLER_CACHE)
     res.setHeader('Vary', VARY)
-    res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'crawler')
@@ -381,7 +392,6 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', SHELL_CACHE_CONTROL)
   res.setHeader('Vary', VARY)
-  res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)
   res.setHeader('X-Doc', 'shell')

@@ -86,9 +86,11 @@ function fakeRes() {
   return res
 }
 
-const call = async (headers) => {
+const call = async (headers, method = 'GET') => {
   const res = fakeRes()
-  await handler(fakeReq(headers), res)
+  const req = fakeReq(headers)
+  req.method = method
+  await handler(req, res)
   return res
 }
 
@@ -185,5 +187,69 @@ test('the site name is not doubled when no creator is known', async (t) => {
     title.split('MTONYO+').length - 1,
     1,
     `the site name must appear exactly once, got: ${title}`
+  )
+})
+
+
+/**
+ * A browser-side link preview is a CROSS-ORIGIN FETCH, and it obeys CORS.
+ *
+ * This is the difference between a rich card and a bare URL on exactly one kind
+ * of client. WhatsApp on Android and on Windows are native clients that do no
+ * CORS at all and were always fine; a Mac fetches the preview through a web
+ * stack that does, and got nothing.
+ *
+ * The GET already answered with `Access-Control-Allow-Origin`. THE PREFLIGHT DID
+ * NOT ANSWER WITH `Access-Control-Allow-Methods`, so the browser rejected the
+ * preflight and never sent the GET — the header that was present was never
+ * reached. Measured against production before the fix:
+ *
+ *   OPTIONS /watch/live-at-arusha-full-set
+ *     HTTP/1.1 200 OK
+ *     Access-Control-Allow-Origin: *          <- and nothing else
+ */
+test('a preflight is answered completely enough for a browser to proceed', async (t) => {
+  const restore = installFetchStub()
+  t.after(restore)
+
+  const pre = await call(
+    {
+      origin: 'https://web.whatsapp.com',
+      'access-control-request-method': 'GET',
+      'access-control-request-headers': 'content-type',
+    },
+    'OPTIONS'
+  )
+
+  assert.equal(pre.statusCode, 204, 'a preflight has no body to return')
+  assert.equal(pre.headers['access-control-allow-origin'], '*')
+  assert.match(
+    pre.headers['access-control-allow-methods'] || '',
+    /GET/,
+    'without Allow-Methods the browser rejects the preflight and never sends the GET'
+  )
+  assert.equal(pre.headers['access-control-allow-headers'], 'content-type')
+  assert.ok(pre.headers['access-control-max-age'], 'so the browser need not ask again every time')
+  assert.equal(pre.body, '', 'and it does no work: no share-meta, no document')
+})
+
+test('every document this route can return is readable cross-origin', async (t) => {
+  const restore = installFetchStub()
+  t.after(restore)
+
+  const crawler = await call({ 'user-agent': 'WhatsApp/2.24.15.78 N' })
+  assert.equal(crawler.headers['x-doc'], 'crawler')
+  assert.equal(crawler.headers['access-control-allow-origin'], '*')
+
+  const shell = await call({
+    'user-agent': SAFARI,
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+  })
+  assert.equal(shell.headers['x-doc'], 'shell')
+  assert.equal(
+    shell.headers['access-control-allow-origin'],
+    '*',
+    'the shell carries the og tags too, so a scraper that lands here must be able to read it'
   )
 })

@@ -32,6 +32,60 @@ export function isUnfurlFetch(req) {
   return false
 }
 
+/* --------------------------------------------------------------- CORS ----
+ * These two documents and the poster are public marketing content, and some
+ * link-preview clients fetch them FROM A BROWSER rather than from their own
+ * servers. A browser-side fetch is a cross-origin fetch, and a cross-origin
+ * fetch obeys CORS — so a missing header there is the difference between a
+ * rich card and a bare URL, on that client only.
+ *
+ * That is the shape of the fault reported: the card renders on Android and on
+ * Windows WhatsApp, which are native clients that do no CORS at all, and not on
+ * a Mac, where the preview is fetched through a web stack that does.
+ *
+ * The GET responses already carried `Access-Control-Allow-Origin`. THE
+ * PREFLIGHT DID NOT CARRY `Access-Control-Allow-Methods`, and without it the
+ * browser rejects the preflight and never sends the GET — so the header that
+ * was present was never reached. Measured against production before this
+ * existed:
+ *
+ *   OPTIONS /watch/live-at-arusha-full-set
+ *     HTTP/1.1 200 OK
+ *     Access-Control-Allow-Origin: *          <- and nothing else
+ *
+ * Nothing here is credentialed: `*` is correct, and it is the same answer the
+ * poster image has always given.
+ */
+export const CORS_METHODS = 'GET, HEAD, OPTIONS'
+
+export function setPublicCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  /* So a caller can read X-Doc / X-Crawler when diagnosing from a browser. */
+  res.setHeader('Access-Control-Expose-Headers', '*')
+}
+
+/**
+ * Answer a CORS preflight, and say whether that is what this was.
+ *
+ * 204 with no body, and no share-meta lookup: a preflight asks a question about
+ * permissions, so doing the document's work for it spends a round trip to the
+ * API on a request that will never render anything.
+ */
+export function handlePreflight(req, res) {
+  if (String(req?.method || 'GET').toUpperCase() !== 'OPTIONS') return false
+  setPublicCors(res)
+  res.setHeader('Access-Control-Allow-Methods', CORS_METHODS)
+  /* Echo what was asked for; fall back to `*`, which is legal here precisely
+     because the response is never credentialed. */
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req?.headers?.['access-control-request-headers'] || '*'
+  )
+  res.setHeader('Access-Control-Max-Age', '86400')
+  res.status(204).end()
+  return true
+}
+
 export const escapeAttr = (s) =>
   String(s == null ? '' : s)
     .replace(/&/g, '&amp;')

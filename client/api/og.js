@@ -8,6 +8,7 @@
 
 import { apiOrigin } from './_lib/apiOrigin.js'
 import { SHARE_CARD_BUCKET, readCardPath } from './_lib/shareCardObjectPath.js'
+import { setPublicCors, handlePreflight } from './_lib/ogDocument.js'
 
 /**
  * How long the bucket leg is trusted after it starts refusing.
@@ -57,7 +58,6 @@ function sendJpeg(res, buf, extra = {}) {
   res.setHeader('Content-Type', 'image/jpeg')
   res.setHeader('Content-Length', String(buf.length))
   res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
-  res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('X-Content-Type-Options', 'nosniff')
   for (const [k, v] of Object.entries(extra)) if (v) res.setHeader(k, v)
   res.status(200).end(buf)
@@ -73,6 +73,12 @@ async function fetchJpeg(url, ms) {
 }
 
 export default async function handler(req, res) {
+  /* The poster is fetched cross-origin by browser-based link previews, so it
+     needs a complete preflight answer as much as the document does — and its
+     404 and 502 paths were answering with no CORS headers at all. */
+  if (handlePreflight(req, res)) return
+  setPublicCors(res)
+
   const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
   const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
   if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
