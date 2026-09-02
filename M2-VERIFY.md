@@ -677,6 +677,29 @@ something is on screen at 3 s — shell:true poster:false frame:2      (all seve
 
 7 of 7 after the correction. **No product change was needed for this cell.**
 
+### Re-run after the card fix
+
+The whole matrix was run again once the card's opening link was rebuilt, because that change
+touched every card on every page:
+
+```
+64 pass · 1 fail · 12 not applicable · 14 skipped
+  iPhone 14 · journey 13: threw: TimeoutError: page.waitForSelector: Timeout 60000ms exceeded
+```
+
+That one cell is a page that did not paint inside a minute, not a defect: re-run three times on
+the same profile it passes every time, with **back to Home in 49, 60 and 56 ms**. The same slow
+load appeared once on the iPad during the card work and cleared on a retry, which is why the
+card suite now reloads once before giving up.
+
+Journey 3 is the cell that changed meaning. It used to click the title and now presses the
+poster as well, on all seven profiles:
+
+```
+· the poster opens the video on tap #1 (/watch/rpreplay-final1589783013-2)
+· the title  opens the video on tap #1 (/watch/rpreplay-final1589783013-2)
+```
+
 ### CI
 
 `.github/workflows/journeys.yml` runs the **read-only** half on every push to main, against
