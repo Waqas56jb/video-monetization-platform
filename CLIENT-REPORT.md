@@ -22,16 +22,17 @@ genuinely still need a phone is at the end of this document.
 4. [Payment, unlocking and resuming](#4-payment-unlocking-and-resuming)
 5. [Logging in](#5-logging-in)
 6. [Taps that needed two tries](#6-taps-that-needed-two-tries)
-7. [The card that only opened from its title](#7-the-card-that-only-opened-from-its-title)
-8. [Scrolling, blank space and things moving](#8-scrolling-blank-space-and-things-moving)
-9. [Sharing and WhatsApp](#9-sharing-and-whatsapp)
-10. [Following a creator](#10-following-a-creator)
-11. [My Library — the four rows](#11-my-library--the-four-rows)
-12. [Reaching the creator from anywhere](#12-reaching-the-creator-from-anywhere)
-13. [The other items you reported](#13-the-other-items-you-reported)
-14. [The numbers behind "3.5 seconds"](#14-the-numbers-behind-35-seconds)
-15. [What still needs a phone](#15-what-still-needs-a-phone)
-16. [Test data on production](#16-test-data-on-production)
+7. [Watch and Create accounts](#7-watch-and-create-accounts)
+8. [The card that only opened from its title](#8-the-card-that-only-opened-from-its-title)
+9. [Scrolling, blank space and things moving](#9-scrolling-blank-space-and-things-moving)
+10. [Sharing and WhatsApp](#10-sharing-and-whatsapp)
+11. [Following a creator](#11-following-a-creator)
+12. [My Library — the four rows](#12-my-library--the-four-rows)
+13. [Reaching the creator from anywhere](#13-reaching-the-creator-from-anywhere)
+14. [The other items you reported](#14-the-other-items-you-reported)
+15. [The numbers behind "3.5 seconds"](#15-the-numbers-behind-35-seconds)
+16. [What still needs a phone](#16-what-still-needs-a-phone)
+17. [Test data on production](#17-test-data-on-production)
 
 ---
 
@@ -85,7 +86,7 @@ you experienced, it is not this navigation as the site stands today. If it happe
 note the time — the server logs can be lined up against it.
 
 **The part we cannot remove is Cloudflare's**, and it is about 3.5 seconds of the wait. The full
-trace is in section 14, written out so you can check it yourself.
+trace is in section 15, written out so you can check it yourself.
 
 ---
 
@@ -271,7 +272,71 @@ that looked unguarded were inside a touch-only block, where hover rules exist pr
 
 ---
 
-## 7 · The card that only opened from its title
+## 7 · Watch and Create accounts
+
+**PROBLEM.** In your words: *"I created account for creator in create new account, it created my
+account as viewer."* It did. And then the Create login refused you.
+
+**ROOT CAUSE.** Signing up on Create never made a Create account. It made a **Watch** account,
+marked you as needing to apply, and sent you to an application form — because the Create side
+could only be granted by an administrator approving that application. So you were given an
+account you did not ask for, denied the one you did, and the login was correct to refuse you:
+you genuinely had no Create account.
+
+**FIX MADE.** The side you choose is the side that is created, in both directions:
+
+| you sign up on | you get | you do **not** get |
+|---|---|---|
+| **Create** | a Creator account — log in on Create, studio opens | a Watch account |
+| **Watch** | a Watch account — log in on Watch, library opens | a Creator account |
+
+**One email can hold both**, added one at a time with the same password. Sign up on Create, then
+sign up on Watch with the same email, and you have both — the login for each works. Asking again
+for a side you already have says so plainly instead of failing oddly.
+
+**You can only log in on a side you have.** That was already true; what changed is the message.
+It used to say "apply and wait for us to approve you", which is no longer how you get in. It now
+says which account is missing and offers to create it, and the login screen shows a link that
+does exactly that.
+
+**The dashboard menu follows the same rule.** A Create-only account used to be shown My Library,
+Explore Videos and My Purchases — a Watch account's tools, on an account with no Watch side. It
+now shows only what that account has, plus an entry to add the other side.
+
+**WHAT DID NOT CHANGE, and please read this line.** A Creator account opens the **studio** —
+upload a video, fill in its details, submit it. It does **not** publish anything. Every video
+still reaches viewers only when **you approve it**. The gate moved from "who may open the studio"
+to "what may reach viewers", which is where your review queue already was. A creator account also
+gets no free access to anyone else's paid videos.
+
+**HOW TESTED.** Against the live site, at the API and through the actual screens on Chrome and
+an iPhone:
+
+| | result |
+|---|---|
+| Sign up on Create | `sides {creator: true, viewer: false}` — no Watch account made behind your back |
+| Log in on Create | works, studio profile returned |
+| Log in on Watch with that email | refused, and says how to add a Watch account |
+| Sign up on Watch, same email | adds the side — now `{creator: true, viewer: true}`, both logins work |
+| Sign up again on a side you have | refused as a duplicate, names the side |
+| Sign up on Watch | `sides {creator: false, viewer: true}` — no Creator account made behind your back |
+| Log in on Create with that email | refused, and says how to add a Creator account |
+| A Watch account reaching the studio | refused |
+| Through the sign-up screen on Create | lands in the studio, not the application form |
+| A brand-new Creator account's videos on the public site | none — approval is still yours |
+
+The dashboard menus, checked on a Create-only and a Watch-only account:
+
+```
+Create only:  Dashboard · Uploads · Drafts · Published · Analytics · Revenue & Payouts
+              · Profile settings · Settings · Add a Watch account
+Watch only:   My Library · Explore Videos · My Purchases · My Activity
+              · Profile settings · Settings · Add a Creator account
+```
+
+---
+
+## 8 · The card that only opened from its title
 
 **PROBLEM.** You reported this after the last handover, and you were right. Pressing a video's
 **title** opened it. Pressing the **picture**, or anywhere else on the card, did nothing — except
@@ -320,7 +385,7 @@ before it shipped.
 
 ---
 
-## 8 · Scrolling, blank space and things moving
+## 9 · Scrolling, blank space and things moving
 
 **PROBLEM.** "The screen vibrates when I scroll." A blank band at the bottom of pages. The page
 jumping around as it loads.
@@ -355,7 +420,7 @@ your iPhone, and it is on the checklist.
 
 ---
 
-## 9 · Sharing and WhatsApp
+## 10 · Sharing and WhatsApp
 
 **PROBLEM.** Sharing to WhatsApp delivered a bare link with no picture. On iPad it said *"The
 application couldn't be opened."* The Share button froze for 60–90 seconds.
@@ -385,7 +450,7 @@ box.
 
 ---
 
-## 10 · Following a creator
+## 11 · Following a creator
 
 **PROBLEM.** Follows did not stick.
 
@@ -431,7 +496,7 @@ reach you, fixed, and a test now exists specifically to stop it happening again.
 
 ---
 
-## 11 · My Library — the four rows
+## 12 · My Library — the four rows
 
 **PROBLEM.** You asked for Continue Watching, Purchased, My List and Recently Watched. Only
 Purchased existed.
@@ -484,7 +549,7 @@ never "delivered". The page reported success and nothing was stored. It would ha
 
 ---
 
-## 12 · Reaching the creator from anywhere
+## 13 · Reaching the creator from anywhere
 
 **PROBLEM.** A creator's name appeared on every card as plain text. The only way to reach their
 page was from a video page.
@@ -500,7 +565,7 @@ the real sheet with WhatsApp in it. Cards: the creator's name goes to the creato
 
 ---
 
-## 13 · The other items you reported
+## 14 · The other items you reported
 
 Shorter entries, because these were fixed in earlier rounds of this work. Each one names where
 the detail lives so you can check it, and says plainly which were re-tested in this round and
@@ -525,7 +590,7 @@ like either re-checked, it is a small piece of work.
 
 ---
 
-## 14 · The numbers behind "3.5 seconds"
+## 15 · The numbers behind "3.5 seconds"
 
 The section below is reproduced exactly as it was written, including the caveat at the end,
 because it is the honest account of what the remaining wait is made of and who owns it.
@@ -585,7 +650,7 @@ of the wait is now shorter than it was.
 
 ---
 
-## 15 · What still needs a phone
+## 16 · What still needs a phone
 
 Everything below is on `BROWSER-CHECKLIST.md` with exact steps. These are not outstanding
 defects — they are the things no automated browser can reach.
@@ -608,7 +673,7 @@ four engines, but iOS deciding on its own to discard a tab is its own case.
 
 ---
 
-## 16 · Test data on production
+## 17 · Test data on production
 
 To prove that buying a video actually works — rather than assume it — test accounts were created
 on the live site and used to buy videos through the normal payment screen.

@@ -301,3 +301,43 @@ false failures than on the real one, and each looked exactly like a product defe
 The lesson worth keeping: when a harness and a browser disagree, find out which one is lying
 before touching the product. Every one of these would have led to a change that made the site
 worse.
+
+---
+
+## 2026-09-02 · Signing up on Create makes a Create account — the client decided this
+
+The reported fault: choosing Create at sign-up produced a Watch account and then the Create login
+refused them. That was the system working as designed — the Create side could only be granted by
+an administrator approving an application — and the design was wrong for what the client wanted.
+
+**This one was put to the client rather than decided alone**, because it changes who may enter
+the studio, it creates real accounts, and the existing queue was deliberate. Two options were
+offered: the studio opens immediately on signup, or the account exists and can log in but the
+studio stays locked until an administrator approves. **They chose: opens immediately.**
+
+**The gate moved, it did not go**, and that is what makes the choice safe: a video reaches viewers
+only when an administrator approves it — `review_status = 'approved'` and `is_published`, set by
+the admin route and checked on every public listing and on the watch path. A Create account grants
+the studio, not publication, and no free access to anyone else's paid videos.
+
+**A test asserted the opposite** — "register never mints a creator_profiles row (application is
+the only door)". It was replaced rather than deleted, carrying the reversal and its reason, plus a
+new test pinning the promise that now bears the weight: a Create account cannot publish by itself.
+
+**Alternative considered:** a setting to switch between the two behaviours. Rejected as scope the
+client did not ask for; if vetting is ever wanted back it is the same one call.
+
+---
+
+## 2026-09-02 · Three test assertions that were wrong before the code was
+
+From the account-sides work, recorded next to the card-press ones because it is the same lesson
+turning up again in a different corner.
+
+- The panel check asserted an **"Earnings"** item. The studio calls it **"Revenue & Payouts"**.
+- It asserted **"My Videos"**. The studio lists **"Drafts"** and **"Published"**.
+- It ran against an account that had *since added the second side*, so "a Create-only account must
+  not show Watch tools" failed against an account that legitimately had both.
+
+All three reported a working panel as broken. Assert the labels that exist, and give a rule about
+one-sided accounts a genuinely one-sided account.
