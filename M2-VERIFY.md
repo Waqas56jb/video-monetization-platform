@@ -967,4 +967,117 @@ Two, and each was checked by reverting the fix and watching it fail with the rea
 
 ---
 
+
+## PROMPT-11 — the WhatsApp card on a Mac
+
+### Step 1 — what the evidence actually said
+
+**Telemetry, `crawler_hits`.** 17 hits in 72 h; all time, by client and asset:
+
+```
+whatsapp-android   html 14   image  1     last 2026-09-01
+whatsapp-web       html 24   image  1     last 2026-08-27   ← UA: WhatsApp/2.24.15.78 N
+whatsapp-unknown   html  7   image  4     last 2026-09-02   ← UA: WhatsApp/2.2632.100 W
+facebook           html  4   image  8
+whatsapp-ios       html  2
+```
+
+The macOS client **does** reach us and **does** get 200s: `WhatsApp/2.24.15.78 N`, 24 HTML hits,
+every recorded status 200. So the Mac was never being refused the document.
+
+Two things the table cannot settle, and both are said rather than glossed: `status` is written
+`null` on most rows, and an image served from the CDN never runs our function, so a low image
+count is not evidence of a failed image fetch.
+
+**Reproduction against production, before any change.** Everything on the GET path was correct:
+
+| check | result |
+|---|---|
+| WhatsApp Web shape (`Origin: web.whatsapp.com`, `Sec-Fetch-Mode: cors`) | 200 · `X-Doc: crawler` · ACAO `*` · 7 og:image tags · 2,195 B |
+| `WhatsApp/2.2632.100 W`, `…/2.2412.54 W`, `…/2.24.17.78 N`, `…A`, `…I` | all 200 · `X-Doc: crawler` · ACAO |
+| the poster image, fetched cross-origin | 200 · ACAO `*` · `image/jpeg` · 1200×630 · 38,080 B |
+| redirects, document and image | **0 and 0** |
+| `/s/:slug` alias | 200 · crawler |
+| the document itself | well-formed, og tags first, no JavaScript |
+| cache direction A and B on fresh URLs | crawler and shell stay separate, `HIT` on the second of each |
+
+**The one thing that was wrong.** A browser-side preview asks permission before it fetches, and
+that answer was incomplete:
+
+```
+OPTIONS /watch/live-at-arusha-full-set
+  HTTP/1.1 200 OK
+  Access-Control-Allow-Origin: *          ← and nothing else
+```
+
+No `Access-Control-Allow-Methods`. The CORS specification requires the preflight to name the
+method; without it the browser rejects the preflight and **never sends the GET** — so the `ACAO`
+that was correctly present on the GET was never reached. Identical gap on the poster image.
+
+That is the shape of the report exactly: WhatsApp on Android and on Windows are native clients
+that perform no CORS at all and were always fine; a Mac fetches the preview through a web stack
+that does.
+
+**Said plainly, because it matters:** this is consistent with the report and it is the only
+defect found, but it was not reproduced *as a bare card on a Mac* — that needs the client's own
+client. Every non-browser fetch shape tested here already worked before the change.
+
+### Step 2 — what changed
+
+| file | what |
+|---|---|
+| `client/api/_lib/ogDocument.js` | `setPublicCors()` and `handlePreflight()` — one implementation for both handlers |
+| `client/api/watch.js:274,278` | preflight answered before any work; CORS on **every** path, including the fallback document, which had none |
+| `client/api/og.js:79,80` | same, closing the 404 and 502 paths, which also had none |
+| `client/api/_tests/watch.variants.test.js` | two tests: the preflight is complete, and both documents are readable cross-origin |
+
+A preflight answers **204 with no body and no share-meta lookup** — it renders nothing, so doing
+the document's work for it would spend a round trip to the API for no reason.
+
+**Deliberately not changed.** A user-agent carrying both `WhatsApp/` and browser tokens still
+receives the SPA shell. That guard exists so somebody who *taps* a link inside WhatsApp's in-app
+browser gets the working application rather than a dead-end OG stub — a fault this project has
+had before. The shell carries the same per-video og tags, checked on six cold uncached URLs, so a
+scraper landing there still gets a card. Making every WhatsApp-ish UA take the crawler branch
+would have traded this bug for a worse one.
+
+### Step 3 — after, against production
+
+```
+OPTIONS /watch/live-at-arusha-full-set          OPTIONS /og/card/…jpg?v=c5ce44811b
+  HTTP/1.1 204 No Content                         HTTP/1.1 204 No Content
+  Access-Control-Allow-Origin: *                  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: content-type      Access-Control-Allow-Headers: content-type
+  Access-Control-Expose-Headers: *                Access-Control-Expose-Headers: *
+  Access-Control-Max-Age: 86400                   Access-Control-Max-Age: 86400
+```
+
+`scripts/verify-share-cors.sh` — every published video, eight checks each:
+
+```
+  6 videos · 60 passed · 0 failed
+    crawler document · per-video og:title · absolute https og:image · image/jpeg
+    · image 38,080–47,954 B (< 300 KB) · no redirect on document or image
+    · both readable cross-origin · preflight answers Allow-Methods: GET
+```
+
+Cache direction re-run after the change — unchanged, neither document poisons the other:
+
+```
+A  human → shell MISS · whatsapp → crawler MISS · whatsapp → crawler HIT
+B  whatsapp → crawler MISS · human → shell MISS · human → shell HIT
+```
+
+Facebook: `graph.facebook.com/?id=…&scrape=true` now answers *"Must have a valid access token"* —
+Meta requires one for that endpoint, which is their change and not ours. Substituted the check
+that needs no token, their crawler's own user-agent: both videos get `X-Doc: crawler`,
+`X-Crawler: facebook`, the right per-video title and card.
+
+Suites: client **156 pass / 0 fail**. Removing `Access-Control-Allow-Methods` again makes the new
+test fail with *"without Allow-Methods the browser rejects the preflight and never sends the
+GET"*, which is how it was checked.
+
+---
+
 *Further items are appended as they are verified.*

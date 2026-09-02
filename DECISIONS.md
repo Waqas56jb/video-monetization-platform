@@ -341,3 +341,37 @@ turning up again in a different corner.
 
 All three reported a working panel as broken. Assert the labels that exist, and give a rule about
 one-sided accounts a genuinely one-sided account.
+
+---
+
+## 2026-09-02 · The WhatsApp card on a Mac was a preflight, not a document
+
+Everything on the GET path was already correct and was checked against production before anything
+was changed: every WhatsApp user-agent shape gets the crawler document, it carries per-video og
+tags, no redirects, the image is a 38 KB 1200x630 JPEG, the cache keeps the two documents apart
+in both directions, and the GET already carried `Access-Control-Allow-Origin`.
+
+The preflight did not carry `Access-Control-Allow-Methods`, so a browser rejected it and never
+sent the GET — the header that was present was never reached. Android and Windows WhatsApp are
+native clients that do no CORS at all, which is why only a Mac saw a bare link.
+
+**What was deliberately left alone.** A user-agent carrying both `WhatsApp/` and browser tokens
+still gets the SPA shell rather than the crawler document. Changing that looked tempting — we
+classify it as `whatsapp-web` and then serve it the other document — but the guard exists so
+somebody who TAPS a link inside WhatsApp's in-app browser gets the working app instead of a
+dead-end OG stub, which is a fault this project has already shipped once. The shell carries the
+same per-video og tags (checked on six cold URLs), so nothing is lost by leaving it.
+
+**Stated in the report rather than glossed:** the fix is consistent with the symptom and is the
+only defect found, but it was not reproduced as a bare card on a Mac — that needs the client's own
+machine. Every non-browser fetch shape already worked before the change.
+
+**Two telemetry gaps worth closing later**, recorded now: `crawler_hits.status` is written null on
+most rows, and the server-side classifier calls `WhatsApp/… W` `whatsapp-unknown` while the edge
+calls the same string `whatsapp-web`. Neither caused this bug; both made it slower to rule things
+out.
+
+**Meta's Graph API changed under us.** `graph.facebook.com/?id=…&scrape=true` now requires an
+access token, so the re-scrape check in the brief cannot run unauthenticated. Substituted the
+equivalent that needs no token — a request as `facebookexternalhit` — and said so rather than
+reporting the step as done.

@@ -26,13 +26,14 @@ genuinely still need a phone is at the end of this document.
 8. [The card that only opened from its title](#8-the-card-that-only-opened-from-its-title)
 9. [Scrolling, blank space and things moving](#9-scrolling-blank-space-and-things-moving)
 10. [Sharing and WhatsApp](#10-sharing-and-whatsapp)
-11. [Following a creator](#11-following-a-creator)
-12. [My Library — the four rows](#12-my-library--the-four-rows)
-13. [Reaching the creator from anywhere](#13-reaching-the-creator-from-anywhere)
-14. [The other items you reported](#14-the-other-items-you-reported)
-15. [The numbers behind "3.5 seconds"](#15-the-numbers-behind-35-seconds)
-16. [What still needs a phone](#16-what-still-needs-a-phone)
-17. [Test data on production](#17-test-data-on-production)
+11. [The card that showed on Android but not on your Mac](#11-the-card-that-showed-on-android-but-not-on-your-mac)
+12. [Following a creator](#12-following-a-creator)
+13. [My Library — the four rows](#13-my-library--the-four-rows)
+14. [Reaching the creator from anywhere](#14-reaching-the-creator-from-anywhere)
+15. [The other items you reported](#15-the-other-items-you-reported)
+16. [The numbers behind "3.5 seconds"](#16-the-numbers-behind-35-seconds)
+17. [What still needs a phone](#17-what-still-needs-a-phone)
+18. [Test data on production](#18-test-data-on-production)
 
 ---
 
@@ -86,7 +87,7 @@ you experienced, it is not this navigation as the site stands today. If it happe
 note the time — the server logs can be lined up against it.
 
 **The part we cannot remove is Cloudflare's**, and it is about 3.5 seconds of the wait. The full
-trace is in section 15, written out so you can check it yourself.
+trace is in section 16, written out so you can check it yourself.
 
 ---
 
@@ -450,7 +451,73 @@ box.
 
 ---
 
-## 11 · Following a creator
+## 11 · The card that showed on Android but not on your Mac
+
+**PROBLEM.** Sharing a video link showed the picture card on Android WhatsApp and on Windows
+WhatsApp Desktop, and on your MacBook the same link arrived as a plain blue URL.
+
+**ROOT CAUSE.** How the preview is fetched differs by device, and only one of those ways was
+being answered properly.
+
+WhatsApp on Android and on Windows fetches the page with its **own** software. It asks for the
+page, we send it, it draws the card. That path was correct throughout, which is why those two
+always worked.
+
+A Mac fetches the preview through a **web browser engine**. A browser is not allowed to read a
+page from another website unless that website says it may — and it asks permission *first*, in a
+separate small request, before it will even ask for the page.
+
+We were answering that permission request incompletely. It said "anyone may read this" but did
+not say "and you may use GET to do it" — and both are required. So the browser refused the
+permission answer and never asked for the page at all. Nothing was fetched, so there was nothing
+to build a card from, and WhatsApp fell back to showing the bare link.
+
+Measured on the live site before the fix:
+
+```
+OPTIONS /watch/live-at-arusha-full-set
+  HTTP/1.1 200 OK
+  Access-Control-Allow-Origin: *          ← and nothing else
+```
+
+**FIX MADE.** That permission request is now answered in full — the allowed methods, the allowed
+headers, and how long the answer is good for — for both the page and the poster image. Two other
+paths that were answering with no permission headers at all (an error page and the image's
+not-found and failure responses) were closed at the same time.
+
+```
+OPTIONS /watch/live-at-arusha-full-set
+  HTTP/1.1 204 No Content
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, HEAD, OPTIONS
+  Access-Control-Allow-Headers: content-type
+  Access-Control-Max-Age: 86400
+```
+
+**HOW TESTED.** Against the live site, on all six published videos, eight checks each — the
+crawler gets the right document, it has this video's own title, the image is an absolute https
+JPEG under WhatsApp's size limit, neither the page nor the image redirects, and both the read and
+the permission request are answered. **60 checks, 0 failures.** Facebook's own crawler still gets
+a clean card. The cache still keeps the two versions of the page apart in both directions, so
+nothing about the earlier fix was disturbed.
+
+### ⚠️ Please re-test with a link you have never shared before
+
+**WhatsApp remembers the preview for a link for days**, on its own servers and on your device. So
+if you paste the same link you tested with before, it may still show you the old bare URL even
+though the site is now fixed — you would be looking at WhatsApp's memory, not at our page.
+
+To see the fix, do **one** of these:
+
+- share a video you have **not** shared before, or
+- take the same link and add `?v=2` to the end of it, once — for example
+  `…/watch/live-at-arusha-full-set?v=2`
+
+Either makes it a new link to WhatsApp, so it fetches the card fresh.
+
+---
+
+## 12 · Following a creator
 
 **PROBLEM.** Follows did not stick.
 
@@ -496,7 +563,7 @@ reach you, fixed, and a test now exists specifically to stop it happening again.
 
 ---
 
-## 12 · My Library — the four rows
+## 13 · My Library — the four rows
 
 **PROBLEM.** You asked for Continue Watching, Purchased, My List and Recently Watched. Only
 Purchased existed.
@@ -549,7 +616,7 @@ never "delivered". The page reported success and nothing was stored. It would ha
 
 ---
 
-## 13 · Reaching the creator from anywhere
+## 14 · Reaching the creator from anywhere
 
 **PROBLEM.** A creator's name appeared on every card as plain text. The only way to reach their
 page was from a video page.
@@ -565,7 +632,7 @@ the real sheet with WhatsApp in it. Cards: the creator's name goes to the creato
 
 ---
 
-## 14 · The other items you reported
+## 15 · The other items you reported
 
 Shorter entries, because these were fixed in earlier rounds of this work. Each one names where
 the detail lives so you can check it, and says plainly which were re-tested in this round and
@@ -590,7 +657,7 @@ like either re-checked, it is a small piece of work.
 
 ---
 
-## 15 · The numbers behind "3.5 seconds"
+## 16 · The numbers behind "3.5 seconds"
 
 The section below is reproduced exactly as it was written, including the caveat at the end,
 because it is the honest account of what the remaining wait is made of and who owns it.
@@ -650,7 +717,7 @@ of the wait is now shorter than it was.
 
 ---
 
-## 16 · What still needs a phone
+## 17 · What still needs a phone
 
 Everything below is on `BROWSER-CHECKLIST.md` with exact steps. These are not outstanding
 defects — they are the things no automated browser can reach.
@@ -673,7 +740,7 @@ four engines, but iOS deciding on its own to discard a tab is its own case.
 
 ---
 
-## 17 · Test data on production
+## 18 · Test data on production
 
 To prove that buying a video actually works — rather than assume it — test accounts were created
 on the live site and used to buy videos through the normal payment screen.
