@@ -174,7 +174,7 @@ const JOURNEYS = [
     n: 3,
     title: 'A card opens its own watch page on the first tap',
     everywhere: true,
-    async run({ page, t }) {
+    async run({ page, t, profile }) {
       /**
        * TAP THE PICTURE, not the title.
        *
@@ -190,12 +190,28 @@ const JOURNEYS = [
         await page.waitForSelector('.vid-card .vid-open', { timeout: 60000 })
         await page.waitForTimeout(2500)
         const before = page.url()
+        /**
+         * Press the COORDINATE, not the element.
+         *
+         * `locator.click()` refuses when a different element would receive the
+         * event — and the link that opens the card correctly covers the poster,
+         * so Playwright reports "intercepts pointer events" and times out. That
+         * refusal is the overlay working. A finger lands at a point and whatever
+         * is on top gets it, so that is what this does.
+         */
         const target = page.locator(`.vid-card ${sel}`).first()
-        /* One tap. On an iPad with a mouse the first tap used to be swallowed
+        await target.scrollIntoViewIfNeeded().catch(() => {})
+        await page.waitForTimeout(400)
+        const box = await target.boundingBox()
+        const vp = page.viewportSize()
+        const px = box.x + box.width / 2
+        /* Clamp inside the window: the price row can sit past the bottom edge,
+           and pressing a point outside the window proves nothing. */
+        const py = Math.min(box.y + box.height / 2, vp.height - 6)
+        /* One press. On an iPad with a mouse the first used to be swallowed
            applying a hover state. */
-        await target.tap({ timeout: 20000 }).catch(async () => {
-          await target.click({ timeout: 20000 })
-        })
+        if (profile.opts.hasTouch) await page.touchscreen.tap(px, py)
+        else await page.mouse.click(px, py)
         await page.waitForTimeout(4000)
         t(
           page.url() !== before && /\/watch\//.test(page.url()),
@@ -486,7 +502,7 @@ for (const profile of PROFILES) {
     let failed = false
     const t = (cond, note) => { notes.push(`${cond ? '' : '!'}${note}`); if (!cond) failed = true }
     try {
-      await j.run({ page, ctx, t })
+      await j.run({ page, ctx, t, profile })
     } catch (err) {
       failed = true
       notes.push(`!threw: ${String(err).split('\n')[0].slice(0, 90)}`)

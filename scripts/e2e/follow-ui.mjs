@@ -87,7 +87,11 @@ for (const profile of PROFILES) {
   const held = new Promise((r) => { releaseRequest = r })
   await page.route('**/api/creators/*/follow', async (route) => {
     await held
-    await route.continue()
+    /* The route can already be resolved by the time this wakes — unrouting
+       while a held request is pending resolves it — and continuing it twice
+       throws "Route is already handled" and kills the run. The interception is
+       a measuring device; it must not be able to fail the thing it measures. */
+    await route.continue().catch(() => {})
   })
   await rowFollow.click()
   await page.waitForTimeout(350)
@@ -121,7 +125,14 @@ for (const profile of PROFILES) {
   /* The POSTER, not the title. Clicking the title proved nothing about the part
      of the card people actually press — see matrix.mjs journey 3. */
   const before = page.url()
-  await page.locator('.vid-card .vid-thumb').first().click()
+  /* By coordinate: `click()` refuses when the card's overlay link intercepts,
+     which is the overlay doing its job. See scripts/e2e/card-press.mjs. */
+  const thumb = page.locator('.vid-card .vid-thumb').first()
+  await thumb.scrollIntoViewIfNeeded().catch(() => {})
+  await page.waitForTimeout(400)
+  const tb = await thumb.boundingBox()
+  if (profile.opts.hasTouch) await page.touchscreen.tap(tb.x + tb.width / 2, tb.y + tb.height / 2)
+  else await page.mouse.click(tb.x + tb.width / 2, tb.y + tb.height / 2)
   await page.waitForTimeout(2500)
   check(
     page.url() !== before && /\/watch\//.test(page.url()),
