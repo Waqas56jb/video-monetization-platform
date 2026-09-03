@@ -10,7 +10,12 @@ import {
   playbackRouteMatches,
   whatsappShareText,
 } from './watchUrl.js'
-import { whatsappHref, whatsappTarget } from './whatsappShare.js'
+import {
+  whatsappHref,
+  whatsappNeedsVisibleFallback,
+  whatsappTarget,
+  whatsappWebHref,
+} from './whatsappShare.js'
 import { authUrl, safeNext } from './nextPath.js'
 import { adCanSkip, adSkipRules } from './adSkip.js'
 
@@ -97,26 +102,65 @@ test('WhatsApp never goes through api.whatsapp.com', () => {
   }
 })
 
-test('a phone gets the app scheme and leaves the page; everything else opens a tab', () => {
+test('a phone and a laptop both open the APP; only the iPad takes the web URL', () => {
   const url = `${ORIGIN}/watch/studio-session-track-4`
 
   asDevice({ userAgent: IPHONE, platform: 'iPhone', maxTouchPoints: 5 }, () => {
     assert.equal(whatsappHref(url).startsWith('whatsapp://send?text='), true)
     assert.equal(whatsappTarget(), '_self')
+    // A phone is redirected on to WhatsApp Web by itself, so it needs no link.
+    assert.equal(whatsappNeedsVisibleFallback(), false)
   })
 
-  // iPadOS reports itself as a Mac; only maxTouchPoints gives it away. It has
-  // no reliable WhatsApp app, so it takes the web URL — in a new tab, rather
-  // than navigating the watch page away as the old touch-based branch did.
+  // iPadOS reports itself as a Mac; only maxTouchPoints gives it away. There is
+  // no desktop WhatsApp app on iPadOS to hand off to, so it takes the web URL —
+  // in a new tab, rather than navigating the watch page away.
   asDevice({ userAgent: IPAD_AS_MAC, platform: 'MacIntel', maxTouchPoints: 5 }, () => {
     assert.equal(whatsappHref(url).startsWith('https://web.whatsapp.com/send?text='), true)
     assert.equal(whatsappTarget(), '_blank')
+    assert.equal(whatsappNeedsVisibleFallback(), false)
   })
 
+  /**
+   * THE MACBOOK. This used to be `https://web.whatsapp.com/send?…` in a new tab,
+   * and that is the whole of the client's "tapping WhatsApp does not open
+   * WhatsApp": a browser tab opened on WhatsApp Web, which to anyone not already
+   * signed in there is a QR code page. Nothing that looks like WhatsApp opened
+   * because nothing ever asked for the app. macOS and Windows both register the
+   * `whatsapp://` scheme.
+   */
   asDevice({ userAgent: MAC, platform: 'MacIntel', maxTouchPoints: 0 }, () => {
-    assert.equal(whatsappHref(url).startsWith('https://web.whatsapp.com/send?text='), true)
-    assert.equal(whatsappTarget(), '_blank')
+    assert.equal(whatsappHref(url), `whatsapp://send?text=${encodeURIComponent(url)}`)
+    assert.equal(whatsappTarget(), '_self')
+    // And because whatsapp:// fails silently with no app, it must be able to say so.
+    assert.equal(whatsappNeedsVisibleFallback(), true)
+    assert.equal(whatsappWebHref(url), `https://web.whatsapp.com/send?text=${encodeURIComponent(url)}`)
   })
+})
+
+/**
+ * The navigation has to be the anchor's own.
+ *
+ * It was a `<button>` calling `window.open(href, '_blank', 'noopener,noreferrer')`
+ * — the exact shape a popup blocker exists to stop, and Safari blocks pop-ups by
+ * default. An href on a real anchor is never blocked, and it cannot be blocked
+ * by anything the click handler does either, because the handler no longer
+ * navigates at all.
+ */
+test('the WhatsApp control navigates by href, not by window.open', () => {
+  /* URL-relative: this file imports no path helpers, and adding two just to
+     reach a sibling file is more machinery than the read is worth. */
+  const src = readFileSync(new URL('../components/watch/ShareSheet.jsx', import.meta.url), 'utf8')
+  const block = src.slice(src.indexOf('className="share-wa"'), src.indexOf('share-targets'))
+  assert.match(block, /href=\{whatsappHref\(shareUrl\)\}/, 'the href is computed at render')
+  assert.match(block, /target=\{whatsappTarget\(\)\}/)
+  assert.doesNotMatch(block, /window\.open/, 'nothing here may open a window')
+  assert.doesNotMatch(block, /<button[^>]*className="share-wa"/, 'it is an anchor')
+
+  // And no await between the gesture and the navigation.
+  const handler = src.slice(src.indexOf('const onWhatsApp = () =>'), src.indexOf('const onFacebook'))
+  assert.doesNotMatch(handler, /await /, 'nothing may be awaited inside the click handler')
+  assert.doesNotMatch(handler, /window\.location\.href =/, 'the anchor navigates, not the handler')
 })
 
 test('the WhatsApp payload is the watch URL and nothing else', () => {

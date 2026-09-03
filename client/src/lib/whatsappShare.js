@@ -34,16 +34,53 @@ function isPhone() {
 
 export { isPhone as whatsappIsPhone }
 
-/** Where the WhatsApp button points on this device. */
+/**
+ * Where the WhatsApp button points on this device.
+ *
+ * A LAPTOP GETS THE APP, NOT THE WEBSITE. This used to send every non-phone to
+ * `web.whatsapp.com` in a new tab, and that is the whole of the client's
+ * "tapping WhatsApp does not open WhatsApp" on his MacBook: a browser tab
+ * opened, showing WhatsApp Web — which, to anyone not already signed in there,
+ * is a QR code page. Nothing that looks like WhatsApp opened, because nothing
+ * ever asked for the application. macOS and Windows both register the
+ * `whatsapp://` scheme when the desktop app is installed, so the same scheme the
+ * phone uses is the right one for a laptop too.
+ *
+ * The iPad keeps the web URL in a new tab, unchanged and deliberately: that is
+ * the behaviour verified on the profile the client reported the iPad fault from,
+ * and there is no desktop WhatsApp app on iPadOS to hand off to.
+ */
 export function whatsappHref(watchUrl) {
   const text = encodeURIComponent(String(watchUrl || '').trim())
-  if (device() === 'phone') return `whatsapp://send?text=${text}`
-  return `https://web.whatsapp.com/send?text=${text}`
+  if (device() === 'ipad') return `https://web.whatsapp.com/send?text=${text}`
+  return `whatsapp://send?text=${text}`
 }
 
-/** Phones leave the page for the app; everything else opens a tab. */
+/** WhatsApp Web, for when the application is not installed. */
+export function whatsappWebHref(watchUrl) {
+  return `https://web.whatsapp.com/send?text=${encodeURIComponent(String(watchUrl || '').trim())}`
+}
+
+/**
+ * A custom scheme is handed to the operating system, so the page stays where it
+ * is; only the iPad's web URL wants a tab of its own.
+ */
 export function whatsappTarget() {
-  return isPhone() ? '_self' : '_blank'
+  return device() === 'ipad' ? '_blank' : '_self'
+}
+
+/**
+ * Does this device need to be told when nothing happened?
+ *
+ * A `whatsapp://` link fails SILENTLY when the app is not installed — the OS
+ * simply declines it and the page sits there, which is indistinguishable from a
+ * broken button. A phone gets sent on to WhatsApp Web automatically
+ * (`whatsappFallback`); a laptop is offered the choice instead, because
+ * redirecting a desktop viewer to a QR-code page unasked is the very experience
+ * this change exists to stop.
+ */
+export function whatsappNeedsVisibleFallback() {
+  return device() === 'desktop'
 }
 
 /**

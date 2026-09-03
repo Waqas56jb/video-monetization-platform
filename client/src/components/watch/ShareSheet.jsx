@@ -42,7 +42,14 @@ import {
  * https URL at least loaded something. `whatsappFallback` is what covers that,
  * so importing the href alone would trade one dead end for another.
  */
-import { whatsappFallback, whatsappHref, whatsappTarget } from '@/lib/whatsappShare'
+import {
+  whatsappFallback,
+  whatsappHref,
+  whatsappIsPhone,
+  whatsappNeedsVisibleFallback,
+  whatsappTarget,
+  whatsappWebHref,
+} from '@/lib/whatsappShare'
 import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare } from '@/lib/shareUrls'
 import { nativeShareData } from '@/lib/watchUrl'
@@ -84,7 +91,8 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const notify = useNotify()
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [waBusy, setWaBusy] = useState(false)
+  const [waFallback, setWaFallback] = useState(false)
+  const waTimer = useRef(null)
   const [saving, setSaving] = useState(null)
   const [problem, setProblem] = useState(null)
   const [hint, setHint] = useState(null)
@@ -168,33 +176,64 @@ export default function ShareSheet({ open, video, share, onClose }) {
     }
   }, [open, slug])
 
-  useEffect(() => () => clearTimeout(copyTimer.current), [])
+  useEffect(() => () => {
+    clearTimeout(copyTimer.current)
+    clearTimeout(waTimer.current)
+  }, [])
 
+  /**
+   * The button does NOT navigate. The anchor does.
+   *
+   * This used to be a `<button>` whose handler called `window.open(href,
+   * '_blank', 'noopener,noreferrer')`. Two things were wrong with that, and the
+   * second is the one the client saw:
+   *
+   *   · `window.open` with a features string is the exact shape a popup blocker
+   *     is built to stop, and Safari blocks pop-ups by default. A real anchor is
+   *     never blocked, so the navigation is now the anchor's own — the href is
+   *     computed at render, from a URL we already have, and nothing is fetched
+   *     between the gesture and the navigation.
+   *   · it opened WhatsApp *Web*, in a tab. See `whatsappHref`.
+   *
+   * Everything here runs AFTER the anchor has already committed: warming the
+   * card and arming the fallback are fire-and-forget and must never sit between
+   * the click and the navigation.
+   */
   const onWhatsApp = () => {
-    if (waBusy) return
-    setWaBusy(true)
     if (share?.cardStatus && share.cardStatus !== 'ready' && slug) {
       healShareCard(slug)
     }
     warm()
-    const href = whatsappHref(shareUrl)
-    /**
-     * The target follows the URL, not the touchscreen.
-     *
-     * This branched on isTouchMobile(), which is true for an iPad — so an iPad
-     * navigated the whole page away to a web URL it could perfectly well have
-     * opened in a tab. whatsappTarget() asks the narrower question: only a phone
-     * is leaving for a native app, and only a phone should lose this page.
-     */
-    if (whatsappTarget() === '_self') {
-      /* Armed before the navigation, because the tap has already gone to the
-         app scheme by the time it runs — a device with WhatsApp never sees it. */
+    setWaFallback(false)
+
+    /* A phone is sent on to WhatsApp Web by itself, as before. */
+    if (whatsappIsPhone()) {
       whatsappFallback(shareUrl)()
-      window.location.href = href
-    } else {
-      window.open(href, '_blank', 'noopener,noreferrer')
+      return
     }
-    setWaBusy(false)
+    if (!whatsappNeedsVisibleFallback()) return
+
+    /**
+     * A `whatsapp://` link that nothing handles fails silently, so the only way
+     * to tell "the app opened" from "nothing happened" is whether this page kept
+     * the focus. If it did, after a moment, offer WhatsApp Web instead of
+     * leaving the viewer looking at a button that appears to do nothing.
+     */
+    clearTimeout(waTimer.current)
+    let left = false
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') left = true
+    }
+    const onBlur = () => {
+      left = true
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('blur', onBlur)
+    waTimer.current = setTimeout(() => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('blur', onBlur)
+      if (!left && document.visibilityState === 'visible') setWaFallback(true)
+    }, 1500)
   }
 
   const onFacebook = () => {
@@ -465,17 +504,35 @@ export default function ShareSheet({ open, video, share, onClose }) {
           </p>
         )}
 
-        <button className="share-wa" type="button" onClick={onWhatsApp} disabled={waBusy}>
-          {waBusy ? <Loader2 size={26} className="spin" /> : <IconWhatsApp size={26} />}
+        <a
+          className="share-wa"
+          href={whatsappHref(shareUrl)}
+          target={whatsappTarget()}
+          rel="noopener noreferrer"
+          onClick={onWhatsApp}
+        >
+          <IconWhatsApp size={26} />
           <span className="share-wa-copy">
-            <b>{waBusy ? 'Preparing card…' : 'Share on WhatsApp'}</b>
+            <b>Share on WhatsApp</b>
             <small>
               {isTouchMobile()
                 ? 'Opens WhatsApp with the poster card'
-                : 'Wait for the preview card in the box, then send'}
+                : 'Opens the WhatsApp app with the poster card'}
             </small>
           </span>
-        </button>
+        </a>
+
+        {/* Only after a whatsapp:// link went nowhere — see onWhatsApp. */}
+        {waFallback && (
+          <a
+            className="share-wa-web"
+            href={whatsappWebHref(shareUrl)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            WhatsApp app not found — Open WhatsApp Web
+          </a>
+        )}
 
         <div className="share-targets">
           <button
