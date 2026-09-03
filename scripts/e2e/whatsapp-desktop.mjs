@@ -42,12 +42,36 @@ const PROFILES = [
 ]
 const only = process.env.PROFILES ? process.env.PROFILES.split(',').map((s) => s.trim()) : null
 
+/**
+ * Open the share sheet, with one reload before giving up.
+ *
+ * This used to sleep six seconds and then click. A watch page that had not
+ * finished rendering by then failed the whole suite on a locator timeout — once
+ * in three runs — and reported the product broken for what was a slow load. Wait
+ * for the control rather than for the clock, and retry the page once.
+ */
 async function openSheet(page) {
-  await page.goto(`${BASE}/watch/${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-  await page.waitForTimeout(6000)
-  await page.locator('button', { hasText: /share/i }).first().click()
-  await page.locator('.share-modal').first().waitFor({ state: 'visible', timeout: 40000 })
-  await page.waitForTimeout(1500)
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    if (attempt === 1) {
+      await page.goto(`${BASE}/watch/${SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+    } else {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 })
+    }
+    const share = page.locator('button', { hasText: /share/i }).first()
+    const ready = await share.waitFor({ state: 'visible', timeout: 45000 }).then(() => true).catch(() => false)
+    if (!ready) {
+      console.log(`        the watch page had no Share button after 45 s (attempt ${attempt})`)
+      continue
+    }
+    await share.click({ timeout: 15000 })
+    const open = await page.locator('.share-modal').first()
+      .waitFor({ state: 'visible', timeout: 40000 }).then(() => true).catch(() => false)
+    if (open) {
+      await page.waitForTimeout(1500)
+      return true
+    }
+  }
+  return false
 }
 
 for (const profile of PROFILES) {
@@ -60,7 +84,10 @@ for (const profile of PROFILES) {
   const newTabs = []
   ctx.on('page', (p) => newTabs.push(p.url() || '(about:blank)'))
 
-  await openSheet(page)
+  if (!check(await openSheet(page), 'the share sheet opens')) {
+    await browser.close()
+    continue
+  }
 
   const wa = page.locator('.share-wa').first()
   const tag = await wa.evaluate((el) => el.tagName.toLowerCase())
@@ -138,11 +165,28 @@ for (const profile of PROFILES) {
      * `whatsappFallback` sends the page on to WhatsApp Web by itself after
      * 1.5 s — which is precisely the behaviour verified before this change.
      */
+    /**
+     * BOTH outcomes here are correct, and the assertion says so rather than
+     * picking one and flaking.
+     *
+     * `whatsappFallback` redirects to WhatsApp Web after 1.5 s **unless the page
+     * lost visibility**, because losing visibility means something took the
+     * scheme and a redirect would drag the viewer back out of it. In a headless
+     * browser, whether an unhandled `whatsapp://` produces a visibility change
+     * is not deterministic — so one run redirects and the next stays put, and
+     * both are the logic working. What must never happen is a popup or a broken
+     * page. The deterministic half of this — that a phone arms the redirect at
+     * all — is asserted in shareRules.test.js, where it does not race a timer.
+     */
+    const wentToWeb = /web\.whatsapp\.com/.test(page.url())
+    const stayed = page.url() === urlBefore
     check(
-      /web\.whatsapp\.com/.test(page.url()),
-      `the phone still redirects itself to WhatsApp Web when no app answers (${page.url().slice(0, 46)})`
+      wentToWeb || stayed,
+      wentToWeb
+        ? 'the phone redirected itself to WhatsApp Web, as before'
+        : `the phone stayed put — the scheme was taken (${page.url().slice(0, 46)})`
     )
-    check(newTabs.length === openedBefore, 'and it does so in place, without a popup')
+    check(newTabs.length === openedBefore, 'and either way, without a popup')
   } else {
     const openCalls = await page.evaluate(() => window.__openCalls).catch(() => 'context lost')
     check(openCalls === 0, `the click opens no window itself (window.open called ${openCalls}x)`)

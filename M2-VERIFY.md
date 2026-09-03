@@ -1187,6 +1187,16 @@ pressed Escape, waited 800 ms and clicked the creator link underneath while the 
 closing. It now closes the sheet with its own close button and waits for it to detach. Three
 consecutive runs pass.
 
+**Two more, found by running the suite repeatedly rather than once.** Opening the share sheet
+slept six seconds and then clicked, so a slow watch page failed the whole run on a locator
+timeout — it waits for the control and reloads once now. And the phone assertion raced a 1.5 s
+timer: `whatsappFallback` redirects to WhatsApp Web *unless the page lost visibility*, because
+losing visibility means something took the scheme, and whether a headless engine reports that for
+an unhandled `whatsapp://` is not deterministic. Both outcomes are the logic working, so the
+check accepts either and requires only what is genuinely invariant — no popup, no broken page.
+The deterministic half, that a phone arms the redirect at all, is asserted in `shareRules.test.js`
+where it races nothing. **Three consecutive full runs, all four profiles: ALL PASS.**
+
 ---
 
 *Further items are appended as they are verified.*
