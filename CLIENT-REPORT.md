@@ -27,6 +27,7 @@ genuinely still need a phone is at the end of this document.
 9. [Scrolling, blank space and things moving](#9-scrolling-blank-space-and-things-moving)
 10. [Sharing and WhatsApp](#10-sharing-and-whatsapp)
 11. [The card that showed on Android but not on your Mac](#11-the-card-that-showed-on-android-but-not-on-your-mac)
+11b. [The WhatsApp button on your MacBook](#11b-the-whatsapp-button-on-your-macbook)
 12. [Following a creator](#12-following-a-creator)
 13. [My Library — the four rows](#13-my-library--the-four-rows)
 14. [Reaching the creator from anywhere](#14-reaching-the-creator-from-anywhere)
@@ -514,6 +515,37 @@ To see the fix, do **one** of these:
   `…/watch/live-at-arusha-full-set?v=2`
 
 Either makes it a new link to WhatsApp, so it fetches the card fresh.
+
+---
+
+## 11b · The WhatsApp button on your MacBook
+
+**PROBLEM.** On your MacBook, pressing **Share on WhatsApp** did not open WhatsApp. The phone was
+fine.
+
+**ROOT CAUSE.** On a laptop the button never asked for the WhatsApp application at all. It opened
+a browser tab on **WhatsApp Web** — and if you are not already signed in there, that is a page
+showing a QR code. Nothing that looks like WhatsApp appeared, because nothing had asked for it.
+
+**FIX MADE.** A laptop now opens the **WhatsApp desktop app**, the same way your phone opens the
+phone app — macOS and Windows both recognise it. If the app is not installed, a link appears a
+moment later saying *"WhatsApp app not found — Open WhatsApp Web"*, so you are offered the choice
+rather than being dropped on a QR page.
+
+Your iPad and your phone are unchanged. **Copy link** is still next to it and always works.
+
+**HOW TESTED.** On four device profiles against the live site — a Mac, a Windows desktop, an
+iPhone and an iPad: the button is a real link carrying the right address before it is even
+pressed, pressing it opens no stray window, the page you were on is not lost, and on a laptop with
+no app installed the fallback link appears within four seconds pointing at WhatsApp Web with the
+same video link. All four pass. The phone path was re-checked across all seven profiles and is
+unchanged.
+
+### Re-test on your MacBook
+
+Open any video → **Share** → **Share on WhatsApp**. The WhatsApp **app** should come to the front
+with the link already in the message box. If you do not have the WhatsApp desktop app installed,
+wait one second and use the *"Open WhatsApp Web"* link that appears underneath.
 
 ---
 

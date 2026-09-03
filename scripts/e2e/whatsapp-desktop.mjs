@@ -92,27 +92,66 @@ for (const profile of PROFILES) {
     'and the message is the watch URL'
   )
 
-  /* 3 — no popup, and nothing async between the gesture and the navigation. */
+  /* 3 — no popup, and nothing async between the gesture and the navigation.
+     `noWaitAfter`, because Playwright otherwise waits for the navigation a
+     `whatsapp://` href starts — and nothing in a headless browser ever answers
+     that scheme, so the click never resolves. The first run of this file timed
+     out there and reported the product as broken; the click had in fact been
+     dispatched. */
   const openedBefore = newTabs.length
   const urlBefore = page.url()
-  let opened = null
   await page.evaluate(() => {
     window.__openCalls = 0
     const real = window.open
     window.open = function (...a) { window.__openCalls += 1; return real.apply(window, a) }
   })
-  await wa.click({ timeout: 15000 }).catch((e) => { opened = String(e).split('\n')[0] })
-  await page.waitForTimeout(2500)
-  const openCalls = await page.evaluate(() => window.__openCalls)
-  check(openCalls === 0, `the click opens no window itself (window.open called ${openCalls}×)`)
-  if (profile.kind === 'ipad') {
-    check(newTabs.length > openedBefore, 'the iPad still gets its tab')
-  } else {
+  /**
+   * Hit-testability is asserted, then the click is FORCED — and the two are
+   * separate on purpose.
+   *
+   * `locator.click()` without `force` times out on WebKit for this element: the
+   * anchor is visible, enabled, in the viewport and hit-testable (checked just
+   * below), but Playwright's stability wait never settles on it there. The first
+   * run of this file reported the product broken on the client's own engine for
+   * that reason alone — with `force` the handler runs, the fallback appears and
+   * nothing is navigated away.
+   *
+   * Forcing skips the hit-test, which is the check that matters for a control
+   * sitting inside a modal, so it is made explicitly rather than lost.
+   */
+  const hit = await wa.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return { reaches: Boolean(at && (at === el || el.contains(at))), got: at ? at.tagName.toLowerCase() : null }
+  })
+  check(hit.reaches, `a press at its centre reaches the link itself (hit <${hit.got}>)`)
+
+  await wa.click({ timeout: 8000, noWaitAfter: true, force: true }).catch((e) => {
+    console.log(`        click: ${String(e).slice(0, 70)}`)
+  })
+  await page.waitForTimeout(3000)
+
+  if (profile.kind === 'phone') {
+    /**
+     * The phone is UNCHANGED and this proves it rather than assuming it: the
+     * anchor hands `whatsapp://` to the OS, nothing answers it here, and
+     * `whatsappFallback` sends the page on to WhatsApp Web by itself after
+     * 1.5 s — which is precisely the behaviour verified before this change.
+     */
     check(
-      newTabs.length === openedBefore,
-      'no popup is created — the scheme goes straight to the OS'
+      /web\.whatsapp\.com/.test(page.url()),
+      `the phone still redirects itself to WhatsApp Web when no app answers (${page.url().slice(0, 46)})`
     )
-    check(page.url() === urlBefore, 'and the watch page is not navigated away')
+    check(newTabs.length === openedBefore, 'and it does so in place, without a popup')
+  } else {
+    const openCalls = await page.evaluate(() => window.__openCalls).catch(() => 'context lost')
+    check(openCalls === 0, `the click opens no window itself (window.open called ${openCalls}x)`)
+    if (profile.kind === 'ipad') {
+      check(newTabs.length > openedBefore, 'the iPad still gets its tab')
+    } else {
+      check(newTabs.length === openedBefore, 'no popup is created — the scheme goes straight to the OS')
+      check(page.url() === urlBefore, 'and the watch page is not navigated away')
+    }
   }
 
   /* 4 — the visible fallback, desktop only. */
@@ -122,19 +161,21 @@ for (const profile of PROFILES) {
     check(shown, 'with no app to take the scheme, a fallback link appears within 4 s')
     if (shown) {
       const fh = await fb.getAttribute('href')
-      console.log(`  fallback: "${(await fb.textContent())?.trim()}" → ${String(fh).slice(0, 60)}`)
+      console.log(`  fallback: "${(await fb.textContent())?.trim()}" -> ${String(fh).slice(0, 60)}`)
       check(String(fh).startsWith('https://web.whatsapp.com/send?text='), 'pointing at WhatsApp Web')
       check(decodeURIComponent(String(fh)).includes(`/watch/${SLUG}`), 'carrying the same watch URL')
       check((await fb.getAttribute('target')) === '_blank', 'in a new tab')
     }
-  } else {
-    const fb = await page.locator('.share-wa-web').count()
-    check(fb === 0, 'no desktop fallback link on a touch device')
+  } else if (profile.kind === 'ipad') {
+    check((await page.locator('.share-wa-web').count()) === 0, 'no desktop fallback link on an iPad')
   }
 
-  /* 5 — the escape hatch is still beside it. */
-  const copy = await page.locator('.share-modal button, .share-modal a').filter({ hasText: /copy/i }).count()
-  check(copy > 0, 'Copy link is still offered next to it')
+  /* 5 — the escape hatch is still beside it. Not on the phone: it has left for
+     WhatsApp Web on purpose by now, so there is no sheet left to look in. */
+  if (profile.kind !== 'phone') {
+    const copy = await page.locator('.share-modal button, .share-modal a').filter({ hasText: /copy/i }).count()
+    check(copy > 0, 'Copy link is still offered next to it')
+  }
 
   await browser.close()
 }

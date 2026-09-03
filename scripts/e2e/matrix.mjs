@@ -404,8 +404,24 @@ const JOURNEYS = [
       if (sheet) {
         const wa = await page.locator('.share-modal').locator('text=/whatsapp/i').count()
         t(wa > 0, 'with WhatsApp in it')
-        await page.keyboard.press('Escape').catch(() => {})
-        await page.waitForTimeout(800)
+        /**
+         * Close it the way a person does, and WAIT for it to be gone.
+         *
+         * This pressed Escape and waited 800 ms, which made the journey
+         * intermittent on the iPhone profile: one run in two, the creator link
+         * underneath was still behind the closing sheet and the click sat there
+         * until it timed out. The sheet's own close button plus a wait for the
+         * element to detach removes the race instead of lengthening the guess.
+         */
+        const close = page.locator('.share-modal .modal-x, .share-modal .share-xbtn').first()
+        if (await close.count()) await close.click({ timeout: 10000 }).catch(() => {})
+        else await page.keyboard.press('Escape').catch(() => {})
+        await page.locator('.share-modal').first()
+          .waitFor({ state: 'detached', timeout: 15000 })
+          .catch(async () => {
+            await page.keyboard.press('Escape').catch(() => {})
+            await page.waitForTimeout(1200)
+          })
       }
       const creator = page.locator('.creator-row .creator-open').first()
       if (await creator.count()) {

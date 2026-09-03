@@ -1080,4 +1080,113 @@ GET"*, which is how it was checked.
 
 ---
 
+
+## PROMPT-12 — the WhatsApp button on a MacBook
+
+### Step 1 — diagnosis, before any change
+
+**(b) is the cause, and it was reproduced.** The desktop branch never asked for the WhatsApp
+application. Observed on production, on both engines:
+
+```
+element     : button (no href)
+window.open : [{"u":"https://web.whatsapp.com/send?text=…","t":"_blank","f":"noopener,noreferrer"}]
+new tab     : https://web.whatsapp.com/send?text=…
+```
+
+A browser tab opens on **WhatsApp Web**. To anyone not already signed in there that is a QR code
+page — nothing that looks like WhatsApp opened, because nothing ever asked for the app. That is
+the client's sentence exactly.
+
+**(a) is real but is not the proven cause, and the difference is stated rather than blurred.**
+The control *was* a `<button>` whose handler called `window.open(href, '_blank',
+'noopener,noreferrer')` — `ShareSheet.jsx:173-197`, rendered at `:468`. That is the shape a popup
+blocker exists to stop, and Safari blocks pop-ups by default.
+
+But the order of operations acquits the async half of the theory:
+
+```
+onWhatsApp()
+  1  setWaBusy(true)                     state only
+  2  healShareCard(slug)                 fire-and-forget, no await
+  3  warm()  → warmShare(...)            fire-and-forget, no await
+  4  whatsappHref(shareUrl)              synchronous
+  5  window.open(...)                    SAME TASK as the gesture
+```
+
+There is **no `await` anywhere in that handler**, so the open was already inside the gesture's own
+task. And headless WebKit did open the tab — `window.open` returned `null`, which is what the
+specification requires when `noopener` is passed, not evidence of a block. So a popup block is
+plausible on a real Mac with default Safari settings and was **not reproduced here**. It is fixed
+anyway, because an anchor cannot be blocked and costs nothing.
+
+### Step 2 — what changed
+
+| file:lines | what |
+|---|---|
+| `client/src/lib/whatsappShare.js:39-90` | a laptop gets `whatsapp://send?text=…`; only the iPad keeps the web URL. Adds `whatsappWebHref()` and `whatsappNeedsVisibleFallback()` |
+| `client/src/components/watch/ShareSheet.jsx:173-215` | the handler no longer navigates; it warms and arms the fallback, after |
+| `client/src/components/watch/ShareSheet.jsx:506-535` | a real `<a href target rel>` computed at render, plus the fallback link |
+| `client/src/styles/global.css:2485-2501` | anchor styling; `.share-wa-web`; the dead `:disabled` rule removed |
+
+```
+desktop   whatsapp://send?text=…      _self    + a visible fallback after 1.5 s
+phone     whatsapp://send?text=…      _self    unchanged — automatic redirect as before
+iPad      https://web.whatsapp.com/…  _blank   unchanged
+```
+
+A `whatsapp://` link fails **silently** when no app is installed, so a laptop that still has focus
+after 1.5 s is offered *"WhatsApp app not found — Open WhatsApp Web"*. The phone keeps its
+automatic redirect; a laptop is offered the choice, because sending a desktop viewer to a QR page
+unasked is the experience this change exists to remove. Copy link stays beside both.
+
+`waBusy` went with it — it was set true and false inside one handler and never rendered.
+
+### Step 3 — verification
+
+**Unit** (`shareRules.test.js`), href and target per profile, plus a guard on the control's shape:
+
+```
+✔ a phone and a laptop both open the APP; only the iPad takes the web URL
+✔ the WhatsApp control navigates by href, not by window.open
+    · href computed at render   · no window.open in the block
+    · no await in the handler   · it is an anchor
+  157 pass · 0 fail
+```
+
+Putting the old `<button onClick={() => window.open(...)}>` back fails it with *"the href is
+computed at render"*, which is how it was checked.
+
+**Browser** (`scripts/e2e/whatsapp-desktop.mjs`), four profiles against production:
+
+| | element | href | target | popup | fallback |
+|---|---|---|---|---|---|
+| webkit desktop (the MacBook) | `<a>` | `whatsapp://send?text=…` | `_self` | none | appears < 4 s → `web.whatsapp.com` |
+| chromium desktop (Windows) | `<a>` | `whatsapp://send?text=…` | `_self` | none | appears < 4 s |
+| iPhone 14 · webkit | `<a>` | `whatsapp://send?text=…` | `_self` | none | redirects itself to `web.whatsapp.com/mobile/` — unchanged |
+| iPad Pro 11 · webkit | `<a>` | `https://web.whatsapp.com/send?text=…` | `_blank` | its tab | none, correctly |
+
+**ALL PASS.** On every profile the press reaches the link itself, the click opens no window of its
+own, and the watch page is not navigated away (except the phone, which leaves on purpose).
+
+**No regression on the phone path:** matrix journeys 9 and 10, all seven profiles — **14 pass, 0
+fail**.
+
+### Two harness faults, both of which reported the product as broken
+
+Recorded because between them they cost more time than the bug.
+
+**`locator.click()` times out on WebKit for this control.** The anchor is visible, enabled, in the
+viewport and hit-testable — `elementFromPoint` at its centre returns a child of the anchor — but
+Playwright's stability wait never settles on it there. `force: true` dispatches in 114 ms and the
+handler runs, the fallback appears, nothing is navigated. So the suite asserts hit-testability
+**explicitly** and then forces the dispatch, rather than losing the check that matters.
+
+**Journey 10 was intermittent on the iPhone**, one run in two, and it was the same shape: it
+pressed Escape, waited 800 ms and clicked the creator link underneath while the sheet was still
+closing. It now closes the sheet with its own close button and waits for it to detach. Three
+consecutive runs pass.
+
+---
+
 *Further items are appended as they are verified.*
