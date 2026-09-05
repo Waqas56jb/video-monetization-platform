@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/context/AuthContext'
 import { useNotifications } from '@/context/NotificationsContext'
+import { DEPLOY } from '@/lib/deployUrls'
 
 /**
  * Navigation, filtered by what this person is actually allowed to open.
@@ -96,10 +97,20 @@ export default function Sidebar({ open, onClose, onLogout, counts = {} }) {
 
       <aside className={`sidebar ${open ? 'open' : ''}`.trim()}>
         {/* The supplied artwork, the same file the public site uses, so the
-            two sides of the platform cannot drift onto different marks. */}
-        <div className="logo">
+            two sides of the platform cannot drift onto different marks.
+            New tab: the admin and public apps are separate origins with
+            separate, durably-stored sessions (see admin/src/lib/api.js), so
+            a same-tab navigation would not sign anyone out — this is purely
+            about not discarding whatever the admin was in the middle of. */}
+        <a
+          className="logo"
+          href={DEPLOY.publicApp}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open the public MTONYO+ site in a new tab"
+        >
           <img className="logo-img" src="/logo-lockup.png" alt="MTONYO+" decoding="async" />
-        </div>
+        </a>
         <span className="admin-tag">{roleLabel}</span>
 
         {groups.map((group) => (

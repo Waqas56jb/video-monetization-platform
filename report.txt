@@ -439,6 +439,16 @@ FIX SIZE: S
 DEVICE-SPECIFIC: no
 ```
 
+RESOLUTION (2026-09-06): `admin/src/components/layout/Sidebar.jsx`'s logo `<div>` is now an
+`<a href={DEPLOY.publicApp} target="_blank" rel="noopener noreferrer">` (`DEPLOY.publicApp` from
+the existing `admin/src/lib/deployUrls.js`, so the URL is not a second hard-coded literal). New tab,
+per the report's own recommendation — not because the session was ever actually at risk (confirmed
+by code reading: `admin/src/lib/api.js` persists the session to `localStorage` under
+`mtonyo.admin.access`/`.refresh`, a different origin's storage from the public app entirely), but
+because a same-tab navigation would still throw away whatever the admin was in the middle of, and
+a new tab costs nothing. `.logo{display:flex}` in `admin/src/styles/global.css` needed no changes —
+identical whether the element is a `div` or an `a`. `admin` build clean.
+
 ---
 
 ## ISSUE 7 — Viewer/creator/sub-admin/Super Admin role separation
@@ -696,6 +706,42 @@ STATUS: PARTIAL
 FIX SIZE: S
 DEVICE-SPECIFIC: no
 ```
+
+RESOLUTION (2026-09-06):
+
+- `client/src/hooks/useApi.js`'s internal `withTimeout()` (the same 10s bound every `useApi` call
+  already gets) is now exported, so a screen that must call `api.*` directly instead of through the
+  hook can still get the identical bounded wait and the identical "No connection — tap to retry"
+  message rather than reinventing it.
+- `client/src/pages/Reset.jsx`: `api.auth.checkResetToken` is wrapped in `withTimeout`. A timeout
+  now gets its **own** state (`status: 'timeout'`) instead of falling into `'invalid'` — a hung
+  request does not mean the reset link is bad, and telling someone to request a new link when the
+  real problem is their connection would be actively wrong. That screen shows "Taking longer than
+  usual" with a genuine "Try again" button that re-runs the check (`attempt` counter re-triggers the
+  effect), matching the retry pattern the rest of the app already uses.
+- `client/src/pages/Explore.jsx`: the direct `api.videos.list(...)` call inside `fetchPage` is now
+  wrapped in `withTimeout` too. The retry UI (`ErrorState` with `onRetry={() => fetchPage(0)}`)
+  already existed and was already wired to `error` — it simply could never be reached before,
+  because a hung request never produced an `error` to trigger it.
+- `client/src/components/dashboard/NotificationBell.jsx`: same wrap on `api.inbox.list(...)`, so a
+  hung poll cannot leave the bell's `loading` state stuck and stacking with the next 60s tick.
+- Admin-credential doc gap: `admin@mtonyo.tz`/`Mtonyo!Admin2026` is `smoke.js`'s own hard-coded
+  fixture, not a stand-in for the client's real admin (`admin@gmail.com`, whose password is not and
+  should not be in this repo) — the account had simply never been provisioned, and the script's own
+  error message wrongly blamed `npm run db:seed`, which does not create it (`seed.js` only reminds
+  you to run `admin:create`). Provisioned the fixture (`node src/cli/admin.js create admin@mtonyo.tz
+  'Mtonyo!Admin2026'`) and corrected the error message to name the actual fix. Re-ran `npm run
+  smoke` against production: **"admin signs in" now passes** (was the one credentials-related
+  failure; the smoke suite's other pre-existing failure, "creator submits for review," is an
+  unrelated rights-confirmation validation added in `0e4eeb8`, long before this pass, and is not
+  part of this issue). Documented both this fixture and a temporary `ops-launch@mtonyo.internal`
+  admin (created for this pass's other production actions, to be deleted afterward) in the
+  gitignored `E2E-ACCOUNTS.md` — real credentials, not committed.
+- Live re-tests (curl, since Playwright still is not installed in this environment — unchanged from
+  the diagnosis): creator, viewer and sub-admin logins all still 200 with a session; both C7
+  unpublish targets still unpublished. No regressions found.
+- `client` test suite 157/157, `hover:audit` and `split:audit` clean, `build` and `smoke:render`
+  green.
 
 ---
 
