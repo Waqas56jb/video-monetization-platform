@@ -740,6 +740,12 @@ RESOLUTION (2026-09-06):
   narrows the response and that no code path lets `side=creator` widen it. `client` 168/168 pass
   (was 162), `server` 124/124 (was 122), `hover:audit`/`split:audit`/`build`/`smoke:render` all
   green, `admin` build clean (unaffected — this issue touched no admin files).
+- **Live re-verification, after deploy** (`X-Build: 798280d`), same account and token, only the
+  query string different:
+  ```
+  GET /api/account/analytics             → role = creator
+  GET /api/account/analytics?side=viewer → role = viewer
+  ```
 
 ---
 
