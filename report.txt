@@ -288,6 +288,21 @@ FIX SIZE: S (only the "half" vs "a third" copy mismatch in videos.routes.js:310-
 DEVICE-SPECIFIC: no
 ```
 
+RESOLUTION (2026-09-06): `server/src/modules/videos.routes.js:310-312,372,419-422` — the two
+comments and the creator-facing clamp notice all said "half"; all three now say "a third," matching
+the actual `min(300, duration/3)` enforcement (unchanged, was already correct). `server` test suite
+116/116 pass — no dedicated test covers this exact string and none was added for a pure copy fix,
+per the fix prompt's own scoping (the "assert" requirement was attached to the label/cutoff
+invariant below, not this string).
+
+Added the regression test the fix prompt actually asked for: `client/src/pages/Watch.test.js`,
+`'the preview label and the enforced cutoff can never disagree — one variable, not two'`. It asserts
+`previewSeconds` is computed in exactly one place in `Watch.jsx` and that both the on-screen label
+and the player's `stopAt` prop read that same variable — so a future change that split them back
+into two numbers (the actual shape of the original "3:37 vs 5:00" bug) fails the build rather than
+shipping quietly. `client` 158/158 tests pass (one new test), `hover:audit`/`split:audit`/`build`/
+`smoke:render` all green.
+
 ---
 
 ## ISSUE 4 — Free + Ads: countdown during black screen; duration-based ad rules; admin-configurable skip delay

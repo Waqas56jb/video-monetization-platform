@@ -307,9 +307,9 @@ const updateSchema = z
     category: categoryField,
     accessType: z.enum(['ppv_forever', 'paid_premiere', 'free_with_ads']).optional(),
     priceTzs: z.coerce.number().int().min(0).max(10_000_000).optional(),
-    // Any length that still leaves half the video to pay for. 45 seconds of a
-    // 3-minute song is fine; 53 seconds of a 54-second clip is not. The half
-    // cap is applied below once duration is known.
+    // Any length that still leaves two-thirds of the video to pay for. 60
+    // seconds of a 3-minute song is fine; 53 seconds of a 54-second clip is
+    // not. The one-third cap is applied below once duration is known.
     freePreviewSeconds: z.coerce.number().int().min(0).max(86400).optional(),
     // Per video, never a platform-wide number: 30 / 60 / 90 / anything.
     premiereDays: z.coerce.number().int().min(1).max(3650).optional(),
@@ -369,8 +369,8 @@ router.patch(
      * field in the same PATCH was discarded over one they never chose. Clamp it
      * instead and tell them what happened.
      *
-     * The ceiling is half the running time, not duration-minus-one. 53s free of
-     * a 54s video left nothing to pay for.
+     * The ceiling is a third of the running time, not duration-minus-one. 53s
+     * free of a 54s video left nothing to pay for.
      */
     let previewSeconds = b.freePreviewSeconds
     let previewClamped = null
@@ -417,7 +417,7 @@ router.patch(
       ...(previewClamped
         ? {
             notice:
-              `A free preview cannot be more than half of the video ` +
+              `A free preview cannot be more than a third of the video ` +
               `(${video.duration_seconds}s), so it was shortened from ` +
               `${previewClamped.asked}s to ${previewClamped.applied}s.`,
           }

@@ -16,6 +16,27 @@ test('Watch does not block the film iframe on ad-break loading', () => {
   assert.match(src, /This video is unavailable/)
 })
 
+test('the preview label and the enforced cutoff can never disagree — one variable, not two', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // The "3:37 vs 5:00" bug was two numbers for one idea: the label showing
+  // one duration while the player enforced a different, longer one. Closing
+  // that class of bug means there is exactly one value, computed once, that
+  // both the on-screen label and the player's stopAt prop read.
+  assert.match(src, /const previewSeconds = Number\(p\?\.playback\?\.stopsAtSeconds \|\| v\.freePreviewSeconds \|\| 0\)/)
+  assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? previewSeconds : 0\}/)
+  assert.match(src, /previewSeconds \? ` · \$\{duration\(previewSeconds\)\}` : ''/)
+
+  // Nothing else in the file computes a second preview-length figure — if
+  // one ever does, it is a candidate for exactly this bug coming back.
+  const previewSecondsAssignments = src.match(/\bpreviewSeconds\s*=(?!=)/g) || []
+  assert.equal(
+    previewSecondsAssignments.length,
+    1,
+    'previewSeconds must be assigned in exactly one place — a second assignment is how the label and the cutoff drift apart'
+  )
+})
+
 test('after payment Watch drops the warmed preview and waits for the full film', () => {
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
   assert.match(src, /dropWarmedWatch/)
