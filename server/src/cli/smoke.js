@@ -132,14 +132,19 @@ async function run() {
     const queue = await api('/api/admin/review', { token: adminToken, expect: 200 })
     ok('review queue loads', `${queue.json.queue.length} pending`)
 
-    // Admin changes the premiere window before approving — the client's ask.
+    // Approval no longer silently rewrites the creator's own terms — "Your
+    // Content. Your Rules." (admin.routes.js's own approveSchema, since
+    // 2026-08-14). This used to send premiereDays here expecting the
+    // approval to overwrite it; that behaviour was deliberately removed, so
+    // the correct assertion is that the creator's own 60-day choice survives
+    // approval untouched, with only a note accepted.
     const approved = await api(`/api/admin/review/${videoId}/approve`, {
-      method: 'POST', token: adminToken, body: { premiereDays: 90 },
+      method: 'POST', token: adminToken, body: { note: 'Looks good' },
     })
     if (approved.status === 200) {
-      approved.json.video.premiereDays === 90
-        ? ok('admin changes the premiere window to 90 days before approving')
-        : bad('admin edits premiere days', `got ${approved.json.video.premiereDays}`)
+      approved.json.video.premiereDays === 60
+        ? ok('approval leaves the creator\'s own premiere window untouched')
+        : bad('approval must not alter premiere days', `got ${approved.json.video.premiereDays}`)
       approved.json.video.isPublished ? ok('approval publishes the video') : bad('approval publishes', 'not published')
     } else {
       bad('admin approves', `${approved.status} ${approved.json?.error?.message}`)
