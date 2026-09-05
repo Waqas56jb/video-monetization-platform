@@ -1314,6 +1314,18 @@ claimed by Issue 4 in the same pass).
   unrelated creator edit cannot revert an exclusive video. New
   `server/src/jobs/premiere.releaseModel.test.js` (3 tests) pins the cron/expiry guard at all three
   of its call sites. `server` 130/130 pass (was 124).
+- **Live re-verification, after deploy** (`X-Build: fce42d7`), against one of the two already-
+  unpublished C7 test videos (7 active buyer purchases, chosen specifically so a live write touched
+  nothing a real creator or paying viewer would notice):
+  ```
+  PATCH /api/admin/videos/:id {releaseModel:"exclusive", isOriginal:true}
+    → releaseModel: exclusive, isOriginal: true
+  DB read: release_model=exclusive, is_original=true
+  active purchases on this video: 7 (before) → 7 (after) — unchanged
+  PATCH back to {releaseModel:"permanent_paid", isOriginal:false} → reverted, confirmed
+  ```
+  The buyer-keeps-access guarantee held under a real write, not only the structural tests above, and
+  the video was left exactly as it was found.
 
 ---
 
