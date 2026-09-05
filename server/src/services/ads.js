@@ -137,6 +137,43 @@ export function adPayload(campaign, { placement, skipAfterSeconds }) {
 }
 
 /**
+ * Where the mid-rolls fall, duration-tiered — the schedule, named once so
+ * `adBreaksFor` and `recordImpression` (which re-derives it to validate a
+ * claimed break) can never quietly disagree about what was actually offered.
+ *
+ *   midroll_after_secs or shorter      → none (no middle to sit in — this
+ *                                        boundary is inclusive, unchanged
+ *                                        from the single-mid-roll rule this
+ *                                        replaces: a video exactly this long
+ *                                        still gets none, only one longer)
+ *   longer, up to midroll_long_after_secs → exactly one, at the midpoint
+ *   midroll_long_after_secs or longer     → every midroll_gap_secs, capped
+ *                                           at midroll_max_count, and never
+ *                                           inside the last half-gap of the
+ *                                           file — a mark one second before
+ *                                           the credits is not a usable break.
+ */
+export function midrollSchedule(durationSeconds, settings) {
+  const duration = Number(durationSeconds || 0)
+  const after = Number(settings.midroll_after_secs || 300)
+  const long = Math.max(after, Number(settings.midroll_long_after_secs || 1200))
+  const gap = Math.max(60, Number(settings.midroll_gap_secs || 600))
+  const max = Math.max(1, Number(settings.midroll_max_count || 3))
+
+  if (!(duration > after)) return []
+  if (duration < long) return [Math.floor(duration / 2)]
+
+  const marks = []
+  for (let mark = gap; mark < duration - gap / 2 && marks.length < max; mark += gap) {
+    marks.push(Math.floor(mark))
+  }
+  // A long video whose length still doesn't clear one full gap (e.g. long
+  // sits right above after) falls back to the single-midpoint rule rather
+  // than offering nothing.
+  return marks.length ? marks : [Math.floor(duration / 2)]
+}
+
+/**
  * Every placement this viewer should see for this video, in one answer.
  *
  * One request rather than three: the player needs to know about the mid-roll
@@ -149,12 +186,13 @@ export async function adBreaksFor({ video, userId, userRole = null }) {
 
   const s = check.settings
   const wanted = []
-  if (s.preroll_enabled) wanted.push({ placement: 'pre_roll', at: 0 })
-  // A mid-roll needs a middle to sit in. Short videos get none.
-  if (s.midroll_enabled && Number(video.duration_seconds || 0) > Number(s.midroll_after_secs || 300)) {
-    wanted.push({ placement: 'mid_roll', at: Math.floor(Number(video.duration_seconds) / 2) })
+  if (s.preroll_enabled) wanted.push({ placement: 'pre_roll', at: 0, index: 0 })
+  if (s.midroll_enabled) {
+    midrollSchedule(video.duration_seconds, s).forEach((at, index) => {
+      wanted.push({ placement: 'mid_roll', at, index })
+    })
   }
-  if (s.postroll_enabled) wanted.push({ placement: 'post_roll', at: null })
+  if (s.postroll_enabled) wanted.push({ placement: 'post_roll', at: null, index: 0 })
 
   const ads = []
   for (const w of wanted) {
@@ -163,6 +201,7 @@ export async function adBreaksFor({ video, userId, userRole = null }) {
     ads.push({
       ...adPayload(campaign, { placement: w.placement, skipAfterSeconds: s.preroll_skip_after_secs }),
       atSeconds: w.at,
+      breakIndex: w.index,
     })
   }
 
@@ -182,6 +221,7 @@ export async function recordImpression({
   userId,
   placement,
   playId,
+  breakIndex = 0,
   secondsWatched = 0,
   completed = false,
 }) {
@@ -199,13 +239,14 @@ export async function recordImpression({
   const campaign = await campaignServable({ video, campaignId, placement })
 
   /**
-   * Also enforce the mid-roll rule here, not only where the break was offered.
-   * A video with no middle cannot have had an advert in it, whatever the
-   * request says.
+   * Also enforce the mid-roll rule here, not only where the break was offered
+   * — a video with no middle cannot have had an advert in it, whatever the
+   * request says, and neither can a `breakIndex` this video's own schedule
+   * would never have produced (re-derived from the same function that built
+   * the offer, so the two cannot drift apart into two different rules).
    */
   const midrollValid =
-    placement !== 'mid_roll' ||
-    Number(video.duration_seconds || 0) > Number(settings.midroll_after_secs || 300)
+    placement !== 'mid_roll' || breakIndex < midrollSchedule(video.duration_seconds, settings).length
 
   // An advert abandoned after two seconds was not delivered, and an advertiser
   // should not be billed for it.
@@ -220,10 +261,10 @@ export async function recordImpression({
     const { rows } = await client.query(
       `insert into ad_impressions
          (video_id, campaign_id, user_id, creator_id, placement, play_id,
-          seconds_watched, completed, revenue_tzs,
+          break_index, seconds_watched, completed, revenue_tzs,
           revenue_micro_tzs, creator_micro_tzs, platform_micro_tzs, split_percent)
-       values ($1,$2,$3,$4,$5::ad_placement,$6,$7,$8,$9,$10,$11,$12,$13)
-       on conflict (campaign_id, video_id, placement, play_id)
+       values ($1,$2,$3,$4,$5::ad_placement,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       on conflict (campaign_id, video_id, placement, play_id, break_index)
          where play_id is not null
          do nothing
        returning id`,
@@ -234,6 +275,7 @@ export async function recordImpression({
         video.creator_id,
         placement,
         playId ?? null,
+        Math.max(0, Number(breakIndex) || 0),
         secondsWatched,
         completed,
         microToTzs(micro),

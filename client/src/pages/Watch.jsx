@@ -479,23 +479,35 @@ export default function Watch() {
   /** The breaks this video carries, by placement. */
   const ads = adBreaks.data?.ads || []
   const adAt = (placement) => ads.find((a) => a.placement === placement) || null
+  /**
+   * A long video can carry more than one mid-roll (see `midrollSchedule` on
+   * the server) — each one distinguished by `breakIndex`, in the order they
+   * fall, so the time-update handler below can always ask "what's next".
+   */
+  const midRolls = ads
+    .filter((a) => a.placement === 'mid_roll')
+    .sort((a, b) => (a.atSeconds ?? 0) - (b.atSeconds ?? 0))
+
+  /** One key per break — pre-roll and post-roll are singular, a mid-roll is not. */
+  const breakKey = (ad) => (ad.placement === 'mid_roll' ? `mid_roll:${ad.breakIndex ?? 0}` : ad.placement)
 
   /**
    * Play a break unless it has already run in this sitting.
    *
    * Without the guard, scrubbing back across a mid-roll would replay the advert
    * every single time — which is both a terrible experience and a way to bill an
-   * advertiser repeatedly for one delivery.
+   * advertiser repeatedly for one delivery. Takes the resolved ad rather than a
+   * placement name because a mid-roll placement no longer identifies a single ad.
    */
-  const runBreak = useCallback((placement) => {
+  const runBreak = useCallback((ad) => {
     if (!p?.access?.showsAds) return false
-    if (playedBreaks.current.has(placement)) return false
-    const ad = ads.find((a) => a.placement === placement)
     if (!ad?.iframe) return false
-    playedBreaks.current.add(placement)
+    const key = breakKey(ad)
+    if (playedBreaks.current.has(key)) return false
+    playedBreaks.current.add(key)
     setActiveAd(ad)
     return true
-  }, [ads, p?.access?.showsAds])
+  }, [p?.access?.showsAds])
 
   const adFinished = useCallback(() => {
     /**
@@ -527,7 +539,7 @@ export default function Watch() {
     if (adBreaks.loading) return
     if (!ads.length || activeAd) return
     if (!accessReady || !p?.playback?.iframe) return
-    runBreak('pre_roll')
+    runBreak(adAt('pre_roll'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adBreaks.loading, ads.length, accessReady, p?.playback?.iframe, p?.access?.showsAds])
 
@@ -948,7 +960,7 @@ export default function Watch() {
                     reportProgress(previewSeconds, { force: true })
                     return
                   }
-                  runBreak('post_roll')
+                  runBreak(adAt('post_roll'))
                 }}
                 /* Pausing and seeking are deliberate: the position they leave
                    behind is the one the viewer expects to return to, and waiting
@@ -989,8 +1001,14 @@ export default function Watch() {
 
                   if (!needsPayment) {
                     mainProgress.current = current
-                    const mid = adAt('mid_roll')
-                    if (mid?.atSeconds != null && current >= mid.atSeconds) runBreak('mid_roll')
+                    // A long video can carry several — find the earliest one
+                    // that has both arrived and not already played, so a
+                    // scrub past two thresholds at once still runs only one
+                    // at a time rather than stacking.
+                    const due = midRolls.find(
+                      (m) => m.atSeconds != null && current >= m.atSeconds && !playedBreaks.current.has(breakKey(m))
+                    )
+                    if (due) runBreak(due)
                   }
                 }}
               />

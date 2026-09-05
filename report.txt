@@ -361,6 +361,58 @@ FIX SIZE: S (midroll_after_secs input field is the only concrete gap; everything
 DEVICE-SPECIFIC: no functional gating found in code; Safari/webview verification remains unproven in this environment per CLIENT-REPORT.md §3/§17, unchanged
 ```
 
+RESOLUTION (2026-09-06):
+
+- **Duration-based schedule, built.** `server/src/services/ads.js` gained `midrollSchedule(durationSeconds,
+  settings)`, a pure function naming the rule once so `adBreaksFor` (offers the break) and
+  `recordImpression` (bills it) can never quietly disagree about what was actually offered:
+  `≤ midroll_after_secs` (default 5 min) → none; up to `midroll_long_after_secs` (default 20 min) →
+  one, at the midpoint (unchanged from the previous behaviour); at or beyond it → every
+  `midroll_gap_secs` (default 10 min), capped at `midroll_max_count` (default 3), never inside the
+  last half-gap of the file. All four numbers are `platform_settings` columns
+  (migration `035_ad_break_schedule.sql`), admin-editable, no constant left in code.
+- **The billing gap this uncovered, fixed in the same migration.** `ad_impressions_once_per_play`'s
+  uniqueness was `(campaign_id, video_id, placement, play_id)` — with more than one `mid_roll` per
+  play now possible, the second and third would have silently no-op'd as "already recorded" against
+  the first, under-billing an advertiser and under-paying a creator for real deliveries. Added
+  `break_index` (0 for pre/post-roll, 0..2 for however many mid-rolls one play offers), widened the
+  unique index to include it, and `recordImpression` re-derives `midrollSchedule` itself to validate
+  a claimed `breakIndex` rather than trusting the browser's count.
+- **Admin UI.** `admin/src/components/tabs/AdsTab.jsx`'s "Mid-roll only on videos longer than" row —
+  previously a read-only number, the actual gap this issue's diagnosis found — is now an editable
+  input, alongside three new rows for the long-video threshold, the repeat gap, and the max count.
+  All four save individually on blur, matching this tab's existing per-toggle save pattern.
+- **Skip delay: default and bounds updated as specified.** `preroll_skip_after_secs` bounds tightened
+  from 0-60 to 3-15 (0 "cannot be skipped" is no longer an offered state) in the admin PATCH schema
+  and in `SettingsTab.jsx`'s input; the column default moved to 8s, and the migration updates the
+  live row from 5 to 8 **only if it was still exactly the old default** (a guard against silently
+  overwriting a value an admin had already deliberately changed). Per-campaign overrides are
+  untouched — a campaign's own `skipAfterSeconds` still wins, confirmed live below.
+- **Countdown-on-`playing`, pinned with a regression test.** New
+  `client/src/components/watch/AdBreak.test.js`: asserts `setPlaying`/`setElapsed` are each called
+  from exactly one place in the file (inside the airtime-gated branch of `noteAirtime`), that the
+  Skip UI depends on `playing`, that `onTimeUpdate` — not `onReady` — drives it, and that every
+  failure path (`finish(false)`: no iframe, the duration+12s cap, the 4s never-aired check) is
+  intact with no path to a fake completion.
+- **Ad-failure → content starts, not billed:** unchanged, re-confirmed by the same test — `finish(false)`
+  never sets `completed`, and `recordImpression`'s `billable` requires `completed` truthy, so a
+  failed load is recorded as delivered-but-abandoned, never paid.
+- **Converted-premiere parity, pinned structurally.** New
+  `server/src/services/ads.midrollSchedule.test.js`: 8 cases covering every tier boundary, the
+  "never in the last half-gap" rule, admin-configured (non-default) settings, and a structural
+  assertion that neither `adEligibility` nor `midrollSchedule` reference `premiere`/`paid_unlocks`
+  anywhere — the same guarantee already confirmed live in the original diagnosis (a cron-converted
+  video's ad breaks were byte-for-byte identical to a native Free + Ads video's).
+- **Live re-verification against production**, `how-to-cook-pilau-properly` (653s, native
+  free_with_ads, unaffected tier): `GET /api/ads/breaks/...` still returns `pre_roll@0`,
+  `mid_roll@326` (= floor(653/2), unchanged), `post_roll`, with the campaign's own `skipAfterSeconds:
+  5` overriding the new platform default of 8 — confirming the override path survived the change.
+  No video in the current catalogue is long enough to exercise the repeating tier live (needs
+  ≥20 min); that tier is covered by the unit tests above instead.
+- `server` 122/122 tests pass (6 new), `client` 160/160 (2 new), `hover:audit`/`split:audit`/`build`/
+  `smoke:render` all green, `admin` build clean. Migration `035_ad_break_schedule.sql` applied to
+  production, `db:status` confirms it.
+
 ---
 
 ## ISSUE 5 — Sharing: client says WhatsApp Web/Desktop STILL sends raw URL; social buttons feel unreliable

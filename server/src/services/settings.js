@@ -34,6 +34,9 @@ export async function updateSettings(patch) {
     'share_ad_revenue',
     'midroll_enabled',
     'midroll_after_secs',
+    'midroll_long_after_secs',
+    'midroll_gap_secs',
+    'midroll_max_count',
     'postroll_enabled',
     'show_demo_content_in_stats',
   ]

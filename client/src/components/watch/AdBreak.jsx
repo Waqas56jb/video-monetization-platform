@@ -45,6 +45,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         campaignId: ad.campaignId,
         placement: ad.placement,
         playId,
+        breakIndex: ad.breakIndex ?? 0,
         secondsWatched: Math.round(watched.current),
         completed,
       })

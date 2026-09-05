@@ -107,6 +107,8 @@ router.post(
       placement: z.enum(['pre_roll', 'mid_roll', 'post_roll']).default('pre_roll'),
       /** One playback generates one id, so a retry cannot be paid for twice. */
       playId: z.string().uuid().optional(),
+      /** Which mid-roll this was, 0-based — see 035_ad_break_schedule.sql. */
+      breakIndex: z.coerce.number().int().min(0).max(9).default(0),
       secondsWatched: z.coerce.number().int().min(0).max(3600).default(0),
       completed: z.boolean().default(false),
     })
@@ -128,6 +130,7 @@ router.post(
       userId: req.user?.id,
       placement: req.body.placement,
       playId: req.body.playId,
+      breakIndex: req.body.breakIndex,
       secondsWatched: req.body.secondsWatched,
       completed: req.body.completed,
     })

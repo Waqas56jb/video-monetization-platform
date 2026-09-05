@@ -207,6 +207,27 @@ export default function AdsTab() {
     }
   }
 
+  /**
+   * Save a number-in-minutes field on blur.
+   *
+   * Uncontrolled (`defaultValue`, not `value`) on purpose: these only need to
+   * hold whatever the admin is typing until they leave the field, and an
+   * uncontrolled input needs no local state to stay in sync with the
+   * settings this component already re-fetches after every save.
+   */
+  const saveMinutes = (key, min, max) => (e) => {
+    const minutes = Number(e.target.value)
+    if (!Number.isFinite(minutes)) return
+    const secs = Math.min(max, Math.max(min, Math.round(minutes * 60)))
+    if (secs === ps?.[key]) return
+    toggleSetting(key, secs)
+  }
+  const saveCount = (key, min, max) => (e) => {
+    const n = Math.min(max, Math.max(min, Math.round(Number(e.target.value))))
+    if (!Number.isFinite(n) || n === ps?.[key]) return
+    toggleSetting(key, n)
+  }
+
   const ps = settings.data?.settings
   const AD_TOGGLES = [
     ['preroll_enabled', 'Pre-roll ads', 'Shown before a Free + Ads video starts'],
@@ -253,11 +274,79 @@ export default function AdsTab() {
               <div className="toggle-row">
                 <div>
                   <b>Mid-roll only on videos longer than</b>
-                  <small>Shorter videos never carry one</small>
+                  <small>Shorter videos carry a pre-roll only</small>
                 </div>
-                <b style={{ color: 'var(--gold)' }}>
-                  {Math.round((ps.midroll_after_secs || 0) / 60)} min
-                </b>
+                <div className="ad-mins-field">
+                  <input
+                    type="number"
+                    className="ad-mins-input"
+                    min={1}
+                    max={120}
+                    disabled={!isAdmin}
+                    key={`after-${ps.midroll_after_secs}`}
+                    defaultValue={Math.round((ps.midroll_after_secs || 0) / 60)}
+                    onBlur={saveMinutes('midroll_after_secs', 1, 120)}
+                    aria-label="Mid-roll only on videos longer than, in minutes"
+                  />
+                  <span className="field-suffix">min</span>
+                </div>
+              </div>
+              <div className="toggle-row">
+                <div>
+                  <b>One mid-roll, up to</b>
+                  <small>At this length or above, mid-rolls repeat instead of a single one</small>
+                </div>
+                <div className="ad-mins-field">
+                  <input
+                    type="number"
+                    className="ad-mins-input"
+                    min={1}
+                    max={360}
+                    disabled={!isAdmin}
+                    key={`long-${ps.midroll_long_after_secs}`}
+                    defaultValue={Math.round((ps.midroll_long_after_secs || 0) / 60)}
+                    onBlur={saveMinutes('midroll_long_after_secs', 1, 360)}
+                    aria-label="Videos longer than this repeat mid-rolls, in minutes"
+                  />
+                  <span className="field-suffix">min</span>
+                </div>
+              </div>
+              <div className="toggle-row">
+                <div>
+                  <b>Repeat every</b>
+                  <small>Spacing between mid-rolls on a long video</small>
+                </div>
+                <div className="ad-mins-field">
+                  <input
+                    type="number"
+                    className="ad-mins-input"
+                    min={1}
+                    max={60}
+                    disabled={!isAdmin}
+                    key={`gap-${ps.midroll_gap_secs}`}
+                    defaultValue={Math.round((ps.midroll_gap_secs || 0) / 60)}
+                    onBlur={saveMinutes('midroll_gap_secs', 1, 60)}
+                    aria-label="Minutes between repeating mid-rolls"
+                  />
+                  <span className="field-suffix">min</span>
+                </div>
+              </div>
+              <div className="toggle-row">
+                <div>
+                  <b>Most mid-rolls per play</b>
+                  <small>Never more than this, however long the video is</small>
+                </div>
+                <input
+                  type="number"
+                  className="ad-mins-input"
+                  min={1}
+                  max={10}
+                  disabled={!isAdmin}
+                  key={`max-${ps.midroll_max_count}`}
+                  defaultValue={ps.midroll_max_count ?? 3}
+                  onBlur={saveCount('midroll_max_count', 1, 10)}
+                  aria-label="Maximum mid-rolls per playback"
+                />
               </div>
               {!isAdmin && (
                 <p className="field-note">

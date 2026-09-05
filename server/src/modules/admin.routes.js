@@ -1284,12 +1284,23 @@ router.patch(
       auto_premiere_to_free: z.boolean().optional(),
       maintenance_mode: z.boolean().optional(),
       preroll_enabled: z.boolean().optional(),
-      preroll_skip_after_secs: z.coerce.number().int().min(0).max(60).optional(),
+      /* 0 used to mean "cannot be skipped"; that state is no longer offered
+         — every pre-roll can be skipped, the only question is how soon. */
+      preroll_skip_after_secs: z.coerce.number().int().min(3).max(15).optional(),
       ads_on_expired_premieres: z.boolean().optional(),
       share_ad_revenue: z.boolean().optional(),
       midroll_enabled: z.boolean().optional(),
-      /* A mid-roll needs a middle: anything under a minute has none. */
+      /* A mid-roll needs a middle: anything under a minute has none. Below
+         this, a video carries a pre-roll only. */
       midroll_after_secs: z.coerce.number().int().min(60).max(7200).optional(),
+      /* At or above this, mid-rolls repeat every midroll_gap_secs instead of
+         one at the midpoint. Must sit above midroll_after_secs for the tiers
+         to make sense, but that ordering is left to whoever is editing this
+         — the same trust this file already extends to every other pair of
+         related settings here. */
+      midroll_long_after_secs: z.coerce.number().int().min(60).max(21600).optional(),
+      midroll_gap_secs: z.coerce.number().int().min(60).max(3600).optional(),
+      midroll_max_count: z.coerce.number().int().min(1).max(10).optional(),
       postroll_enabled: z.boolean().optional(),
       show_demo_content_in_stats: z.boolean().optional(),
     })

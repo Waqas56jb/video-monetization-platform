@@ -386,13 +386,14 @@ function PlatformPanel() {
               label="Skip pre-roll after (seconds)"
               icon="timer"
               type="number"
-              min={0}
-              max={60}
+              min={3}
+              max={15}
               value={settings.preroll_skip_after_secs ?? ''}
               onChange={set('preroll_skip_after_secs')}
             />
             <p className="field-note" style={{ marginTop: -8 }}>
-              0 = ads cannot be skipped. 5 = Skip appears after the ad has played for five seconds.
+              Between 3 and 15 seconds. 8 = Skip appears after the ad has played for eight seconds.
+              A campaign may still set its own, overriding this default.
             </p>
 
             <div className="settings-divider" />
