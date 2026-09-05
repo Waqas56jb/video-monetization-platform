@@ -7,6 +7,7 @@ import TableScroll from '@/components/ui/TableScroll'
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import useApi, { tzs, compact, duration, shortDate, ACCESS_SHORT } from '@/hooks/useApi'
 import api from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 
 /**
  * How you have been getting on.
@@ -21,7 +22,16 @@ import api from '@/lib/api'
  */
 export default function AnalyticsTab() {
   const navigate = useNavigate()
-  const { data, loading, error, reload } = useApi(() => api.account.analytics(), [])
+  const { accountSide } = useAuth()
+  /**
+   * This tab is reachable from either side of a dual-role account (it's one
+   * of the shared tabs `Dashboard.jsx`'s `TABS_BY_ROLE` offers both). Without
+   * `side`, the server had no way to tell "capable of creator analytics"
+   * apart from "currently looking at the Watch dashboard", so it always
+   * returned the former — full creator figures leaking into a viewer-side
+   * visit. Re-fetches when the side is switched, not just on mount.
+   */
+  const { data, loading, error, reload } = useApi(() => api.account.analytics(accountSide), [accountSide])
 
   if (loading) return <Skeleton rows={5} />
   if (error) return <ErrorState error={error} onRetry={reload} />

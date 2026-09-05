@@ -22,7 +22,16 @@ const MAX_BIO = 500
 
 export default function ProfileTab() {
   const showToast = useToast()
-  const { reload: reloadAuth, isCreator } = useAuth()
+  const { reload: reloadAuth, isCreator, accountSide } = useAuth()
+  /**
+   * `isCreator` is pure capability — does this account have a creator
+   * profile at all — and a dual-role account keeps that capability on both
+   * sides of the dashboard. The fields gated on it below (creator name,
+   * category, the payout panel) are what leaked into a Watch-side visit:
+   * capability said yes regardless of which dashboard was actually open.
+   * `showCreatorFields` adds the side the raw capability doesn't know about.
+   */
+  const showCreatorFields = isCreator && accountSide === 'creator'
   const { data, loading, error, reload } = useApi(() => api.account.get(), [])
 
   const [form, setForm] = useState(null)
@@ -161,7 +170,7 @@ export default function ProfileTab() {
               required
             />
 
-            {isCreator && (
+            {showCreatorFields && (
               <>
                 <Field
                   id="pf-display"
@@ -252,7 +261,7 @@ export default function ProfileTab() {
               onChange={set('website')}
             />
 
-            {isCreator && (
+            {showCreatorFields && (
               <div className="field">
                 <label htmlFor="pf-socials">Social links</label>
                 <textarea
@@ -273,7 +282,7 @@ export default function ProfileTab() {
           </form>
         </Panel>
 
-        {isCreator && (
+        {showCreatorFields && (
           <Panel title="Getting paid">
             <PayoutForm creator={data.creator} onSaved={() => reload({ quiet: true })} />
           </Panel>

@@ -444,7 +444,14 @@ export const api = {
     update: (body) => patch('/api/account', body),
     uploadAvatar: (file) => sendFile('/api/account/avatar', file),
     removeAvatar: () => del('/api/account/avatar'),
-    analytics: () => get('/api/account/analytics'),
+    /**
+     * `side` tells the server which dashboard is open right now — Watch or
+     * Create — so a dual-role account looking at its Watch side gets
+     * viewer-only figures back, not the full creator analytics its
+     * capability alone would otherwise return. Optional: omitting it keeps
+     * the old capability-only behaviour for any other caller.
+     */
+    analytics: (side) => get(`/api/account/analytics${side ? `?side=${side}` : ''}`),
     close: () => post('/api/account/close', { confirm: 'DELETE' }),
 
     /** Applying to sell on the platform, and how that application is going. */

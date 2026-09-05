@@ -299,7 +299,17 @@ router.delete(
 router.get(
   '/analytics',
   asyncHandler(async (req, res) => {
+    /**
+     * Capability alone used to decide this — so a dual-role account looking
+     * at its Watch dashboard was handed full creator analytics (views,
+     * unlocks, conversion, revenue) regardless, because the server had no
+     * idea which side was actually open. `side=viewer` is how the client
+     * says so; it can only ever narrow the response, never widen it — a
+     * pure viewer asking for `side=creator` still gets nothing extra below,
+     * since `isCreator` is still what gates the creator half.
+     */
     const isCreator = await hasCreatorAccess(req.user)
+    const wantsViewerSide = req.query.side === 'viewer'
 
     /* ---------------- what I have watched and bought ---------------- */
     const [spend, owned, recent] = await Promise.all([
@@ -339,7 +349,7 @@ router.get(
       })),
     }
 
-    if (!isCreator) return res.json({ role: 'viewer', viewer, creator: null })
+    if (!isCreator || wantsViewerSide) return res.json({ role: 'viewer', viewer, creator: null })
 
     /* ------------------------- what I am selling ------------------------- */
     const [totals, daily, topVideos, byAccess] = await Promise.all([

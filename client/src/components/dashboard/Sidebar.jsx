@@ -200,7 +200,18 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
         )}
 
         <div className="side-foot">
-          {accountRole === 'admin' && isCreator && (
+          {/**
+            * This used to be admin-only, which meant an ordinary person who
+            * had genuinely signed up on both Watch and Create — not staff,
+            * just a real dual-role account — had no in-dashboard way to
+            * switch sides at all, only signing out and back in choosing the
+            * other option on the login screen. `sides.creator && sides.viewer`
+            * is the same "does this account genuinely have both" check the
+            * missing-side prompt above already uses; staff keep their own
+            * admin-only path since `isCreator` is true for them by role,
+            * not because they signed up on Create.
+            */}
+          {(staff ? accountRole === 'admin' && isCreator : Boolean(sides?.creator) && Boolean(sides?.viewer)) && (
             <button
               className="side-link"
               type="button"

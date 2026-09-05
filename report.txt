@@ -704,6 +704,43 @@ FIX SIZE: M
 DEVICE-SPECIFIC: no
 ```
 
+RESOLUTION (2026-09-06):
+
+- **`ProfileTab.jsx`** — the leak's actual location. Creator name/category, the verified-creator
+  note, and the "Getting paid" payout panel now gate on `showCreatorFields = isCreator &&
+  accountSide === 'creator'` instead of raw `isCreator`. A dual-role account on the Watch side no
+  longer sees any of it; the write path was already safe (`account.routes.js:184`'s
+  `if (await hasCreatorAccess(...))` already skipped creator-field writes for anyone without
+  capability, side or no side — this was always a display leak, never a write hole, confirmed
+  again by re-reading it).
+- **`AnalyticsTab.jsx` + server `GET /api/account/analytics`** — this one needed a server change,
+  because the server had no concept of "side" at all: `hasCreatorAccess` alone decided the response
+  shape, so a dual-role account on Watch got full creator analytics regardless of which dashboard
+  was open. The client now calls `api.account.analytics(accountSide)`, sent as `?side=viewer`; the
+  route adds `wantsViewerSide = req.query.side === 'viewer'` and the early-return becomes
+  `if (!isCreator || wantsViewerSide) return res.json({ role: 'viewer', ... })`. This can only ever
+  narrow the response — nothing reads `side === 'creator'` anywhere, so the query string cannot grant
+  data capability alone would refuse (a dedicated test asserts exactly that absence). Every existing
+  caller that never sends `side` keeps today's behaviour unchanged.
+- **The dual-role dashboard switch** (`Sidebar.jsx`) — was `accountRole === 'admin' && isCreator`,
+  meaning an ordinary person who had genuinely signed up on both Watch and Create, not staff, had no
+  in-dashboard way to switch sides at all. Now `sides.creator && sides.viewer` for non-staff — the
+  same "does this account genuinely have both" test the existing missing-side prompt already uses —
+  with staff keeping their original admin-only path unchanged. "Current mode obvious" needed no new
+  UI: the `role-chip` badge (`CREATOR ACCOUNT` / `VIEWER ACCOUNT`) already reads `menuRole`, which
+  already derives from the side-aware `panelRole` — confirmed by tracing it, not assumed.
+- **Server-side role guards**: re-confirmed unchanged and still correct by re-reading
+  `middleware/auth.js` — `requireAdmin()` still explicitly refuses `sub_admin`, `requirePermission`
+  still checks `staff_permissions` per request. Still no live-HTTP 403 test exists for a viewer token
+  against a creator-only route (report.txt's "untested, not confirmed broken" stands) — out of scope
+  for this fix, which was about the display leak the client actually reported.
+- **New tests**: `ProfileTab.test.js` (2), `AnalyticsTab.test.js` (2), `Sidebar.test.js` (2) on the
+  client — all source-level, matching this codebase's existing style for components with no render
+  harness — plus `account.analyticsSide.test.js` (2) on the server, asserting both that `side=viewer`
+  narrows the response and that no code path lets `side=creator` widen it. `client` 168/168 pass
+  (was 162), `server` 124/124 (was 122), `hover:audit`/`split:audit`/`build`/`smoke:render` all
+  green, `admin` build clean (unaffected — this issue touched no admin files).
+
 ---
 
 ## ISSUE 8 — Test/duplicate data
