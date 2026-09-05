@@ -6,7 +6,7 @@ import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
 import BusyButton from '@/components/ui/BusyButton'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
-import { useDebounced } from '@/hooks/useApi'
+import { useDebounced, withTimeout } from '@/hooks/useApi'
 import { useProgressBar } from '@/context/ProgressContext'
 import { toCard, videoLink, isPublicCatalogueVideo } from '@/lib/videoView'
 import { CATEGORIES } from '@/data/copy'
@@ -70,14 +70,20 @@ export default function Explore() {
       }
       setError(null)
       try {
-        const res = await api.videos.list({
-          q: debounced || undefined,
-          category: category || undefined,
-          access: access || undefined,
-          sort,
-          limit: PAGE_SIZE,
-          offset,
-        })
+        // Called directly rather than through useApi (this needs append/quiet
+        // modes useApi doesn't have), which meant it never inherited useApi's
+        // bounded wait — a hung request left "Loading videos…" spinning with
+        // no way to reach the retry button below, on the main catalogue page.
+        const res = await withTimeout(
+          api.videos.list({
+            q: debounced || undefined,
+            category: category || undefined,
+            access: access || undefined,
+            sort,
+            limit: PAGE_SIZE,
+            offset,
+          })
+        )
         const rows = (res?.videos || []).filter(isPublicCatalogueVideo)
         setVideos((prev) => (append ? [...prev, ...rows] : rows))
         setTotal(res?.total ?? 0)

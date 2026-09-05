@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell, CheckCheck, Megaphone, ShieldCheck, UserCog } from 'lucide-react'
 import api from '@/lib/api'
-import { timeAgo } from '@/hooks/useApi'
+import { timeAgo, withTimeout } from '@/hooks/useApi'
 
 /**
  * The viewer's and creator's inbox.
@@ -30,7 +30,10 @@ export default function NotificationBell() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.inbox.list({ limit: 25 })
+      // Bounded so a hung request cannot leave `loading` true forever and
+      // stack up with the next 60s poll — a quiet failure is fine here, an
+      // unbounded wait is not.
+      const res = await withTimeout(api.inbox.list({ limit: 25 }))
       setItems(res.notifications || [])
       setUnread(res.unread || 0)
     } catch {

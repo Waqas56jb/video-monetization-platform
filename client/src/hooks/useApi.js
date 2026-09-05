@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 const FETCH_TIMEOUT_MS = 10_000
 
-function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
+/**
+ * Bounds any promise to a fixed wait, rejecting with the same "tap to retry"
+ * message this hook already uses — so a screen that calls `api.*` directly
+ * (Reset's token check, Explore's catalogue fetch) can get the same bounded
+ * wait and the same retry copy as everything that already goes through
+ * `useApi`, without switching to the hook itself.
+ */
+export function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('No connection — tap to retry'))

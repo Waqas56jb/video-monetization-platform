@@ -4,6 +4,7 @@ import { CheckCircle2, RefreshCcw, ShieldCheck, AlertTriangle } from 'lucide-rea
 import AuthLayout from '@/components/auth/AuthLayout'
 import { PasswordField } from '@/components/ui/Field'
 import api from '@/lib/api'
+import { withTimeout } from '@/hooks/useApi'
 import { useToast } from '@/context/ToastContext'
 import { authUrl } from '@/lib/nextPath'
 
@@ -46,6 +47,9 @@ export default function Reset() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
+  /** Bumped to re-run the check below without duplicating its body. */
+  const [attempt, setAttempt] = useState(0)
+
   useEffect(() => {
     let alive = true
 
@@ -56,20 +60,34 @@ export default function Reset() {
 
     // Take the token out of the address bar so it is not left sitting in
     // browser history or handed to whatever the user visits next.
-    window.history.replaceState(null, '', window.location.pathname)
+    if (attempt === 0) window.history.replaceState(null, '', window.location.pathname)
 
-    api.auth
-      .checkResetToken(token)
+    setState({ status: 'checking' })
+
+    /**
+     * "Checking your link…" had no timeout at all — a hung request left it
+     * spinning forever, with no way out short of reloading the page. Bounded
+     * to the same 10s every other screen already waits, and a timeout gets
+     * its own state rather than reusing "invalid": the link may be
+     * perfectly good, the network just did not answer, and "request a new
+     * link" is the wrong instruction for that.
+     */
+    withTimeout(api.auth.checkResetToken(token))
       .then((res) => {
         if (!alive) return
         setState(res?.valid ? { status: 'ready', token, ...res } : { status: 'invalid' })
       })
-      .catch((err) => alive && setState({ status: 'invalid', message: err.message }))
+      .catch((err) => {
+        if (!alive) return
+        const timedOut = err?.message === 'No connection — tap to retry'
+        setState(timedOut ? { status: 'timeout' } : { status: 'invalid', message: err.message })
+      })
 
     return () => {
       alive = false
     }
-  }, [token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, attempt])
 
   const loginHref = authUrl('login', null, { side: loginSide })
 
@@ -128,6 +146,27 @@ export default function Reset() {
           <div className="skeleton" />
           <div className="skeleton" />
         </div>
+      </AuthLayout>
+    )
+  }
+
+  /* ---- the check timed out — not the same as an invalid link ---- */
+  if (state.status === 'timeout') {
+    return (
+      <AuthLayout
+        side={side}
+        back={back}
+        title="Taking longer than usual"
+        subtitle="Your connection may be slow — this does not mean the link is bad."
+      >
+        <div className="form-error" role="alert">
+          <AlertTriangle style={{ width: 16, height: 16, flexShrink: 0 }} />
+          No connection — tap to retry
+        </div>
+        <button className="btn btn-gold btn-block" type="button" onClick={() => setAttempt((n) => n + 1)}>
+          <RefreshCcw />
+          Try again
+        </button>
       </AuthLayout>
     )
   }

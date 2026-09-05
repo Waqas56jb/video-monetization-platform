@@ -88,7 +88,11 @@ async function run() {
     adminToken = adminLogin.json.session.accessToken
     ok('admin signs in')
   } else {
-    bad('admin signs in', 'seeded admin not found — run: npm run db:seed')
+    // `db:seed` does not create this account — it never has, it only prints
+    // a reminder to run admin:create. That mismatch was the actual bug the
+    // last review found: this exact fixture (admin@mtonyo.tz) simply didn't
+    // exist on production, so this check always failed there.
+    bad('admin signs in', "fixture admin not found — run: npm run admin:create -- admin@mtonyo.tz 'Mtonyo!Admin2026'")
   }
 
   /* ------------------------------------------------------------- video */
