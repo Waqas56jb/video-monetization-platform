@@ -21,6 +21,11 @@ import { log } from '../lib/logger.js'
 
 function isDue(video) {
   if (!video || video.access_type !== 'paid_premiere') return false
+  // release_model is null on a row read before migration 036 backfilled it
+  // (a query that doesn't select the column, or a stale in-memory object) —
+  // treated as premiere_to_free rather than blocking conversion, since every
+  // paid_premiere row the backfill touched was mapped to exactly that.
+  if (video.release_model != null && video.release_model !== 'premiere_to_free') return false
   if (!video.premiere_ends_at) return false
   return new Date(video.premiere_ends_at).getTime() <= Date.now()
 }
@@ -38,6 +43,7 @@ async function switchOne(v, settings, actorId) {
                 premiere_ends_at = null
           where id = $1
             and access_type = 'paid_premiere'
+            and release_model = 'premiere_to_free'
           returning *`,
         [v.id, settings.ads_on_expired_premieres]
       )
@@ -69,7 +75,11 @@ async function switchOne(v, settings, actorId) {
  */
 export async function expireIfDue(video, { actorId = null } = {}) {
   // Fast path: no round trip unless this title is a paid premiere whose
-  // window has already closed. Watch hits this on every Play.
+  // window has already closed. Watch hits this on every Play. `isDue` is
+  // also where the release_model guard lives — an admin who pinned this
+  // title to `exclusive` (or anything but premiere_to_free) meant to stop
+  // it converting on its own, and `isDue` is the one place that decision
+  // has to be honoured for both this fast path and the nightly sweep below.
   if (!video || video.access_type !== 'paid_premiere') return video
   if (!isDue(video)) return video
   const settings = await getSettings({ fresh: true })
@@ -85,9 +95,10 @@ export async function runPremiereExpiry({ actorId = null, dryRun = false } = {})
   }
 
   const due = await many(
-    `select id, title, creator_id, premiere_ends_at
+    `select id, title, creator_id, premiere_ends_at, release_model
        from videos
       where access_type = 'paid_premiere'
+        and release_model = 'premiere_to_free'
         and is_published = true
         and deleted_at is null
         and premiere_ends_at is not null

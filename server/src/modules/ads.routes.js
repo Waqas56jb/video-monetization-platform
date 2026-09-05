@@ -22,7 +22,7 @@ const router = Router()
 const videoForAds = (idOrSlug) =>
   one(
     `select v.id, v.title, v.creator_id, v.category, v.access_type, v.ads_enabled,
-            v.is_published, v.duration_seconds, v.premiere_ends_at
+            v.is_published, v.duration_seconds, v.premiere_ends_at, v.release_model
        from videos v
       where ${whereIdOrSlug('v')} and v.deleted_at is null`,
     videoKeyParams(idOrSlug)

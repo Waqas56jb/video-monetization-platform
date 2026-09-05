@@ -450,6 +450,16 @@ router.patch(
       adsEnabled: z.boolean().optional(),
       /* The front-page choice. Deliberately not tied to publication. */
       featured: z.boolean().optional(),
+      /**
+       * `exclusive` has no accessType analogue — an admin sets it here
+       * directly. Omitting this field while changing accessType re-derives
+       * it from the new accessType instead (below), UNLESS the video is
+       * already `exclusive`, which an ordinary accessType/price edit must
+       * not silently undo.
+       */
+      releaseModel: z.enum(['permanent_paid', 'premiere_to_free', 'exclusive']).optional(),
+      /* Admin-only editorial flag — see 036_release_model.sql. */
+      isOriginal: z.boolean().optional(),
     })
   ),
   asyncHandler(async (req, res) => {
@@ -476,7 +486,16 @@ router.patch(
              premiere_days        = case when coalesce($2, access_type) = 'paid_premiere'
                                          then coalesce($5, premiere_days) else null end,
              ads_enabled          = coalesce($6, (coalesce($2, access_type) = 'free_with_ads')),
-             featured             = coalesce($7, featured)
+             featured             = coalesce($7, featured),
+             release_model        = coalesce(
+                                       $8::release_model,
+                                       case when release_model = 'exclusive' then release_model
+                                            when coalesce($2, access_type) = 'paid_premiere'
+                                              then 'premiere_to_free'::release_model
+                                            else 'permanent_paid'::release_model
+                                       end
+                                     ),
+             is_original          = coalesce($9, is_original)
            where id = $1 returning *`,
           [
             video.id,
@@ -486,6 +505,8 @@ router.patch(
             b.premiereDays ?? null,
             b.adsEnabled ?? null,
             b.featured ?? null,
+            b.releaseModel ?? null,
+            b.isOriginal ?? null,
           ]
         )
         return rows[0]

@@ -103,6 +103,10 @@ export function publicVideo(v, access = null) {
     adsEnabled: v.ads_enabled,
     /* Editorial, not measured — see migration 010. */
     featured: v.featured ?? false,
+    /* The release strategy and the admin-only "Original" flag — see
+       migration 036. Neither changes entitlement; both are read-only here. */
+    releaseModel: v.release_model ?? 'permanent_paid',
+    isOriginal: v.is_original ?? false,
     views: v.views,
     paidUnlocks: v.paid_unlocks,
     publishedAt: v.published_at,

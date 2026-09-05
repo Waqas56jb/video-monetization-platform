@@ -1264,6 +1264,57 @@ FIX SIZE: M
 DEVICE-SPECIFIC: no
 ```
 
+RESOLUTION (2026-09-06): Built as designed in this report, migration numbered `036` (035 was
+claimed by Issue 4 in the same pass).
+
+- **Migration `036_release_model.sql`**: `release_model` enum (`permanent_paid` / `premiere_to_free`
+  / `exclusive`) and `is_original boolean` added to `videos`. Backfill mapping applied and verified
+  on production exactly as designed: `paid_premiere → premiere_to_free` (7 rows), everything else
+  → `permanent_paid` (9 `ppv_forever` + 12 `free_with_ads` rows) — read back live after migrating,
+  matching the design table precisely.
+- **Cron + `expireIfDue` skip anything but `premiere_to_free`**: `isDue()` gained
+  `release_model !== 'premiere_to_free'` alongside its existing `access_type` check; `switchOne`'s
+  own `UPDATE ... WHERE` gained the same condition as defense in depth (so a stale in-memory `video`
+  object can't cause a wrong write even if a caller's read raced a change); `runPremiereExpiry`'s
+  nightly sweep selects and filters on the column too. Threaded `release_model` into every SELECT
+  that feeds a `video` object into `expireIfDue` where it was missing (`ads.routes.js`'s
+  `videoForAds` explicitly listed columns; the other two call sites in `videos.routes.js` and
+  `playback.routes.js` already use `v.*` and needed no change) — without this, the guard would have
+  silently no-op'd on `undefined` for most callers, which would have made the whole fix a no-op in
+  practice. Caught by checking each call site individually rather than assuming `v.*` everywhere.
+- **Admin controls** (`admin.routes.js` `PATCH /videos/:id`): `releaseModel`/`isOriginal` added to
+  the zod schema and the `UPDATE`. Omitting `releaseModel` while changing `accessType` re-derives it
+  from the new access type automatically, UNLESS the video is already `exclusive` — an ordinary
+  price/preview edit must not silently undo an admin's exclusive designation. Same "preserve
+  exclusive" logic added to the **creator's own** `PATCH /:id` (`videos.routes.js`) for the same
+  reason, with `releaseModel`/`isOriginal` absent from that schema entirely — a creator has no way
+  to request either, by omission rather than a rejection message.
+- **Exclusive's paid/free/unavailable, with no new database concept**: paid/free reuses the existing
+  `accessType`/`priceTzs` fields (an admin flips between `ppv_forever` and `free_with_ads` for an
+  exclusive title, same as any other), and "unavailable" reuses the existing unpublish action
+  (`is_published = false`) — both already fully implemented and tested (M2-VERIFY C7 for unpublish),
+  so nothing new needed building for either.
+- **Admin UI** (`admin/src/components/tabs/VideosTab.jsx`): a Release Model select per row (all
+  three values), a second select for exclusive's paid/free choice that only appears when
+  `releaseModel === 'exclusive'`, and a new "MTONYO+ Original" icon toggle next to the existing
+  Featured one, with a matching gold pill in the Status column so the state is visible without
+  hovering — the same pattern Featured already uses. `admin` build clean.
+- **Upload UI**: confirmed, not changed. `UploadTab.jsx` still only exposes the three `accessType`
+  choices, which map to `permanent_paid`/`premiere_to_free` automatically — `exclusive` and
+  `is_original` were never added to that form, per spec ("admin-only").
+- **Split for originals reads settings — no new hardcode.** No new split-calculation path was added
+  anywhere in this change; the settlement path remains exactly `payments.service.js:41-42`
+  (`splitPercentFor` → `applySplit`), unchanged and unbranched on `is_original`. `client/scripts/
+  split-literal-audit.mjs` (Issue 1) continues to guard the client/admin side against a literal
+  split ever appearing near this feature's copy.
+- **Buyers keep access — now a real regression test, not just an argument.** New
+  `server/src/modules/videos.releaseModel.test.js` (3 tests) asserts structurally that neither the
+  admin nor the creator write path for `release_model`/`is_original` ever touches `purchases` or
+  `earnings`, that `exclusive`/`isOriginal` are absent from the creator-facing schema, and that an
+  unrelated creator edit cannot revert an exclusive video. New
+  `server/src/jobs/premiere.releaseModel.test.js` (3 tests) pins the cron/expiry guard at all three
+  of its call sites. `server` 130/130 pass (was 124).
+
 ---
 
 ## ISSUE 12 — Social deep link: shared link → exact video page → preview autoplays muted, no extra Play

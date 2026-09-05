@@ -382,6 +382,14 @@ router.patch(
       }
     }
 
+    /**
+     * A creator only ever chooses between the two access types that exist
+     * today — exclusive has no accessType analogue and is admin-only, set
+     * through the admin video-edit route instead, the only place a release
+     * model can be sent explicitly. If an admin has already pinned this
+     * video to exclusive, an ordinary creator edit here must not silently
+     * undo that — hence the case branch keeping it as-is below.
+     */
     const updated = await one(
       `update videos set
          title                = coalesce($2, title),
@@ -396,7 +404,12 @@ router.patch(
            else preview_uid
          end,
          premiere_days        = coalesce($8, premiere_days),
-         ads_enabled          = (coalesce($5, access_type) = 'free_with_ads')
+         ads_enabled          = (coalesce($5, access_type) = 'free_with_ads'),
+         release_model        = case when release_model = 'exclusive' then release_model
+                                      when coalesce($5, access_type) = 'paid_premiere'
+                                        then 'premiere_to_free'::release_model
+                                      else 'permanent_paid'::release_model
+                                 end
        where id = $1 returning *`,
       [
         video.id,

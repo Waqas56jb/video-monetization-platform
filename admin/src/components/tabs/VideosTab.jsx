@@ -38,6 +38,18 @@ const ACCESS_LABEL = {
 }
 
 /**
+ * The release strategy — see 036_release_model.sql. Creators choose between
+ * the first two at upload (mapped automatically from their accessType
+ * choice); only an admin can set `exclusive`, which is why it is the one
+ * option a creator never sees anywhere in the studio.
+ */
+const RELEASE_LABEL = {
+  permanent_paid: 'Permanent Paid',
+  premiere_to_free: 'Premiere → Free',
+  exclusive: 'Exclusive',
+}
+
+/**
  * Every video on the platform.
  *
  * Removal here is a soft delete and always will be: somebody paid for that
@@ -159,6 +171,43 @@ export default function VideosTab() {
                     <td>{v.creatorName || v.creator?.name || '—'}</td>
                     <td>
                       <span className="pill free">{ACCESS_LABEL[v.accessType] || v.accessType}</span>
+                      <select
+                        className="release-model-select"
+                        value={v.releaseModel || 'permanent_paid'}
+                        onChange={(e) =>
+                          act(
+                            () => api.admin.updateVideo(v.id, { releaseModel: e.target.value }),
+                            `Release model set to ${RELEASE_LABEL[e.target.value]}`
+                          )
+                        }
+                        title="Release model — exclusive is admin-only"
+                      >
+                        {Object.entries(RELEASE_LABEL).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                      {/* Exclusive has no accessType analogue of its own — this is
+                          where an admin picks paid or free for it. "Unavailable"
+                          is the existing Publish/Unpublish action in this same
+                          row; a hidden video needs no third state to express it. */}
+                      {v.releaseModel === 'exclusive' && (
+                        <select
+                          className="release-model-select"
+                          value={v.accessType === 'free_with_ads' ? 'free_with_ads' : 'ppv_forever'}
+                          onChange={(e) =>
+                            act(
+                              () => api.admin.updateVideo(v.id, { accessType: e.target.value }),
+                              e.target.value === 'free_with_ads' ? 'Exclusive title set to free' : 'Exclusive title set to paid'
+                            )
+                          }
+                          title="Exclusive: paid or free"
+                        >
+                          <option value="ppv_forever">Paid</option>
+                          <option value="free_with_ads">Free</option>
+                        </select>
+                      )}
                     </td>
                     <td>{v.accessType === 'free_with_ads' ? 'Free' : tzs(v.priceTzs)}</td>
                     <td>{compact(v.views)}</td>
@@ -168,6 +217,11 @@ export default function VideosTab() {
                       {v.featured && !removed && (
                         <span className="pill gold" style={{ marginLeft: 6 }}>
                           Featured
+                        </span>
+                      )}
+                      {v.isOriginal && !removed && (
+                        <span className="pill gold" style={{ marginLeft: 6 }}>
+                          Original
                         </span>
                       )}
                     </td>
@@ -195,6 +249,20 @@ export default function VideosTab() {
                             }
                           />
                         )}
+                        {/* Admin-only editorial label — no effect on entitlement,
+                            pricing or the paywall. Same category of flag as
+                            Featured, just a different badge. */}
+                        <IconButton
+                          icon="badge-check"
+                          title={v.isOriginal ? 'Remove "MTONYO+ Original"' : 'Mark as "MTONYO+ Original"'}
+                          tone={v.isOriginal ? undefined : 'good'}
+                          onClick={() =>
+                            act(
+                              () => api.admin.updateVideo(v.id, { isOriginal: !v.isOriginal }),
+                              v.isOriginal ? 'No longer marked Original' : 'Marked as MTONYO+ Original'
+                            )
+                          }
+                        />
                         {v.isPublished && !removed && (
                           <IconButton
                             icon="eye-off"
