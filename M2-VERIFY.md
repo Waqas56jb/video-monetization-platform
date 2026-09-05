@@ -1200,3 +1200,89 @@ where it races nothing. **Three consecutive full runs, all four profiles: ALL PA
 ---
 
 *Further items are appended as they are verified.*
+
+---
+
+## PROMPT-B — all 12 client issues fixed, migrated and verified live (2026-09-06)
+
+Full run: `report.txt` at the repo root has the per-issue diagnosis and a `RESOLUTION:` block under
+each of the 12 issues with file:line evidence, the exact test/tool output, and (where the code
+changed) the live production before/after. This entry is the run-level roll-up: the full test
+suites, the CLI battery, and the migration/deploy trail, all re-run once more after every issue
+had landed — not just after each one individually.
+
+### Why no new browser-timing numbers appear here
+
+**Playwright is not installed anywhere in this environment**, confirmed repeatedly across this
+run (Issues 2, 4, 9 all hit this independently). No Chromium, no WebKit, no Edge binary either.
+Every browser-timing claim in this section is therefore either a citation of an existing measured
+number (unchanged code paths) or explicitly marked as needing a real device — see
+`BROWSER-CHECKLIST.md` §8, new in this run, for exactly what that is. The three-video harness,
+Home-first-card and the seven-profile journey matrix from earlier rounds could not be re-run here
+for the same reason; nothing in this run touched the code paths those measure (`StreamPlayer.jsx`'s
+timing-relevant logic, the Home page's own fetch sequence) except Issue 2's poster layer, which is
+additive and z-index-only — argued, not measured, to cost nothing — see report.txt Issue 2.
+
+### Full CLI battery, run once more after all 12 issues landed, production
+
+```
+npm run smoke                    38 passed · 1 failed
+  (the 1: "creator submits for review" — a rights-confirmation validation
+   added 2026-08-14, unrelated to any of the 12 issues, pre-existing)
+  A second failure this same run found — "admin edits premiere days" — was
+  a stale smoke assertion (approval stopped rewriting premiereDays back on
+  2026-08-14 too; the test was never updated) and was fixed in this pass
+  rather than left red.
+
+node scripts/follow-cli.mjs      ALL PASS — 19 creators, 0 disagreeing with the follows table
+node scripts/library-cli.mjs     ALL PASS — account left exactly as found
+node scripts/capital-cli.mjs     ALL PASS — every route, a creator token and an admin token,
+                                  throwaway row created and deleted, account left as found
+                                  (first run caught a real bug — see report.txt Issue 10)
+```
+
+### Full test suites and builds, final state
+
+```
+server   137 tests, 137 pass, 0 fail   (was 115 at the last PROMPT-11/12 checkpoint)
+client   173 tests, 173 pass, 0 fail   (was 156)
+admin    built clean, no warnings
+hover:audit    21/21 guarded (unchanged)
+split:audit    0 offenders (new this run — Issue 1)
+smoke:render   every page rendered (client)
+```
+
+### Migrations applied to production, this run
+
+```
+034_is_demo_flag.sql          applied  2026-09-05 20:57:43   (Issue 8)
+035_ad_break_schedule.sql     applied  2026-09-05 21:51:53   (Issue 4)
+036_release_model.sql         applied  2026-09-05 22:31:35   (Issue 11)
+037_creator_capital.sql       applied  2026-09-05 22:43:57   (Issue 10)
+```
+
+`db:status` confirms all four `applied`, no pending migrations, immediately after the run.
+
+### Deploy trail
+
+18 commits, `05ef2ab` (the state report.txt's diagnosis was written against) through `12222ec`.
+Each commit was pushed individually and its Railway `X-Build` header polled until it matched
+before moving to the next issue — no issue's live-verification claims in report.txt were checked
+against a build that had not actually finished deploying. Final `X-Build: 12222ec`.
+
+### What is still known-broken or known-unverifiable, carried forward rather than hidden
+
+- **Safari cannot be proven to play video in this environment at all** (no MSE in the WebKit build
+  available here) — unchanged from every prior round, and the reason `BROWSER-CHECKLIST.md` exists.
+- **`creator submits for review` in `smoke.js`** fails on the rights-confirmation step — pre-dates
+  this run (2026-08-14), not one of the 12 issues, left as found rather than fixed opportunistically.
+- **Issue 2's tap→poster / tap→first-frame numbers** are argued from code (no timing/rendering
+  logic touched, only a stacking-order-safe visual layer added) rather than measured, for lack of
+  any browser automation here. New checklist item.
+- **Issue 4's repeating mid-roll tier** (20+ minute videos) has no video in the current catalogue
+  long enough to exercise live — covered instead by 8 unit tests against every boundary.
+- **Issue 5's promo-clip download and the Facebook Android intent** are real-device-only checks,
+  now on `BROWSER-CHECKLIST.md` §8.
+- **A stray Postgres `42883` bug in Issue 10's admin list** was caught and fixed by actually running
+  the CLI script live, not by the unit tests — recorded in report.txt as a reminder that a test
+  asserting SQL text is not the same as a test that executes it.

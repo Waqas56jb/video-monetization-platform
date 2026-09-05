@@ -104,6 +104,23 @@ here at all.
 | ☐ | iPhone and iPad | Open `/`, `/explore`, a video, `/dashboard`, and a creator's page | Nothing is cut off at the right edge. No text sits on top of other text. |
 | ☐ | iPad **with a keyboard or trackpad** | Tap a video card, Log in, Unlock, Share, the logo | Each one reacts to the **first** tap. This is the profile that used to need two. |
 
+## 8 · Poster continuity, and the share buttons this pass touched
+
+New from the Prompt B fix pass. The poster fix (Issue 2) and the share-button changes (Issue 5)
+are confirmed correct by code reading and by the regression tests that guard the old bugs, but
+neither a stopwatch measurement nor "does WhatsApp's own client behave as expected" is something
+this environment can produce — no Playwright is installed here at all, so none of this pass's
+browser-timing claims were re-measured on any engine, headless or real.
+
+| ☐ | Device | URL | Do this | Expect |
+|---|---|---|---|---|
+| ☐ | iPhone · Safari | any `/watch/…`, tapped from a fresh Explore card | Time from the tap to the poster appearing | Under about 400ms — it should feel instant, not a flash of grey then the picture. |
+| ☐ | iPhone · Safari | same | Time from the tap to the film actually moving | No slower than before this pass (the recorded baseline: roughly 2.4–3.6s on a warm connection). The poster fix only changes what is on screen *during* that wait, not how long the wait is. |
+| ☐ | MacBook · Safari | any `/watch/…` | Share → Facebook | Opens Facebook (a browser tab to the sharer page on a laptop is correct — there is no better native option on desktop). |
+| ☐ | Android phone | any `/watch/…` | Share → Facebook | The Facebook **app** opens, not just a browser tab — this is the one platform this pass's fix specifically changed. |
+| ☐ | iPhone · Safari | any `/watch/…` | Share → Save 60s promo clip | Either a file actually saves, or the clip opens/plays in place (iOS Safari does not support saving from a plain link — this is expected, not a bug) — but never a silently blank tap with nothing visibly happening. |
+| ☐ | iPad · Safari | same | Same | Same. |
+
 ---
 
 ## Recording what you find

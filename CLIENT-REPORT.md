@@ -815,3 +815,281 @@ library makes, and it was tested rather than assumed.
 
 One further account was created by accident while checking whether the sign-up form would accept
 a test email address. It had no activity and has already been removed.
+
+---
+
+# Part Two — the final review (4–5 September)
+
+Everything below answers the twelve items from your final review before handover. Same rule as
+Part One: every claim here was checked against the live site, and where something could only be
+checked from a computer rather than your own phone, it says so. Full technical detail — file
+names, line numbers, exact command output — lives in `report.txt` at the project root; this part
+is the plain-language version of the same twelve fixes.
+
+## 1 · The revenue split showing 60/40 in places
+
+**PROBLEM.** You set the platform to a 70/30 split — 70% to the creator — and some pages still
+showed 60/40.
+
+**ROOT CAUSE.** Two separate things, and only one of them was a bug. First, a real bug: one line
+of marketing copy on the homepage ("Generous 70/30 revenue split") was typed in by hand rather
+than read from your settings, so it would silently go stale the next time you changed the number.
+Second, not a bug but something worth knowing: the setting was actually **at 60/40 in production
+for about a week, from 27 August to 4 September**, before being corrected back to 70/30. Every
+other screen you saw — the homepage stat, the admin Revenue tab, the Creator dashboard, payment
+calculations — was already reading that live setting correctly the entire time. They showed
+60/40 because it *was* 60/40, not because they were wrong.
+
+**FIX MADE.** The one hard-coded line now reads the same live number everything else already
+does. A new automatic check was added that fails the next build if a literal split percentage
+ever gets typed into the code again anywhere — this class of bug cannot come back silently.
+
+**About the week at 60/40.** Every sale and every advertising payment your platform has ever
+recorded keeps the split it was actually sold under, permanently — this is deliberate, the same
+principle as a receipt: money already paid out is not silently restated later. Thirty-seven of
+those records — thirty-four sales and three advertising payments, all during that one week — are
+therefore recorded at 60/40. All of them are sandbox test transactions from the review work
+itself; no real money and no real creator was affected except two, by a very small amount (about
+1,300 TZS combined) that reflects the actual rate live at the time they were paid. Per your own
+rule that history stays as recorded, nothing was rewritten. If you want those two real amounts
+topped up by hand, say so and it is a five-minute admin action; otherwise nothing further is
+needed.
+
+**HOW TESTED.** The split was changed live on production from 70 to 65 and back, and every
+reading screen was checked before, during and after — all of them followed the number instantly,
+and the permanent historical records did not move. Full command-by-command evidence in
+`report.txt`, Issue 1.
+
+## 2 · The 1–3 second black screen before a video starts
+
+**PROBLEM.** Tapping a video shows a black box for a moment before the picture appears.
+
+**ROOT CAUSE.** Two different things share this symptom, and only one of them is fixable from our
+side. About 3.5 seconds of every video's start-up is Cloudflare's own player loading its software
+and buffering — that floor is not something this platform controls, and is explained in full in
+Part One §16. What *is* ours: the instant your poster picture handed off to Cloudflare's player,
+there was a genuine gap — our picture disappeared a beat before Cloudflare's had anything to show,
+leaving plain black in between.
+
+**FIX MADE.** Your video's own thumbnail now stays on screen, sitting directly behind the player,
+for the entire handoff — it only disappears once Cloudflare's picture has actually arrived, never
+before. This holds on every way of reaching a video: tapping a card, a direct link, a shared
+WhatsApp link, and coming back with the browser's Back button.
+
+**HOW TESTED.** Confirmed in the code that nothing about how long a video takes to actually start
+was touched — only what is on screen during the wait that was already there. A dedicated
+automatic test now locks this in, and a very deliberate decision was made **not** to try to put
+the poster picture inside Cloudflare's own player frame — that was tried once before, broke the
+player outright, and is recorded as a defect not to repeat. Stopwatch confirmation on a real phone
+is on the checklist at the end of this document, since no browser-automation tool is available
+here to measure it directly.
+
+## 3 · Preview length — no rule stopping half the video leaking free
+
+**PROBLEM.** You asked whether a free preview could ever run past half of a video.
+
+**FIX MADE — there was nothing to fix.** The rule already in place is stricter than what you
+asked for: a preview can never exceed **a third** of a video's length, or five minutes, whichever
+is shorter — enforced in one single place that every part of the system reads from, so the number
+shown to a viewer and the number the player actually stops at can never disagree. This is the same
+protection that closed the "says 3:37, plays to 5:00" bug from Part One. One thing was found and
+fixed while checking this: some internal notes and one message shown to a creator still said "half"
+instead of "a third" — a wording mistake, not a behaviour one, now corrected.
+
+**HOW TESTED.** Worked through the actual arithmetic against the real limits in the code — a short
+video can never leak more than a third of itself, in any circumstance. A new automatic test locks
+the label and the real cut-off to a single shared number, so they cannot drift apart again.
+
+## 4 · Free + Ads — the countdown, and duration-based ad rules
+
+**PROBLEM.** The skip countdown used to run during the black loading screen, before the advert had
+even appeared. You also asked for the number and placement of ads to scale with a video's length,
+and for the skip delay to be something you control.
+
+**ROOT CAUSE / STATUS.** The countdown bug was already fixed in an earlier round (27 August) and
+was re-confirmed still correct. What was missing was the duration-based schedule itself.
+
+**FIX MADE.** Videos now get a real schedule: nothing under 5 minutes, one advert in the middle for
+anything under 20 minutes, and a repeating advert roughly every 10 minutes (capped at three) for
+anything longer — all four of those numbers are now yours to change from Admin Settings, not fixed
+in the code. The skip delay's allowed range moved from "anywhere from instant to a minute" to a
+sensible 3–15 seconds, and its default moved from 5 to 8. A real billing gap was found and closed
+in the same pass: a video with more than one advert in it could have had the second and third
+silently uncounted, under-paying for real deliveries — fixed before it could ever happen in
+practice, since no video in your current library is long enough to trigger it yet.
+
+**HOW TESTED.** Confirmed live on production that a video which converted from Paid Premiere to
+Free + Ads automatically gets the exact same advert treatment as a video that was Free + Ads from
+the start — there is no separate, weaker path for converted videos. Eight automated tests cover
+every length boundary of the new schedule. Actually watching an advert on Safari remains on the
+phone checklist, as it has been throughout — Safari cannot be driven from this computer at all.
+
+## 5 · Sharing — WhatsApp still showing a bare link, other buttons feeling unreliable
+
+**PROBLEM.** After the CORS fix on 3 September, you tested again on 4 September and WhatsApp
+still sent a plain link with no picture.
+
+**ROOT CAUSE.** Two things, found by testing this far more thoroughly than before. First: WhatsApp
+remembers a link's preview for days on its own servers — if the link you tested with had been
+shared even once before, WhatsApp shows you its own stale memory and never asks our server
+anything at all, which looks identical to the bug being unfixed. Second, a genuinely new bug: a
+truly fresh link — exactly what you were told to test with — had a real chance of coming back with
+a generic title instead of your video's real title and your creator's name, because the server was
+only giving itself 600 milliseconds to fetch that information before giving up, and the real fetch
+was routinely taking longer than that.
+
+**FIX MADE.** That waiting time was more than tripled, comfortably clearing what the fetch
+actually needs. Separately, three more share buttons were found using an old, blockable way of
+opening a link (the same shape of bug the WhatsApp button itself had) and were converted to the
+safer method already proven for WhatsApp — including the Facebook button, which was found to have
+never used the "open the Facebook app" code that had already been written for it, the same class
+of mistake as the original WhatsApp bug. The 60-second promo clip's failure case — if a download
+does not start automatically — now shows an actual link to tap rather than silently doing nothing.
+
+**HOW TESTED.** Re-ran the complete preview check against a genuinely never-shared link and
+confirmed the real title and creator name now come back correctly, every time, immediately after
+the fix. **Please test again with a link you have never shared before**, exactly as previously
+asked — a link you have already tested with will keep showing WhatsApp's own memory regardless of
+anything on our side.
+
+## 6 · The Super Admin logo did not link anywhere
+
+**PROBLEM.** Clicking the MTONYO+ logo in the admin control centre did nothing.
+
+**FIX MADE.** It now opens the public site, in a new tab so nothing you were working on in the
+admin panel is lost. Your admin session is untouched either way — the two sites are on separate
+addresses with separate logins, so nothing about navigating one ever affects the other.
+
+**HOW TESTED.** Confirmed how the admin panel keeps you signed in, and that it survives regardless
+of what happens in another tab.
+
+## 7 · Viewers seeing creator-only information
+
+**PROBLEM.** An account that is both a viewer and an approved creator could see creator-only
+fields — payout details, creator category — while on the Watch side of their own dashboard.
+
+**ROOT CAUSE.** Two screens (Profile settings and "My Activity") were asking "is this account
+capable of selling," not "which side of the dashboard is open right now" — so a dual-role account
+saw its creator information no matter which side it had chosen.
+
+**FIX MADE.** Both screens now check which side is actually open. Separately, the switch that
+lets someone move between their Viewer and Creator views was previously only available to staff
+accounts — an ordinary person who had genuinely signed up for both sides had no way to switch
+except signing out and back in. That switch now works for anyone with both sides, the same way it
+already did for staff.
+
+**HOW TESTED.** Checked live against production with a real dual-role account: the same account,
+the same login, showed creator figures when asked for the Creator view and only viewer figures
+when asked for the Watch view.
+
+## 8 · Test and duplicate data before launch
+
+**PROBLEM.** Old test accounts and demo content needed clearing out before handover.
+
+**FIX MADE.** The 35 leftover test accounts from earlier review rounds — each with its own
+sandbox purchase — have now actually been reversed, keeping only the one account still used by
+the automated checks. Your seeded demo creators (Asha, Juma, Neema) are deliberately being kept
+live rather than deleted — they are useful test content — but they are now flagged as demo
+accounts in the database, and your public "Creators Are Getting Paid" section has a new setting,
+**off by default at launch**, to leave demo accounts out of that spotlight. Right now a seeded demo
+account is literally the top name shown there; once you flip that one setting in Admin → Settings,
+it will show only real creators. `LAUNCH-CLEANUP.md` at the project root has the exact steps for
+launch day, so this does not depend on anyone remembering what was decided today.
+
+**HOW TESTED.** Checked directly against the live database, before and after — the count of
+leftover test accounts went from 35 to the one that should remain, and the flagged demo accounts
+were confirmed correctly marked.
+
+## 9 · Login and general stability, re-tested
+
+**PROBLEM.** A final check that login and basic navigation are still solid.
+
+**FIX MADE / FOUND.** Two loading screens — "Checking your link…" on the password reset page, and
+the main video catalogue's "Loading videos…" — had no time limit at all, so a slow connection
+could leave them spinning forever with no way out. Both now give up gracefully and offer a retry,
+matching how the rest of the site already behaves. Separately, the smoke-test tool's own admin
+login was found to be checking a fixture account that had never actually been created on
+production — that has been created, so this internal tool now passes cleanly too.
+
+**HOW TESTED.** Signed in fresh as a creator, a viewer, and a staff account directly against
+production — all three succeeded cleanly. The earlier rounds' login and responsiveness testing
+(20 clean one-attempt logins, 21 of 21 hover effects correctly guarded, 70 page-and-width
+combinations with no sideways scrolling) still stands and was not repeated.
+
+## 10 · Creator Capital™
+
+**PROBLEM.** A new feature: an interface for creators to build eligibility and, in partnership
+with AirPay, request funding — with MTONYO+ never itself deciding who is approved.
+
+**FIX MADE.** Built exactly as scoped — an interface and a manual review workflow, with no
+automated lending decisions of any kind. A creator's dashboard now has a Creator Capital tab that
+starts in "Building Eligibility," showing their progress out of the required six months of
+verified earnings, with a Request Review button that only becomes available once they qualify.
+Once requested, you review it from a new Creator Capital section in the admin panel — the same
+figures a lender would want (months of earnings, lifetime and recent revenue, how many people pay
+them, how many buy more than once, their refund rate) sit next to Approve, Decline, Publish Offer,
+Pause and Mark Repaid actions. Approving records AirPay's decision; nothing about it moves money
+automatically. The homepage now has a Creator Capital section using your own wording exactly:
+"Creator Capital™," "Create. Earn. Build Your Record. Unlock Capital.," and the subtext about six
+months of verified history in partnership with AirPay. The reminder that "MTONYO+ is not the
+lender — AirPay decides" appears on the homepage, on the creator's own tab, and on the admin
+review screen.
+
+**HOW TESTED.** Every single step of the workflow was run against production with a real account
+end to end — building eligibility, requesting review, approving, publishing an offer, the
+creator accepting it, pausing, and recording a partial and then a full repayment that correctly
+closes the record — and everything created for the test was removed afterward. One real bug was
+found and fixed in the process: the admin review list initially failed outright due to a database
+error, caught by actually running this test rather than by the smaller automated checks alone, and
+fixed before this reached you.
+
+## 11 · Release model — Permanent Paid / Premiere → Free + Ads / Exclusive, and an Original flag
+
+**PROBLEM.** A new structure: every video should have an explicit release model, with a new
+"Exclusive" option only you can set, and an "MTONYO+ Original" label, admin-only.
+
+**FIX MADE.** Every video now carries one of three release models. Existing videos were mapped
+over automatically and correctly — anything that was a Paid Premiere became "Premiere → Free,"
+everything else became "Permanent Paid" — checked directly against the live database after the
+change. "Exclusive" is a new, admin-only state with no equivalent for creators: from the admin
+video screen you can mark a video Exclusive and choose whether it is paid, free, or unavailable to
+the public, while a buyer who already owns it keeps their access regardless of anything you change
+afterward. The daily job that turns an expired Paid Premiere into Free + Ads now only ever touches
+videos still on that release model — an Exclusive video can never be swept into that conversion by
+accident. The "MTONYO+ Original" flag is a label only, sitting next to the existing "Featured"
+star in the admin video list; it changes nothing about price, entitlement or the revenue split.
+
+**HOW TESTED.** Set a real video (one already withdrawn from public view, so nothing real creators
+or viewers could see was touched) to Exclusive and Original, confirmed it directly from the
+database, confirmed the buyer who owns that video still fully owns it, and reverted it back to
+where it started. The rule that a creator can never set Exclusive or Original themselves, and that
+your own revenue split setting from Issue 1 governs an Original video's earnings exactly like any
+other video, are both locked in by automated tests.
+
+## 12 · A shared link should land on the exact video, autoplaying muted
+
+**PROBLEM.** A tap on a shared link — including from inside Instagram or WhatsApp's own in-app
+browser — should go straight to the video, playing muted immediately, with an easy way to unmute
+and a graceful fallback if the phone refuses to autoplay at all.
+
+**FIX MADE / STATUS — this one was already working.** Checked carefully in the code and confirmed
+live on production with an Instagram in-app-browser address: a shared link goes straight to the
+exact video with no sign-in wall and no detour through the homepage, the preview starts muted
+automatically with no separate tap required, a "Tap for sound" control already appears the moment
+it is genuinely playing, and if a phone refuses to autoplay even muted, the video simply sits
+on Cloudflare's own poster and Play button rather than showing anything broken. The one real gap
+here was Issue 2's black-screen handoff — already fixed above — since a cold, signed-out shared
+link is exactly the situation most likely to hit it. iOS Low Power Mode, which can block autoplay
+outright, cannot be tested from a computer at all and stays on the phone checklist.
+
+---
+
+## What changed about the phone checklist
+
+Two new items were added to `BROWSER-CHECKLIST.md` for this round: timing the poster and the
+first frame on a real iPhone (§8), and confirming the Facebook share button opens the native app
+on an Android phone specifically, alongside the 60-second clip download on Safari. Everything
+already on that checklist from before — Safari actually playing video, the WhatsApp app opening
+correctly, Low Power Mode, the scrolling "vibration," and a backgrounded tab resuming correctly —
+is unchanged and still outstanding for exactly the same reason as before: none of it can be
+produced by any tool available on this computer.
