@@ -25,18 +25,28 @@ test('after payment Watch drops the warmed preview and waits for the full film',
   assert.match(src, /stopAt=\{p\.playback\.kind === 'preview' \? previewSeconds : 0\}/)
 })
 
-test('nothing of ours is ever drawn over the Cloudflare player', () => {
+test('nothing of ours is ever drawn OVER the Cloudflare player', () => {
   const src = readFileSync(join(dir, '../components/watch/StreamPlayer.jsx'), 'utf8')
 
-  // Our poster held the frame behind "Connecting to player…" until the SDK
-  // relayed an event — a still image over a player that was, in most cases,
-  // already painting its own poster. Every failure of that cover looked like a
-  // broken video: a blocked SDK script left it up for ever, and a 12s timer put
-  // an error over a film that was playing underneath it.
-  for (const gone of ['stream-poster', 'stream-boot-msg', 'stream-tap', 'Connecting to player', 'taking longer than usual']) {
+  // The poster that was removed held the frame behind "Connecting to
+  // player…" until the SDK relayed an event — a still image over a player
+  // that was, in most cases, already painting its own poster. Every failure
+  // of that cover looked like a broken video: a blocked SDK script left it
+  // up for ever, and a 12s timer put an error over a film playing
+  // underneath it. None of that came back.
+  for (const gone of ['stream-boot-msg', 'stream-tap', 'Connecting to player', 'taking longer than usual']) {
     assert.ok(!src.includes(gone), `${gone} must be gone from the player`)
   }
   assert.doesNotMatch(src, /setReady|setTimedOut|setNeedsGesture|markReady/)
+
+  // A poster DID come back, deliberately, and only under three conditions
+  // that together make it safe: it is optional (skipped when the caller
+  // passes none), it sits behind the iframe rather than over it, and it is
+  // hidden by the exact same `painted` flag that reveals the iframe — not a
+  // timer or an SDK event of its own, so it inherits that flag's existing
+  // 1.5s failsafe rather than needing (or risking) a new one.
+  assert.match(src, /poster && \(/)
+  assert.match(src, /className=\{`stream-poster \$\{painted \? 'is-hidden' : ''\}`/)
 
   // The iframe is the whole shell, mounted the moment there is a source.
   assert.match(src, /<div className="stream-shell is-live">/)

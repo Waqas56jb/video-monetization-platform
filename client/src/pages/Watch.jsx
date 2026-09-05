@@ -894,6 +894,11 @@ export default function Watch() {
                 key={`${v.id}-${p.playback.kind}`}
                 src={p.playback.iframe}
                 title={v.title}
+                /* Keeps the poster on screen through the hand-off from the
+                   boot block above — without it, the moment this component
+                   mounts is a hard cut to the shell's plain black while the
+                   iframe is still transparent. */
+                poster={v.thumbnailUrl ? mediaUrl(v.thumbnailUrl) : null}
                 /* The server's stored position is the authority; the local hint
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */

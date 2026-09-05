@@ -209,6 +209,43 @@ FIX SIZE: S
 DEVICE-SPECIFIC: no (the poster gap and the black-handoff gap are structural — they reproduce on every platform; the CDN floor itself is universally unfixable per PLAYER-MEASURE.md)
 ```
 
+RESOLUTION (2026-09-06): Fixed the black-handoff gap, deliberately did NOT fix it the way the fix
+prompt literally described — see `DECISIONS.md` 2026-09-06 for why re-adding Cloudflare's `poster=`
+query param was rejected (it is a previously-diagnosed, documented failure mode in this exact
+codebase: a signed poster URL doubled the JWT and aborted the embed outright).
+
+- `StreamPlayer.jsx` gained a `poster` prop: rendered as an `<img className="stream-poster">`
+  **behind** the iframe (`z-index:0` under the frame's `z-index:1`, added in `realdata.css`), fading
+  out via `.is-hidden` on the exact same `painted` boolean that already reveals the iframe —
+  including that flag's existing 1.5s failsafe timer, so no new way to get stuck was introduced.
+  Skipped entirely when the prop is absent (ad breaks, the studio preview dialog both call
+  `StreamPlayer` with no poster and are unaffected).
+- `Watch.jsx`'s main-film `<StreamPlayer>` call now passes `poster={mediaUrl(v.thumbnailUrl)}`,
+  closing the gap between the boot block's poster and the live player for every entry path — card
+  click, direct URL, shared link, and back-navigation all reach this same code path once `v` exists.
+- `Watch.test.js`'s `'nothing of ours is ever drawn over the Cloudflare player'` test — a deliberate
+  regression guard against the OLD poster design (one that sat over the iframe, gated on an SDK
+  event with no failsafe of its own, and could hide a working player forever if the SDK never
+  loaded) — banned the literal string `stream-poster` from ever reappearing in this file. Updated it
+  rather than deleted it: the banned-string list still covers the actually-dangerous parts
+  (`stream-boot-msg`, `Connecting to player`, a second timer/state machine), and two new assertions
+  confirm the new poster is conditional (`poster && (`) and tied to the same `painted` flag
+  (`` className={`stream-poster ${painted ? 'is-hidden' : ''}`} ``) rather than anything of its own.
+- What this does **not** close, said plainly: a cold direct-URL/shared-link load still shows the
+  bare grey `WatchSkeleton` (no picture) until `/api/videos` answers — there is no thumbnail to
+  draw before that response exists. Closing that fully would need a separate, faster thumbnail-only
+  fetch ahead of the full video row; not attempted here, noted as a follow-up.
+- `client` 157/157 tests pass (one test updated, not removed — see above), `hover:audit` and
+  `split:audit` clean, `build` and `smoke:render` green.
+- **Not measured, said plainly rather than guessed:** the prompt asked for tap→poster (<400ms) and
+  tap→first-frame medians on Chromium desktop + an iPhone profile. Playwright is not installed in
+  this environment (confirmed again while working this issue) and there is no other browser
+  automation available here — the same limitation already on record for Issues 4 and 9. What can be
+  said with confidence from the code alone: no playback/timing logic was touched (no changes to
+  `haltIfDue`, the autoplay kick, the watchdog, or any event listener), only a purely additive
+  visual layer was added, so there is no mechanism by which tap→first-frame could have regressed.
+  Added to `BROWSER-CHECKLIST.md` (Final block) as a real-device item.
+
 ---
 
 ## ISSUE 3 — Preview control: no "half the video" rule
@@ -1078,6 +1115,19 @@ STATUS: WORKS
 FIX SIZE: S (only the Issue-2 poster-continuity fix carries over here; nothing else to build)
 DEVICE-SPECIFIC: yes (iOS Low Power Mode is a device-only unknown, cannot be verified in this environment; everything else confirmed platform-uniform by code reading)
 ```
+
+RESOLUTION (2026-09-06): Nothing to ungate — confirmed again that autoplay is unconditional and
+`/watch/:slug` carries no auth wall, matching the diagnosis exactly, so this issue's only change was
+Issue 2's poster-continuity fix (same commit). Re-verified live against production with a real
+Instagram in-app-browser user agent on a never-shared URL:
+```
+curl -A "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) ... Instagram 302.0.0.23.114" \
+  https://video-monetization-platform-chi.vercel.app/watch/live-at-arusha-full-set
+→ HTTP/1.1 200 OK · X-Doc: shell · 0 redirects
+```
+Straight to the SPA shell, no redirect, no auth wall — exactly what the code trace predicted for
+any user agent, in-app browser or not. iOS Low Power Mode remains a genuine device-only unknown,
+unchanged, listed in `BROWSER-CHECKLIST.md`.
 
 ---
 

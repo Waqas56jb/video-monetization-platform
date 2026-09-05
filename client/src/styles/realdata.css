@@ -338,6 +338,15 @@
 .stream-poster-fallback {
   background: radial-gradient(ellipse at 50% 40%, #1a1228 0%, #000 70%);
 }
+/* Inside StreamPlayer's own shell, the poster sits behind the iframe (the
+   iframe is transparent until `is-painted`) and fades out on the same flag
+   that reveals it — never a separate timer, never something to get stuck. */
+.stream-shell.is-live .stream-poster {
+  z-index: 0;
+}
+.stream-shell.is-live .stream-poster.is-hidden {
+  opacity: 0;
+}
 .stream-boot-msg {
   position: absolute;
   left: 50%;

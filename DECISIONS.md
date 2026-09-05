@@ -375,3 +375,34 @@ out.
 access token, so the re-scrape check in the brief cannot run unauthenticated. Substituted the
 equivalent that needs no token — a request as `facebookexternalhit` — and said so rather than
 reporting the step as done.
+
+---
+
+## 2026-09-06 · Not putting Cloudflare's `poster=` param back on the iframe URL
+
+The fix prompt for Issue 2 named two things: pass `poster=` into `buildSrc` if it is missing, and
+keep the shell's own poster mounted through the hand-off into `StreamPlayer`. Only the second one
+was done.
+
+**Why the first was skipped on purpose.** `StreamPlayer.jsx:32-33`'s own comment already records
+that a signed poster URL was tried on this exact parameter: it doubled the JWT, aborted the embed
+(`net::ERR_ABORTED`), and left the same dead Play overlay the fix was supposed to remove. That is
+not a hypothetical risk to weigh against the benefit — it is a specific, already-diagnosed failure
+mode in this exact codebase, on this exact player. Re-adding it would trade a cosmetic gap (a plain
+black shell for a fraction of a second) for a functional one (the embed refusing to load at all).
+
+**What was done instead**, and it closes the same gap without the risk: `StreamPlayer` now accepts
+a `poster` prop and draws it as a static layer *behind* the iframe (`z-index:0` under the iframe's
+`z-index:1`), fading out on the same `painted` flag that already reveals the iframe — a flag that
+already has a 1.5s failsafe timer, so nothing new was added that could get stuck the way the old,
+removed poster-on-top-of-the-iframe design once did (see that file's top comment for why that
+design was torn out in the first place). Watch.jsx passes `v.thumbnailUrl` into it. This is
+additive and inert: if the poster prop is absent (ad breaks, the studio preview dialog), nothing
+renders and nothing changes.
+
+**What is still open, said plainly rather than glossed over.** This closes the gap between "our
+boot-block poster" and "the iframe," which existed on every entry path. It does **not** make a cold
+direct-URL/shared-link load show a poster before `/api/videos` has answered — there is no thumbnail
+to draw before that response exists, and manufacturing one (a slug-derived thumbnail endpoint
+fetched in parallel, ahead of the full video row) is a real option but a separate piece of work,
+not attempted here.

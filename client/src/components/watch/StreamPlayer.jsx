@@ -95,6 +95,20 @@ export default function StreamPlayer({
    */
   onMediaSize,
   /**
+   * The video's own thumbnail, drawn behind the iframe until it has painted.
+   *
+   * The iframe starts transparent (`.stream-frame` opacity 0) over the
+   * shell's plain black background, revealed on `painted` — which already
+   * has a 1.5s failsafe (below) so it can never get stuck. This just gives
+   * that same transparent window a picture instead of solid black: a static
+   * layer with no event of its own to wait on, so it carries no new way to
+   * get stuck the way the poster this replaced once did (see the file
+   * comment above). It fades out on the same `painted` flag that reveals
+   * the iframe, never gates anything, and is skipped entirely when absent
+   * (ad breaks have no poster of their own).
+   */
+  poster = null,
+  /**
    * Do not treat the player as started until media time is actually advancing.
    *
    * Ads use this so a black buffer, an iframe load, or Stream's `play` event
@@ -697,6 +711,14 @@ export default function StreamPlayer({
 
   return (
     <div className="stream-shell is-live">
+      {poster && (
+        <img
+          className={`stream-poster ${painted ? 'is-hidden' : ''}`.trim()}
+          src={poster}
+          alt=""
+          draggable={false}
+        />
+      )}
       <iframe
         key={boot}
         ref={frame}
