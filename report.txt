@@ -1229,7 +1229,32 @@ and 4/11 in the same pass).
   needed) it deletes again at the end. Exercises status → request-review's eligibility refusal →
   the admin list → decide (approve) → publish-offer → the creator's own accept-offer → pause →
   mark-repaid (partial, then full, confirming the balance and the status transition to `repaid`) →
-  cleanup. Live output recorded below.
+  cleanup.
+
+  **A real bug this script caught, that no unit test could have.** The first live run failed at the
+  admin list step: `GET /api/admin/capital?status=under_review` 500'd with Postgres error `42883`
+  (undefined operator). `CAPITAL_LIST_SQL`'s `where ($1::text is null or cc.status = $1)` casts
+  `$1` to `text` in its first clause, which made Postgres infer `$1` as `text` for the **whole**
+  statement — so `cc.status = $1` became `creator_capital_status = text`, an operator that does not
+  exist. The unit tests above only assert the SQL text contains the right column names; they cannot
+  catch a type-inference error that only shows up when Postgres actually plans the query. Fixed by
+  casting both sides (`cc.status::text = $1`), redeployed, re-ran the full script clean:
+  ```
+  ### GET /api/capital/status                          — 3/3 PASS (2 of 6 months, correctly Building)
+  ### POST /api/capital/request-review                 — refused: "You need 4 more month(s)..."
+      (inserted a throwaway under_review row directly to exercise the admin routes)
+  ### GET /api/admin/capital                            — 4/4 PASS, carries every designed column
+  ### POST /api/admin/capital/:id/decide (approve)      — 3/3 PASS
+  ### POST /api/admin/capital/:id/publish-offer         — 2/2 PASS
+  ### POST /api/capital/accept-offer                    — 2/2 PASS (approved → active)
+  ### POST /api/admin/capital/:id/pause                 — 2/2 PASS
+  ### POST /api/admin/capital/:id/mark-repaid           — 6/6 PASS (30000 remaining → 0, → repaid)
+  ### cleanup                                            — 1/1 PASS, throwaway row gone
+
+  ALL PASS
+  ```
+  Every route works end to end against production, under a real creator token and a real admin
+  token, and the account was left exactly as it was found.
 - **Tests**: `server/src/modules/capital.import.test.js` (7 — routes exist and are correctly
   gated, eligibility is re-derived not trusted, the admin list's columns, no lending math beyond
   addition, nothing here touches a payment provider directly); `server/src/modules/
