@@ -71,6 +71,17 @@ export function socialTarget() {
   return isTouchMobile() ? '_self' : '_blank'
 }
 
+/**
+ * Facebook only gets an app-attempt on Android (`facebookHref`'s intent://
+ * URL, with its own fallback baked in) — iOS and desktop both get the plain
+ * web sharer. `_self` only makes sense for the Android case: navigating an
+ * iPhone or a desktop tab straight to Facebook's sharer page would replace
+ * the video the viewer was just on, for no app-opening benefit at all.
+ */
+export function facebookTarget() {
+  return isAndroid() ? '_self' : '_blank'
+}
+
 /** If the app never came forward, open the https fallback. */
 export function appFallback(webUrl) {
   if (!isTouchMobile() || !webUrl) return () => {}

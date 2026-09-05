@@ -25,8 +25,11 @@ import { compact, duration } from '@/hooks/useApi'
 import {
   appFallback,
   copyWatchUrl,
+  facebookHref,
+  facebookTarget,
   instagramHref,
   isTouchMobile,
+  socialTarget,
   tiktokHref,
 } from '@/lib/socialShare'
 /**
@@ -97,6 +100,20 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const [problem, setProblem] = useState(null)
   const [hint, setHint] = useState(null)
   const [clip, setClip] = useState(null)
+  /**
+   * The clip download's own fallback, as a real link rather than a
+   * programmatic `window.open`.
+   *
+   * `saveClip` reaches this point after two or three `await`s — the exact
+   * shape a popup blocker exists to stop, and unlike the WhatsApp button
+   * (fixed earlier, and never actually vulnerable — it never had an await
+   * before its own window.open) this one genuinely does have the gap. A
+   * visible anchor cannot be blocked the way a script-called window.open
+   * can, so a failed automatic download offers one instead of silently
+   * doing nothing — which is the "blank" half of what iOS Safari makes of
+   * this anyway, since it does not honour the `download` attribute at all.
+   */
+  const [clipFallbackUrl, setClipFallbackUrl] = useState(null)
   const [posterOn, setPosterOn] = useState(false)
   const [cardFailed, setCardFailed] = useState(false)
   const closeRef = useRef(null)
@@ -236,14 +253,14 @@ export default function ShareSheet({ open, video, share, onClose }) {
     }, 1500)
   }
 
-  const onFacebook = () => {
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      '_blank',
-      'noopener,noreferrer'
-    )
-    warm()
-  }
+  /**
+   * A real anchor, not `window.open` — the same reasoning as `onWhatsApp`
+   * above, and it closes a second gap `window.open` never could: this used
+   * to hard-code the web sharer for every platform, so an Android tap never
+   * even tried the Facebook app — `facebookHref` was already written for
+   * exactly that and nothing here called it.
+   */
+  const onFacebookClick = () => warm()
 
   const onCopy = () => {
     setProblem(null)
@@ -264,18 +281,23 @@ export default function ShareSheet({ open, video, share, onClose }) {
     if (shareUrl) warmShare({ shareUrl, cleanUrl, cardUrl })
   }
 
-  const launchSocial = (where) => {
+  /**
+   * Instagram and TikTok have no compose-with-text web URL — this is already
+   * the app-or-site handoff the client's report described as expected
+   * behaviour (§15 in CLIENT-REPORT.md), not a bug. What follows the tap is
+   * the anchor's own navigation (`socialHref`/`socialTarget` below, computed
+   * at render like WhatsApp's), so this only runs the side effects: the
+   * link is copied and the clip starts saving before the app has even
+   * opened, and a phone whose app-scheme goes nowhere is caught by
+   * `appFallback` exactly as it was before this became an anchor.
+   */
+  const socialHref = (where) => (where === 'instagram' ? instagramHref() : tiktokHref())
+  const socialFallbackUrl = (where) =>
+    where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
+  const onSocialClick = (where) => () => {
     copyWatchUrl(shareUrl)
     if (!saving) void saveClip(where)
-    const href = where === 'instagram' ? instagramHref() : tiktokHref()
-    const fallback =
-      where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
-    if (isTouchMobile()) {
-      window.location.href = href
-      appFallback(fallback)()
-    } else {
-      window.open(href, '_blank', 'noopener,noreferrer')
-    }
+    if (isTouchMobile()) appFallback(socialFallbackUrl(where))()
     warm()
   }
 
@@ -283,6 +305,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
     if (saving) return
     setProblem(null)
     setHint(null)
+    setClipFallbackUrl(null)
     setSaving(where)
 
     const caption =
@@ -346,10 +369,15 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
       try {
         await downloadFile(fileUrl)
+        setHint(caption)
       } catch {
-        window.open(fileUrl, '_blank', 'noopener,noreferrer')
+        // Opening a window from a script here would be exactly what a popup
+        // blocker is built to stop — this call sits after two or three
+        // awaits, well outside the tap that started it. A real, visible
+        // link is never blocked, so that is what stands in for it.
+        setClipFallbackUrl(fileUrl)
+        setHint(`${caption} If the download did not start, use the link below.`)
       }
-      setHint(caption)
     } catch {
       setProblem('Could not save the clip. Check your connection and try again — the watch link is copied.')
     } finally {
@@ -376,9 +404,8 @@ export default function ShareSheet({ open, video, share, onClose }) {
     onCopy()
   }
 
-  const previewCard = () => {
+  const onPreviewCardClick = () => {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (cardUrl) window.open(cardUrl, '_blank', 'noopener,noreferrer')
   }
 
   if (!open) return null
@@ -503,6 +530,18 @@ export default function ShareSheet({ open, video, share, onClose }) {
             {hint}
           </p>
         )}
+        {clipFallbackUrl && (
+          <a
+            className="share-wa-web"
+            href={clipFallbackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={`${slug || 'promo'}-promo.mp4`}
+            onClick={() => setClipFallbackUrl(null)}
+          >
+            Open the 60s clip
+          </a>
+        )}
 
         <a
           className="share-wa"
@@ -535,29 +574,39 @@ export default function ShareSheet({ open, video, share, onClose }) {
         )}
 
         <div className="share-targets">
-          <button
+          <a
             className="share-target is-ig"
-            type="button"
-            onClick={() => launchSocial('instagram')}
+            href={socialHref('instagram')}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onClick={onSocialClick('instagram')}
           >
             {saving === 'instagram' ? <Loader2 size={22} className="spin" /> : <IconInstagram />}
             <b>Instagram</b>
             <small>Clip + link card</small>
-          </button>
-          <button
+          </a>
+          <a
             className="share-target is-tt"
-            type="button"
-            onClick={() => launchSocial('tiktok')}
+            href={socialHref('tiktok')}
+            target={socialTarget()}
+            rel="noopener noreferrer"
+            onClick={onSocialClick('tiktok')}
           >
             {saving === 'tiktok' ? <Loader2 size={22} className="spin" /> : <IconTikTok />}
             <b>TikTok</b>
             <small>Clip + link card</small>
-          </button>
-          <button className="share-target is-fb" type="button" onClick={onFacebook}>
+          </a>
+          <a
+            className="share-target is-fb"
+            href={facebookHref(shareUrl)}
+            target={facebookTarget()}
+            rel="noopener noreferrer"
+            onClick={onFacebookClick}
+          >
             <IconFacebook />
             <b>Facebook</b>
             <small>Share to Feed</small>
-          </button>
+          </a>
           <button className="share-target is-copy" type="button" onClick={onCopy}>
             {copied ? <Check size={22} /> : <IconLink />}
             <b>{copied ? 'Copied' : 'Copy link'}</b>
@@ -598,10 +647,23 @@ export default function ShareSheet({ open, video, share, onClose }) {
               <small>Your content and earnings are protected.</small>
             </span>
           </p>
-          <button className="share-preview" type="button" onClick={previewCard}>
-            <Eye size={15} />
-            Preview share card
-          </button>
+          {cardUrl ? (
+            <a
+              className="share-preview"
+              href={cardUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onPreviewCardClick}
+            >
+              <Eye size={15} />
+              Preview share card
+            </a>
+          ) : (
+            <button className="share-preview" type="button" onClick={onPreviewCardClick}>
+              <Eye size={15} />
+              Preview share card
+            </button>
+          )}
         </div>
       </div>
     </div>,

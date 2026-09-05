@@ -175,6 +175,43 @@ test('the WhatsApp payload is the watch URL and nothing else', () => {
   })
 })
 
+/**
+ * The other three buttons this fix pass converted, checked the same way:
+ * href computed at render, target computed at render, and no window.open
+ * left anywhere near them.
+ */
+test('Facebook and the Instagram/TikTok share targets are anchors too, not window.open', () => {
+  const src = readFileSync(new URL('../components/watch/ShareSheet.jsx', import.meta.url), 'utf8')
+  const targets = src.slice(src.indexOf('<div className="share-targets">'), src.indexOf('</div>\n\n        <button className="share-row"'))
+
+  assert.match(targets, /href=\{socialHref\('instagram'\)\}/)
+  assert.match(targets, /href=\{socialHref\('tiktok'\)\}/)
+  assert.match(targets, /href=\{facebookHref\(shareUrl\)\}/, 'Facebook must use its own app-attempt href, not a hard-coded web sharer')
+  assert.match(targets, /target=\{facebookTarget\(\)\}/)
+  assert.doesNotMatch(targets, /window\.open/)
+  assert.doesNotMatch(targets, /<button[^>]*className="share-target is-(ig|tt|fb)"/, 'all three are anchors')
+
+  // facebookHref must actually be imported from the module that has the
+  // Android-intent attempt — not redefined inline, which is the exact
+  // "wrong implementation wired up" shape this bug already was once.
+  assert.match(src, /import \{[\s\S]*?facebookHref[\s\S]*?\} from '@\/lib\/socialShare'/)
+})
+
+/**
+ * The promo clip's failure fallback used to be `window.open` called after
+ * two or three awaits — the one call site of the four where that pattern
+ * was a real, reachable bug, not just an inconsistency. It is a visible
+ * link now, armed only on failure.
+ */
+test('the promo clip download failure offers a real link, not a delayed window.open', () => {
+  const src = readFileSync(new URL('../components/watch/ShareSheet.jsx', import.meta.url), 'utf8')
+  const saveClip = src.slice(src.indexOf('const saveClip = async'), src.indexOf('const onNativeShare'))
+  assert.doesNotMatch(saveClip, /window\.open/, 'no window.open anywhere in the async clip flow')
+  assert.match(saveClip, /setClipFallbackUrl\(fileUrl\)/)
+  assert.match(src, /clipFallbackUrl &&[\s\S]{0,40}<a\b/, 'the fallback renders as an anchor')
+  assert.match(src, /href=\{clipFallbackUrl\}/)
+})
+
 test('socialShare no longer exports a WhatsApp URL for anyone to pick by mistake', async () => {
   const socialShare = await import('./socialShare.js')
   assert.equal('whatsappHref' in socialShare, false)
@@ -182,6 +219,8 @@ test('socialShare no longer exports a WhatsApp URL for anyone to pick by mistake
   assert.equal(typeof socialShare.isTouchMobile, 'function')
   assert.equal(typeof socialShare.instagramHref, 'function')
   assert.equal(typeof socialShare.tiktokHref, 'function')
+  assert.equal(typeof socialShare.facebookHref, 'function')
+  assert.equal(typeof socialShare.facebookTarget, 'function')
 })
 
 test('More… payload is title + url only (no caption text)', () => {

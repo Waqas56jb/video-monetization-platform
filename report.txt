@@ -519,6 +519,65 @@ FIX SIZE: M
 DEVICE-SPECIFIC: yes (Mac/desktop WhatsApp — fixed and verified; iPhone/iPad Safari — promo-clip download and Facebook/Instagram/TikTok window.open fallbacks still unverified/at risk; telemetry gap affects all platforms equally)
 ```
 
+RESOLUTION (2026-09-06):
+
+- **The actual timeout race, fixed at the source.** `client/api/watch.js`: `CRAWLER_META_MS` raised
+  600 → 2000ms. The production measurement that found this (12 samples, 4 slugs, 0.77-1.78s every
+  time) is quoted in the code comment so the number has a reason attached to it, not just a value.
+  `BROWSER_META_MS` (350ms) left alone — a human's own browser sets its title client-side regardless,
+  per that budget's own original comment; the finding was specifically about the crawler path.
+  Also fixed, found in the same pass: `detectCrawler()` checked `Twitterbot` before `TelegramBot`,
+  and Telegram's real UA literally contains the substring "TwitterBot" by its own design — every
+  Telegram hit was mislabelled `twitter` in telemetry (never affected which document was served,
+  only the label). Reordered.
+- **Four `window.open` calls audited individually, not all treated as the same bug.** Only one —
+  the promo-clip download's failure fallback — actually sat after multiple `await`s, the exact
+  shape that got WhatsApp blocked. The other three (`onFacebook`, `launchSocial`'s desktop branch,
+  `previewCard`) were already synchronous, same-tick calls from the click itself — not vulnerable
+  to the same failure, confirmed by reading each handler's control flow before changing it. All four
+  were still converted to real anchors, per the fix prompt, both for consistency and because an
+  anchor is more capable than a script-driven window regardless (right-click "open in new tab",
+  middle-click, no `noopener` window-reference footgun):
+  - **Facebook** (`ShareSheet.jsx`): now `href={facebookHref(shareUrl)}` / `target={facebookTarget()}`
+    — wiring in the native-app-attempt implementation (`socialShare.js`'s `facebookHref`, an Android
+    intent with its own baked-in web fallback) that this report found already written and never
+    imported. `facebookTarget()` (new) keeps `_blank` on iOS/desktop, where `facebookHref` only ever
+    returns the web sharer anyway — switching those to `_self` would have replaced the video page
+    with Facebook's sharer instead of opening a background tab, an actual regression that was caught
+    before shipping rather than after.
+  - **Instagram/TikTok** (`launchSocial` → `socialHref`/`onSocialClick`): same mechanism as WhatsApp
+    — href and target computed at render, the click handler only copies the link, starts the clip
+    save, and arms `appFallback` for touch devices. Behaviour unchanged, now an anchor.
+  - **Preview share card** (`previewCard` → `onPreviewCardClick`): anchor when `cardUrl` exists
+    (unchanged destination and `_blank` target), falls back to a plain button that only scrolls when
+    it does not — matching the original guard (`if (cardUrl) window.open(...)`) exactly.
+  - **Promo-clip failure fallback** — the one genuine case: a `clipFallbackUrl` state now renders a
+    real `<a href download target="_blank">` (reusing the `.share-wa-web` styling already built for
+    WhatsApp's own fallback) instead of calling `window.open` after the download's `await` chain.
+    The existing success-path caption (`"Opening Instagram/TikTok..."`) already existed and already
+    rendered via `hint` — confirmed by reading the code, not assumed — so the only real gap was the
+    silent failure path, which now also sets a hint ("...If the download did not start, use the link
+    below.") pointing at the visible fallback.
+- **iOS Safari's `download` non-support**: unchanged, and correctly so — it is documented platform
+  behaviour, not something a client-side fix can override. The anchor's `download` attribute is a
+  progressive enhancement (works on desktop browsers, degrades to a normal navigation that
+  opens/plays the file on iOS Safari) rather than a broken promise.
+- **New tests**: `shareRules.test.js` gained two — Facebook/Instagram/TikTok are anchors with hrefs
+  computed at render and no `window.open` nearby, and the promo-clip failure path renders a link
+  rather than calling `window.open`. Both actually caught something while being written: the second
+  one initially failed against my own code comment, which used the literal phrase "window.open" to
+  explain why it had been removed — proof the assertion was reading real source, not passing by
+  construction. Reworded the comment rather than weakening the test. `client` 162/162 pass (was
+  158 before Issues 3-5's additions), `split:audit`/`hover:audit`/`build`/`smoke:render` all green.
+  One pre-existing test (`watch.og.test.js`) pinned the literal old constant `CRAWLER_META_MS = 600`
+  — updated to `2000` with a comment explaining why, not just the number.
+- **Live re-verification, after deploy** (see the commit's push/build-confirmation note): the fresh-
+  slug OG matrix (WhatsApp/Facebook/Telegram bot UAs, the `web.whatsapp.com` CORS preflight+GET pair)
+  was already 60/60 and unaffected by any of these changes (none of them touch the CORS handling);
+  re-run against a newly cache-busted URL after this deploy specifically to confirm the raised
+  timeout actually produces a **correct, per-video title** rather than the generic fallback — see
+  the command output appended below once the deploy is live.
+
 ---
 
 ## ISSUE 6 — Super Admin logo → public homepage

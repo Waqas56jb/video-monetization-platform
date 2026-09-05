@@ -56,7 +56,17 @@ const WEB = publicWebOrigin()
 
 const SLUG_RE = /^[a-z0-9-]+$/
 const META_MEMO_MS = 5 * 60 * 1000
-const CRAWLER_META_MS = 600
+/**
+ * Measured against production (report.txt, Issue 5): 12 samples across 4
+ * slugs to `/api/public/videos/:slug/share-meta` ran 0.77-1.78s, every one
+ * of them over the 600ms this used to allow. A fresh, never-cached link —
+ * exactly what a crawler hits on the first share, and exactly what the
+ * client is told to retest with — aborted every single time and fell back
+ * to a slug-derived title with no creator name. 2000ms clears the observed
+ * range with real margin; still short enough that a genuinely dead API
+ * fails fast rather than holding the crawler's own request open.
+ */
+const CRAWLER_META_MS = 2000
 /**
  * A browser waits for the real title too — but for a fraction of the time.
  *
@@ -139,9 +149,12 @@ function detectCrawler(ua) {
     return 'whatsapp-web'
   }
   if (/facebookexternalhit|Facebot/i.test(ua)) return 'facebook'
-  if (/Twitterbot/i.test(ua)) return 'twitter'
   if (/LinkedInBot/i.test(ua)) return 'linkedin'
+  // Telegram's real crawler UA is literally "TelegramBot (like TwitterBot)"
+  // — it contains "TwitterBot" by Telegram's own design, so this must be
+  // checked before the Twitter branch or every Telegram hit is misfiled.
   if (/TelegramBot/i.test(ua)) return 'telegram'
+  if (/Twitterbot/i.test(ua)) return 'twitter'
   if (/(Googlebot|bingbot|Applebot)/i.test(ua)) return 'other-bot'
   return 'human'
 }

@@ -17,7 +17,11 @@ test('watch HTML serves a crawler document to WhatsApp and never claims og:video
 test('og:image is same-origin /og/card and crawlers do not wait on a cold API', () => {
   assert.match(src, /function ogCardUrl/)
   assert.match(src, /\/og\/card\//)
-  assert.match(src, /CRAWLER_META_MS = 600/)
+  // Was 600ms; raised to 2000ms after production measurement showed the
+  // share-meta call itself routinely taking 0.77-1.78s, so the old budget
+  // aborted a fresh (never-cached) link's lookup every single time — see
+  // report.txt, Issue 5.
+  assert.match(src, /CRAWLER_META_MS = 2000/)
   assert.match(src, /if \(meta\) \{[\s\S]{0,120}metaMemo\.set/, 'a successful lookup is memoized')
   assert.doesNotMatch(src, /\$\{API\}\/api\/share-card/)
 })
@@ -28,7 +32,11 @@ test('a browser asks for the real title, on a much smaller budget than a crawler
   // Sec-Fetch-Mode: navigate and land in the shell branch.
   assert.match(src, /function memoedShareMeta/)
   assert.match(src, /BROWSER_META_MS = 350/)
-  assert.match(src, /CRAWLER_META_MS = 600/)
+  // Was 600ms; raised to 2000ms after production measurement showed the
+  // share-meta call itself routinely taking 0.77-1.78s, so the old budget
+  // aborted a fresh (never-cached) link's lookup every single time — see
+  // report.txt, Issue 5.
+  assert.match(src, /CRAWLER_META_MS = 2000/)
   assert.match(
     src,
     /await loadShareMeta\(slug, previewBot \? CRAWLER_META_MS : BROWSER_META_MS\)/,
