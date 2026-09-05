@@ -44,6 +44,7 @@ const NAV = [
       { path: '/withdrawals', icon: 'banknote', label: 'Withdrawals', badge: 'withdrawals', module: 'withdrawals' },
       { path: '/revenue', icon: 'percent', label: 'Revenue & Splits', adminOnly: true, module: 'revenue' },
       { path: '/ads', icon: 'megaphone', label: 'Ads Management', module: 'ads' },
+      { path: '/capital', icon: 'landmark', label: 'Creator Capital', badge: 'capital', module: 'capital' },
     ],
   },
   {

@@ -19,6 +19,7 @@ import ForgotPassword from '@/pages/ForgotPassword'
 import Dashboard from '@/pages/Dashboard'
 import CreatorProfile from '@/pages/CreatorProfile'
 import Legal from '@/pages/Legal'
+import CreatorCapitalInfo from '@/pages/CreatorCapitalInfo'
 import { loadWatchPage, idlePrefetchWatch, ensureStreamSdk } from '@/lib/prefetchWatch'
 
 /** Same import() as prefetchWatch — Vite emits one chunk. */
@@ -100,6 +101,7 @@ export default function App() {
         {/* Terms, privacy, the creator agreement, copyright and refunds. */}
         <Route path="/legal" element={<Navigate to="/legal/terms" replace />} />
         <Route path="/legal/:doc" element={<Legal />} />
+        <Route path="/creator-capital" element={<CreatorCapitalInfo />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </SavedProvider>

@@ -10,6 +10,7 @@ import SettingsTab from '@/components/dashboard/tabs/SettingsTab'
 import AnalyticsTab from '@/components/dashboard/tabs/AnalyticsTab'
 import MyVideosTab from '@/components/dashboard/tabs/MyVideosTab'
 import EarningsTab from '@/components/dashboard/tabs/EarningsTab'
+import CreatorCapitalTab from '@/components/dashboard/tabs/CreatorCapitalTab'
 import PurchasesTab from '@/components/dashboard/tabs/PurchasesTab'
 import BecomeCreatorTab from '@/components/dashboard/tabs/BecomeCreatorTab'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
@@ -20,7 +21,7 @@ import { Skeleton, EmptyState } from '@/components/ui/States'
 
 /** Which tabs each role is allowed to open. */
 const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
-const CREATOR_TABS = ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings']
+const CREATOR_TABS = ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings', 'capital']
 
 const TABS_BY_ROLE = {
   viewer: ['library', 'purchases', 'become', ...ACCOUNT_TABS],
@@ -224,6 +225,7 @@ export default function Dashboard() {
               />
             )}
             {tab === 'earnings' && <EarningsTab />}
+            {tab === 'capital' && <CreatorCapitalTab />}
             {tab === 'become' && <BecomeCreatorTab />}
             {tab === 'analytics' && <AnalyticsTab />}
             {tab === 'profile' && <ProfileTab />}

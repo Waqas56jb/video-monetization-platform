@@ -390,6 +390,7 @@ export const DASH_TITLES = {
           ? ['In review', 'Submitted videos waiting on the team.']
           : ['My content', 'Drafts, reviews and published videos.'],
   earnings: () => ['Revenue & Payouts', 'Sales, advertising, and getting paid out.'],
+  capital: () => ['Creator Capital™', 'Build your record. AirPay decides eligibility and approval.'],
   purchases: () => ['My Purchases', 'Every video you have paid for, and how you paid.'],
   become: () => [
     'Apply to become a creator',

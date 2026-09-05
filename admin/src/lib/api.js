@@ -347,6 +347,13 @@ export const api = {
     payments: (params) => get(`/api/admin/payments${qs(params)}`),
     withdrawals: () => get('/api/admin/withdrawals'),
     decideWithdrawal: (id, body) => post(`/api/admin/withdrawals/${id}/decide`, body),
+
+    /** Creator Capital — manual review only. AirPay decides; this records it. */
+    capital: (params) => get(`/api/admin/capital${qs(params)}`),
+    decideCapital: (id, body) => post(`/api/admin/capital/${id}/decide`, body),
+    publishCapitalOffer: (id) => post(`/api/admin/capital/${id}/publish-offer`, {}),
+    pauseCapital: (id, body) => post(`/api/admin/capital/${id}/pause`, body),
+    markCapitalRepaid: (id, amountTzs) => post(`/api/admin/capital/${id}/mark-repaid`, { amountTzs }),
     revenue: () => get('/api/admin/revenue'),
 
     settings: () => get('/api/admin/settings'),

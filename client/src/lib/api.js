@@ -408,6 +408,13 @@ export const api = {
     cancelWithdrawal: (id) => del(`/api/earnings/withdrawals/${id}`),
   },
 
+  /** Manual-review eligibility and offer state — see server/src/modules/capital.routes.js. */
+  capital: {
+    status: () => get('/api/capital/status'),
+    requestReview: () => post('/api/capital/request-review'),
+    acceptOffer: () => post('/api/capital/accept-offer'),
+  },
+
   share: {
     payload: (id) => get(`/api/share/${id}`, { auth: Boolean(getAccessToken()) }),
     generate: (id) => post(`/api/share/${id}/generate`),

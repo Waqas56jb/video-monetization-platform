@@ -169,6 +169,7 @@ export const STAFF_MODULES = [
   'ads',
   'settings',
   'audit',
+  'capital',
 ]
 
 /** What this staff member may do. An administrator holds everything. */

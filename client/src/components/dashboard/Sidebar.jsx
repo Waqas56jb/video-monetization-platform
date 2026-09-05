@@ -39,6 +39,7 @@ const GROUPS = [
       { tab: 'videos', filter: 'published', icon: 'clapperboard', label: 'Published', roles: ['creator'] },
       { tab: 'analytics', icon: 'bar-chart-3', label: 'Analytics', roles: ['creator'] },
       { tab: 'earnings', icon: 'wallet', label: 'Revenue & Payouts', roles: ['creator'] },
+      { tab: 'capital', icon: 'landmark', label: 'Creator Capital™', roles: ['creator'] },
     ],
   },
   {

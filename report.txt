@@ -1166,6 +1166,78 @@ FIX SIZE: L
 DEVICE-SPECIFIC: no
 ```
 
+RESOLUTION (2026-09-06): Built per this report's own design, with the client's exact homepage copy
+(supplied directly for this build, not the placeholder this diagnosis had to invent). Manual
+workflow only — no automation, no lending math beyond `amount_repaid_tzs` against
+`approved_amount_tzs`. Migration numbered `037` (034-036 were claimed by Issues 8/1's stats flag
+and 4/11 in the same pass).
+
+- **Schema**: `037_creator_capital.sql` — the `creator_capital` table exactly as designed (status
+  enum, `months_required` default 6, the generated `remaining_balance_tzs` column, the one-open-
+  per-creator partial unique index, RLS locked to the owning creator or an admin), plus `'capital'`
+  added to the `staff_module` enum for the admin permission gate. Also added `'capital'` to the
+  **JS** `STAFF_MODULES` array in `middleware/auth.js` — this list is not actually introspected
+  from the database despite its own comment claiming so; it is a hand-kept mirror, so both had to
+  change. Verified on production after migrating: the enum carries `capital`, the table has all 16
+  designed columns.
+- **Creator routes** (`server/src/modules/capital.routes.js`, mounted at `/api/capital`):
+  `GET /status` (real row, or a synthesized `building` view before one exists — no row is created
+  until a request is actually made, mirroring `creator_applications`), `POST /request-review`
+  (re-derives eligibility server-side rather than trusting whatever the client last fetched, and
+  refuses a second open request), `POST /accept-offer` (the creator's half of Approve → Publish
+  Offer → Active). "Months of verified earnings" reads only `earnings` — settled, ledger-recorded
+  money — never raw views.
+- **Admin routes** (`admin.routes.js`, same file/router as creator-applications and withdrawals,
+  per this report's own design note): `GET /capital` with exactly the columns asked for — months,
+  lifetime/recent earnings, paying viewers, repeat buyers, refund rate, verification — joined per
+  row via lateral subqueries; `POST /capital/:id/decide` (approve/decline); `/publish-offer`;
+  `/pause`; `/mark-repaid` (simple addition against the approved amount, closes the record on
+  reaching it — confirmed by a test that there is no interest or rate calculation anywhere near it).
+- **Creator dashboard page** (`CreatorCapitalTab.jsx`, new `capital` entry in `CREATOR_TABS` and
+  the Creator Studio sidebar group): Building Eligibility as the default state with a segmented
+  "X of 6 months" progress bar and a Request Review button disabled until eligible, then Under
+  Review / an offer to Accept / Active with a repaid-vs-remaining bar / Repaid / Declined-or-Paused
+  — one state per status the server can return, confirmed by a test that walks the list. The AirPay
+  disclaimer renders unconditionally beneath every state, not folded into just one of them.
+- **Admin review screen** (`admin/src/components/tabs/CapitalTab.jsx`, new `/capital` route and
+  Finance-group sidebar entry, gated on the new `capital` permission module): a card per request in
+  the same visual language as Creator Applications, the disclaimer printed once at the top of the
+  panel, and the five actions (Review is simply opening the under-review filter; Approve/Decline,
+  Publish Offer, Pause, Mark Repaid) wired to the routes above. The sidebar badge counts real
+  `under_review` rows — added `pendingCapitalReviews` to the existing `/api/admin/overview` query
+  rather than inventing a second counts endpoint.
+- **Homepage section** (`client/src/components/landing/CreatorCapital.jsx`, placed between
+  ForCreators and Testimonials as designed): the client's own copy verbatim — title, tagline,
+  subtext, both button labels — pinned in a dedicated test rather than trusted to stay correct by
+  eye. "Learn More" goes to a **new dedicated static page**
+  (`client/src/pages/CreatorCapitalInfo.jsx` at `/creator-capital`), not the `legal.js`/`Legal.jsx`
+  document system this report originally suggested reusing — logged as a deliberate deviation in
+  `DECISIONS.md`, because that system's own "MTONYO+ POLICIES" badge and "Last updated" date would
+  misdescribe a product explainer as legal text. "Build Eligibility" routes a signed-in creator
+  straight to their own tab, or to Create signup otherwise, the same pattern `ForCreators`' own CTA
+  already uses.
+- **The disclaimer, in all three places asked for**: the homepage section, the creator dashboard
+  tab (persistent, every state), and the top of the admin review panel.
+- **Styling**: reused the site's own tokens throughout — `--purple`/`--gold` for the progress and
+  repayment bars (the same gradient language `ForCreators.jsx`'s revenue-split visualization
+  already uses), `--bg`/`--card`/`--border2` for the admin card list, matching black/purple/yellow
+  design system report.txt named.
+- **CLI verification, every route, both a creator and an admin token**: new
+  `server/scripts/capital-cli.mjs`, following the same discipline as `follow-cli.mjs`/
+  `library-cli.mjs` — whatever it creates in `creator_capital` (the fixture creator's demo account
+  is not naturally eligible, so the script inserts one throwaway `under_review` row directly when
+  needed) it deletes again at the end. Exercises status → request-review's eligibility refusal →
+  the admin list → decide (approve) → publish-offer → the creator's own accept-offer → pause →
+  mark-repaid (partial, then full, confirming the balance and the status transition to `repaid`) →
+  cleanup. Live output recorded below.
+- **Tests**: `server/src/modules/capital.import.test.js` (7 — routes exist and are correctly
+  gated, eligibility is re-derived not trusted, the admin list's columns, no lending math beyond
+  addition, nothing here touches a payment provider directly); `server/src/modules/
+  account.analyticsSide.test.js` unaffected. Client: `CreatorCapitalTab.test.js` (3),
+  `CreatorCapital.test.js` (2, the copy-exactness pin). `server` 137/137 pass (was 130), `client`
+  173/173 (was 168), `admin` build clean, `hover:audit`/`split:audit`/`build`/`smoke:render` all
+  green.
+
 ---
 
 ## ISSUE 11 — Release model (NEW): Permanent Paid / Premiere→Free+Ads / Exclusive-Premium; MTONYO+ Original flag

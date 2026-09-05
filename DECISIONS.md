@@ -406,3 +406,24 @@ direct-URL/shared-link load show a poster before `/api/videos` has answered — 
 to draw before that response exists, and manufacturing one (a slug-derived thumbnail endpoint
 fetched in parallel, ahead of the full video row) is a real option but a separate piece of work,
 not attempted here.
+
+---
+
+## 2026-09-06 · Creator Capital's "Learn More" gets its own page, not a sixth legal document
+
+The original design (written during the read-only diagnosis) suggested reusing
+`client/src/data/legal.js` + `Legal.jsx` for the "Learn More" explainer, calling it "the simplest
+consistent option." Building it, that stopped being true.
+
+**Why it was skipped.** `Legal.jsx` hard-codes a "MTONYO+ POLICIES" badge and a "Last updated
+{date}" line on every document it renders — both correct for Terms, Privacy, the Creator Agreement,
+Copyright and Payments & Refunds, and both wrong for a product explainer. Labelling "how Creator
+Capital works" as a policy, with a legal-review timestamp, would misdescribe what the page actually
+is the moment someone reads it.
+
+**What was done instead.** A small dedicated page, `client/src/pages/CreatorCapitalInfo.jsx` at
+`/creator-capital`, sharing only the `Header`/`Footer` shell and the `.legal`/`.legal-head`/
+`.legal-body` CSS classes already styled for long-form content — so it looks consistent with the
+rest of the site without borrowing a badge and a date that do not apply to it. This is more code
+than the reuse would have been (one new page instead of one new object literal), and it is the
+honest option once the mismatch was visible.

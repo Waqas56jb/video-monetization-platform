@@ -58,6 +58,7 @@ router.use('/withdrawals', requirePermission('withdrawals'))
 router.use('/revenue', requirePermission('revenue'))
 router.use('/ads', requirePermission('ads'))
 router.use('/audit', requirePermission('audit'))
+router.use('/capital', requirePermission('capital'))
 
 /**
  * `/settings` is deliberately NOT gated as a whole.
@@ -113,7 +114,8 @@ router.get(
       one(`select count(*) filter (where status = 'pending')::int as withdrawals,
                   (select count(*)::int from video_deletion_requests where status = 'pending') as deletions,
                   (select count(*)::int from content_reports where status = 'open') as reports,
-                  (select count(*)::int from creator_applications where status = 'pending') as applications
+                  (select count(*)::int from creator_applications where status = 'pending') as applications,
+                  (select count(*)::int from creator_capital where status = 'under_review') as capital
              from withdrawals`),
     ])
 
@@ -131,6 +133,7 @@ router.get(
         pendingDeletions: pending.deletions,
         openReports: pending.reports,
         pendingApplications: pending.applications,
+        pendingCapitalReviews: pending.capital,
       },
     })
   })
@@ -2032,6 +2035,302 @@ router.post(
     }).catch(() => {})
 
     res.json({ ok: true, status: updated.status })
+  })
+)
+
+/* ====================================================================
+   CREATOR CAPITAL — manual review, no lending engine
+   --------------------------------------------------------------------
+   MTONYO+ is not the lender. AirPay decides who is approved and for how
+   much; these routes are where an admin, standing in for that decision,
+   records it. Nothing here disburses money or computes interest — the
+   only arithmetic is amount_repaid_tzs against approved_amount_tzs,
+   read back as remaining_balance_tzs (a generated column, so it can
+   never itself drift from the two numbers it comes from).
+   ==================================================================== */
+
+function shapeCapitalAdmin(row) {
+  return {
+    id: row.id,
+    creatorId: row.creator_id,
+    creatorName: row.display_name || row.full_name,
+    creatorEmail: row.email,
+    verified: Boolean(row.verified),
+    status: row.status,
+    monthsRequired: row.months_required,
+    monthsWithEarnings: Number(row.months_with_earnings || 0),
+    lifetimeCreatorTzs: Number(row.lifetime_creator_tzs || 0),
+    recent90dCreatorTzs: Number(row.recent_90d_creator_tzs || 0),
+    payingViewers: Number(row.paying_viewers || 0),
+    repeatBuyers: Number(row.repeat_buyers || 0),
+    refundRatePercent: Number(row.refund_rate_pct || 0),
+    approvedAmountTzs: row.approved_amount_tzs,
+    purpose: row.purpose,
+    repaymentTerms: row.repayment_terms,
+    amountRepaidTzs: row.amount_repaid_tzs,
+    remainingBalanceTzs: row.remaining_balance_tzs,
+    nextReviewAt: row.next_review_at,
+    adminNotes: row.admin_notes,
+    requestedAt: row.requested_at,
+    decidedAt: row.decided_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+/**
+ * The eligibility and buying-pattern figures, joined per row rather than
+ * queried once per creator — this list is small (one row per person who has
+ * ever asked, or been put under review), so a lateral join per row costs
+ * nothing a dashboard needs to worry about.
+ */
+const CAPITAL_LIST_SQL = `
+  select cc.*, p.full_name, p.email, cp.display_name, cp.verified,
+         elig.months_with_earnings, elig.lifetime_creator_tzs, elig.recent_90d_creator_tzs,
+         buy.paying_viewers, buy.refund_rate_pct,
+         coalesce(rep.repeat_buyers, 0) as repeat_buyers
+    from creator_capital cc
+    join profiles p on p.id = cc.creator_id
+    left join creator_profiles cp on cp.user_id = cc.creator_id
+    left join lateral (
+      select count(distinct date_trunc('month', e.created_at))::int as months_with_earnings,
+             coalesce(sum(e.creator_tzs), 0)::int                   as lifetime_creator_tzs,
+             coalesce(sum(e.creator_tzs) filter (
+               where e.created_at >= now() - interval '90 days'
+             ), 0)::int                                             as recent_90d_creator_tzs
+        from earnings e where e.creator_id = cc.creator_id
+    ) elig on true
+    left join lateral (
+      select count(distinct pu.user_id)::int as paying_viewers,
+             round(100.0 * count(*) filter (where pu.status = 'refunded')
+                   / greatest(count(*), 1), 1) as refund_rate_pct
+        from purchases pu join videos v on v.id = pu.video_id
+       where v.creator_id = cc.creator_id
+    ) buy on true
+    left join lateral (
+      select count(*)::int as repeat_buyers
+        from (
+          select pu.user_id
+            from purchases pu join videos v on v.id = pu.video_id
+           where v.creator_id = cc.creator_id
+           group by pu.user_id
+          having count(*) > 1
+        ) r
+    ) rep on true`
+
+/** Every Creator Capital request, or one status at a time. */
+router.get(
+  '/capital',
+  validateQuery(
+    z.object({
+      status: anyOf(['building', 'under_review', 'approved', 'active', 'repaid', 'declined', 'paused']),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const rows = await many(
+      `${CAPITAL_LIST_SQL}
+       where ($1::text is null or cc.status = $1)
+       order by case when cc.status = 'under_review' then 0 else 1 end, cc.requested_at desc nulls last`,
+      [req.query.status || null]
+    )
+    const counts = await one(
+      `select count(*) filter (where status = 'under_review')::int as under_review,
+              count(*) filter (where status = 'approved')::int     as approved,
+              count(*) filter (where status = 'active')::int       as active,
+              count(*)::int                                        as total
+         from creator_capital`
+    )
+    res.json({ applications: rows.map(shapeCapitalAdmin), counts })
+  })
+)
+
+const capitalDecideSchema = z.object({
+  decision: z.enum(['approve', 'decline']),
+  approvedAmountTzs: z.coerce.number().int().positive().optional(),
+  purpose: z.string().trim().max(1000).optional(),
+  repaymentTerms: z.string().trim().max(2000).optional(),
+  note: z.string().trim().max(1000).optional(),
+})
+
+/**
+ * Review → Approve or Decline. "Approve" here means AirPay's decision has
+ * already been made outside this platform and an admin is recording it —
+ * it does not itself publish an offer to the creator (see /publish-offer).
+ */
+router.post(
+  '/capital/:id/decide',
+  validate(capitalDecideSchema),
+  asyncHandler(async (req, res) => {
+    const existing = await one('select * from creator_capital where id = $1', [req.params.id])
+    if (!existing) throw notFound('Creator Capital request not found')
+    if (existing.status !== 'under_review') {
+      throw conflict(`This request is ${existing.status}, not under review`)
+    }
+
+    const b = req.body
+    const nextStatus = b.decision === 'approve' ? 'approved' : 'declined'
+    if (b.decision === 'approve' && !b.approvedAmountTzs) {
+      throw badRequest('An approved amount is required to approve a request')
+    }
+
+    const updated = await one(
+      `update creator_capital set
+         status             = $2,
+         approved_amount_tzs = coalesce($3, approved_amount_tzs),
+         purpose             = coalesce($4, purpose),
+         repayment_terms     = coalesce($5, repayment_terms),
+         admin_notes         = coalesce($6, admin_notes),
+         decided_at          = now(),
+         decided_by          = $7,
+         updated_at          = now()
+       where id = $1 returning *`,
+      [
+        existing.id,
+        nextStatus,
+        b.approvedAmountTzs ?? null,
+        b.purpose ?? null,
+        b.repaymentTerms ?? null,
+        b.note ?? null,
+        req.user.id,
+      ]
+    )
+
+    await recordStaffAction(req, {
+      action: b.decision === 'approve' ? 'CAPITAL_APPROVED' : 'CAPITAL_DECLINED',
+      entityType: 'creator_capital',
+      entityId: existing.id,
+      summary: `${who(req)} ${b.decision === 'approve' ? 'approved' : 'declined'} a Creator Capital request`,
+      detail: { decision: b.decision, approvedAmountTzs: b.approvedAmountTzs ?? null, note: b.note ?? null },
+    })
+
+    await notify({
+      userId: existing.creator_id,
+      kind: 'account',
+      title:
+        b.decision === 'approve'
+          ? 'Your Creator Capital request was approved'
+          : 'Your Creator Capital request was declined',
+      body:
+        b.note ||
+        (b.decision === 'approve'
+          ? 'AirPay has approved your request. An offer will follow.'
+          : 'AirPay was not able to approve this request at this time.'),
+      actor: req.user,
+      action: 'capital_decide',
+      entityType: 'creator_capital',
+      entityId: existing.id,
+    })
+
+    res.json({ capital: shapeCapitalAdmin({ ...updated, full_name: null, email: null }) })
+  })
+)
+
+/** Approved → Active is normally the creator's own accept-offer, but an
+ *  admin publishing here is what makes the offer visible to them at all —
+ *  "Approve" records AirPay's decision; this is the moment the creator can
+ *  actually see it. */
+router.post(
+  '/capital/:id/publish-offer',
+  asyncHandler(async (req, res) => {
+    const existing = await one('select * from creator_capital where id = $1', [req.params.id])
+    if (!existing) throw notFound('Creator Capital request not found')
+    if (existing.status !== 'approved') throw conflict('Only an approved request can have its offer published')
+
+    await recordStaffAction(req, {
+      action: 'CAPITAL_OFFER_PUBLISHED',
+      entityType: 'creator_capital',
+      entityId: existing.id,
+      summary: `${who(req)} published a Creator Capital offer`,
+    })
+
+    await notify({
+      userId: existing.creator_id,
+      kind: 'account',
+      title: 'Your Creator Capital offer is ready',
+      body: 'Open Creator Capital in your dashboard to view and accept it.',
+      actor: req.user,
+      action: 'capital_offer',
+      entityType: 'creator_capital',
+      entityId: existing.id,
+    })
+
+    res.json({ capital: shapeCapitalAdmin({ ...existing, full_name: null, email: null }) })
+  })
+)
+
+/** Active → Paused. Repayment is on hold; nothing about the balance changes. */
+router.post(
+  '/capital/:id/pause',
+  validate(z.object({ note: z.string().trim().max(1000).optional() })),
+  asyncHandler(async (req, res) => {
+    const updated = await one(
+      `update creator_capital set status = 'paused', admin_notes = coalesce($2, admin_notes), updated_at = now()
+        where id = $1 and status = 'active' returning *`,
+      [req.params.id, req.body.note ?? null]
+    )
+    if (!updated) throw conflict('Only an active request can be paused')
+
+    await recordStaffAction(req, {
+      action: 'CAPITAL_PAUSED',
+      entityType: 'creator_capital',
+      entityId: updated.id,
+      summary: `${who(req)} paused a Creator Capital repayment`,
+      detail: { note: req.body.note ?? null },
+    })
+
+    res.json({ capital: shapeCapitalAdmin({ ...updated, full_name: null, email: null }) })
+  })
+)
+
+/**
+ * Records a repayment. This is bookkeeping, not a collection mechanism —
+ * money still moves through AirPay; an admin enters what AirPay reports.
+ * Reaching the full approved amount closes the record.
+ */
+router.post(
+  '/capital/:id/mark-repaid',
+  validate(z.object({ amountTzs: z.coerce.number().int().positive() })),
+  asyncHandler(async (req, res) => {
+    const existing = await one('select * from creator_capital where id = $1', [req.params.id])
+    if (!existing) throw notFound('Creator Capital request not found')
+    if (!['active', 'paused'].includes(existing.status)) {
+      throw conflict('Only an active or paused request can record a repayment')
+    }
+
+    const updated = await one(
+      `update creator_capital set
+         amount_repaid_tzs = amount_repaid_tzs + $2,
+         status = case
+           when amount_repaid_tzs + $2 >= coalesce(approved_amount_tzs, 0) then 'repaid'::creator_capital_status
+           else status
+         end,
+         updated_at = now()
+       where id = $1 returning *`,
+      [existing.id, req.body.amountTzs]
+    )
+
+    await recordStaffAction(req, {
+      action: 'CAPITAL_REPAYMENT_RECORDED',
+      entityType: 'creator_capital',
+      entityId: existing.id,
+      summary: `${who(req)} recorded a Creator Capital repayment of TZS ${Number(req.body.amountTzs).toLocaleString()}`,
+      detail: { amountTzs: req.body.amountTzs, newStatus: updated.status, remainingBalanceTzs: updated.remaining_balance_tzs },
+    })
+
+    if (updated.status === 'repaid') {
+      await notify({
+        userId: existing.creator_id,
+        kind: 'account',
+        title: 'Your Creator Capital balance is fully repaid',
+        body: 'Thank you — this record is now closed.',
+        actor: req.user,
+        action: 'capital_repaid',
+        entityType: 'creator_capital',
+        entityId: existing.id,
+      })
+    }
+
+    res.json({ capital: shapeCapitalAdmin({ ...updated, full_name: null, email: null }) })
   })
 )
 

@@ -25,6 +25,7 @@ import WithdrawalsTab from '@/components/tabs/WithdrawalsTab'
 import RevenueTab from '@/components/tabs/RevenueTab'
 import AdsTab from '@/components/tabs/AdsTab'
 import AuditTab from '@/components/tabs/AuditTab'
+import CapitalTab from '@/components/tabs/CapitalTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
 
 /** Routes only an administrator may open; a sub-admin is sent a refusal, not the screen. */
@@ -160,6 +161,7 @@ function Router() {
         <Route path="/payments" element={<Needs module="payments"><PaymentsTab /></Needs>} />
         <Route path="/withdrawals" element={<Needs module="withdrawals"><WithdrawalsTab /></Needs>} />
         <Route path="/ads" element={<Needs module="ads"><AdsTab /></Needs>} />
+        <Route path="/capital" element={<Needs module="capital"><CapitalTab /></Needs>} />
         <Route path="/audit" element={<Needs module="audit"><AuditTab /></Needs>} />
         <Route path="/settings" element={<Needs module="settings"><SettingsTab /></Needs>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

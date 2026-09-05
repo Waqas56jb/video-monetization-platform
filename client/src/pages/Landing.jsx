@@ -11,6 +11,7 @@ import HowItWorks from '@/components/landing/HowItWorks'
 import AccessModels from '@/components/landing/AccessModels'
 import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
+import CreatorCapital from '@/components/landing/CreatorCapital'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
 
@@ -52,6 +53,7 @@ export default function Landing() {
       <AccessModels />
       <Features />
       <ForCreators />
+      <CreatorCapital />
       <Testimonials />
       <CallToAction />
       <Footer />

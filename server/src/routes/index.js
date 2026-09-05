@@ -43,6 +43,10 @@ router.use(
   '/earnings',
   lazyRouter(() => import('../modules/earnings.routes.js'))
 )
+router.use(
+  '/capital',
+  lazyRouter(() => import('../modules/capital.routes.js'))
+)
 router.use('/public', publicRoutes)
 router.use('/share-card', shareCardRoutes)
 router.use(
