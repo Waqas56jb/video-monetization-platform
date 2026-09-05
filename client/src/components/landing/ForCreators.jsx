@@ -102,17 +102,20 @@ export default function ForCreators() {
           </div>
 
           <div className="earn-list">
-            {EARN_ITEMS.map((item) => (
-              <div className="earn-item" key={item.title}>
-                <span className="e-ic">
-                  <Icon name={item.icon} />
-                </span>
-                <div>
-                  <b>{item.title}</b>
-                  <p>{item.text}</p>
+            {EARN_ITEMS.map((item) => {
+              const title = typeof item.title === 'function' ? item.title(creatorShare) : item.title
+              return (
+                <div className="earn-item" key={title}>
+                  <span className="e-ic">
+                    <Icon name={item.icon} />
+                  </span>
+                  <div>
+                    <b>{title}</b>
+                    <p>{item.text}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <button className="btn btn-gold" onClick={() => navigate('/signup?side=creator')}>

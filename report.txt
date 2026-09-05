@@ -1,0 +1,1077 @@
+# M2 final review — current implementation of all 12 client issues
+
+Diagnosis only. No code was changed, no migration was run, every database query in this report
+was a read-only `SELECT`. Three throwaway read-only audit scripts were written during this review
+(under `server/scripts/`) to query production for verification purposes; all three have been
+deleted — nothing was left wired into the app. Numbers already established in M2-GAP.md,
+M2-VERIFY.md, CLIENT-REPORT.md and PLAYER-MEASURE.md are cited with their date rather than
+re-measured; everything else below is a fresh check against `main` and against production on
+2026-09-06.
+
+Production: `main` on Railway (API) + two Vercel projects (public client, admin), auto-deployed.
+- API: https://video-monetization-platform-production.up.railway.app
+- Public client: https://video-monetization-platform-chi.vercel.app
+- Admin: https://video-monetization-platform-admin.vercel.app
+
+---
+
+## ISSUE 1 — Revenue split: Super Admin must control everything (client set 70/30; some pages still show 60/40)
+
+### How the split actually flows through the code today
+
+The split lives in one place: `platform_settings.creator_split_percent` (`server/src/db/migrations/001_core_schema.sql:273`, default `70`), with an optional per-creator override on `creator_profiles.revenue_split_percent` (`001_core_schema.sql:85`). All read/write access goes through `server/src/services/settings.js`:
+
+- `getSettings()` (`settings.js:13-18`) — cached 60s, `select * from platform_settings where id = 1`.
+- `updateSettings(patch)` (`settings.js:20-47`) — the only writer; `creator_split_percent` is in the `allowed` whitelist (`settings.js:22`); invalidates the cache on write.
+- `splitPercentFor(creatorId)` (`settings.js:53-62`) — returns the creator's override if set, else the platform default, else a hardcoded literal `70` as a last-resort fallback (`settings.js:61`) — this fallback only fires if the settings row itself is somehow missing, not a normal code path.
+- `applySplit(amountTzs, creatorPercent)` (`settings.js:65-68`) — pure math, rounds in the creator's favor.
+
+Every place that calculates or displays a split was traced. All of them call through `settings.js` live — there is no separate hardcoded 60/40 anywhere in the *application* code:
+
+| Surface | File:line | Live or hardcoded? | What it shows |
+|---|---|---|---|
+| Payment settlement (creator/platform split written to the ledger) | `server/src/modules/payments/payments.service.js:41-42` | **Live** — `splitPercentFor(video.creator_id)` then `applySplit(...)` | Whatever the setting is at the moment of settlement |
+| Ad-revenue split | `server/src/services/ads.js:215-217` | **Live** — `settings.share_ad_revenue ? await splitPercentFor(...) : 0` | Same |
+| Creator's own earnings page (API) | `server/src/modules/earnings.routes.js:80` | **Live** — `splitPercentFor(req.user.id)` | Same |
+| Creator's own profile/account read | `server/src/modules/account.routes.js:66`, `server/src/modules/auth.routes.js:363` | **Live** — selects `revenue_split_percent` from `creator_profiles` directly | Creator's own override or null (falls back client-side) |
+| Admin creator list | `server/src/modules/admin.routes.js:900-908` | **Live** — selects `cp.revenue_split_percent` | Per-creator |
+| Admin "set creator split" action | `server/src/modules/admin.routes.js:936-954` | **Live** — writes `creator_profiles.revenue_split_percent` | N/A (write path) |
+| Admin revenue/settings summary | `server/src/modules/admin.routes.js:1162-1173` | **Live** — `defaultSplitPercent: settings.creator_split_percent`, plus per-creator `overrides` | Same |
+| Admin update-settings validation | `server/src/modules/admin.routes.js:1277` | **Live** — zod schema accepts `creator_split_percent` 0-100 | N/A |
+| Global dashboard stats | `server/src/modules/stats.routes.js:47` | **Live** — `creatorSplitPercent: settings.creator_split_percent` | Same |
+| Server boot log | `server/src/index.js:34` | **Live** — logs `s.creator_split_percent` at connect time | Diagnostic only |
+| Admin → Creator Management (`CreatorsTab.jsx`) | `admin/src/components/tabs/CreatorsTab.jsx:28,72,75,89,185` | **Live** — reads `api.admin.settings()`/`api.admin.creators()`, `defaultSplit` fallback literal `70` only used before the API responds | Matches live setting |
+| Admin → Revenue tab (Global Revenue Split editor + chart) | `admin/src/components/tabs/RevenueTab.jsx:27-42,79-157` | **Live** for the editable global split; the **donut chart is deliberately historical** (arc lengths from summed `earnings` rows, not the live setting — `admin/src/components/charts/DonutChart.jsx:2-6`) | Editor matches live setting; chart intentionally shows history |
+| Admin → Settings tab (Creator share % field) | `admin/src/components/tabs/SettingsTab.jsx:300-337` | **Live** — reads/writes `settings.creator_split_percent` | Same |
+| Client creator dashboard → Earnings tab | `client/src/components/dashboard/tabs/EarningsTab.jsx:156` | **Live** — `summary.data?.splitPercent ?? 70` (fallback only pre-load) | Matches live setting |
+| Client creator dashboard → Overview/Analytics donut | `client/src/components/dashboard/DonutChart.jsx:4-6,51,61` | **Live/historical**, same "arcs from real amounts, not a fixed 70/30" design as the admin donut | Historical, by design |
+| Homepage Hero stat ("X% of every sale is yours") | `client/src/components/landing/Hero.jsx:12-18,79-90,108` | **Live** — `data?.creatorSplitPercent ?? 70`, explicitly commented "read from platform settings... changes with it" | Matches live setting |
+| "For Creators" homepage section | `client/src/components/landing/ForCreators.jsx:18,30,40` | **Live** — `stats.data?.creatorSplitPercent ?? 70` | Matches live setting |
+| Public creator profile page | `client/src/pages/CreatorProfile.jsx` | **N/A — no split shown here at all** (grepped, no matches) | — |
+| Receipts/emails | (searched `server/src/lib/shareCard.js`, notification code) | **N/A — no split percentage is echoed in any receipt/notification body** found | — |
+
+**One genuine hardcode remains, and it is a real (if minor) finding:** `client/src/data/copy.js:310` — the marketing "Features" list contains the literal string `title: 'Generous 70/30 revenue split'`. This is plain static copy, not computed from the API. It happens to agree with the live setting today, but if an admin changes the split (as literally just happened in production — see below), this text will not follow and will quietly lie. This exact defect was already flagged once before in this repo's own audit history (`AUDIT.md:50`, `AUDIT.md:939`: *"'Generous 70/30 revenue split' — Marketing only — hard-coded copy... change it in the admin and the homepage still says 70/30."*). It was fixed everywhere else (Hero.jsx, ForCreators.jsx — see `AUDIT.md:596-598` "Revenue chart hard-coded 70/30: fixed") but this one literal in `copy.js` was never converted to read from settings.
+
+CSS/component false positives confirmed and discarded: `client/src/styles/global.css`, `client/src/styles/realdata.css`, `client/src/components/watch/WatchSkeleton.jsx`, `client/src/components/dashboard/DonutChart.jsx` (the numbers here are `%` widths for layout, not splits — the one real reference in DonutChart.jsx is the comment explicitly disclaiming a fixed 70/30), `client/src/hooks/useInView.js`, `admin/src/styles/global.css` (all `60`/`40`/`70`/`30` hits are pixel sizes, breakpoints, or `70vw` etc.). `server/src/cli/smoke.js`'s "60" is a 60-day premiere-window test fixture, unrelated. `client/src/pages/Watch.jsx`'s "60"s are all about the 60-second promo clip. Package-lock.json hits are semver noise.
+
+### What the settings table holds right now (live production read)
+
+```
+platform_settings (id=1):
+  creator_split_percent: 70
+  updated_at: 2026-09-04T06:09:54.694Z
+creator_profiles.revenue_split_percent overrides: none currently set (0 rows)
+```
+
+**Today, right now, the live setting is correctly 70/30** and no creator has an override.
+
+### Do historical rows store their own split? Yes — and this is where the real 60/40 problem is
+
+Both `purchases` and `earnings` snapshot the split **at the moment of the transaction**, in their own `split_percent` column:
+- `purchases.split_percent` (`001_core_schema.sql:195`), alongside `creator_amount_tzs` / `platform_amount_tzs` (computed once, at settlement time, in `payments.service.js:41-42,57-70`).
+- `earnings.split_percent` (`001_core_schema.sql:216`), alongside `creator_tzs` / `platform_tzs`.
+
+This is deliberate and documented in the admin UI itself: `RevenueTab.jsx:15-17` — *"The global split applies to new sales only. Money already split stays split the way it was — changing the rule cannot reach backwards and quietly restate what a creator was told they had earned."* Migration `016_reconcile_earnings_ledger.sql` exists specifically to keep `earnings.purchase_id` correctly joined to its `purchases` row so this ledger stays reconcilable.
+
+**A read-only production query shows this is not theoretical — it already happened:**
+
+```
+purchases.split_percent distribution:
+  60  → 34 rows, first 2026-08-28T06:46:41Z, last 2026-09-02T01:53:19Z
+  70  → 20 rows, first 2026-05-19T20:16:09Z, last 2026-08-23T03:03:24Z
+
+earnings.split_percent distribution:
+  60 / sale → 34 rows (2026-08-28 → 2026-09-02)
+  60 / ad   →  3 rows (2026-08-27T02:40 → 2026-08-27T03:14)
+  70 / sale → 21 rows (2026-05-19 → 2026-08-23)
+  70 / ad   →  5 rows (2026-08-10 → 2026-08-21)
+```
+
+The live `platform_settings.creator_split_percent` was **not** 70 the whole time. Somewhere between 2026-08-23 and 2026-08-27 it was changed to **60** (40% platform), stayed there through at least 2026-09-02, and was changed back to 70 by 2026-09-04 06:09:54Z (the row's current `updated_at`). This matches `RAILWAY-MOVE.md:244`, a boot log captured during that window that literally prints `database connected · split 60/40` — independent confirmation this was the real live value at the time, not a demo artifact. There is no `staff_actions`/audit table in this schema that logs settings changes (confirmed: `select ... from staff_actions` errors, "relation does not exist"), so **there is no audit trail of who changed it or why** — only the ledger rows it left behind.
+
+**Financial impact, quantified from production (read-only):**
+
+- 34 purchases at 60/40 instead of 70/30: gross TZS 55,500 → creators were paid TZS 33,300; at 70/30 they should have received TZS 38,850 → **TZS 5,550 total shortfall** across 4 creator accounts.
+  - Two are **real creator accounts**: `safarihostadventures@gmail.com` ("Tiger") — TZS 1,100 shortfall over 22 purchases; `yaschali@gmail.com` ("Yasmin Chali") — TZS 200 shortfall over 2 purchases. **Real-money underpayment: TZS 1,300.**
+  - Two are demo/seed accounts (`demo.juma@mtonyo.demo`, `demo.asha@mtonyo.demo`) — TZS 4,250 of the total, not real money.
+- 3 ad-impression earnings rows at 60/40: gross TZS 275 → paid TZS 165 vs TZS 193 at 70/30 — TZS 28 shortfall (negligible).
+
+**What would/wouldn't reflect an admin change today, concretely:**
+
+*Immediately reflects a live setting change* (reads `platform_settings`/`creator_profiles` on every call, no caching beyond the 60s TTL in `settings.js:5`): payment settlement (`payments.service.js:41`), ad-revenue split (`ads.js:215`), creator earnings API (`earnings.routes.js:80`), admin creator list/settings/revenue screens (`admin.routes.js:900-908,1162-1173`), stats endpoint (`stats.routes.js:47`), homepage Hero stat (`Hero.jsx:108`) and For Creators section (`ForCreators.jsx:18`), client Earnings tab (`EarningsTab.jsx:156`), admin CreatorsTab/RevenueTab/SettingsTab editors.
+
+*Does NOT reflect it, by design or by omission:*
+- Every already-recorded `purchases.split_percent` / `earnings.split_percent` row — frozen at settlement time (intentional, per `RevenueTab.jsx:15-17`).
+- The historical donut charts — intentionally shows the mix of past earnings, not the current setting.
+- **`client/src/data/copy.js:310`** — the "Generous 70/30 revenue split" marketing string is static text, never re-evaluated against `platform_settings`. The one unfixed hardcode.
+- The `?? 70` UI fallback literals scattered through the frontend are not bugs — they only render before the API response lands — but during the recent 60/40 window they would have briefly shown "70" on first paint while the real API value was 60, a small but real inconsistency window on every page load.
+
+### Discrepancy list (current, concrete)
+
+1. **`client/src/data/copy.js:310`** — hardcoded "Generous 70/30 revenue split" marketing copy; will silently go stale the next time the setting changes. This is the only place in the *code* that doesn't read live.
+2. **37 historical `earnings` rows + 34 `purchases` rows dated 2026-08-27/28 through 2026-09-02** are permanently recorded at 60/40 in the production database, disagreeing with the current (correct) 70/30 live setting — TZS 5,550 in creator-earnings shortfall baked into the ledger (TZS 1,300 of it on two real creator accounts), and no record of who changed the setting or why.
+3. No other UI surface, admin screen, or payment-calculation code path was found using a hardcoded 60/40 today — every other rendering pulls live from `platform_settings`/`creator_profiles`.
+
+```
+STATUS: PARTIAL
+FIX SIZE: S
+DEVICE-SPECIFIC: no
+```
+
+RESOLUTION (2026-09-06):
+
+- `client/src/data/copy.js`'s `EARN_ITEMS[0].title` is a function of the live split now —
+  `` (creatorShare) => `Generous ${creatorShare}/${100 - creatorShare} revenue split` `` — instead
+  of the literal string `'Generous 70/30 revenue split'`. `client/src/components/landing/ForCreators.jsx`
+  (the only place `EARN_ITEMS` is read) resolves it with the same `creatorShare` value it already
+  computes from `api.stats.platform()` for the rest of the section, so there is exactly one source
+  of the number on this page, not two that happen to agree.
+- New guard: `client/scripts/split-literal-audit.mjs`, wired into `npm run verify` as `split:audit`.
+  Scans every non-test `.js/.jsx` file under `client/src` and `admin/src` (comments excluded) for a
+  literal `NN/NN` pair summing to 100 within one line of a split/revenue/share/earn word, and fails
+  the build if one is found — the exact shape of the bug this issue was about. Verified it actually
+  catches the old bug (temporarily reintroduced the literal string in a throwaway probe file, ran
+  the script, got `1 offender(s)` naming the exact line, removed the probe) and that it now passes
+  clean on real source: `split-literal audit: 0 offender(s)`.
+- Live verification against production, `platform_settings.creator_split_percent` toggled through a
+  real admin account (temporary `ops-launch@mtonyo.internal`, created for this engagement, to be
+  removed at the end — see Issue 9's login section for why a launch-day admin password could not be
+  used):
+
+  ```
+  before:  GET /api/stats            → creatorSplitPercent = 70   (unauthenticated, what Hero.jsx/ForCreators.jsx read)
+  before:  GET /api/admin/settings   → creator_split_percent = 70
+  PATCH /api/admin/settings {"creator_split_percent":65}  → 200, settings.creator_split_percent = 65
+  after:   GET /api/stats            → creatorSplitPercent = 65
+  after:   GET /api/admin/settings   → creator_split_percent = 65
+  DB, direct read: platform_settings.creator_split_percent = 65
+  DB, direct read: purchases.split_percent distribution = { 60: 15 rows, 70: 20 rows }   ← no 65 appeared
+  PATCH /api/admin/settings {"creator_split_percent":70}  → 200, settings.creator_split_percent = 70
+  after restore: GET /api/stats      → creatorSplitPercent = 70
+  ```
+
+  Every live-reading surface traced in this report followed the setting to 65 and back; every
+  already-recorded `purchases.split_percent` row stayed exactly where it was (60 or 70 — the two
+  values that existed before this test began), proving the settlement path really does snapshot
+  once and never touches history, which is what `RevenueTab.jsx:15-17`'s own copy claims.
+- The 37 historical 60/40 ledger rows (Aug 27 – Sep 4 window) were **not** rewritten — per the
+  client's own rule that history is preserved as recorded. See the new paragraph in
+  `CLIENT-REPORT.md` (added in the Final block) naming the window and confirming every affected
+  transaction is sandbox test data, not real money.
+- `client` test suite 157/157 pass (unchanged count — no new test file, the guard is a build-time
+  script, not a `node --test` case), `hover:audit` 21/21, `split:audit` clean, `build` and
+  `smoke:render` both green. `admin` build unaffected (no admin changes for this issue).
+
+---
+
+## ISSUE 2 — Video startup: 1–3 s black before first frame; poster must show immediately
+
+**Established numbers, cited not re-measured.** PLAYER-MEASURE.md: tap→playing medians 3108/3585/3218 ms (iPhone 13, prod, 2026-08-31); CDN floor ~3.5 s = iframe/SDK bootstrap ~1.9 s (including a 301 redirect on `sdk-iframe-integration…js`) + buffer fill ~1.5–2 s; `unpaused` fires at the same instant as `video_el` (not an autoplay-permission block); Route B (mount before `/api/videos`) tried 3×, closed — regressed to 8808/7440/9692 ms and is not to be retried.
+
+**No regression since these docs.** `git log --since=2026-09-01 -- client/src/components/watch/StreamPlayer.jsx client/src/pages/Watch.jsx client/src/components/watch/WatchSkeleton.jsx` shows the last touches are already covered by M2-VERIFY.md / CLIENT-REPORT.md (library rows, progress-beacon fix, follow, mount-shape perf). Nothing has touched these files since.
+
+### Does the poster render at 0 ms on every entry path?
+
+**No — only on internal navigation.** Two different "Step 2 shell" mechanisms exist, and only one has a poster ready at 0 ms:
+
+1. **`WatchSkeleton`** (`client/src/components/watch/WatchSkeleton.jsx:8-42`) is used as the `Suspense` fallback for the lazy-loaded `Watch` chunk (`client/src/App.jsx:51-70`) and as Watch's own first paint while `/api/videos` is in flight (`client/src/pages/Watch.jsx:664-671`). It renders `<img class="watch-preview-poster">` **only if `thumb` is present** (`WatchSkeleton.jsx:20-22`); otherwise a bare grey `<div class="skeleton skeleton-player" />` (line 23) — no picture. `thumb` comes from router `state.preview`, populated **only by internal `<Link>` clicks** (`Explore.jsx:253`, `Trending.jsx:65`, `MoreLikeThis.jsx:55`, `ContinueWatching.jsx:53`, `LibraryTab.jsx:41`, `CreatorProfile.jsx:36,61,198`). **A direct URL load, a shared link, and a hard back-navigation all arrive with no `location.state`**, so `WatchSkeleton` renders the bare skeleton div, not a poster. Real gap: "poster must show immediately" is true for card-click navigation and false for direct URL / shared link / back-nav after a full reload.
+
+2. Once `/api/videos/:slug` resolves but the playback iframe is not ready yet, **Watch.jsx's own boot block** shows a real poster from server data: `<img className="stream-poster" src={mediaUrl(v.thumbnailUrl)} />` (`Watch.jsx:814-822,864-877`). This covers every entry path equally (depends on the API response, not navigation type). Warm this typically lands in ~500-960 ms; on a cold Home the render-to-first-card can run 2.3–8.6 s (M2-GAP.md §1), so on a slow/cold load the grey no-picture skeleton can persist a non-trivial time before this second poster appears.
+
+**New finding not in the cited docs — a black handoff between the two posters.** When `p?.playback?.iframe` becomes available, Watch.jsx's conditional chain (`Watch.jsx:812-891`) **swaps the boot block (with its poster `<img>`) for `<StreamPlayer>`**, which renders no poster at all — its markup is `<div class="stream-shell is-live"><iframe class="stream-frame" .../></div>` (`StreamPlayer.jsx:698-722`). `.stream-shell` has a plain solid `background:#000` (`client/src/styles/realdata.css:305`), and `.stream-frame` starts at `opacity:0`, only reaching `opacity:1` once `is-painted` is added on the iframe's own `onLoad` (`realdata.css:309-326`; `StreamPlayer.jsx:190,710-712`). So for the interval between "our poster is removed" and "the iframe's document has loaded and painted," the viewer sees solid black — a genuine, currently-live black-screen moment (roughly bounded by PLAYER-MEASURE.md's "iframe" column, ~930–1150 ms desktop, up to ~1.7–1.9 s on Fast 3G/portrait, though measured from tap rather than from the poster-swap instant).
+
+**`buildSrc` does not set a `poster=` param, and this is deliberate, not an oversight.** `StreamPlayer.jsx:24-42`:
+```
+url.searchParams.set('autoplay', 'true')
+url.searchParams.set('muted', 'true')
+// Do not put a signed poster on this URL. It doubled the JWT, aborted the
+// embed (net::ERR_ABORTED), and left the same dead Play overlay.
+```
+Tried and reverted — a signed poster URL doubled the JWT and broke the embed outright. So the real gap is not "add `poster=`" but "keep our own poster mounted through the swap into `StreamPlayer`" (e.g. render `v.thumbnailUrl` as a background layer inside/behind `StreamPlayer`'s own shell rather than only in Watch.jsx's boot block, so it survives the transition).
+
+### Paid flow chain — re-verified in current code, not just cited
+
+- Preview halts itself: `StreamPlayer.jsx:349-388` (`haltIfDue`, polled every 200 ms plus a `timeupdate` listener) pauses at the stop point and fires `onStopReached` once.
+- `onUnlocked` (`Watch.jsx:565-621`) computes the resume point via `resumePoint(...)` (the same function `resumePoint.test.js` locks the "3:37 vs 5:00" case against), sets `resumeHint`, reloads quietly, and shows a toast explaining the start point (matching M2-GAP.md's suggested caption for the "resumes at 0" case).
+- The payment sheet closes itself: `onUnlocked` sets `payOpen(false)` (`Watch.jsx:586`).
+- No second Play button: the `continue-veil` overlay (`Watch.jsx:1020-1034`) is a passive banner that clears on `onPlaying` or a 3.5 s failsafe — there is no button in it.
+- No changes to `Watch.jsx`/`StreamPlayer.jsx`/`PaymentModal.jsx` since M2-VERIFY.md's B1/B3 numbers were taken (5/5 across chromium desktop + Pixel 7, 20.0 s resume against a 19.9 s stop) — no regression.
+
+### Continue Watching — write and read paths, re-verified in current code
+
+**Write path** (`Watch.jsx:435-459`): `pagehide`/`visibilitychange` calls `beaconProgress(...)` (`client/src/lib/progressBeacon.js:62-95`), tries `navigator.sendBeacon` first, falls back to `fetch(..., {keepalive:true})` PUT. Server side both verbs are registered: `router.put('/:id/progress', ...)` and `router.post('/:id/progress', ...)` (`server/src/modules/playback.routes.js:437-438`) — the C3 fix is still in place. No regression since.
+
+**Read path is user-scoped, not device/session-scoped.** `loadWatchContext` (`server/src/modules/playback.routes.js:41-72`) joins `watch_progress` purely on `wp.user_id = $3::uuid and wp.video_id = v.id` — no cookie/device id/session id anywhere in the join. Resume works identically after logout/login (proven in M2-VERIFY B1) and — confirmed by code reading — **would work identically on a second device/browser on the same account**.
+
+```
+STATUS: PARTIAL
+FIX SIZE: S
+DEVICE-SPECIFIC: no (the poster gap and the black-handoff gap are structural — they reproduce on every platform; the CDN floor itself is universally unfixable per PLAYER-MEASURE.md)
+```
+
+---
+
+## ISSUE 3 — Preview control: no "half the video" rule
+
+**The ceiling is `min(300, duration/3)` — a third, not a half — and it exists in exactly one place, imported everywhere it is enforced.** `server/src/lib/preview.js:34,39-48`:
+```js
+export const PLATFORM_MAX_PREVIEW_SECONDS = 300
+const SHARE_OF_RUNNING_TIME = 3
+export function maxFreePreviewSeconds(durationSeconds) { ... Math.min(PLATFORM_MAX_PREVIEW_SECONDS, Math.floor(duration / SHARE_OF_RUNNING_TIME)) }
+export function clampFreePreviewSeconds(asked, durationSeconds) { ... Math.min(want, maxFreePreviewSeconds(durationSeconds)) }
+```
+and a SQL-side twin, `clampPreviewSql()` (`preview.js:55-65`). `preview.test.js:5-15` locks the exact cases from the migration's own comment (10:53 concert → 3:37/217s, 54s clip → 18s, 3-min song → 60s, 2-hour film → 300s/5:00).
+
+Migration `server/src/db/migrations/019_preview_ceiling.sql:25-28,35-38` is the ceiling's origin: it retroactively re-clamps every existing row and lowers the platform default to 45 s (a third and a half were both tried and rejected, per the migration's own comment).
+
+**Enforced on every write path that matters**, all going through the one function/SQL fragment above:
+- Creator PATCH (`videos.routes.js:19,375-383`): `clampFreePreviewSeconds(previewSeconds, video.duration_seconds)`, silently clamped with a `notice` returned to the caller.
+- Submit-for-review (`videos.routes.js:490`): unconditional clamp in the `UPDATE`.
+- Encoding-finished webhook, the moment `duration_seconds` first becomes known (`videos.routes.js:649`).
+- Every playback read, defensively and self-healing: `playback.routes.js:280-283,309-319` — if the stored value is still over the ceiling the route rewrites the row in the background.
+
+**What a creator can actually set.** `client/src/components/dashboard/PreviewDuration.jsx` — a number + unit field, with `maxFreePreviewSeconds()` **duplicated client-side** (comment explicitly says it "must match server/src/lib/preview.js exactly"), enforced live and again at submit in `UploadTab.jsx:259-265`. The client-side copy is correct and consistent with the server: "A preview never runs past five minutes, and on a short video never past a third of it."
+
+**One stale-copy mismatch found, cosmetic only.** The PATCH route's in-code comments and its user-facing clamp notice still say **"half"**, contradicting the actual math (a third) and the client-side copy:
+- `videos.routes.js:310-312`: "Any length that still leaves half the video to pay for."
+- `videos.routes.js:372`: "The ceiling is half the running time, not duration-minus-one."
+- `videos.routes.js:419-422`, the string returned to the creator: `` `A free preview cannot be more than half of the video (${video.duration_seconds}s), so it was shortened from ${previewClamped.asked}s to ${previewClamped.applied}s.` ``
+
+Low-severity: enforcement is correct, only the wording shown to a creator when their number gets shortened claims the wrong fraction.
+
+**Super Admin default vs. per-video override — precedence traced.** `default_preview_seconds` (admin-editable at `admin/src/components/tabs/SettingsTab.jsx:376-377`, validated server-side 0–7200s at `admin.routes.js:1280`) is used **only at video creation** (`videos.routes.js:290`). From then on, every read/write clamps and reads `videos.free_preview_seconds` directly — the settings default is never consulted again. **A per-video value always wins once set**, confirmed by code path. The admin input's own max (7200s/2h) is looser than the 300s ceiling but harmless — the ceiling is re-applied the moment `duration_seconds` becomes known and defensively on every playback read.
+
+**Label vs. actual cutoff — traced to the same value, cannot disagree in current code.** `Watch.jsx:709`: `const previewSeconds = Number(p?.playback?.stopsAtSeconds || v.freePreviewSeconds || 0)` — used **both** for the on-screen label (`Watch.jsx:1001-1006,1054-1062`) **and** for the actual player cutoff (`stopAt={...}`, `Watch.jsx:920`). `stopsAtSeconds` is computed server-side once from the same `clampFreePreviewSeconds` call and enforced as a hard pause (`StreamPlayer.jsx:349-388`). **No path was found where the label and the enforced cutoff can diverge** in current code — this is what specifically closes the "3:37 vs 5:00" bug class.
+
+**Can a short video leak >50%?** No — the ceiling is `min(300, floor(duration/3))`, so the served preview can never exceed `duration/3` (≈33.3%) of any video, regardless of length, once `duration_seconds` is known. The only exception is a video still encoding (`duration_seconds` null) — but no preview can be served at all in that state (`previewPending: true`), so no leak is possible there either. No regression since 2026-09-01.
+
+```
+STATUS: WORKS
+FIX SIZE: S (only the "half" vs "a third" copy mismatch in videos.routes.js:310-312,372,419-422 needs a word change)
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 4 — Free + Ads: countdown during black screen; duration-based ad rules; admin-configurable skip delay
+
+**Countdown timing — traced line by line, matches CLIENT-REPORT.md §3's description exactly, unchanged since the Aug-27 fix.**
+
+`client/src/components/watch/AdBreak.jsx` mounts the ad through the *same* `StreamPlayer` with `requireAirtime` set, raising the "has it actually started" floor to `AD_AIRTIME_FLOOR = 0.25` media seconds (`client/src/lib/adSkip.js:10-14`). `StreamPlayer`'s `noteIfAiring` only marks the ad as playing once `t >= floor` (`StreamPlayer.jsx:420-424`), feeding `AdBreak`'s `noteAirtime`:
+```js
+const noteAirtime = (current) => {
+  const t = Number(current) || 0
+  watched.current = Math.max(watched.current, t)
+  if (!adAirtimeStarted(t)) return
+  setPlaying(true)
+  setElapsed(watched.current)
+}
+```
+`elapsed` (the countdown source, `remaining = Math.max(0, Math.ceil(skipAfter - elapsed))`) is **only ever set inside this airtime-gated branch**. The countdown/Skip button renders only when `skippable && playing`. So the countdown is keyed to the ad's own `timeupdate`, never to when the ad was requested — confirmed unchanged.
+
+**The fix, found and confirmed unchanged.** Commit **`2fa40f7`, 2026-08-27 07:57**, "Fix the player frame collapsing to a black box, and start the ad skip clock only after the advert is actually playing" — introduced `requireAirtime`, `AD_AIRTIME_FLOOR`, and `server/scripts/ui-check-ads.mjs` in one change. The only later touch (`b0e6a7d`, 2026-08-28) removed an already-unused `poster` prop, did not touch the airtime/skip logic. No changes since 2026-09-01. **No regression.**
+
+**Overlay clears on failure — three separate guards, all still present.** `AdBreak.jsx:56-66`: no `iframe` at all → `finish(false)` fires immediately. `AdBreak.jsx:62-64`: a hard cap of `(durationSeconds||45)+12` seconds calls `finish(false)` if the break never completes. `AdBreak.jsx:69-76`: nothing airing within 4000 ms → `finish(false)` even though the panel is still mounted. `finish()` always calls `onFinished?.()` — `Watch.jsx`'s `adFinished` (`Watch.jsx:500-520`) clears the ad; the underlying film player was never rebuilt (only `paused` under the ad layer), so content resumes immediately with no fake/frozen timer, and an explicit seek back to `mainProgress.current` covers mid-roll drift.
+
+**Browser verification: not runnable in this environment** — Playwright is not installed anywhere in this repo, and no Edge/Chromium binary exists on this machine (same class of limitation already documented for WebKit). Relied on code-reading plus a fresh production API check instead.
+
+**Ad schedule — pre-roll, mid-roll AND post-roll already exist, and mid-roll is already duration-gated.** `server/src/services/ads.js:146-170`, `adBreaksFor()`:
+```js
+if (s.preroll_enabled) wanted.push({ placement: 'pre_roll', at: 0 })
+if (s.midroll_enabled && Number(video.duration_seconds || 0) > Number(s.midroll_after_secs || 300)) {
+  wanted.push({ placement: 'mid_roll', at: Math.floor(Number(video.duration_seconds) / 2) })
+}
+if (s.postroll_enabled) wanted.push({ placement: 'post_roll', at: null })
+```
+Mid-roll only exists for videos longer than `midroll_after_secs` (default 300s, `007_ads_platform.sql:86`), placed at the exact midpoint, enforced a second time at billing (`ads.js:206-208`) independent of the client's request.
+
+**Verified live against production** (read-only GET, no auth, no mutation), for three videos:
+```
+GET /api/ads/breaks/how-to-cook-pilau-properly   → pre_roll(at:0), mid_roll(at:326), post_roll  (native free_with_ads)
+GET /api/ads/breaks/studio-session-track-4       → pre_roll(at:0), mid_roll(at:183), post_roll  (converted premiere, paidUnlocks=1)
+GET /api/ads/breaks/ugali-samaki-sunday-cooking  → pre_roll(at:0), mid_roll(at:326), post_roll  (converted premiere, paidUnlocks=1)
+```
+`GET /api/videos?limit=50` confirms both converted titles are `accessType:"free_with_ads"` with `paidUnlocks:1`, `premiereEndsAt:null`.
+
+**Why this works — the code reason.** `adEligibility()` (`ads.js:32-59`) gates only on `access_type !== 'free_with_ads'` and `!ads_enabled` — nothing distinguishes "was always free" from "became free via the cron." `switchOne()` (`server/src/jobs/premiere.js:28-48`) sets exactly `access_type='free_with_ads', price_tzs=0, ads_enabled=...` — a converted video is bit-for-bit indistinguishable from native Free+Ads to the ads-serving code. A viewer with a pre-conversion `purchases` row is still excluded correctly by `adEligibility`'s separate `owned` check.
+
+**Skip delay is admin-configurable, at two levels — not hard-coded.**
+- Platform default: `preroll_skip_after_secs`, editable at `admin/src/components/tabs/SettingsTab.jsx:379-391`, persisted via `settings.js:21-38`.
+- Per-campaign override: `skipAfterSeconds` in the campaign form (`admin/src/components/tabs/AdsTab.jsx:353,371-372`), validated `z.coerce.number().int().min(0).max(120).default(5)` (`admin.routes.js:1521`). `adPayload()` prefers the campaign's own value when set.
+
+**Gap found: `midroll_after_secs` has no editable UI control anywhere.** It's in the backend `updateSettings()` allowlist (`settings.js:36`) and changeable via a direct API call, but `AdsTab.jsx:253-261` only **displays** it, and it doesn't appear in `SettingsTab.jsx` either. `midroll_enabled`/`postroll_enabled` are toggleable, but the duration threshold deciding *which* videos get a mid-roll is not admin-configurable through any screen. This is the one concrete gap for "duration-based ad rules... admin-configurable" — the logic already exists in `ads.js:146-170`; the missing piece is a form field for `midroll_after_secs` in `AdsTab.jsx`.
+
+No changes to any ad-related file since 2026-09-01. No regression.
+
+```
+STATUS: PARTIAL
+FIX SIZE: S (midroll_after_secs input field is the only concrete gap; everything else already works)
+DEVICE-SPECIFIC: no functional gating found in code; Safari/webview verification remains unproven in this environment per CLIENT-REPORT.md §3/§17, unchanged
+```
+
+---
+
+## ISSUE 5 — Sharing: client says WhatsApp Web/Desktop STILL sends raw URL; social buttons feel unreliable
+
+### 0. Baseline re-check — do the two shipped fixes still hold on current `main`?
+
+Yes, both do.
+
+- **PROMPT-11 (CORS preflight).** `client/api/_lib/ogDocument.js:59-87` still defines `CORS_METHODS`, `setPublicCors()` and `handlePreflight()` exactly as M2-VERIFY.md describes. `client/api/watch.js:274,278` calls `handlePreflight(req, res)` then `setPublicCors(res)` before any other work, on every branch. `client/api/og.js:79-80` does the same for the poster.
+- Re-ran `bash scripts/verify-share-cors.sh` against production right now: **60 passed · 0 failed**, all eight checks on all six published videos, preflight included.
+- Production is running the code just read: `curl -sD - -A "WhatsApp/2.24.15.78 N" .../watch/live-at-arusha-full-set` → `X-Build: 05ef2ab`, which is `git rev-parse HEAD` exactly. No stale-deploy situation.
+- **PROMPT-12 (WhatsApp button on a laptop).** `client/src/lib/whatsappShare.js:53-57` and `client/src/components/watch/ShareSheet.jsx:507-523,526-535` unchanged from M2-VERIFY.md's description. `shareRules.test.js:150-164` still asserts the anchor shape and the absence of `window.open`/`await` in that one handler.
+
+**Both hold.** The findings below are either about *why the client might still be seeing the old symptom* (cache/telemetry), a **new** live defect on the preview path neither prior fix covered, or defects on the *other* share buttons never in scope for PROMPT-11/12.
+
+**A note on a stale memory file.** `whatsapp-preview-race.md` (dated ~2026-08-22, 11 days before the CORS fix) attributes the laptop bare-link report entirely to a compose/send timing race and predates PROMPT-11's actual finding (a Mac's WhatsApp client goes through a CORS-enforcing web engine — confirmed by reproducing the incomplete preflight and then fixing and re-verifying it, 60/60 above). On the evidence re-verified today, the CORS explanation is correct for the Mac-specific symptom, and the compose/send race is a real but separate factor for the "sent before the preview loaded" case on any platform. That memory file should be updated or retired — as written, it contradicts the shipped, verified fix.
+
+### 1. Could the client's Sep-04 test have hit a cached WhatsApp preview? — Yes, most likely, and telemetry cannot rule it out
+
+**The `crawler_hits` schema has no Origin/method/referer column at all** (`021_crawler_hits.sql:21-41`: `id, at, asset, slug, query, user_agent, crawler, status, ms, cache, region`). There is no way to tell from this table whether a fetch carried `Origin: https://web.whatsapp.com` or went through a CORS preflight — and a preflight (successful or not) is never recorded at all: `watch.js:274`/`og.js:79` both `return` immediately after `handlePreflight()` handles the request, before the crawler-hit logging runs.
+
+**What the table can show:** queried read-only, rows strictly after the CORS-preflight deploy (`0826773`, 2026-09-02 21:49:07 +0500):
+```
+count: 18
+2026-09-02T16:51:18 … 2026-09-02T16:55:54   (12 rows, whatsapp-web, ua="WhatsApp/2.24.15.78 N")
+2026-09-05T20:26:19 … 2026-09-05T20:26:48   (6 rows, whatsapp-web, ua="WhatsApp/2.24.15.78 N")
+```
+Both clusters are `verify-share-cors.sh` runs (the team's own PROMPT-11 verification, then this audit's re-run). **Between those two clusters — a ~3-day span that fully covers the client's Sep-04/Sep-05 complaint — there are zero rows of any classification.**
+
+**What that means, stated carefully.** It does not prove nothing was shared — a human opening the link directly is deliberately not logged, and an already-cached WhatsApp preview is served from WhatsApp's own memory with no new fetch to us at all, producing zero rows by design. What it *does* show: no telemetry evidence that WhatsApp's crawler re-fetched any of our pages during the client's test window — consistent with, and not contradicting, what the client was already told in CLIENT-REPORT.md §11 ("WhatsApp remembers the preview for a link for days... share a video you have not shared before, or add `?v=2`"). If the client reused a pre-Sep-3 link, WhatsApp would show its cached bare-link result and never touch our server — exactly the pattern seen in the data.
+
+`status` is null on almost every row, consistent with M2-VERIFY's own caveat — so even a recorded hit often doesn't capture whether it got a 200.
+
+### 2. Full preview matrix on a never-crawled URL — a new, live finding: fresh-URL titles fall back to generic text under real production latency
+
+No published video currently has zero `crawler_hits` rows, so per the documented workaround, `?v=<unique>` cache-busting tokens were used on `live-at-arusha-full-set`, confirmed fresh by `X-Vercel-Cache: MISS` on every response.
+
+| check | UA / headers | result |
+|---|---|---|
+| WhatsApp bot (Android) | `WhatsApp/2.23.20.0 A` | `200`, `X-Doc: crawler`, `X-Crawler: whatsapp-android` |
+| Browser CORS preflight | `OPTIONS`, `Origin: https://web.whatsapp.com`, `Access-Control-Request-Method: GET` | `204`, `Access-Control-Allow-Methods: GET, HEAD, OPTIONS`, `Access-Control-Allow-Headers: *`, `Max-Age: 86400` |
+| Browser CORS actual GET | Safari macOS UA + `Origin: https://web.whatsapp.com` + `Sec-Fetch-Mode: cors` | `200`, `X-Doc: crawler`, ACAO `*` |
+| Facebook crawler | `facebookexternalhit/1.1` | `200`, `X-Doc: crawler`, `X-Crawler: facebook` |
+| Telegram | `TelegramBot (like TwitterBot)` (Telegram's real UA) | `200`, `X-Doc: crawler`, but mislabeled `X-Crawler: twitter` |
+
+**Telegram misclassification (cosmetic).** `client/api/watch.js:135-147`, `detectCrawler()` checks `/Twitterbot/i` (line 142) before `/TelegramBot/i` (line 144). Telegram's real UA literally contains the substring "TwitterBot," so it matches Twitter first. Does **not** affect what document is served (`isLinkPreviewBot()` matches both patterns independently for the crawler-vs-shell decision, and Telegram correctly got `X-Doc: crawler`) — only telemetry undercounts real Telegram traffic. Low priority.
+
+**The real finding: every one of the four fresh-URL checks above returned a generic, non-per-video title.** All four `og:title` values came back `"Live At Arusha Full Set"` (title-cased from the slug) and `og:description` came back the generic `"WATCH FREE PREVIEW · MTONYO+"` — not the real per-creator title `verify-share-cors.sh` showed minutes earlier for the same slug (that run hit an instance whose per-slug memo was already warm). Traced to the cause:
+```
+curl -s -o /dev/null -w "%{time_total}s http=%{http_code}\n" \
+  .../api/public/videos/live-at-arusha-full-set/share-meta
+1.779680s http=200
+0.814450s http=200
+0.980269s http=200
+```
+Repeated across 4 slugs, 12 samples: **range 0.772s–1.779s, every single sample over 600ms.**
+
+`client/api/watch.js:59` sets `CRAWLER_META_MS = 600` and `:76` sets `BROWSER_META_MS = 350` — the budget before falling back to `titleFromSlug()`. `loadShareMeta()` uses `AbortSignal.timeout(timeoutMs)`, so a call taking 800ms–1.8s is aborted every time the 600ms crawler budget applies, and the document falls back to the slug-derived title with no creator name. It then sets a 30s `metaMiss` for that slug, so a second attempt within that window skips the lookup entirely and also gets the generic fallback — exactly the pattern observed across four consecutive test requests.
+
+**Image, CORS and redirect behaviour are all still correct on the same fresh URLs** — the poster fetched cross-origin came back `200`, `image/jpeg`, `1200×630`, `38080` bytes, ACAO `*`. So this is **not** the client's literal "bare link with no picture" symptom — the picture is fine. It is a real, currently-reproducible **degradation of the per-video title/description on a genuinely fresh URL**, precisely the scenario the client is told to use for a retest. This fits the client's own words "feels unreliable" better than "still sends a raw URL." Not mentioned in M2-VERIFY.md or CLIENT-REPORT.md — new finding.
+
+*(Caveat: measured from this machine's network path to Railway, not from Meta's/Telegram's own crawler infrastructure. The budget mismatch — 600ms allowed vs. 800-1800ms observed, consistently across 12 samples and 4 slugs — is unlikely to be explained away by that alone.)*
+
+### 3. Send-side button audit
+
+Grepped `window.open` across all of `client/src` — **4 call sites remain**, all in `ShareSheet.jsx`: `onFacebook` (:240), `launchSocial`'s desktop branch (:277), the promo-clip download fallback (:350), and `previewCard` (:381). None were converted to an anchor the way WhatsApp was, even though `ShareSheet.jsx:187-196`'s own comment documents why that conversion mattered. `shareRules.test.js:150-164` guards only the WhatsApp control — no equivalent test for Facebook, Instagram/TikTok, or the promo clip.
+
+| button | element | desktop | iPhone | iPad | opens |
+|---|---|---|---|---|---|
+| WhatsApp | `<a href target rel>` | `whatsapp://send?text=…`, `_self`, visible fallback after 1.5s | `whatsapp://send?text=…`, `_self`, auto-redirect to Web after 1.5s if it never left | `https://web.whatsapp.com/send?text=…`, `_blank`, no fallback (deliberate — no desktop app on iPadOS) | native app / WhatsApp Web tab |
+| Instagram | `<button onClick>` | `window.open('https://www.instagram.com/', '_blank', …)` — plain homepage, IG has no compose deep link | `instagram://app` + web fallback after 1.6s | same as iPhone | native app (phone/iPad) or new tab (desktop) |
+| TikTok | `<button onClick>` | same shape as Instagram | same as Instagram | same as Instagram | same pattern |
+| Facebook | `<button onClick={onFacebook}>` | `window.open('https://www.facebook.com/sharer/sharer.php?u=…', '_blank', 'noopener,noreferrer')` — **same call on every device, no platform branch at all** | same, new tab, even on iPhone | same, new tab | always a new browser tab to the web sharer — never the native app on any platform |
+| Copy link | `<button>` | `navigator.clipboard.writeText`, no navigation | same | same | clipboard only, no window/tab risk |
+| More apps | `<button>` | `navigator.share` usually undefined → falls back to copy | native OS share sheet | same as iPhone | expected, API-driven difference |
+| Save 60s promo clip | `<button>` | see below | see below | see below | see below |
+
+**Facebook button ignores its own already-written native-app path.** `client/src/lib/socialShare.js:51-58` defines `facebookHref()` — the same Android-intent pattern (`com.facebook.katana`) that Instagram and TikTok actually use. Grepped for `facebookHref`/`socialTarget` across all of `client/src`: **zero import sites** for either. `ShareSheet.jsx`'s `onFacebook` hard-codes the web sharer URL itself and never calls `facebookHref()`, so on Android — unlike every other social button in this sheet — tapping Facebook never attempts the native app. This is the identical failure class already named and fixed once for WhatsApp ("there were three different implementations... and the wrong one was being used," CLIENT-REPORT.md:432-434), recurring on a fourth button nobody has revisited.
+
+**The promo clip download — likely the client's "blank/download behaviour."** Trace of `saveClip()` (`ShareSheet.jsx:282-358`):
+```
+await navigator.clipboard.writeText(shareUrl).catch(() => {})     // await #1
+… possibly: await api.share.payload(slug)                          // await #2 (cold clip)
+try {
+  await downloadFile(fileUrl)                                      // await #3 — fetch + blob
+} catch {
+  window.open(fileUrl, '_blank', 'noopener,noreferrer')            // ShareSheet.jsx:350
+}
+```
+`window.open` at `:350` runs strictly **after** one to three prior `await`s — exactly the anti-pattern class PROMPT-12 diagnosed for WhatsApp, except here it is not theoretical: there genuinely is an `await` gap before it. On Safari, a `window.open` this far removed from the original click is the shape most likely to be silently blocked — the "blank" half of the client's complaint.
+
+`downloadFile()` fetches the clip cross-origin, converts to a `blob:` URL, clicks a synthetic `<a download>`. This is the well-documented WebKit/iOS Safari limitation: **iOS/iPadOS Safari does not honour the `download` attribute** — it navigates/plays the resource in place instead of saving it, regardless of construction. macOS desktop Safari is not subject to this. Stated from established WebKit platform behaviour, not a test run in this audit — there is no existing e2e coverage for `saveClip`/`downloadFile` in this repo, and WebKit-in-Playwright cannot stand in for real Safari here any more than for video playback. Needs a real iPhone/iPad — the gap already named in CLIENT-REPORT.md §17.
+
+### Summary
+
+- The two shipped fixes are **still correct on current `main`** and re-verified live.
+- The client's Sep-04/05 complaint cannot be distinguished from a cached WhatsApp preview using this telemetry — the schema has no Origin/method column and never logs preflights, and the three days spanning the complaint show zero crawler hits of any kind, consistent with (not proof of) WhatsApp serving a stale cached preview without recontacting us.
+- **New finding, live and reproducible right now:** a genuinely fresh/never-cached share URL — exactly what the client is told to test with — has a real chance of getting a generic, non-per-video title because the crawler share-meta budget (600ms) is consistently shorter than measured production API latency (0.77–1.78s, 12/12 samples over budget). Image/CORS mechanics unaffected.
+- **New finding on the send side:** the Facebook button never uses its own already-written native-app path (dead code, zero call sites) — the same "wrong implementation wired up" class already fixed once for WhatsApp. The 60-second promo clip's failure-path `window.open` sits after multiple `await`s — the same anti-pattern already diagnosed for WhatsApp — combined with iOS Safari's refusal to honour `download`, this is the most likely explanation for the "blank/download behaviour" reported, though unconfirmed on a real iPhone/iPad.
+
+```
+STATUS: PARTIAL
+FIX SIZE: M
+DEVICE-SPECIFIC: yes (Mac/desktop WhatsApp — fixed and verified; iPhone/iPad Safari — promo-clip download and Facebook/Instagram/TikTok window.open fallbacks still unverified/at risk; telemetry gap affects all platforms equally)
+```
+
+---
+
+## ISSUE 6 — Super Admin logo → public homepage
+
+**What the logo currently does: nothing.** `admin/src/components/layout/Sidebar.jsx:97-103`:
+```jsx
+<div className="logo">
+  <img className="logo-img" src="/logo-lockup.png" alt="MTONYO+" decoding="async" />
+</div>
+```
+No `<Link>`, no `<a href>`, no `onClick`, no hidden handler, no `cursor:pointer`. Clicking the logo today does literally nothing.
+
+**Cross-origin session safety.** The admin app and public client app are separate Vercel projects on separate origins. Browser storage (`localStorage`/`sessionStorage`) is partitioned per-origin by the browser itself — standard platform behavior, nothing in this codebase overrides it. Checked how the admin app holds its session, `admin/src/lib/api.js`: distinct key names (`mtonyo.admin.access`/`.refresh`) from the public app's own (`mtonyo.access`/`.refresh`), and **the session is durably persisted, not memory-only** — module-level variables initialize straight from `localStorage` at load, and `saveSession()` writes to both memory and storage ("Memory is the live session; localStorage is a backup").
+
+So: navigating the admin tab to a different origin cannot clear or touch the admin origin's `localStorage` — basic same-origin-storage fact, true regardless of tab-vs-new-tab — and because the token persists in storage (not only in a JS variable that resets on reload), returning to the admin origin (Back, or a fresh tab) re-reads the token and the session is still there. **A same-tab navigation to the public site would not destroy the admin session.**
+
+**Recommendation: `target="_blank"` (new tab) anyway.** Not because the session is at risk — it isn't — but a full-page navigation away from the admin SPA discards whatever in-app state the admin was mid-way through (an open tab, filters, an unsaved form), and there is zero cost to a new tab since the session persists independently of which tab is open. Wire it as `<a href="https://video-monetization-platform-chi.vercel.app/" target="_blank" rel="noopener noreferrer">` wrapping the existing logo `<div>`'s contents.
+
+```
+STATUS: NOT BUILT
+FIX SIZE: S
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 7 — Viewer/creator/sub-admin/Super Admin role separation
+
+### How the client Dashboard is actually gated
+
+`client/src/pages/Dashboard.jsx:21-50`:
+```js
+const ACCOUNT_TABS = ['analytics', 'profile', 'settings']
+const CREATOR_TABS = ['overview', 'library', 'purchases', 'upload', 'videos', 'earnings']
+
+const TABS_BY_ROLE = {
+  viewer: ['library', 'purchases', 'become', ...ACCOUNT_TABS],
+  creator: [...CREATOR_TABS, ...ACCOUNT_TABS],
+  admin: [...CREATOR_TABS, ...ACCOUNT_TABS],
+  sub_admin: ['library', 'purchases', ...ACCOUNT_TABS],
+}
+```
+The tab actually shown is constrained to this `allowed` list; requesting an unlisted tab via `?tab=` renders a refusal panel (lines 198-208). **This part is correctly role-gated**: a pure viewer cannot reach `upload`/`videos`/`earnings` by URL, and a sub-admin cannot reach any creator-only tab either (fixed previously precisely because a sub-admin used to see four red error panels).
+
+The `role` driving `TABS_BY_ROLE` is `panelRole` (`AuthContext.jsx:210`), computed by `client/src/lib/accountSide.js:14-22` (`panelRoleFor`) — this **is** side-aware, returning `'viewer'` when a dual-capability account has explicitly chosen the Watch/viewer side. Tab-level routing is correct and side-aware.
+
+### The actual leak — distinct from CLIENT-REPORT.md section 7
+
+CLIENT-REPORT.md §7 is entirely about **account creation** (Create signup silently creating a Watch account) and the **dashboard menu list**. It does not touch what renders *inside* a tab both sides share. That is a different, confirmed bug:
+
+**1. `client/src/components/dashboard/tabs/ProfileTab.jsx:25`** — `const { isCreator } = useAuth()` gates Creator name/category/verified-note fields (lines 164-203) and the payout ("Getting paid") panel (lines 276-280). `isCreator` is `AuthContext.jsx:214`: `studioAccess = hasCreatorStudio(accountRole, creator) || Boolean(sides.creator)`. `hasCreatorStudio` (`accountSide.js:24-29`) is **not side-aware** — it only asks "does this account have creator capability at all," ignoring `accountSide`/`side` entirely:
+```js
+export function hasCreatorStudio(accountRole, creatorProfile) {
+  const real = accountRole || 'viewer'
+  return real === 'creator' || real === 'admin' || real === 'sub_admin' || Boolean(creatorProfile)
+}
+```
+
+**2. `AnalyticsTab.jsx` — the same pattern, and it's server-driven, not just a client oversight.** `server/src/modules/account.routes.js:299-342`:
+```js
+router.get('/analytics', asyncHandler(async (req, res) => {
+  const isCreator = await hasCreatorAccess(req.user)   // line 302
+  ...
+  if (!isCreator) return res.json({ role: 'viewer', viewer, creator: null })   // line 342
+```
+`hasCreatorAccess` (`server/src/middleware/auth.js:132-137`) is pure capability, with **no concept of which side the caller is currently browsing on** — no `side`/`accountSide` parameter anywhere in the request. So the server itself unconditionally returns full creator analytics (views, paid unlocks, conversion %, revenue chart) to any account with creator capability, even while deliberately on the Watch/viewer side.
+
+**Why this is real:** `profiles.role` is a single, permanent column — once an account has creator access, `role='creator'` forever (`022_viewer_enabled.sql:1-3`: Watch/viewer-side is the separate `viewer_enabled` boolean, Create-side is the `creator_profiles` row). There is genuinely no server-side signal distinguishing "this dual-role account, right now on Watch" from "this dual-role account, right now on Create" — every capability check answers the same way regardless.
+
+**Net effect:** a dual-role account, while on the viewer/Watch side, opening **Profile settings** or **My Activity (Analytics)** — both shared tabs reachable from either side — sees full creator-only content instead of the viewer-only view. Matches the client's complaint precisely: a shared component/route renders creator fields based on capability, not on which view is currently open.
+
+**This is a display leak, not a security hole.** Checked whether a pure viewer could actually *change* payout details via the API: `account.routes.js:184` — `if (await hasCreatorAccess(req.user)) { ...update creator_profiles... }` — a caller with no creator capability has that block skipped entirely, so POSTing payout fields from a true viewer account silently changes nothing. The leak only manifests for accounts that legitimately hold both sides, and only as unwanted visibility, not writable access they shouldn't have.
+
+### Dual-role switch/toggle
+
+Only one exists, and it's not available to ordinary users: `Sidebar.jsx:202-216` — gated to `accountRole === 'admin' && isCreator`, i.e. only for platform administrators who also have a creator profile. A regular person who legitimately signed up on both Watch and Create has **no in-dashboard way to switch sides** — the only way is to sign out and log back in choosing the other option on the login screen's Watch/Create toggle. Because tab routing *is* side-aware, the two dashboards do not render simultaneously — the confusion is narrower than "both UIs at once": it's the two shared tabs (Profile, Analytics) leaking creator content into what should be a clean viewer-side view.
+
+### Server-side role guards
+
+`server/src/middleware/auth.js`: `requireRole(...)`, `requireStaff = requireRole('admin','sub_admin')`, `requireAdmin()` (explicitly refuses `sub_admin` too — "Sub-admins cannot view or change accounts"), `hasCreatorAccess()`/`requireCreator()`, `requirePermission(module)` (per-module grant checked against `staff_permissions` on every request).
+
+**Existing tests — source-inspection only, not live 403 assertions.** `auth.import.test.js:13-19` and `creators.follow.import.test.js:27-43` both read the source as text and regex-assert guard calls appear — neither issues an HTTP request. No test in the repo actually calls a creator-only or payout-only route with a viewer-role token and asserts `403`. `smoke.js` does real HTTP calls but is a manual CLI script, not part of the automated suite. **This is untested, not confirmed broken** — the guard code exists and reads correctly, but no regression test would catch it if it stopped working.
+
+### Sub-admin vs super-admin (as currently implemented)
+
+Admin nav (`admin/src/components/layout/Sidebar.jsx:15-55`): `Users`, `Creators`, `Revenue & Splits` are `adminOnly: true`; everything else is gated per-module. Server side, sensitive mutating routes carry an **additional** `requireAdmin()` on top of `requirePermission()` (e.g. `admin.routes.js:833,867,898,914,939,1015,1274,1686` — comment: "because a sub-admin must not see or change them"), so a sub-admin is 403'd regardless of any permission grant. Same double-gate in `staff.routes.js`. Client-side defense in depth exists too (`admin/src/App.jsx:30-61`, `AdminOnly`/`Needs(module)` wrappers, "because a bookmark, a back button or a typed URL reaches the route directly"). The seeded demo sub-admin (`demo.js:435-480`, modules `['review','moderation','videos']`) matches the intended shape.
+
+### Matrix — visible today vs. should be
+
+| Section | Viewer (pure) | Creator (pure) | Dual (Watch+Create, on Watch side) | Sub-admin | Super-admin |
+|---|---|---|---|---|---|
+| My Library / Explore / My Purchases | Yes / correct | Yes / correct | Yes / correct | Yes / correct | Yes / correct |
+| Apply to become a Creator | Yes / correct | No (filtered) / correct | No (filtered) / correct | No (would strip staff role) / correct | No / correct |
+| My Activity (viewer stats) | Yes, viewer-only / correct | N/A | **Shows full creator analytics instead** — leak / should show viewer-only data | Yes, viewer-only / correct | Own choice via toggle / correct |
+| Creator Studio tabs | No (tab-gated) / correct | Yes / correct | Hidden when on Watch side (tab-gated) — but Analytics content still leaks via Profile→Analytics route | No (tab-gated) / correct | Yes / correct |
+| Profile settings — basic fields | Yes / correct | Yes / correct | Yes / correct | Yes / correct | Yes / correct |
+| Profile settings — **Creator name/category/verified/payout** | No / correct | Yes / correct | **Shown even while on Watch side** — leak / should be hidden while on Watch side | No / correct | Shown per capability / correct |
+| Admin: Users, Creators, Revenue & Splits | N/A | N/A | N/A | No — 403 both client and server / correct | Yes / correct |
+| Admin: Review/Moderation/Videos/Payments/Withdrawals/Ads/Announcements/Audit/Settings | N/A | N/A | N/A | Per-module grant / correct | Yes, all modules / correct |
+
+```
+STATUS: PARTIAL
+FIX SIZE: M
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 8 — Test/duplicate data
+
+All counts below are **live, run 2026-09-06** against production, read-only SELECTs, no writes.
+
+### e2e/test accounts — cleanup has NOT happened, and the count has grown
+
+| | Sep 01 (CLIENT-REPORT.md §18) | Sep 02 (E2E-ACCOUNTS.md) | **Now (2026-09-06, live)** |
+|---|---|---|---|
+| Accounts `e2e+%@mtonyo.test` | 27 | 27 | **35** |
+| Active purchases | 22, 18,000 TZS | 22, 18,000 TZS | **22, 18,000 TZS** (unchanged) |
+
+CLIENT-REPORT.md (2026-09-03) states: "**They will be reversed before handover.** ... It has been written and checked in advance (`cleanup-e2e.mjs`) and runs on request." Three days later, on production right now, **all 35 accounts still exist and all 22 purchases are still active/unreversed.** `cleanup-e2e.mjs` has clearly only ever been run in dry-run mode — its own banner is "DRY RUN — nothing will be written," and nothing in the account/purchase state shows any reversal. The extra 8 accounts beyond the original 27 (`e2e+side-c…`, `e2e+side-v…`, `e2e+ui…`, `e2e+conly…`) are dated 2026-09-02, from the later Watch/Create "sides" testing — an accurate live count larger than either document's snapshot, not stale information.
+
+The one stray account E2E-ACCOUNTS.md flagged as "please decide" (`e2e+1788238710@mtonyo.test`) is confirmed **gone**, matching CLIENT-REPORT.md's claim it was already removed.
+
+**`cleanup-e2e.mjs` already covers this correctly** — it refunds every purchase through the real admin refund endpoint (reversing the creator's earnings credit, not just deleting rows) and then deletes the auth user + profile, scoped to `email like 'e2e+%@mtonyo.test'`. It just has not been run with `--apply`.
+
+### Demo accounts (`demo.*@mtonyo.demo`) — live, public, and NOT covered by cleanup-e2e.mjs
+
+`server/src/cli/demo.js:34-67` hardcodes 5 accounts: `demo.asha@mtonyo.demo` (Asha Mwinyi), `demo.juma@mtonyo.demo` (Juma Kileo), `demo.neema@mtonyo.demo` (Neema Shirima), `demo.viewer@mtonyo.demo`, `demo.moderator@mtonyo.demo` (sub-admin). All 5 exist in production right now, all `status = active`.
+
+**Three have public creator pages, live, today:**
+
+| creator | verified | followers | public videos |
+|---|---|---|---|
+| Asha Mwinyi | true | 1 | 1 published |
+| Juma Kileo Live | false | 0 | 2 published |
+| Neema Cooks | false | 2 | 2 published |
+
+5 of the 7 demo videos are **currently published and approved** on Explore ("Behind The Fame — A Coast Documentary," "Live at Arusha — Full Set," "Studio Session — Track 4," "How To Cook Pilau Properly," "Ugali & Samaki — Sunday Cooking"). The other two are correctly unpublished by the seed script's own design.
+
+**`cleanup-e2e.mjs` does not touch any of this** — hard-scoped to `e2e+%@mtonyo.test`. A separate, already-existing tool covers demo cleanup: `server/src/cli/demo.js clear` (lines 1006-1092) — correctly unpublishes (not deletes) any demo video with a real purchase against it, deletes demo purchases/payments/earnings/ad campaign, deletes demo videos with no real purchases, and only deletes demo accounts once no video needs keeping. **This tool has also not been run** — demo content is still fully live.
+
+### Duplicate creator applications
+
+Queried `creator_applications` for duplicate emails/multiple rows per `user_id`: **none found** — 15 total rows, 0 duplicates. Migration 020 already enforces one open (pending) application per person via a partial unique index. **No cleanup needed here.**
+
+### Test videos still published
+
+Confirmed **both** M2-VERIFY.md C7 targets remain unpublished right now:
+
+| slug | published | review_status |
+|---|---|---|
+| `whatsapp-video-2026-08-15-at-11-50-34-pm` | **false** | approved |
+| `80915499123-fd8feac4-6609-4d3e-8739-d3a2cdde7f76` | **false** | approved |
+
+One additional hit among currently-published videos, **not** from a demo/e2e account: `rpreplay-final1589783013-2`, title "RPReplay Final1589783013" — a raw iOS screen-recording filename, empty description, published by a real creator (`safarihostadventures@gmail.com`). Content-quality, not test/demo data — out of scope for a cleanup script; flagging as a metadata nudge to the creator.
+
+### "Creators Are Getting Paid" — real query, but not filtered, and demo data is winning it today
+
+Found in `client/src/components/landing/Testimonials.jsx` (despite the file name — this is the homepage section with that exact heading). Data source: `GET /api/stats/top-creators` → `server/src/modules/stats.routes.js:70-102`:
+```sql
+select p.id, coalesce(cp.display_name, p.full_name) as name, ...
+       coalesce(sum(e.creator_tzs), 0)::int as earned_tzs
+  from profiles p
+  join creator_profiles cp on cp.user_id = p.id
+  left join earnings e on e.creator_id = p.id
+ where p.status = 'active'
+ group by ...
+having coalesce(sum(e.creator_tzs), 0) > 0
+ order by earned_tzs desc
+ limit 6
+```
+A **real, live query against the real `earnings` table** — not hardcoded or seed-only — but with **no exclusion for demo or e2e/test accounts.** Live result right now:
+
+| rank | name | earned (TZS) | account |
+|---|---|---|---|
+| 1 (spotlight) | Juma Kileo Live | 39,230 | `demo.juma@mtonyo.demo` |
+| 2 | Asha Mwinyi | 15,350 | `demo.asha@mtonyo.demo` |
+| 3 | Tiger | 6,600 | `safarihostadventures@gmail.com` (real) |
+| 4 | Yasmin Chali | 4,700 | `yaschali@gmail.com` (real, verified) |
+| 5 | Neema Cooks | 1,660 | `demo.neema@mtonyo.demo` |
+
+**The #1 spotlighted creator on the public homepage's "Creators Are Getting Paid" section is a seeded demo account**, and 3 of the top 5 nonzero earners are demo accounts — the most visible instance of the uncleaned-demo-data problem, since it's the first thing a visitor sees as "social proof."
+
+### What must be cleaned or flagged before launch — summary
+
+| item | count | covered by existing tooling? |
+|---|---|---|
+| `e2e+%@mtonyo.test` accounts + purchases | 35 accounts, 22 active purchases | Yes — `cleanup-e2e.mjs`, written, dry-run only so far, needs `--apply` with `ADMIN_TOKEN` |
+| `demo.*@mtonyo.demo` accounts, 5 published videos, 1 ad campaign | 5 accounts, 5 published videos | Yes — separate existing tool `node server/src/cli/demo.js clear`, not yet run |
+| Demo accounts polluting "Creators Are Getting Paid" | 3 of top 5 | Partially — running `demo.js clear` removes the underlying rows; a belt-and-suspenders fix would add `and p.email not like '%@mtonyo.demo' and p.email not like 'e2e+%@mtonyo.test'` to `stats.routes.js:70-88` |
+| Duplicate creator applications | 0 found | N/A — nothing to clean |
+| `rpreplay-final1589783013-2` raw-filename video | 1, real creator | No script — content-quality nudge to the creator instead |
+
+```
+STATUS: BROKEN
+FIX SIZE: S
+DEVICE-SPECIFIC: no
+```
+
+RESOLUTION (2026-09-06): Scope was deliberately narrowed from "delete test data" to "flag it and
+let public aggregates exclude it" — the demo catalogue (Asha/Juma/Neema) is the site's own content
+for ongoing testing and stays published.
+
+- Ran `node scripts/cleanup-e2e.mjs --exclude e2e+8238822854@mtonyo.test --apply` against
+  production. All 34 non-fixture e2e accounts refunded through the real admin refund endpoint
+  (`accessRemoved:true` on every purchase with a payment) and deleted. Verified live afterward:
+  `profiles` matching `e2e+%@mtonyo.test` = 1 row (the documented fixture), its 3 documented active
+  purchases untouched. `cleanup-e2e.mjs` gained an `--exclude <email>` flag for this (it only had
+  `--only` before); documented in `LAUNCH-CLEANUP.md`.
+- Migration `034_is_demo_flag.sql`: `is_demo boolean` on `profiles` and `creator_profiles`
+  (default false, backfilled true for every `%@mtonyo.demo` row — 5 accounts), plus
+  `platform_settings.show_demo_content_in_stats` (default **true**, so the section is not empty
+  before real creators have earnings). Applied to production, `db:status` confirms
+  `034_is_demo_flag.sql applied`.
+- `server/src/modules/stats.routes.js`'s `/top-creators` query now takes
+  `and ($1::boolean or not p.is_demo)`, `$1` = the live setting. `settings.js`'s `updateSettings`
+  allowlist and `admin.routes.js`'s `PATCH /settings` zod schema both gained
+  `show_demo_content_in_stats`; `admin/src/components/tabs/SettingsTab.jsx`'s existing `TOGGLES`
+  array gained one entry — no new component needed, the panel already renders/saves whatever is in
+  that array.
+- Duplicate creator applications: re-checked live, still 0 — nothing to collapse today. The step is
+  written into `LAUNCH-CLEANUP.md` for a launch-day re-check rather than skipped, since the
+  situation could change before Sep 13.
+- Both C7 test-upload slugs re-confirmed `is_published:false` on production, unchanged.
+- `server` test suite 116/116 pass, `admin` build clean. Live before/after verification of the
+  toggle is recorded under Issue 1's RESOLUTION (same push, same admin-settings round trip).
+- Not done, and deliberately not: `demo.js clear` was NOT run — that would unpublish/delete the
+  demo catalogue, which this pass keeps on purpose. `rpreplay-final1589783013-2`'s raw filename is
+  left alone (real creator's content-quality issue, not test data).
+- New `LAUNCH-CLEANUP.md` at the repo root: the ordered steps above plus exact script commands, so
+  launch day does not depend on this conversation's memory of what was decided.
+
+---
+
+## ISSUE 9 — Login / first-click / stability re-test
+
+### Historical evidence being cited (not re-measured)
+
+All from M2-VERIFY.md:
+- **Step 3 — hover guard**: "21 (21 guarded), all guarded." Committed 2026-09-01.
+- **A3 (PROMPT-7 C1) — scroll jank, WebKit**: 0-4 gaps >50ms across profiles, CLS 0 everywhere. Committed 2026-09-01.
+- **A5 — blank strip, CLS, first tap**: every gap negative (no blank strip), CLS 0.0000 on a cold Home, card navigated on tap #1 on all three profiles (iPhone 14, iPad Pro 11, iPad Pro 11 + mouse). Committed 2026-09-01.
+- **A6 — login in one attempt**: 20/20 one-submit-then-back-on-the-video across header-Log-in and Unlock entry points, webkit desktop and iPhone 14. Committed 2026-09-01 (a real defect — a bare `/login` losing the intended destination — was found and fixed as `ca6b60e` in the course of this measurement).
+- **A7 — every page at every width**: 70 page/width combinations, 0 horizontal overflow. Committed 2026-09-02.
+
+### Fresh live checks, right now (2026-09-06)
+
+**Playwright is not installed anywhere in this environment** — checked all three apps' `node_modules`, no root `package.json` either. `login-one-attempt.mjs` dynamically imports `'playwright'`, unresolvable here. Did the login check via plain `curl`/`fetch` `POST /api/auth/login` instead — a real, current result, just not browser-driven.
+
+| role | account | side | HTTP status | session returned |
+|---|---|---|---|---|
+| admin (documented smoke credential) | `admin@mtonyo.tz` / `Mtonyo!Admin2026` (`smoke.js:85`) | — | **401** "Email or password is incorrect" | No |
+| creator | `demo.asha@mtonyo.demo` / `DemoPass123!` | creator | 200 | Yes, `role: "creator"` |
+| viewer | `demo.viewer@mtonyo.demo` / `DemoPass123!` | viewer | 200 | Yes, `role: "viewer"` |
+| sub-admin | `demo.moderator@mtonyo.demo` / `DemoPass123!` | viewer | 200 | Yes, `role: "sub_admin"` |
+
+Creator, viewer and sub-admin logins all work cleanly against production right now. The one failure is the `admin@mtonyo.tz` credential documented in `smoke.js` — a live DB check shows production has exactly **one** `role = 'admin'` account, `admin@gmail.com` (created 2026-08-08), not `admin@mtonyo.tz`. `smoke.js:91` itself anticipates this ("seeded admin not found — run: npm run db:seed"). This looks like a smoke-test fixture never provisioned in production, not a broken login flow — there is no documented admin password to verify a real admin login with, and guessing one is out of scope for a read-only audit. **Flagging as a docs/tooling gap**, not evidence the admin login path itself is broken.
+
+### Loading/spinner timeout audit
+
+**The specific one asked about — unbounded, no timeout at all:** `client/src/pages/Reset.jsx:42,61-67,124-133` — "Checking your link…" while validating a password-reset token. `api.auth.checkResetToken` (`client/src/lib/api.js:338-339`) calls `get(path, { auth: false })` with no `signal`. `request()` only attaches an `AbortSignal` if the caller supplies one; none is supplied here. If the request hangs, this spinner has nothing that will ever time it out.
+
+**The one guard that exists, and what it does/doesn't cover:** `client/src/hooks/useApi.js:3,5` — `FETCH_TIMEOUT_MS = 10_000`, applied via `withTimeout()`. This backs most of the app's data-loading skeletons, but several loading states bypass it by calling `api.*` directly:
+- `client/src/pages/Explore.jsx:62-94` (`fetchPage`) — "Loading videos…"/"Loading more…" call `api.videos.list(...)` directly with no signal → **unbounded**. This is the main catalogue page, not an edge case.
+- `client/src/components/dashboard/NotificationBell.jsx:31-41` — "Loading…" → unbounded, but a minor bell icon, not page-blocking.
+- `client/src/hooks/useAsync.js` has no timeout wrapper by design, but is currently unused/dead code (not imported anywhere).
+
+**Most important finding:** the app's only defense against a hung request is an opt-in hook (`useApi`'s 10s timeout) that not every loading surface uses. `Reset.jsx`'s "Checking your link…" and `Explore.jsx`'s main catalogue "Loading videos…" both have zero application-level timeout and could spin indefinitely against a hung connection.
+
+### Found broken right now (live, today) — separate from the historical evidence above
+
+1. **Unbounded loading spinners**, confirmed by code inspection: `Reset.jsx` "Checking your link…" and `Explore.jsx` "Loading videos…"/"Loading more…" have no timeout at all, unlike the rest of the app's `useApi`-backed screens.
+2. **`admin@mtonyo.tz`/`Mtonyo!Admin2026` (the documented smoke-test admin credential) does not authenticate against production** — 401 right now. Production's only admin account is `admin@gmail.com`, whose password is not documented anywhere in the repo. Test-fixture/documentation gap, not confirmed evidence a real admin cannot log in.
+
+Everything else checked live — creator login, viewer login, sub-admin login, both C7 unpublish targets staying unpublished — came back clean.
+
+```
+STATUS: PARTIAL
+FIX SIZE: S
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 10 — Creator Capital™ (NEW — interface + manual workflow only, no lending engine)
+
+### Confirming NOT BUILT
+
+Whole-repo case-insensitive grep for `capital`, `eligib`, `loan`, `airpay`:
+
+- **`capital`** — zero product-relevant hits. Only match: `admin/src/styles/global.css:85`, `.perm-opt{...text-transform:capitalize...}` — a CSS declaration, unrelated. Discarded as expected.
+- **`loan`** — zero hits anywhere in the repository.
+- **`eligib`** — all hits are the existing **ad-eligibility** system, unrelated to lending: `adEligibility()` (`server/src/services/ads.js:32-58`), a comment in `AUDIT.md:95,347`, campaign-targeting defaults in `007_ads_platform.sql:37`, and `eligible` as a plain variable name in `demo.js:371,377,391`.
+- **`airpay`** — real hits, but all about the **existing planned payment provider**, not a lending product: documented as the Milestone-3 mobile-money/card gateway that will replace the sandbox (`server/README.md:7,42`; `server/src/config/env.js:115-120`; `server/src/modules/payments/provider.js:127-156` — a stub whose `initiate()`/`verify()` both `throw serviceUnavailable('AirPay is not connected yet')`; referenced in `PaymentModal.jsx:19,186` and `Hero.jsx:224`). Confirms "AirPay" is already a named entity in this codebase — the same payment partner the client intends to also make lending decisions through for Creator Capital — but there is no lending/decisioning code of any kind today, only a not-yet-connected payment stub.
+
+**Conclusion: Creator Capital does not exist in any form — no schema, no routes, no UI, no copy.** Exact-name greps for `is_original`/`release_model` (Issue 11's schema) also return 0 hits, for contrast.
+
+### Full design
+
+#### 1. Migration — `034_creator_capital.sql`
+
+Highest existing migration is `033_watch_progress_hidden_at.sql` (note: there are two pre-existing `021_*` files — `021_share_card_cache.sql` and `021_crawler_hits.sql`, a numbering collision already in this repo, not to be repeated). **Next number: `034`.**
+
+```sql
+-- ============================================================================
+-- 034 · Creator Capital — interface + manual workflow, no lending engine
+--
+-- MTONYO+ is not the lender. AirPay decides who is approved and for how much;
+-- this table is where that decision, and the manual review that leads to it,
+-- is recorded and shown back to the creator. Nothing here disburses money —
+-- disbursement and collection are AirPay's system, reached outside this
+-- platform. What lives here is: are they eligible to ask, did they ask, what
+-- did AirPay/the admin decide, and where do they stand on repaying it.
+-- ============================================================================
+
+do $$ begin
+  create type creator_capital_status as enum
+    ('building', 'under_review', 'approved', 'active', 'repaid', 'declined', 'paused');
+exception when duplicate_object then null; end $$;
+
+create table if not exists creator_capital (
+  id                 uuid primary key default gen_random_uuid(),
+  creator_id         uuid not null references profiles(id) on delete cascade,
+  status             creator_capital_status not null default 'building',
+
+  months_required    smallint not null default 6 check (months_required > 0),
+
+  approved_amount_tzs   integer check (approved_amount_tzs is null or approved_amount_tzs > 0),
+  purpose               text,
+  repayment_terms       text,
+  amount_repaid_tzs     integer not null default 0 check (amount_repaid_tzs >= 0),
+  remaining_balance_tzs integer generated always as
+    (greatest(coalesce(approved_amount_tzs, 0) - amount_repaid_tzs, 0)) stored,
+
+  next_review_at     timestamptz,
+  admin_notes        text,
+
+  requested_at       timestamptz,
+  decided_at         timestamptz,
+  decided_by         uuid references profiles(id),
+
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
+comment on table creator_capital is
+  'Creator Capital eligibility, review and repayment state. AirPay is the '
+  'lender and makes the credit decision; this table records that decision '
+  'and the manual workflow around it. No disbursement or collection logic '
+  'lives here.';
+
+create unique index if not exists creator_capital_one_open
+  on creator_capital (creator_id)
+  where status in ('under_review', 'approved', 'active');
+
+create index if not exists creator_capital_creator_idx on creator_capital (creator_id);
+create index if not exists creator_capital_status_idx on creator_capital (status);
+
+alter table creator_capital enable row level security;
+revoke all on table creator_capital from anon, authenticated, public;
+
+drop policy if exists creator_capital_own_read on creator_capital;
+create policy creator_capital_own_read on creator_capital
+  for select using (creator_id = auth.uid() or auth_role() = 'admin');
+
+-- No creator INSERT/UPDATE/DELETE policy is granted here on purpose: every
+-- write, including "request review", goes through server routes running as
+-- the service role, exactly like `withdrawals` and `creator_applications`
+-- today (no client-side RLS write path exists for either of those either).
+```
+
+*Note: verify whether a generic `set_updated_at()` trigger function exists in this schema — `platform_settings.updated_at` is set manually in `settings.js:44`, not via trigger, so this repo may not have one. If it doesn't, set `updated_at = now()` explicitly in every UPDATE in the routes below, matching `settings.js:44` and `admin.routes.js:801,943`, rather than introducing a new pattern for one table.*
+
+#### 2. Months-of-verified-earnings derivation
+
+Real tables from migrations 001/016: `earnings(creator_id, gross_tzs, creator_tzs, platform_tzs, source, created_at, purchase_id)` and `purchases(user_id, video_id, amount_tzs, creator_amount_tzs, purchased_at, status)`. "Verified earnings" means settled, ledger-recorded money (`earnings`, only ever written inside the settlement transaction), not raw video views.
+
+```sql
+-- Distinct calendar months with at least one settled earning, most recent first.
+-- "6 months" means 6 distinct months with activity, not necessarily consecutive —
+-- a gap should not silently reset progress, since the money already earned is
+-- not in question.
+select count(distinct date_trunc('month', e.created_at))::int as months_with_earnings,
+       coalesce(sum(e.creator_tzs), 0)::int                   as lifetime_creator_tzs,
+       coalesce(sum(e.creator_tzs) filter (
+         where e.created_at >= now() - interval '90 days'
+       ), 0)::int                                             as recent_90d_creator_tzs
+from earnings e
+where e.creator_id = $1;
+
+-- Paying viewers / refund rate — from purchases, the actual entitlement table:
+select
+  count(distinct p.user_id)::int as paying_viewers,
+  round(100.0 * count(*) filter (where p.status = 'refunded')
+        / greatest(count(*), 1), 1) as refund_rate_pct
+from purchases p
+join videos v on v.id = p.video_id
+where v.creator_id = $1;
+
+-- Repeat buyers (a viewer who bought more than one of this creator's videos):
+select count(*)::int as repeat_buyers
+from (
+  select p.user_id
+  from purchases p
+  join videos v on v.id = p.video_id
+  where v.creator_id = $1
+  group by p.user_id
+  having count(*) > 1
+) repeat;
+```
+
+#### 3. Routes
+
+Following the shape of `admin.routes.js`'s existing list-with-counts and decide-action routes:
+
+```js
+// server/src/modules/capital.routes.js (creator-facing; mounted at /api/capital)
+
+// GET /api/capital/status — the creator's own row, or a synthesized "building"
+// view if none exists yet (no row is created until they explicitly request
+// review, mirroring how creator_applications only exists once someone applies).
+router.get('/status', requireCreator(), asyncHandler(async (req, res) => { ... }))
+
+// POST /api/capital/request-review — refuses if under months_required, and
+// refuses a second open request (mirrors the partial unique index above).
+router.post('/request-review', requireCreator(), asyncHandler(async (req, res) => { ... }))
+```
+
+```js
+// server/src/modules/admin.routes.js additions (admin-facing)
+
+router.use('/capital', requirePermission('capital'))  // new permission module —
+  // the sub-admin permission list is enum-driven in this schema, so the enum
+  // itself needs a small migration touch (bundle into 034 or a follow-on).
+
+// GET /api/admin/capital?status=under_review — list + counts, client's spec'd
+// columns: months, lifetime/recent earnings, paying viewers, repeat buyers,
+// refund rate, verification, AirPay decision fields.
+router.get('/capital', asyncHandler(async (req, res) => { ... }))
+
+// POST /api/admin/capital/:id/decide       — Review/Approve/Decline
+// POST /api/admin/capital/:id/publish-offer — approved -> active once accepted
+// POST /api/admin/capital/:id/pause         — active -> paused
+// POST /api/admin/capital/:id/mark-repaid   — sets amount_repaid_tzs, status -> repaid at 0 remaining
+```
+
+#### 4. Creator dashboard page
+
+`Dashboard.jsx:23` — add `'capital'` to `CREATOR_TABS`. New file `client/src/components/dashboard/tabs/CreatorCapitalTab.jsx`. `Sidebar.jsx:41` area — add a menu item under the existing "Creator Studio" group.
+
+Page states, driving off `GET /api/capital/status`:
+- **Building (default)**: "Building Eligibility," "X of 6 months of verified earnings," a 6-segment progress indicator, disabled "Request Review" until `monthsWithEarnings >= monthsRequired`.
+- **Under review**: status text, "Support" only.
+- **Approved (offer published)**: shows `approved_amount_tzs`/`purpose`/`repayment_terms`; "View Offer"/"Accept Offer".
+- **Active**: `approved_amount_tzs`/`amount_repaid_tzs`/`remaining_balance_tzs` as a progress bar (styled like the existing split-vis bar); "Support" only.
+- **Repaid**: closed/success state, "Support" only.
+- **Declined/Paused**: `admin_notes` (creator-safe subset), "Support" only.
+
+#### 5. Homepage section
+
+Placement: a new `<CreatorCapital />` component between `ForCreators` and `Testimonials` on the Landing page, matching `ForCreators.jsx`'s own composition (title, subtext, feature cards, CTA).
+
+**No exact client wording for this feature was found anywhere in the repo** (CLIENT-REPORT.md, M2-GAP.md, M2-VERIFY.md, PLAYER-MEASURE.md all checked — none mention "Creator Capital" by name). The following is clearly-labeled placeholder copy, NOT the client's own words:
+
+> **[PLACEHOLDER COPY — client wording not found in repo, needs real client sign-off]**
+> Title: "Creator Capital — grow beyond the next upload"
+> Subtext: "Verified earnings can unlock funding to invest back into your channel — new gear, a bigger shoot, your next release. MTONYO+ is not the lender — AirPay decides eligibility and terms."
+> Buttons: "Learn More" (→ static explainer page), "Check Your Eligibility" (signed-in creators → dashboard tab; signed-out visitors → signup).
+
+"Learn More" should reuse the existing static-page pattern (`client/src/pages/Legal.jsx` + `client/src/data/legal.js`) rather than inventing a new one.
+
+#### 6. Required disclaimer — "MTONYO+ is not the lender — AirPay decides"
+
+Placement, three places minimum: (1) homepage section, directly under the subtext, small print; (2) creator dashboard Creator Capital tab, persistent small print, all states; (3) admin approval screen, next to the Approve button, so an admin cannot mistake this for the platform's own credit decision.
+
+#### 7. Styling references
+
+Confirmed in `client/src/styles/global.css:6-25`: background `--bg:#06060a`/`--bg2:#0b0b11`, purple `--purple:#7000ff`/`--purple2:#a78bfa`, gold `--gold:#ffc100`/`--gold2:#ffd94a`, green for money figures (`admin/src/styles/global.css:201` `.money{color:var(--green)}`). Admin mirrors the same tokens. The progress bar/status card should reuse the existing `.split-config`/`.split-vis` pattern from `RevenueTab.jsx:82-86` rather than inventing new bar CSS.
+
+#### 8. Size estimate: **L**
+
+Benchmarked against `saved_videos` (M2-GAP.md, sized **L** for one table + 3 routes + a toggle UI). Creator Capital is a strict superset with real added complexity: 1 new table with an enum/generated column/partial unique index; ~9 routes (not 3), including a new sub-admin permission module touching the permissions enum; 2 full UI surfaces (not 1 toggle) — a multi-state creator page plus a full admin list+detail+action screen; a new homepage section needing real client copy sign-off; and a derived-data query (months, repeat buyers, refund rate) comparable to the analytics aggregation work already flagged as medium-sized elsewhere in this repo's own audit history. Comfortably a larger L, not M — even the migration alone is bigger than 032/033 combined.
+
+```
+STATUS: NOT BUILT
+FIX SIZE: L
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 11 — Release model (NEW): Permanent Paid / Premiere→Free+Ads / Exclusive-Premium; MTONYO+ Original flag
+
+### Current state
+
+**Cron + expiry function, both found:**
+- Schedule: `server/src/jobs/scheduler.js:70-83` — `{ name: 'premiere-expiry', schedule: '0 2 * * *', run: () => runPremiereExpiry() }`. Daily at 02:00 UTC.
+- Batch expiry: `runPremiereExpiry()` — `server/src/jobs/premiere.js:81-113`. Selects up to 500 due videos (`access_type = 'paid_premiere' and is_published = true and deleted_at is null and premiere_ends_at <= now()`), calls `switchOne()` per row.
+- On-demand/lazy expiry: `expireIfDue(video, { actorId })` — `premiere.js:70-79` — called wherever a video is read on the watch/playback/ads path, so a title flips to Free+Ads the instant anyone opens it, not just at the nightly sweep.
+- The conversion: `switchOne()` — `premiere.js:28-62` — `update videos set access_type = 'free_with_ads', price_tzs = 0, ads_enabled = $2, premiere_days = null, premiere_started_at = null, premiere_ends_at = null where id = $1 and access_type = 'paid_premiere'`.
+- `isDue()` guard — `premiere.js:22-26` — `video.access_type !== 'paid_premiere'` short-circuits both cron and lazy path today.
+
+**No `release_model`/`monetization` column exists today** — confirmed by exact-string grep (`is_original`, `isOriginal`, `release_model`, `releaseModel`: 0 hits repo-wide). The only field governing this is `videos.access_type`, an enum with exactly three values (`001_core_schema.sql:25`): `create type access_type as enum ('ppv_forever', 'paid_premiere', 'free_with_ads')`. Supporting columns: `premiere_days`, `premiere_ends_at`, `ads_enabled`, `premiere_started_at`. There is also `featured boolean` (`010_featured_videos.sql:21`), the closest existing precedent for a simple admin-only per-video flag.
+
+The homepage `client/src/components/landing/AccessModels.jsx:42-79` already documents two of the three requested models to visitors: `ppv_forever` ≈ `permanent_paid`, `paid_premiere` ≈ `premiere_to_free`. **`exclusive` (paid/free/unavailable, admin-controlled) has no existing analogue** and is genuinely new.
+
+### Design
+
+#### `release_model` column — migration `035_release_model_and_original.sql`
+
+Ordering: independent of Issue 10's `034_creator_capital.sql` in content, but should be numbered after whatever 034 actually lands as, purely to avoid a numbering collision — no functional coupling between the two.
+
+```sql
+-- ============================================================================
+-- 035 · release_model + is_original
+--
+-- `access_type` already encodes most of this (ppv_forever / paid_premiere /
+-- free_with_ads) but conflates "how the paywall behaves" with "does this
+-- title ever convert." `release_model` names the release strategy explicitly
+-- and gives room for `exclusive` without overloading access_type further.
+-- `is_original` is a separate, orthogonal, admin-only editorial flag: it
+-- affects nothing about entitlement or the paywall, only labelling.
+-- ============================================================================
+
+do $$ begin
+  create type release_model as enum ('permanent_paid', 'premiere_to_free', 'exclusive');
+exception when duplicate_object then null; end $$;
+
+alter table videos
+  add column if not exists release_model release_model,
+  add column if not exists is_original   boolean not null default false;
+
+-- Backfill for EXISTING rows, mapped from today's access_type:
+--   paid_premiere   -> premiere_to_free   (the only model that ever converts)
+--   ppv_forever     -> permanent_paid     (pay once, keep forever — no clock)
+--   free_with_ads   -> permanent_paid     (never was paid/premiering; no
+--                                          historical signal for `exclusive`,
+--                                          since it doesn't exist as a concept
+--                                          until this migration)
+update videos
+   set release_model = case access_type
+         when 'paid_premiere' then 'premiere_to_free'::release_model
+         else 'permanent_paid'::release_model
+       end
+ where release_model is null;
+
+alter table videos alter column release_model set not null;
+alter table videos alter column release_model set default 'permanent_paid';
+```
+
+#### Cron/`expireIfDue` skip condition
+
+Both `isDue()` (`premiere.js:22-26`) and `expireIfDue()`'s fast-path guard (`:70-74`) currently gate on `access_type !== 'paid_premiere'`. Once `release_model` exists, both must also require `release_model === 'premiere_to_free'`:
+```js
+function isDue(video) {
+  if (!video || video.access_type !== 'paid_premiere') return false
+  if (video.release_model !== 'premiere_to_free') return false   // NEW
+  if (!video.premiere_ends_at) return false
+  return new Date(video.premiere_ends_at).getTime() <= Date.now()
+}
+```
+The batch selector in `runPremiereExpiry()` needs `and release_model = 'premiere_to_free'` added too. Given the backfill maps every existing `paid_premiere` row to `premiere_to_free`, this is a no-op for current data but correct going forward once an admin can set a video's model independently.
+
+#### Super Admin controls
+
+Attaches to the existing admin video edit route: `admin.routes.js:441-502` (`PATCH /videos/:id`), which already handles `accessType`/`priceTzs`/`premiereDays`/`adsEnabled`/`featured`. Add `releaseModel`/`isOriginal` to the zod schema and the corresponding `coalesce()` clauses in the `UPDATE`.
+
+UI: `admin/src/components/tabs/VideosTab.jsx` — currently a read-only `Access` column with row actions calling `api.admin.updateVideo(v.id, {...})`. Add a `Release Model` select and an `Original` toggle icon-button next to the existing `featured` star toggle. For `exclusive`, a three-way state control (paid/free/unavailable) — simplest consistent addition is a second select shown only when `releaseModel === 'exclusive'`, writing to `accessType`/`priceTzs` (paid ↔ free) plus reusing `is_published = false` for "unavailable" (behaviorally identical to unpublished — not visible, no purchase possible — unless the client wants "unavailable" to be visible-but-not-purchasable, which would need its own boolean).
+
+#### Upload UI exposure
+
+`client/src/components/dashboard/tabs/UploadTab.jsx:91-104` is the creator upload form — creators already choose among `accessType`'s three options, which map to `permanent_paid`/`premiere_to_free` automatically via the backfill logic. **`exclusive` and `is_original` should be admin-only**, not exposed in `UploadTab.jsx` at all — `is_original` is explicitly admin-only per the client's own wording, and `exclusive`'s curated paid/free/unavailable control implies negotiation the self-serve flow isn't meant to support. No changes needed to the upload form; only the admin's `VideosTab.jsx` edit surface can move a video into `exclusive` or flag it `is_original` after the fact.
+
+#### Split for "original" premium videos must read live settings — no hardcoding
+
+Already true today and must **not regress**: the settlement path is `payments.service.js:41-42` — `splitPercentFor(video.creator_id)` then `applySplit(...)`, reading `platform_settings.creator_split_percent` live (with per-creator override), as detailed fully in Issue 1. Nothing about adding `release_model`/`is_original` should introduce a second, parallel split calculation for "Original" or "Exclusive" videos — any future pricing logic for `is_original = true` videos must still resolve through `splitPercentFor()`/`applySplit()`, not a new hardcoded percentage — the same class of bug as the `copy.js` hardcode in Issue 1.
+
+#### Buyers-keep-access is unaffected
+
+Precedent already proven in this repo: M2-VERIFY.md C7 — unpublishing a video through `POST /api/admin/videos/:id/unpublish` was confirmed against production to leave the buyer's `purchases` row and library access untouched. The mechanism is structural: entitlement is decided entirely by `purchases.status = 'active'`, which has no foreign key or dependency on `videos.access_type`/`is_published`/(once added) `release_model`/`is_original`. Changing a video's release model or original-flag after the fact is a plain `UPDATE videos SET ...` with no cascade or application-code path touching `purchases`/`earnings`. The same reasoning that makes unpublish safe for existing buyers applies identically here.
+
+```
+STATUS: NOT BUILT
+FIX SIZE: M
+DEVICE-SPECIFIC: no
+```
+
+---
+
+## ISSUE 12 — Social deep link: shared link → exact video page → preview autoplays muted, no extra Play
+
+**`/watch/:slug` is a plain, unguarded route** (`client/src/App.jsx:86-103`) — `<Route path="/watch/:videoId" element={<WatchRoute/>} />` (and `/watch`, `/s/:videoId` aliases) sit in the same flat `<Routes>` as `/`, `/explore`, `/login` — no `RequireAuth`/`ProtectedRoute` wrapper anywhere (grepped, none found), and `Watch.jsx` never redirects a signed-out visitor away — it renders the preview and only shows `LockGate`/`Unlock now` once payment is actually required. `WatchRoute` Suspense-renders `WatchSkeleton` immediately for the lazy chunk, so there is no blank/auth-wall moment on a cold load either.
+
+**No cookie banner, age gate, or first-visit overlay exists anywhere in the client.** A repo-wide grep for `CookieBanner|AgeGate|ConsentBanner|cookie-banner|age-gate|consent` across `client/src` returns nothing.
+
+**No in-app-browser user-agent sniffing/redirect exists.** A grep for `Instagram|FBAN|FBAV|in-app|inapp` only turns up the **outbound** share-sheet code (opening Instagram/TikTok *from* the site) — there is no code that inspects the visitor's own UA to detect an in-app browser and branch behaviour. A tap from inside WhatsApp/Instagram/Facebook's in-app browser reaches exactly the same route and code as a normal browser.
+
+**Autoplay is unconditional — same `buildSrc` as Issue 2, not gated by preview vs. full or by platform.** `StreamPlayer.jsx:24-42` sets `autoplay=true&muted=true` for every call, regardless of `p.playback.kind` or any platform check — no `isIOS`/UA branch anywhere in `StreamPlayer.jsx`. The parent page additionally re-drives `play()` itself from outside the iframe on `canplay`/`loadeddata`/`loadedmetadata` and via a 900ms watchdog, muted, specifically because "Stream's own Play button lives inside a cross-origin iframe... on Safari it often does nothing" (comment, `StreamPlayer.jsx:526-532`).
+
+**What changed historically.** The autoplay/muted params go back to the file's origin and have not been removed at any point (`git log -S"autoplay"` shows only additive/refactor commits). The commit most plausibly matching the client's "used to autoplay, now requires Play" complaint is **`24fe108`, 2026-08-27**, "Start video from the parent page so a paused Cloudflare Play overlay is no longer the only control" — before it, playback depended on tapping Cloudflare's own in-iframe Play button (a cross-origin control a script can't drive, known to silently fail on Safari/mobile); after it, the parent-driven `play()` kick is primary and Cloudflare's button is only the fallback. **There is no per-platform branch at all in current code** — the same unconditional autoplay+kick runs on iOS Safari, an in-app browser, and desktop alike. Where it differs is the platform's own autoplay policy, outside this codebase's control.
+
+**Unmute control already exists.** `StreamPlayer.jsx:724-742` — a "Tap for sound" pill renders whenever `silent` is true (muted-but-playing), pressing it unmutes and replays. This is the unmuted-on-tap control asked about — it exists.
+
+**Graceful fallback for a hard autoplay refusal.** If even a muted `play()` is refused everywhere, nothing further is attempted — the film sits paused on Cloudflare's own frame, which carries its own poster and Play button ("Cloudflare's own play button is already sitting there... we do not put a second one over the top of it"). This is the "big poster + play button" fallback already asked for — it's Cloudflare's native one.
+
+### What would need to change
+
+1. **Nothing needed for the autoplay/mute mechanics or the auth wall** — both are already unconditional and unguarded.
+2. **The Issue-2 poster gap directly affects this journey too**: a cold, signed-out shared-link visit is exactly the direct-URL/shared-link entry path with no `location.state.preview`, so it hits the plain grey `WatchSkeleton` until `/api/videos` answers, then the black handoff between the boot poster and `StreamPlayer`'s posterless iframe (Issue 2). Fixing that closes the same gap for both issues.
+3. **The unmute control and the native-Cloudflare-button fallback are already sufficient** — no new component needed.
+4. **iOS Low Power Mode is explicitly out of reach here** — this environment's WebKit cannot decode video (no MSE) and Low Power Mode cannot be emulated at all in any headless engine; it throttles timers and can block autoplay outright. Only a real iPhone with Low Power Mode manually enabled can verify this (per CLIENT-REPORT.md §17 item 3).
+
+```
+STATUS: WORKS
+FIX SIZE: S (only the Issue-2 poster-continuity fix carries over here; nothing else to build)
+DEVICE-SPECIFIC: yes (iOS Low Power Mode is a device-only unknown, cannot be verified in this environment; everything else confirmed platform-uniform by code reading)
+```
+
+---
+
+## SUMMARY
+
+| # | Issue | Status | Fix size | Device-specific |
+|---|---|---|---|---|
+| 1 | Revenue split | PARTIAL | S | no |
+| 2 | Video startup / poster | PARTIAL | S | no (structural, universal) |
+| 3 | Preview control (no "half" rule) | WORKS | S | no |
+| 4 | Free + Ads countdown / rules | PARTIAL | S | no (Safari playback itself remains unverified per §17) |
+| 5 | Sharing / WhatsApp | PARTIAL | M | yes (Mac fixed & verified; iPhone/iPad Safari promo-clip + FB/IG/TikTok fallbacks unverified) |
+| 6 | Admin logo → homepage | NOT BUILT | S | no |
+| 7 | Role separation | PARTIAL | M | no |
+| 8 | Test/duplicate data | BROKEN | S | no |
+| 9 | Login / stability re-test | PARTIAL | S | no |
+| 10 | Creator Capital™ | NOT BUILT | L | no |
+| 11 | Release model / Original flag | NOT BUILT | M | no |
+| 12 | Social deep link autoplay | WORKS | S | yes (iOS Low Power Mode unverifiable here) |
+
+### Proposed build order for the fix prompt, given the Sep 13 deadline
+
+**Tier 1 — cheap, high-visibility, do first (same day):**
+1. **Issue 8** — run `cleanup-e2e.mjs --apply` (reverse the 35 e2e accounts / 22 purchases), run `node server/src/cli/demo.js clear` (unpublish demo videos, remove demo accounts), add the demo/e2e exclusion filter to `stats.routes.js`'s top-creators query. This is the single most reputationally urgent item — a seeded demo account is currently the #1 "creator getting paid" shown to visitors.
+2. **Issue 1** — fix the `copy.js:310` hardcoded "70/30" string; decide and communicate to the client what to do about the 37 historical ledger rows frozen at 60/40 (a product/financial decision, not an engineering one — the TZS 1,300 real-money shortfall on two creators is small but the client should choose whether to top it up manually). **Must land before Issues 10 and 11**, since both new features route money/labelling through this same settings system and should be built on a split path the client has explicitly confirmed is trustworthy.
+3. **Issue 6** — link the admin logo (`target="_blank"` to the public homepage). Trivial, no dependencies.
+4. **Issue 9** — add a bounded timeout to `Reset.jsx`'s and `Explore.jsx`'s loading states; resolve the `admin@mtonyo.tz` vs `admin@gmail.com` documentation mismatch so a real admin login can be verified.
+
+**Tier 2 — core viewing/paying experience, do next:**
+5. **Issue 2** — keep the video's own poster mounted through the hand-off into `StreamPlayer` (closes both the no-poster-on-direct-link gap and the black-screen hand-off).
+6. **Issue 12** — re-verify after Issue 2 lands; per this audit, no separate engineering work is expected (**depends on Issue 2**, as anticipated).
+7. **Issue 3** — one-line copy fix ("half" → "a third") in `videos.routes.js`.
+8. **Issue 4** — add the missing `midroll_after_secs` input field to `AdsTab.jsx`.
+9. **Issue 5** — widen the crawler share-meta timeout budget (600ms) or make the miss cache shorter/smarter; convert the four remaining `window.open` calls (Facebook, Instagram/TikTok, promo-clip fallback, preview-card) to anchors the way WhatsApp was; wire the already-written `facebookHref()` into the Facebook button; fix the Telegram/Twitter UA detection order; get the promo-clip download tested on a real iPhone/iPad.
+
+**Tier 3 — role/permission correctness:**
+10. **Issue 7** — make `ProfileTab`/`AnalyticsTab`, client AND server (`account.routes.js`'s `hasCreatorAccess` check), respect `accountSide` and not just capability, so a dual-role account on the Watch side stops seeing creator-only fields.
+
+**Tier 4 — new feature builds (largest, start last on the engineering side, but kick off client-facing dependencies immediately):**
+11. **Issue 11** — `release_model`/`is_original` migration, cron guard update, admin `VideosTab.jsx` controls. Confirm with the client the exact semantics wanted for `exclusive`'s "unavailable" state (visible-but-blocked vs. fully hidden) before building the admin control, since that changes the design slightly.
+12. **Issue 10** — Creator Capital, the largest item. **Request the client's actual homepage copy (title/subtext/button text) on day one**, in parallel with everything else above, since that is an external dependency with its own turnaround time — do not let it block the start of engineering work, but do not leave it to the last day either. Build the schema/routes/admin workflow/creator dashboard page last, once Issues 1 and 11 have landed (shares the split-settings and admin-video-edit patterns those two touch).
+
+Dependencies as specified: **Issue 1 before 10/11** (both read the same settings/schema conventions this audit traced) — reflected in Tier 1 vs Tier 4 above. **Issue 12 depends on Issue 2** — reflected in Tier 2, items 5–6.

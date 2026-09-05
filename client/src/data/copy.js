@@ -303,11 +303,20 @@ export const PLATFORM_POWERS = [
   },
 ]
 
-/** Why a creator should bother. */
+/**
+ * Why a creator should bother.
+ *
+ * The first item's title used to be a literal "Generous 70/30 revenue
+ * split" — static copy that agreed with the platform setting by accident and
+ * would have quietly gone stale the next time an admin changed it (which
+ * already happened once, in production, without this string moving). It is a
+ * function of the live split now, so the only number ever painted on screen
+ * is the one `platform_settings.creator_split_percent` actually holds.
+ */
 export const EARN_ITEMS = [
   {
     icon: 'hand-coins',
-    title: 'Generous 70/30 revenue split',
+    title: (creatorShare) => `Generous ${creatorShare}/${100 - creatorShare} revenue split`,
     text: 'You keep the lion’s share of every sale, tracked transparently in your dashboard.',
   },
   {
