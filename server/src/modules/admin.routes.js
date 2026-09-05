@@ -2129,7 +2129,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const rows = await many(
       `${CAPITAL_LIST_SQL}
-       where ($1::text is null or cc.status = $1)
+       where ($1::text is null or cc.status::text = $1)
        order by case when cc.status = 'under_review' then 0 else 1 end, cc.requested_at desc nulls last`,
       [req.query.status || null]
     )
