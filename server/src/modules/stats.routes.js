@@ -70,6 +70,7 @@ router.get(
 router.get(
   '/top-creators',
   asyncHandler(async (_req, res) => {
+    const settings = await getSettings()
     const rows = await many(
       `select p.id,
               coalesce(cp.display_name, p.full_name) as name,
@@ -81,10 +82,12 @@ router.get(
          join creator_profiles cp on cp.user_id = p.id
          left join earnings e on e.creator_id = p.id
         where p.status = 'active'
+          and ($1::boolean or not p.is_demo)
         group by p.id, cp.display_name, p.full_name, p.avatar_url, cp.verified, cp.location
        having coalesce(sum(e.creator_tzs), 0) > 0
         order by earned_tzs desc
-        limit 6`
+        limit 6`,
+      [Boolean(settings.show_demo_content_in_stats)]
     )
 
     res.json({

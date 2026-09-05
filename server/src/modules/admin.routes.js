@@ -1291,6 +1291,7 @@ router.patch(
       /* A mid-roll needs a middle: anything under a minute has none. */
       midroll_after_secs: z.coerce.number().int().min(60).max(7200).optional(),
       postroll_enabled: z.boolean().optional(),
+      show_demo_content_in_stats: z.boolean().optional(),
     })
   ),
   asyncHandler(async (req, res) => {

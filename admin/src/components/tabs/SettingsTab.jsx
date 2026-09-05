@@ -292,6 +292,11 @@ function PlatformPanel() {
     ['ads_on_expired_premieres', 'Ads on expired premieres', 'Once a paid window has closed'],
     ['share_ad_revenue', 'Share ad revenue with creators', 'Uses the same split as sales'],
     ['maintenance_mode', 'Maintenance mode', 'Shows a notice to everyone on the public site'],
+    [
+      'show_demo_content_in_stats',
+      'Show demo accounts in public stats',
+      'Keeps "Creators Are Getting Paid" and similar sections populated before real creators have earnings. Turn off at launch.',
+    ],
   ]
 
   const save = async (e) => {

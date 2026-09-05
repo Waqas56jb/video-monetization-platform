@@ -19,6 +19,11 @@
  *   node scripts/cleanup-e2e.mjs                      # show what would happen
  *   node scripts/cleanup-e2e.mjs --apply              # do it
  *   node scripts/cleanup-e2e.mjs --only a@b.test --apply
+ *   node scripts/cleanup-e2e.mjs --exclude a@b.test --apply   # everything EXCEPT one email
+ *
+ * --exclude exists for launch day: one documented account is kept on as the
+ * fixture for the player/entitlement/cross-browser suites (see E2E-ACCOUNTS.md)
+ * while every other e2e+*@mtonyo.test row is reversed and removed.
  *
  * Refunds need an admin token: ADMIN_TOKEN=<access token of an admin account>.
  * Account deletion needs SUPABASE_SERVICE_ROLE_KEY, which server/.env has.
@@ -32,18 +37,21 @@ const { many, one, query } = await import(pathToFileURL(root + '/src/db/pool.js'
 const APPLY = process.argv.includes('--apply')
 const onlyIx = process.argv.indexOf('--only')
 const ONLY = onlyIx > -1 ? process.argv[onlyIx + 1] : null
+const excludeIx = process.argv.indexOf('--exclude')
+const EXCLUDE = excludeIx > -1 ? process.argv[excludeIx + 1] : null
 const PATTERN = ONLY || 'e2e+%@mtonyo.test'
 const API = process.env.SERVER_PUBLIC_URL || 'https://video-monetization-platform-production.up.railway.app'
 
 const say = (...a) => console.log(...a)
-say(`\n${APPLY ? 'APPLYING' : 'DRY RUN — nothing will be written'}   target: ${PATTERN}\n`)
+say(`\n${APPLY ? 'APPLYING' : 'DRY RUN — nothing will be written'}   target: ${PATTERN}${EXCLUDE ? `  except: ${EXCLUDE}` : ''}\n`)
 
 const accounts = await many(
   `select id, email, role::text as role, status::text as status, created_at
      from profiles
     where email ${ONLY ? '= $1' : 'like $1'}
+      ${EXCLUDE ? 'and lower(email) <> lower($2)' : ''}
     order by created_at`,
-  [PATTERN]
+  EXCLUDE ? [PATTERN, EXCLUDE] : [PATTERN]
 )
 if (!accounts.length) {
   say('No matching accounts. Nothing to do.')

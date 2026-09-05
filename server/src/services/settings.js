@@ -35,6 +35,7 @@ export async function updateSettings(patch) {
     'midroll_enabled',
     'midroll_after_secs',
     'postroll_enabled',
+    'show_demo_content_in_stats',
   ]
   const entries = Object.entries(patch).filter(([k, v]) => allowed.includes(k) && v !== undefined)
   if (!entries.length) return getSettings({ fresh: true })
