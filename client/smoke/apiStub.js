@@ -57,3 +57,6 @@ export const clearSession = () => {}
 export const onSessionExpired = () => () => {}
 export class ApiError extends Error {}
 export const mediaUrl = (u) => u || ''
+/* The real module's own network base — a render smoke never fetches, so an
+   empty string is enough for anything that just interpolates it into a URL. */
+export const API_BASE = ''
