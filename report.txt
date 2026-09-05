@@ -571,12 +571,22 @@ RESOLUTION (2026-09-06):
   158 before Issues 3-5's additions), `split:audit`/`hover:audit`/`build`/`smoke:render` all green.
   One pre-existing test (`watch.og.test.js`) pinned the literal old constant `CRAWLER_META_MS = 600`
   — updated to `2000` with a comment explaining why, not just the number.
-- **Live re-verification, after deploy** (see the commit's push/build-confirmation note): the fresh-
-  slug OG matrix (WhatsApp/Facebook/Telegram bot UAs, the `web.whatsapp.com` CORS preflight+GET pair)
-  was already 60/60 and unaffected by any of these changes (none of them touch the CORS handling);
-  re-run against a newly cache-busted URL after this deploy specifically to confirm the raised
-  timeout actually produces a **correct, per-video title** rather than the generic fallback — see
-  the command output appended below once the deploy is live.
+- **Live re-verification, after deploy** (`X-Build: 256525a`, confirmed live). Fresh-slug OG matrix
+  re-run against a URL cache-busted specifically for this check (`X-Vercel-Cache: MISS` confirmed on
+  every fetch below, so none of this is old data):
+  ```
+  WhatsApp bot UA        → 200 · X-Doc: crawler · <title>Live at Arusha — Full Set - MTONYO+</title>
+                            og:description: "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+  Facebook crawler UA     → 200 · X-Doc: crawler · same correct per-video title
+  Telegram bot UA         → 200 · X-Doc: crawler   (was mislabelled 'twitter' in telemetry before;
+                                                     the document served was always correct)
+  OPTIONS, Origin: web.whatsapp.com  → 204 · Allow-Methods: GET, HEAD, OPTIONS · Allow-Origin: *
+  GET, Origin: web.whatsapp.com, Sec-Fetch-Mode: cors
+                          → 200 · Access-Control-Allow-Origin: * · X-Doc: crawler · correct title
+  ```
+  This is the exact scenario the original finding reproduced (a genuinely fresh URL getting the
+  generic, slug-derived title with no creator name) — it now returns the real per-video title and
+  creator on every check, with the CORS pair from Issue 5's earlier fix still intact.
 
 ---
 
