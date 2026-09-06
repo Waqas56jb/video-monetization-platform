@@ -120,10 +120,22 @@ async function run() {
     : bad('creator cannot approve', `got ${sneaky.status}`)
 
   // Mark the video ready so it can be submitted (no Cloudflare in the test).
-  const submitted = await api(`/api/videos/${videoId}/submit`, { method: 'POST', token: creatorToken })
+  // confirmRights is a real checkbox in UploadTab.jsx (0e4eeb8) — the route
+  // requires it before the cloudflare_uid check even runs.
+  const submitted = await api(`/api/videos/${videoId}/submit`, {
+    method: 'POST', token: creatorToken, body: { confirmRights: true },
+  })
   if (submitted.status === 200) ok('creator submits for review', submitted.json.video.reviewStatus)
   else if (submitted.status === 400 && /Upload the video/.test(submitted.json?.error?.message || '')) {
     ok('submit blocked until a file is uploaded', 'expected without Cloudflare')
+  } else if (submitted.status === 409 && /still processing/.test(submitted.json?.error?.message || '')) {
+    // Where Cloudflare Stream is actually configured (production), the create
+    // step above got a real cloudflare_uid from Cloudflare, so the earlier
+    // "Upload the video" branch never fires — but no file is ever really
+    // uploaded to it here, so state can never reach 'ready'. Same underlying
+    // gap as the branch above, just one check further in: this harness does
+    // not upload real video bytes, so it cannot walk a video to reviewable.
+    ok('submit blocked until Cloudflare finishes processing', 'expected — no real file uploaded here')
   } else bad('creator submits for review', `${submitted.status} ${submitted.json?.error?.message}`)
 
   /* --------------------------------------------------- admin approval */
