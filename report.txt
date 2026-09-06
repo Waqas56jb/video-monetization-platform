@@ -1510,3 +1510,53 @@ unchanged, listed in `BROWSER-CHECKLIST.md`.
 12. **Issue 10** — Creator Capital, the largest item. **Request the client's actual homepage copy (title/subtext/button text) on day one**, in parallel with everything else above, since that is an external dependency with its own turnaround time — do not let it block the start of engineering work, but do not leave it to the last day either. Build the schema/routes/admin workflow/creator dashboard page last, once Issues 1 and 11 have landed (shares the split-settings and admin-video-edit patterns those two touch).
 
 Dependencies as specified: **Issue 1 before 10/11** (both read the same settings/schema conventions this audit traced) — reflected in Tier 1 vs Tier 4 above. **Issue 12 depends on Issue 2** — reflected in Tier 2, items 5–6.
+
+---
+
+# PROMPT C — FINAL REGRESSION (2026-09-06)
+
+Full client journey run via Playwright (Chromium, Firefox, WebKit — desktop + Pixel 7/iPhone
+14/iPad profiles), against production. Full step×profile matrix: `REGRESSION-FINAL.md`.
+
+212/216 applicable checks pass. 2 are the known no-MSE-on-WebKit-here limit repeated across steps
+(unchanged since 2026-09-01). 2 are new, live, confirmed defects:
+
+**Free+Ads pre-roll fails silently.** `GET /api/ads/breaks/how-to-cook-pilau-properly` (authed as
+a fresh viewer) correctly returns a pre_roll break for campaign `8ace8dd2-f88b-4a7b-a9b8-c031a71c2c0d`
+("Vodacom Tanzania — Q3 Data Bundles", `preroll_enabled: true`, no targeting restrictions). Client
+mounts `AdBreak` (confirmed: 2 `.stream-frame` elements briefly present, one the ad's own iframe).
+Within ~2-4s, ALL of the ad's own Cloudflare segment/init requests (video id
+`9d020308a383a74ead2126fbdbd690ed`) abort with `net::ERR_ABORTED` (network trace captured,
+Chromium, headless and non-headless-equivalent). `playing` in `AdBreak.jsx` never becomes true
+(never receives real `onTimeUpdate` airtime), so the "advert never started" watchdog
+(`AdBreak.jsx:70-77`, 4000ms) fires `finish(false)` — uncounted, content proceeds. Reproduced 7/7
+runs (5× Chromium desktop, 2× Pixel 7 profile). Consistent with the campaign's own lifetime stats:
+`impressions: 504, completed: 66` (`GET /api/admin/ads`) — an 87% non-completion rate. Root cause
+NOT confirmed: the main content iframe's segments also showed aborts at the same instant, which is
+as consistent with a client-side remount racing the ad's bootstrap as with the ad's own Cloudflare
+video being unhealthy — and there is exactly one active campaign on production to test against, so
+the two hypotheses cannot be told apart from outside. Not patched blind; see DECISIONS.md.
+
+**Firefox served the crawler document to a real visitor.** Repro: fresh Firefox context → Home →
+Explore → `#trending` → click a `.vid-card` → lands on `/watch/live-at-arusha-full-set` → navigate
+again to the same slug with a new `?v=` query string (exactly what Share does) →
+`GET /watch/live-at-arusha-full-set?v=<fresh>` returns `x-doc: crawler`, `x-vercel-cache: MISS`,
+`x-crawler: human`. Request headers captured on the wire: `sec-fetch-dest: document`,
+`sec-fetch-mode: navigate`, `sec-fetch-site: none`, standard Firefox 155 UA — by
+`client/api/_lib/ogDocument.js`'s own `isUnfurlFetch()` logic (`dest === 'document' || mode ===
+'navigate'` → `return false`), this exact request should NOT have been classified as a preview-bot
+fetch. Reproduced 2/2 Firefox runs; 0/5 Chromium, 0/3 WebKit with the identical navigation
+sequence. Root cause not confirmed — the gap is between what the browser sent and what the
+serverless function evaluated, which needs production function logs to see, not available from
+here. Compounding factor found while investigating: `client/vercel.json`'s static `headers` block
+sets `Cache-Control: public, s-maxage=300` on `/watch/*` unconditionally — a misclassification like
+this one would be served from Vercel's edge to every visitor of that exact URL for up to 5 minutes,
+on any browser, once it happens on a real, shared link.
+
+Smoke-test failure named in the brief (`creator submits for review`): root-caused as two stacked
+harness gaps, not a product bug — see `server/src/cli/smoke.js` diff in commit `c228f91` and
+`REGRESSION-FINAL.md` for the full trace. `npm run smoke`: 39/39 after the fix.
+
+No migrations, no production code changes beyond the smoke-harness fix. `server npm test`: 137/137.
+All regression fixture accounts reversed via `cleanup-e2e.mjs --apply`; zero orphaned
+purchases/earnings rows confirmed after.

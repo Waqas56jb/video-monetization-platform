@@ -427,3 +427,89 @@ is the moment someone reads it.
 rest of the site without borrowing a badge and a date that do not apply to it. This is more code
 than the reuse would have been (one new page instead of one new object literal), and it is the
 honest option once the mismatch was visible.
+
+---
+
+## 2026-09-06 · A real, live ad-delivery defect found during Prompt C's final regression — flagged, not fixed on the spot
+
+**What happened.** Running the client's own journey with Playwright confirmed both live (Chromium
+desktop and a Pixel 7 profile, 5 separate runs across this session): opening a Free + Ads title
+requests a pre-roll correctly (`GET /api/ads/breaks/:id` returns it, `adsEnabled`/`showsAds` both
+true, an active campaign with no targeting restrictions exists), the ad's own `StreamPlayer`
+iframe mounts, and then within about 2–4 seconds its own Cloudflare Stream segment/init requests
+all abort (`net::ERR_ABORTED`, confirmed by network trace) before the ad ever reaches real
+airtime. `AdBreak.jsx`'s own "advert never started" watchdog (lines 70–77) correctly does what it
+was built to do — bails to content, uncounted — but the practical effect is that a real, out-of-
+sandbox campaign would almost never actually deliver an impression on this exact video/campaign
+pairing. The live campaign's own historical stats (`impressions: 504, completed: 66`) are
+consistent with this happening most of the time, not occasionally.
+
+**Why this was not fixed in the same pass.** Two live production iframes (the ad's own player and
+the main content player) show simultaneously-aborted segment requests at the same moment, which
+points at a React remount racing the ad's own bootstrap rather than a broken ad creative — but
+that is a hypothesis, not a confirmed root cause, and the only way to tell those apart cleanly
+(comparing against a second, differently-configured campaign) is not available: exactly one active
+ad campaign exists on production right now. Guessing at a fix for a monetization-critical path
+without being sure which of "our remount" or "Cloudflare's ad video" is at fault risks either
+wasting a cycle or, worse, masking the real cause. Prompt C's own charter was regression testing
+the 12 already-shipped issues plus the one named smoke-test failure — not new bug hunting — so
+this is reported in `REGRESSION-FINAL.md` and `report.txt` with full evidence for a deliberate,
+separate decision on priority, rather than patched under this same instruction.
+
+---
+
+## 2026-09-06 · Creator Capital's admin-workflow leg used demo.asha, not a fresh creator
+
+Testing "Publish Offer → creator sees it → Accept" end to end needs a creator already in
+`under_review`. A brand-new creator shows `0 of 6` months and the same `request-review` eligibility
+gate `capital-cli.mjs` already documents working around — so, matching that same precedent exactly,
+one `creator_capital` row was inserted directly for `demo.asha@mtonyo.demo` (real 2-of-6-months
+progress, a genuinely seeded demo creator meant for exactly this kind of exercise per Issue 8's own
+resolution) rather than fabricated for a disposable account. The row was deleted again once the
+admin approve → publish → creator accept loop completed and the resulting `active` status was
+confirmed in the database — nothing was left behind.
+
+---
+
+## 2026-09-06 · Playwright's own scroll-then-click hangs on this site under WebKit — worked around, not chased
+
+Four regression steps (opening a video card, a creator's name link, Save, and the mobile drawer's
+Log out) timed out under WebKit specifically with `locator.click: Timeout … exceeded` for any
+element below the fold. Isolated with a focused repro: `locator.scrollIntoViewIfNeeded()` itself
+times out, while a plain `element.scrollIntoView({behavior:'instant'})` followed by a synthetic
+`page.mouse.click()` at the resulting coordinates works instantly, on the same element, same page.
+`html { scroll-behavior }` is `auto`, ruling out a smooth-scroll fight. This is a Playwright↔WebKit
+automation-tooling gap, not a click that fails for a real person — a real Safari user scrolling
+with a finger and tapping never goes through `scrollIntoViewIfNeeded()` at all, and Issue 8's own
+extensive cross-browser tap-registration work (`AUDIT.md`/`M2-VERIFY.md`) already covers that with
+its own dedicated suite. Added `clickRobust()` to the regression harness (manual JS scroll + a
+synthetic mouse click) rather than spending further time on Playwright/WebKit's own driver.
+
+---
+
+## 2026-09-06 · A second live defect found during Prompt C's regression — Firefox served the crawler document, real visitors would too
+
+**What happened.** On Firefox specifically (Chromium and WebKit never reproduced this, in five and
+eight runs respectively), navigating to a video page *after already having been on the site* —
+browsing Home, then landing on a video from a card, then the app's own next navigation to the same
+slug with a different query string (exactly what the client's Share button does) — got served the
+static OG/crawler document (`x-doc: crawler`) instead of the interactive player, even though the
+server's own `x-crawler: human` header on that same response shows it correctly identified the
+visitor as a person, not a bot. Confirmed **not** a stale-cache artifact: `x-vercel-cache: MISS` on
+the exact response, for a URL never requested before.
+
+**Why this was not fixed on the spot.** `client/api/watch.js`'s own gate is `previewBot =
+isLinkPreviewBot(ua) || isUnfurlFetch(req)`, and by that function's own logic (`ogDocument.js`)
+a request carrying `sec-fetch-dest: document` / `sec-fetch-mode: navigate` — exactly what this
+Firefox request carried, confirmed from the wire — should return `false` and never reach the
+crawler branch. Something between what left the browser and what the serverless function actually
+evaluated disagreed, and the only way to see that gap is server-side function logs on production,
+which this session cannot reach. Guessing at the header-handling code without seeing what the
+function itself received risks the same mistake Issue 5 already made once this pass (shipping a
+fix for the wrong layer). One thing already worth flagging regardless of root cause:
+`client/vercel.json`'s static `headers` block sets `Cache-Control: public, s-maxage=300` on every
+`/watch/*` response — if this misclassification ever hits a real, popular video, Vercel's edge
+would hand the wrong (crawler) document to every visitor of that exact URL for up to five minutes
+afterward, on any browser, which raises the stakes of finding the real cause above "a Firefox
+quirk". Reported with full repro evidence in `REGRESSION-FINAL.md` and `report.txt` rather than
+patched blind.

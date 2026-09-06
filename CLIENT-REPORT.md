@@ -1084,6 +1084,47 @@ outright, cannot be tested from a computer at all and stays on the phone checkli
 
 ---
 
+## The final regression — the whole journey, on every engine, before handover
+
+Everything above was fixed and verified individually. This last pass ran your own end-to-end
+list — register, browse, open a video from a card and from a cold shared link, watch the preview
+stop, pay, resume automatically, watch a Free + Ads title, share it, follow a creator, save one to
+a list, log out and back in, see it in Continue Watching, then the same journey again as a creator
+and as an administrator — as **one continuous run**, on six browser engines: a desktop and a phone
+profile capable of actually playing video, a desktop and two tablet/phone profiles of Safari's own
+engine, and a read-only pass on Firefox.
+
+**212 of 216 applicable checks passed.** The 4 gaps split two ways. Two are the same known,
+long-standing limit repeated across many steps — the Safari engine available on this computer
+cannot decode video at all, so every step that needs picture on screen is marked "not judged"
+there rather than pass or fail, exactly as it has been every round; real Safari is not affected by
+this, and it is what `BROWSER-CHECKLIST.md` is for. The other two are genuine, newly found defects,
+confirmed by running the actual journey rather than reading the code:
+
+**A Free + Ads advert can silently never show.** The countdown you already saw fixed used to run
+over a black screen; testing the whole path end to end this time found something new underneath
+it — on this platform's one active advertising campaign, the advert's own player fails to start
+within about four seconds on every run, and the safety net built to stop a broken advert trapping
+a viewer (added earlier in this project) correctly lets the film play — with the side effect that
+no advert is ever actually seen. This matches your own numbers: 504 impressions logged for that
+campaign, only 66 completed. This needs one more piece of information only your production logs
+can give — whether it is this specific advert's file or something in how two players compete for
+the same moment — before it is safe to fix rather than guess at, given it touches money.
+
+**Firefox can occasionally be shown the WhatsApp preview page instead of the real one.** Confirmed
+twice, not a one-off: browsing normally and then opening a video a second time can serve the
+static preview document meant for WhatsApp's own crawler, to a real person, on Firefox specifically
+— even though the server's own record of the request shows it correctly recognised a human being.
+It is not a caching mistake — confirmed fresh, on a link never requested before. The precise cause
+needs the actual production request log to pin down, but there is a real stake attached to fixing
+it soon regardless of the exact cause: this project's own hosting sets every video page to be
+cached for five minutes, so if this ever happens on a video people are actually sharing, everyone
+who opens that same link in the next five minutes — on any browser — would see the wrong page too.
+
+Full matrix, every step by every profile, is in `REGRESSION-FINAL.md` at the project root.
+
+---
+
 ## What changed about the phone checklist
 
 Two new items were added to `BROWSER-CHECKLIST.md` for this round: timing the poster and the
@@ -1093,3 +1134,8 @@ already on that checklist from before — Safari actually playing video, the Wha
 correctly, Low Power Mode, the scrolling "vibration," and a backgrounded tab resuming correctly —
 is unchanged and still outstanding for exactly the same reason as before: none of it can be
 produced by any tool available on this computer.
+
+The two defects found in the final regression above — the advert that can fail to show, and
+Firefox occasionally getting the wrong page — are **not** on this list, deliberately. Neither needs
+a phone; both need production request logs this computer cannot see, which is a different kind of
+access than a device provides.
