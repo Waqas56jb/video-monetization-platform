@@ -66,12 +66,28 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad?.campaignId])
 
-  // Advert never started — do not show Skip as if they watched it.
+  /**
+   * Advert never started — do not show Skip as if they watched it.
+   *
+   * Was 4000ms. Traced live against production (2026-09-07, network trace
+   * captured inside the ad's own iframe): a cold Cloudflare Stream player
+   * spends about 2s on its own SDK script alone — it is answered with a
+   * redirect and has to be fetched twice, the same cost already measured
+   * for the main content player (report.txt, Issue 5) — then another ~1s
+   * on its bundled chunks, before it even requests its first media segment.
+   * Against that, 4s left this watchdog firing before the ad's own
+   * Cloudflare video (confirmed healthy: readyToStream, correct
+   * allowedOrigins, requireSignedURLs honoured) had any real chance to
+   * reach playing — the two aborted init.mp4 requests captured were still
+   * in flight when this fired, not failed on their own. 10s covers the
+   * observed cold path with real margin while the absolute cap above still
+   * catches a genuinely dead advert.
+   */
   useEffect(() => {
     if (!ad?.iframe) return
     const fail = setTimeout(() => {
       if (!playing && !done.current) finish(false)
-    }, 4000)
+    }, 10000)
     return () => clearTimeout(fail)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad?.campaignId, playing])
@@ -82,6 +98,7 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     <div className="ad-stage" data-ad-state={playing ? (canSkip ? 'skippable' : 'playing') : 'loading'}>
       <StreamPlayer
         src={ad.iframe}
+        poster={ad.thumbnail}
         title={`Advertisement — ${ad.advertiser || ad.name}`}
         autoplay
         playOnReady

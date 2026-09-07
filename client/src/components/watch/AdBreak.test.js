@@ -55,3 +55,19 @@ test('every way an ad can fail calls finish(false), never a fake success', () =>
   assert.match(src, /const fail = setTimeout\(\(\) => \{\s*\n\s*if \(!playing && !done\.current\) finish\(false\)/)
   assert.doesNotMatch(src, /finish\(true\)[\s\S]{0,80}setTimeout/)
 })
+
+/**
+ * Traced live against production (2026-09-07): a cold Cloudflare Stream
+ * player can easily spend 6-7s on its own SDK bootstrap and first segment
+ * before an ad genuinely reaches airtime, so a 4000ms "never started"
+ * watchdog was firing on a healthy ad, not a broken one — confirmed by a
+ * captured network trace where the ad's own init.mp4 requests were still
+ * in flight, not failed, the instant it fired. And the wait itself must
+ * never be plain black, the same complaint this exact overlay already
+ * shipped once before for the main content player.
+ */
+test('the "advert never started" watchdog clears a cold Cloudflare bootstrap, and the wait shows the ad\'s own poster', () => {
+  assert.match(src, /if \(!playing && !done\.current\) finish\(false\)\s*\n\s*\}, 10000\)/)
+  assert.doesNotMatch(src, /\}, 4000\)/)
+  assert.match(src, /poster=\{ad\.thumbnail\}/)
+})

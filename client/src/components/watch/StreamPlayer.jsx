@@ -104,8 +104,10 @@ export default function StreamPlayer({
    * layer with no event of its own to wait on, so it carries no new way to
    * get stuck the way the poster this replaced once did (see the file
    * comment above). It fades out on the same `painted` flag that reveals
-   * the iframe, never gates anything, and is skipped entirely when absent
-   * (ad breaks have no poster of their own).
+   * the iframe, never gates anything, and is skipped entirely when absent.
+   * `AdBreak.jsx` passes the campaign's own thumbnail here too (2026-09-07)
+   * — an ad's cold-start wait is at least as long as content's, and it used
+   * to sit on plain black for it.
    */
   poster = null,
   /**
