@@ -10,7 +10,20 @@
  *
  *   npm run smoke                    (expects the API on :4000)
  *   API_URL=https://... npm run smoke
+ *
+ * This run leaves nothing visible behind, on purpose (2026-09-08 — a batch
+ * of earlier runs did not, and their leftover "Smoke Creator" accounts and
+ * published videos were found filling the exact spot the demo-exclusion
+ * toggle exists to protect: `FINAL-SIGNOFF.md`, `DECISIONS.md`). The two
+ * accounts below are flagged `is_demo` the moment they exist — not only at
+ * the end — so a run that dies partway through (a thrown assertion, a
+ * killed process) still leaves accounts that are at least invisible to any
+ * public "Creators Are Getting Paid" surface, even if the video/payment
+ * cleanup near the end of this file never gets to run.
  */
+import 'dotenv/config'
+import { query } from '../db/pool.js'
+
 const API = (process.env.API_URL || 'https://video-monetization-platform-production.up.railway.app').replace(/\/$/, '')
 
 let passed = 0
@@ -73,6 +86,21 @@ async function run() {
   const vReg = await api('/api/auth/register', { method: 'POST', body: viewer, expect: 201 })
   let viewerToken = vReg.json.session.accessToken
   ok('viewer registers', vReg.json.user.role)
+
+  // Flagged immediately, not only at the end — there is no public API for
+  // this (is_demo is an internal concept, never something a registering
+  // account can set about itself), and it must hold even if a later
+  // assertion throws before the end-of-run cleanup below is reached.
+  try {
+    await query(
+      `update profiles set is_demo = true where id = any($1::uuid[])`,
+      [[cReg.json.user.id, vReg.json.user.id]]
+    )
+    await query(`update creator_profiles set is_demo = true where user_id = $1`, [cReg.json.user.id])
+    ok('creator and viewer accounts flagged is_demo')
+  } catch (e) {
+    bad('creator and viewer accounts flagged is_demo', e.message)
+  }
 
   const me = await api('/api/auth/me', { token: creatorToken, expect: 200 })
   me.json.user.email === creator.email ? ok('token identifies the caller') : bad('token identifies the caller', 'wrong user')
@@ -139,6 +167,11 @@ async function run() {
   } else bad('creator submits for review', `${submitted.status} ${submitted.json?.error?.message}`)
 
   /* --------------------------------------------------- admin approval */
+  // Both tracked here, in the outer scope, so the cleanup section at the
+  // very end of this file can reach them regardless of which nested block
+  // set them.
+  let videoWasPublished = false
+  let successfulPaymentId = null
   if (adminToken) {
     section('admin review')
     const queue = await api('/api/admin/review', { token: adminToken, expect: 200 })
@@ -158,6 +191,7 @@ async function run() {
         ? ok('approval leaves the creator\'s own premiere window untouched')
         : bad('approval must not alter premiere days', `got ${approved.json.video.premiereDays}`)
       approved.json.video.isPublished ? ok('approval publishes the video') : bad('approval publishes', 'not published')
+      videoWasPublished = Boolean(approved.json.video.isPublished)
     } else {
       bad('admin approves', `${approved.status} ${approved.json?.error?.message}`)
     }
@@ -200,6 +234,7 @@ async function run() {
     })
     if (init.status === 201) {
       ok('payment initiates', init.json.payment.status)
+      successfulPaymentId = init.json.payment.id
       await api(`/api/payments/${init.json.payment.id}/simulate`, {
         method: 'POST', token: viewerToken, body: { outcome: 'success' },
       })
@@ -300,6 +335,41 @@ async function run() {
   smallWithdraw.status === 400
     ? ok('withdrawal below the minimum is refused')
     : bad('minimum withdrawal enforced', `got ${smallWithdraw.status}`)
+
+  /* --------------------------------------------------------- cleanup */
+  // "Reverses" here means the same thing it means everywhere else in this
+  // codebase (cleanup-e2e.mjs, E2E-ACCOUNTS.md): a purchase is refunded
+  // through the real admin refund path, so a creator's earnings credit is
+  // taken back with the sale rather than left standing on fake sandbox
+  // money, and a video this run itself published is unpublished through
+  // the real admin path — both leave an audit trail, unlike a raw write.
+  // The accounts themselves are left in place (they cost nothing sitting
+  // there `is_demo`-flagged and unpublished) rather than deleted, matching
+  // this fix's actual target: invisible, not merely fewer.
+  section('cleanup — leave nothing visible behind')
+  if (adminToken) {
+    if (successfulPaymentId) {
+      const refund = await api(`/api/admin/payments/${successfulPaymentId}/refund`, {
+        method: 'POST', token: adminToken, body: { note: 'smoke test — automatic reversal' },
+      })
+      refund.status === 200
+        ? ok('sandbox purchase refunded')
+        : bad('sandbox purchase refunded', `${refund.status} ${refund.json?.error?.message}`)
+    } else {
+      ok('no sandbox purchase to refund')
+    }
+
+    if (videoWasPublished) {
+      const unpub = await api(`/api/admin/videos/${videoId}/unpublish`, { method: 'POST', token: adminToken, body: {} })
+      unpub.status === 200
+        ? ok('this run\'s own video unpublished')
+        : bad('this run\'s own video unpublished', `${unpub.status} ${unpub.json?.error?.message}`)
+    } else {
+      ok('no published video to unpublish')
+    }
+  } else {
+    console.log('  \x1b[90m· no admin token — refund/unpublish skipped (the is_demo flag above still holds)\x1b[0m')
+  }
 
   /* ------------------------------------------------------------- done */
   console.log(`\n${'─'.repeat(52)}`)

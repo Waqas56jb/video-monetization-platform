@@ -60,17 +60,21 @@ phone.
 | 11 | Release model conversion guard | Live `PATCH` to `exclusive+original` on an already-unpublished test video, confirmed an unrelated price edit does not revert it, reverted; cron path re-confirmed structurally (no public manual-trigger endpoint by design — nightly only) plus the existing `premiere.releaseModel.test.js` (3 tests, in the 137/137) | **11/11 PASS** |
 | 12 | Deep-link, Instagram UA, muted autoplay | Cold context, Instagram UA, signed out → lands directly on the video, no sign-in wall, `Tap for sound` present (muted autoplay confirmed) | **PASS** on every profile in §4 |
 
-**New finding, Issue 8-adjacent (not a FAIL of the instructed check — the toggle itself works
-exactly as designed):** with demo content correctly excluded, 4 of the top-6 "Creators Are Getting
-Paid" slots are now filled by **`Smoke Creator`** — a throwaway account `npm run smoke` creates and
-(per this sweep's own discovery) actually **publishes** on every run, since the smoke suite's own
-admin-approve step sets `is_published = true` on a video with no real content behind it. 9 such
-videos exist on production right now, each under its own disposable "Smoke Creator"/"Smoke Viewer"
-account, none flagged `is_demo` (a different category of test data than Issue 8's migration
-covered). This defeats the practical purpose of turning the demo toggle off at launch: real
-creators still would not be what's shown. Not fixed in this sweep — cleanup here is outside a
-verification sweep's scope and deserves its own decision, same treatment as the two defects below.
-Full detail in §7 and §8.
+**Finding from Issue 8's re-check — found here, fixed the same day.** With demo content correctly
+excluded, 4 of the top-6 "Creators Are Getting Paid" slots were filled by **`Smoke Creator`** — a
+throwaway account `npm run smoke` creates and (per this sweep's own discovery) actually
+**publishes** on every run, since the smoke suite's own admin-approve step sets
+`is_published = true` on a video with no real content behind it. 9 such videos existed on
+production, each under its own disposable "Smoke Creator"/"Smoke Viewer" account, none flagged
+`is_demo` (a different category of test data than Issue 8's migration covered). **Fixed
+2026-09-08**, all three parts: the 22 existing leftover accounts flagged `is_demo = true` and the 9
+published videos unpublished (through the real admin route); `smoke.js` itself now flags both its
+accounts `is_demo` the moment they exist and reverses the purchase/unpublishes the video at the end
+of every run; a new invariant check, `scripts/check-demo-flagging.mjs`, fails if any test-pattern
+creator is ever found with `is_demo = false` again — verified to actually catch it (temporarily
+un-flagged one row, confirmed FAIL, re-flagged, confirmed PASS). Re-verified live: with the toggle
+ON, "Creators Are Getting Paid" now returns **zero** test/smoke rows — `["Yasmin Chali", "Tiger"]`,
+both real. Full detail: `DECISIONS.md`, `LAUNCH-CLEANUP.md` §5.
 
 ---
 
@@ -166,19 +170,37 @@ implies.
 | Duplicate creator applications | **PASS** — 0 |
 | `LAUNCH-CLEANUP.md` steps still valid against current schema | **PASS** — every referenced script and query re-run live: `cleanup-e2e.mjs` dry-run works, the duplicate-application check runs and returns 0, both C7 test-video slugs still confirmed `is_published: false` |
 | Leftover `creator_capital` test rows | **PASS** — 0 (this sweep's own Issue 10 fixture fully self-cleaned) |
+| Smoke-test leftovers flagged / harness self-cleans | **PASS**, fixed 2026-09-08 — see below |
 
-**New finding — smoke-test leftover accounts and videos, not covered by any existing cleanup
-tool:** `npm run smoke` creates a fresh `Smoke Creator`/`Smoke Viewer` pair and one video on every
-run, and — confirmed live — the video ends up genuinely `is_published: true, review_status:
-approved` (the smoke suite's admin-approve step does not distinguish a real submission from its
-own test one). **9 such videos, 9+ such creator accounts, exist on production right now**, each
-with a real sandbox purchase against it. None are flagged `is_demo` — that migration only ever
-covered the `%@mtonyo.demo` seed accounts, not this separate category. Practical impact, confirmed
-live in §3/Issue 8: once demo content is correctly excluded from "Creators Are Getting Paid" (the
-launch-day toggle this project built), **`Smoke Creator` fills 4 of the remaining 6 slots** —
-undermining the entire point of that toggle. Not cleaned up in this sweep — it is a real,
-non-trivial decision (delete vs. flag vs. stop the smoke suite from auto-publishing) outside a
-verification sweep's mandate, but it must be decided before launch, not after.
+**Finding, fixed the same day: smoke-test leftover accounts and videos, not covered by any
+existing cleanup tool.** `npm run smoke` creates a fresh `Smoke Creator`/`Smoke Viewer` pair and
+one video on every run, and — confirmed live — the video ended up genuinely `is_published: true,
+review_status: approved` (the smoke suite's admin-approve step did not distinguish a real
+submission from its own test one). 9 such videos, 22 such accounts existed on production, each
+with a real sandbox purchase against it, none flagged `is_demo` — that migration only ever covered
+the `%@mtonyo.demo` seed accounts, not this separate category. Practical impact, confirmed live in
+§3/Issue 8: once demo content is correctly excluded from "Creators Are Getting Paid," `Smoke
+Creator` filled 4 of the remaining 6 slots — undermining the entire point of that toggle.
+
+**Fixed, all three parts, same day:**
+1. The 22 existing accounts flagged `is_demo = true`; the 9 published videos unpublished through
+   the real admin path (`POST /admin/videos/:id/unpublish`), not a raw write.
+2. `smoke.js` now flags both of its own accounts `is_demo` the instant they're created (not only at
+   the end, so a run that dies partway through still leaves them invisible), and reverses itself at
+   the end of every run — the sandbox purchase refunded, the video unpublished, both through the
+   real admin routes. A fresh `npm run smoke` run was executed to confirm: new accounts
+   `is_demo: true` from the moment of creation, its own video `is_published: false` and its own
+   purchase `status: refunded` by the time the run finished, 42/42 assertions passing including the
+   two new cleanup ones.
+3. `scripts/check-demo-flagging.mjs` — a new invariant check, part of the CLI battery — fails if any
+   `e2e+...@mtonyo.test`, `creator.../viewer...@mtonyo.test` or `...@mtonyo.internal` creator is
+   ever found with `is_demo = false`. Verified to actually catch the bug it's named for: one row
+   temporarily un-flagged → confirmed `FAIL` naming it → re-flagged → confirmed `PASS`.
+
+**Re-verified against the user's own success criterion**: with `show_demo_content_in_stats` OFF,
+`GET /api/stats/top-creators` now returns `["Yasmin Chali", "Tiger"]` — two real creators, zero
+test/smoke rows. Setting restored to its original value afterward. Full detail: `DECISIONS.md`,
+`LAUNCH-CLEANUP.md` §5.
 
 ---
 
@@ -190,7 +212,7 @@ verification sweep's mandate, but it must be decided before launch, not after.
 | Firefox served the crawler document, "found 2026-09-06, fixed 2026-09-07" | `CLIENT-REPORT.md` | Re-confirmed fixed, 23/23 OG matrix + 8/8 Firefox journey | **Still accurate** |
 | Tap → poster, "under about 400ms" | `BROWSER-CHECKLIST.md` §8 | Measured for the first time: median 1123ms | **Needs correction** — was explicitly unmeasured design intent, not a verified figure; corrected below |
 | "Timing regressed nowhere since Issue 2" | `report.txt`, Issue 2 RESOLUTION | Confirmed structurally true (no playback code touched); the *ad* timing figures did change, but as the direct, desired effect of the 2026-09-07 fix, not a regression | **Accurate as written, but incomplete** — `CLIENT-REPORT.md`'s player-timing section predates the ad fix and should note that a Free+Ads video's own "time to picture" now includes real ad playback where it used to include a broken one |
-| "8 published videos" (§10, §18) | `CLIENT-REPORT.md` | Production now shows 14 published slugs; 8 are the real catalogue this figure always meant, the other 6 (now 8, growing) are `smoke-premiere-*` test leftovers | **The figure itself is still correct for the real catalogue** — but the document does not yet disclose that test videos have since accumulated alongside it; addressed as a new finding in §7, not a rewrite of this line |
+| "8 published videos" (§10, §18) | `CLIENT-REPORT.md` | Production showed 14 published slugs before this fix; 8 are (and remain) the real catalogue this figure always meant. The other 6 were `smoke-premiere-*` test leftovers, now unpublished (§7) and, going forward, no longer accumulate — `smoke.js` unpublishes its own video at the end of every run | **The figure itself was, and remains, correct for the real catalogue** — the accumulation alongside it is fixed at the source, not just cleaned up once |
 
 **Corrections applied to `BROWSER-CHECKLIST.md` and `CLIENT-REPORT.md` as part of this sweep** —
 see the commit for this document.
@@ -207,7 +229,7 @@ see the commit for this document.
 | 4 · Full journey matrix | 7 profiles/passes | all clean (86 PASS, 22 N/A — WebKit decode) | 0 | 0 |
 | 5 · Timing medians | 5 metrics | 3 within/explained, 2 explained (ad fix + doc gap), 0 unexplained | 0 | 0 |
 | 6 · Cross-checks | 128+ page/engine/width combinations + 4 other checks | all | 0 | 0 |
-| 7 · Data hygiene | 6 | 6 | 0 | 0 |
+| 7 · Data hygiene | 7 | 7 | 0 | 0 |
 | 8 · Docs truth-check | 5 claims re-verified | 4 accurate, 1 corrected | — | 0 |
 
 ## Device-only — the honest remainder (5 items, unchanged in kind since the first round)
@@ -232,8 +254,8 @@ Every automatable check that can be run from this machine has been run fresh, fr
 account state, against live production, and is green. Two real defects were found, root-caused
 against real evidence (a CDP trace and Vercel's own production logs, not guesswork), fixed,
 deployed and re-verified clean across every profile capable of judging them. One new, real,
-launch-relevant finding was surfaced during this sweep (smoke-test leftover accounts defeating the
-demo-exclusion toggle) and is disclosed here in full rather than fixed unbidden — it needs a
-decision, not more testing, and should be resolved before the demo toggle is actually flipped off
-on launch day. Nothing found in this sweep is a reason to hold the report back; the one open item
-is a data-hygiene decision, not a defect in the product itself.
+launch-relevant finding was surfaced during this sweep — smoke-test leftover accounts defeating
+the demo-exclusion toggle — and has since been fixed at the source, not just cleaned up once: the
+existing leftovers were flagged and unpublished, the harness now flags and reverses itself on
+every future run, and a new invariant check guards against it recurring silently. Nothing open
+remains from this engagement that this machine can still test for.

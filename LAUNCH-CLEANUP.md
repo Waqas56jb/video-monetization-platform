@@ -79,7 +79,35 @@ existing admin action (**Admin → Creator Applications → open the older row �
 token) — the same route a human uses today, not a raw `DELETE`, so it is audited and the applicant
 is notified rather than the row silently vanishing.
 
-## 5. Test videos already off the public site — re-confirm
+## 5. Smoke-test leftovers stay invisible
+
+`npm run smoke` creates a fresh "Smoke Creator"/"Smoke Viewer" pair and one video on every run —
+and, found 2026-09-08, that video used to end up genuinely published, with nothing flagging either
+account `is_demo`. That is a different category of test data from the seeded demo catalogue (Issue
+8's own migration only ever covered `%@mtonyo.demo`), and with the demo-exclusion toggle correctly
+excluding real demo accounts, these were filling the exact "Creators Are Getting Paid" spotlight
+that toggle exists to protect.
+
+Fixed at the source: `smoke.js` now flags both of its own accounts `is_demo` the moment they exist
+(not only at the end, so a run that dies partway through still leaves them invisible), and reverses
+itself at the end of every run — the sandbox purchase refunded and the video unpublished, both
+through the real admin routes, same discipline as `cleanup-e2e.mjs`. The 22 accounts and 9 published
+videos this bug had already left behind (2026-08 through 2026-09-07) were flagged and unpublished
+the same way on 2026-09-08.
+
+Check on launch day that this invariant still holds — a fresh `npm run smoke` run and a code change
+elsewhere are both capable of reintroducing it:
+
+```
+node scripts/check-demo-flagging.mjs
+```
+
+`PASS` means no test-pattern creator (`e2e+...@mtonyo.test`, `creator.../viewer...@mtonyo.test`,
+`...@mtonyo.internal`) exists with `is_demo = false`. If it fails, the accounts it names need
+flagging and any published video unpublishing, exactly as this pass just did — the script's own
+output says which.
+
+## 6. Test videos already off the public site — re-confirm
 
 Both `whatsapp-video-2026-08-15-at-11-50-34-pm` and `80915499123-fd8feac4-6609-4d3e-8739-d3a2cdde7f76`
 were unpublished during an earlier pass (M2-VERIFY.md, C7) and should stay that way. Confirm on
@@ -100,7 +128,7 @@ Both `is_published` should read `false`. If either is `true`, unpublish it again
 **Admin → Videos**, not a direct database write, so the action is audited and the buyer-keeps-access
 guarantee is exercised through the real code path.
 
-## 6. Not automated on purpose
+## 7. Not automated on purpose
 
 - `rpreplay-final1589783013-2` (a real creator's raw iOS screen-recording filename, no description)
   is a content-quality nudge, not test data — ask the creator to rename/describe it, don't touch it
