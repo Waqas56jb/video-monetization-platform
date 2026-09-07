@@ -1639,3 +1639,67 @@ server: unaffected — neither fix touches server code
 live via `X-Build` before the next regression run. All fresh e2e viewer accounts created during
 re-verification reversed via `cleanup-e2e.mjs --apply`; zero orphaned purchases/earnings confirmed
 after.
+
+---
+
+# PROMPT E — FINAL SIGN-OFF SWEEP (2026-09-07/08)
+
+Full re-verification from a clean state, fresh accounts throughout, against production. Full
+matrix and every command's evidence: `FINAL-SIGNOFF.md`. Summary:
+
+- Build integrity 8/8, suites 137/137 + 175/175 + smoke 39/39 + CLI battery all pass, `verify` green.
+- All 12 issues re-checked live: 5/5, poster-continuity confirmed structurally, preview-label
+  confirmed via suite, ad fix confirmed 3/3 Chromium + 3/3 Pixel 7, OG matrix 23/23 (incl. the
+  web.whatsapp.com CORS pair and the Firefox-fix regression guard), admin logo confirmed, role
+  matrix 11/11 across viewer-only/creator-only/dual-role/sub-admin, demo-toggle both states
+  confirmed, login 10/10 (5 Chromium + 5 WebKit), Creator Capital full workflow 13/13 with a
+  genuinely fresh fixture (not a reused one) then reversed, release_model guard 11/11, deep-link
+  confirmed across all six profiles.
+- Full six-profile journey matrix re-run clean: Chromium 23/23, Pixel 7 23/23, WebKit desktop
+  18/18 (5 N/A), iPhone 14 18/18 (5 N/A), iPad 18/18 (5 N/A), Firefox 8/8 (2 N/A), Fast 3G pass
+  clean.
+- Timing medians: two of three player-timing videos within/near the documented volatility
+  envelope for this metric; the third (`how-to-cook-pilau-properly`, a Free+Ads title) shows a
+  measured increase fully explained by the 2026-09-07 ad fix now genuinely playing the advert
+  instead of failing after 4s — not a regression, the intended effect of the fix. Home's cold
+  figure varied 1700-3550ms across three independent median-of-5 runs with no code touched on
+  that path — environmental, not code. Tap→poster measured for the first time (median 1123ms,
+  ~700ms of it the `/api/videos` round trip) — the "<400ms" figure in `BROWSER-CHECKLIST.md` was
+  always an unmeasured design target, now corrected to the real number.
+- Cross-checks: 30/30 public pages (Chromium), 30/30 (WebKit), 34/34 admin pages (Chromium),
+  34/34 (WebKit) — all 375/768/1440, zero horizontal overflow anywhere; CLI battery full pass;
+  share-preview matrix 18/18 on the 6 real published videos; rate-limit headroom 24/120 in the
+  busiest 60s window of a real checkout.
+- Data hygiene: e2e accounts = exactly the documented fixture, zero orphaned purchases/earnings,
+  demo accounts 5/5 flagged, 0 duplicate applications, `LAUNCH-CLEANUP.md` still valid against
+  current schema.
+
+**One false alarm caught and reverted before it became a bug**, worth recording precisely because
+it is the kind of mistake this sweep's own tests exist to catch. A role-matrix test found a
+sub-admin could `GET /api/admin/settings` with no permission gate on that specific route — looked
+like a real information-disclosure finding, and a one-line `requireAdmin()` fix was applied. The
+very next line of the file (`admin.routes.js:63-71`) turned out to be an existing, explicit,
+documented design decision explaining exactly why that route is deliberately ungated: other
+screens a sub-admin legitimately has (Ads, Creators) need to read shared settings, and gating the
+read would break those. The fix was reverted immediately, confirmed via `git diff` showing no net
+change, and the test was corrected to check the routes that are actually meant to be gated
+(`PATCH /settings`, `/users`, `/revenue`, all correctly 403 for this sub-admin; `/videos`,
+correctly 200 — a module it was actually granted). No harm done; recorded so the review trail is
+honest about a wrong turn taken and corrected, not just the destination.
+
+**One new, real, launch-relevant finding, disclosed rather than fixed.** `npm run smoke` — run
+repeatedly throughout this whole engagement for exactly its intended purpose — creates a
+throwaway creator/video pair on every run, and that video is genuinely published
+(`is_published: true, review_status: approved`), not just created as a draft. 9 such videos exist
+on production right now, none flagged `is_demo` (a different category from the seeded demo
+catalogue Issue 8's migration covered). Confirmed live and directly consequential: with
+`show_demo_content_in_stats` correctly OFF, `Smoke Creator` fills 4 of the 6 "Creators Are Getting
+Paid" slots — the exact outcome the demo-exclusion toggle was built to prevent, just from a
+different, uncovered source of test data. Not cleaned up here — outside a verification sweep's
+mandate and worth a real decision (delete the smoke leftovers, flag them the same way demo
+accounts are flagged, or change the smoke suite so it never auto-publishes) rather than a reflexive
+fix. Full detail: `FINAL-SIGNOFF.md` §3/§7, `CLIENT-REPORT.md`'s new closing section.
+
+No code changes were required by this sweep — both fixes it re-verified were already deployed the
+day before. Doc corrections only: `BROWSER-CHECKLIST.md` §8 (the tap→poster figure) and
+`CLIENT-REPORT.md` (a new closing section covering this whole sweep).

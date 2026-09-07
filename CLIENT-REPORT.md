@@ -1139,6 +1139,47 @@ Full matrix, every step by every profile, is in `REGRESSION-FINAL.md` at the pro
 
 ---
 
+## The final sign-off sweep (2026-09-08) — everything, one more time, fresh
+
+Before this reached you, everything above was checked again from a completely clean state — no
+carried-over accounts, no assumptions from earlier rounds. Every browser engine, every account
+type, every one of your 12 issues, the admin panel, every public and admin page at three phone/
+tablet/desktop widths, and the full Creator Capital workflow with a genuinely new test creator
+(not a reused one) created and then removed. **Full detail, every command and its result, is in
+`FINAL-SIGNOFF.md`** at the project root — this is the plain-language summary.
+
+**Both fixes above held up completely.** The advert now reaches its skip button reliably —
+checked three separate times on a desktop browser and three times on a phone profile, all clean.
+Firefox never showed the wrong page again across every fresh check. Nothing regressed anywhere
+else: your login, your revenue split, the role separation between a Viewer and Creator dashboard,
+the release-model controls, and the full Creator Capital approval workflow were all re-proven
+against production with brand-new test accounts.
+
+**One thing worth knowing about the advert's own timing, now that it actually works.** A Free +
+Ads video visibly takes a little longer to show its picture than it used to — because the advert
+genuinely plays first now, instead of failing silently within four seconds. That is the fix
+working as intended, not a new slowdown; a video with no advert on it is unaffected.
+
+**One number was measured for the first time, and the earlier figure for it was never actually
+confirmed.** The time from tapping a video to its poster appearing was written up earlier as
+"under about 400ms" — that was always the design goal, from before any browser-testing tool was
+available on this machine to check it. It has now genuinely been measured: about 1.1 seconds,
+most of which is the trip to your server asking what the video actually is — a cost the poster fix
+was never meant to remove, only to make less jarring while it happens.
+
+**One new thing was found, and it needs your decision before launch, not more testing.** The
+automated test suite (`npm run smoke`) that has been run repeatedly throughout this whole
+engagement creates a throwaway "Smoke Creator" account and one test video every time it runs — and
+it turns out those videos get genuinely published, the same as a real submission would. Nine of
+them are live on your site right now. This matters specifically because of the demo-account
+toggle built for Issue 8: once you switch it off at launch so only real creators show in "Creators
+Are Getting Paid," these "Smoke Creator" entries fill most of the empty slots instead of real
+creators — which defeats the reason that toggle exists. Nothing was deleted or changed here without
+asking; it is disclosed so you can decide whether to remove these accounts, exclude them the same
+way demo accounts are excluded, or something else, before that toggle gets flipped on launch day.
+
+---
+
 ## What changed about the phone checklist
 
 Two new items were added to `BROWSER-CHECKLIST.md` for this round: timing the poster and the

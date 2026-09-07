@@ -542,3 +542,55 @@ by `warmShare.js`'s own same-origin `fetch()` (`ogDocument.js`, commit `e3d9c5b`
 header set now a permanent unit test). Re-run live: the exact repro passed 3/3 after the fix
 (`x-vercel-cache: MISS` each time, ruling out cache either way); a direct production A/B in both
 cache directions confirmed the 2026-09-02 Vary fix is unaffected. Firefox regression cell: 8/8.
+
+---
+
+## 2026-09-08 · A settings-permission "fix" that was reverted within minutes — the surrounding comment said why it was already correct
+
+**What happened.** PROMPT E's own role-matrix check found a sub-admin (`demo.moderator`, granted
+only `review`/`moderation`/`videos`) could `GET /api/admin/settings` successfully — every other
+admin sub-resource (`/users`, `/revenue`, `/capital`, etc.) is gated by `requirePermission(module)`
+on its own path prefix, and `/settings` had no equivalent line. Read as a real gap and "fixed" with
+`requireAdmin()` on the GET route, matching the PATCH route beside it.
+
+**Reverted immediately.** The very next block of the same file (`admin.routes.js:63-71`) is an
+existing, explicit comment: *"`/settings` is deliberately NOT gated as a whole. Reading platform
+configuration is not a privilege — the Ads screen needs to know whether pre-roll is switched on,
+Creators needs the default split, and gating the read would break screens whose own permission the
+person already holds."* The "fix" would have broken exactly the screens that comment names, for
+every sub-admin on the platform, to close a gap that was never a gap. Reverted, confirmed via
+`git diff` showing no net change against the last commit.
+
+**What the mistake was, precisely, so it does not repeat.** Scanning the list of `router.use(path,
+requirePermission(...))` lines and treating an absence from that list as an oversight, without
+reading the comment immediately below the list that specifically addresses the one path left out
+of it. The fix for the *test* was to stop asserting a route should be gated because a pattern
+suggested it, and instead assert what the code's own documented design says: `GET /settings`
+readable by any staff, `PATCH /settings` admin-only, and the genuinely permission-gated routes
+(`/users`, `/revenue`) correctly refused. All four now pass, matching the design as written, not as
+guessed from a list.
+
+---
+
+## 2026-09-08 · Smoke-test leftovers found polluting the exact spot Issue 8's fix was built to protect
+
+**What happened.** PROMPT E's re-check of Issue 8's demo-exclusion toggle (`show_demo_content_in_
+stats`, OFF) found `Smoke Creator` filling 4 of the 6 "Creators Are Getting Paid" slots once real
+demo accounts were correctly excluded. `npm run smoke` — run repeatedly throughout this entire
+engagement, entirely as intended — creates a fresh throwaway creator and one video per run, and
+that video ends up genuinely `is_published: true, review_status: approved`: the smoke suite's own
+admin-approve step does not distinguish its own test submission from a real one. 9 such videos
+exist on production right now, none flagged `is_demo` — a category Issue 8's migration
+(`034_is_demo_flag.sql`) never covered, since it only ever targeted the seeded `%@mtonyo.demo`
+catalogue.
+
+**Not cleaned up in this pass.** This is the same category of decision Issue 8 itself required —
+what to clean, what to flag, what to leave — and making that call unasked, mid-verification-sweep,
+risked exactly the kind of scope creep this engagement has consistently avoided elsewhere. Three
+real options exist and none is obviously right without the client's input: delete the leftover
+accounts/videos outright (loses nothing, since they carry no real content); flag them `is_demo =
+true` the same way the seeded catalogue is flagged (cheapest, keeps them on record); or change
+`smoke.js` so its own submission never actually reaches `is_published = true` on production (fixes
+the source, but changes what the suite has verified — `admin approves`/`publishes` — since before
+this whole engagement began). Disclosed in full in `FINAL-SIGNOFF.md` and `report.txt` instead, for
+a decision before the demo toggle is actually flipped off at launch.

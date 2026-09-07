@@ -114,15 +114,21 @@ here at all.
 ## 8 · Poster continuity, and the share buttons this pass touched
 
 New from the Prompt B fix pass. The poster fix (Issue 2) and the share-button changes (Issue 5)
-are confirmed correct by code reading and by the regression tests that guard the old bugs, but
-neither a stopwatch measurement nor "does WhatsApp's own client behave as expected" is something
-this environment can produce — no Playwright is installed here at all, so none of this pass's
-browser-timing claims were re-measured on any engine, headless or real.
+are confirmed correct by code reading and by the regression tests that guard the old bugs.
+
+**Corrected 2026-09-08.** The "<400ms" figure below was written when no browser automation was
+available in this environment and was always a design target, not a measured number — the
+original text said so. Playwright is now available, and the real, desktop-Chromium figure has
+been measured for the first time: **median 1123ms `[1083–2041]`** — dominated by the
+`/api/videos/:slug` round trip itself (~700ms of it), which the poster fix never claimed to
+shorten; it only ever changed what is on screen *during* that wait. What still needs a real
+phone is whether that number feels different there — network, GPU and thermal state all differ
+from this desktop measurement. See `FINAL-SIGNOFF.md` §5 for the full breakdown.
 
 | ☐ | Device | URL | Do this | Expect |
 |---|---|---|---|---|
-| ☐ | iPhone · Safari | any `/watch/…`, tapped from a fresh Explore card | Time from the tap to the poster appearing | Under about 400ms — it should feel instant, not a flash of grey then the picture. |
-| ☐ | iPhone · Safari | same | Time from the tap to the film actually moving | No slower than before this pass (the recorded baseline: roughly 2.4–3.6s on a warm connection). The poster fix only changes what is on screen *during* that wait, not how long the wait is. |
+| ☐ | iPhone · Safari | any `/watch/…`, tapped from a fresh Explore card | Time from the tap to the poster appearing | Roughly 1.1s on desktop Chromium, now measured — check whether a real phone feels notably different, not whether it clears 400ms (that figure was never a confirmed target). |
+| ☐ | iPhone · Safari | same | Time from the tap to the film actually moving | No slower than before this pass (the recorded baseline: roughly 2.4–3.6s on a warm connection) **for a video with no ads**. A Free+Ads video now genuinely plays its advert first (fixed 2026-09-07), so it will visibly take longer to reach content than it used to — that is the ad working, not a regression. |
 | ☐ | MacBook · Safari | any `/watch/…` | Share → Facebook | Opens Facebook (a browser tab to the sharer page on a laptop is correct — there is no better native option on desktop). |
 | ☐ | Android phone | any `/watch/…` | Share → Facebook | The Facebook **app** opens, not just a browser tab — this is the one platform this pass's fix specifically changed. |
 | ☐ | iPhone · Safari | any `/watch/…` | Share → Save 60s promo clip | Either a file actually saves, or the clip opens/plays in place (iOS Safari does not support saving from a plain link — this is expected, not a bug) — but never a silently blank tap with nothing visibly happening. |
