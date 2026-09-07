@@ -295,6 +295,30 @@ export default async function handler(req, res) {
   const crawler = detectCrawler(ua)
   const previewBot = isLinkPreviewBot(ua) || isUnfurlFetch(req)
 
+  /**
+   * Diagnostic only: 2026-09-07's Firefox regression served the crawler
+   * document to a request whose own `x-crawler: human` header shows it was
+   * correctly identified as a person — i.e. `previewBot` was true for a
+   * `crawler === 'human'` request, which by isUnfurlFetch's own logic
+   * (`sec-fetch-dest === 'document'` -> false) should not have been
+   * possible. Offline replay of the exact captured header values through
+   * this same code returns `false`, and a raw curl/http2 request with those
+   * identical values gets the shell — so whatever is different is in what
+   * this function actually receives, not in the header values as reported
+   * by the client. Logging the raw request-side signal here until this is
+   * caught in production once, then this block should come back out.
+   */
+  if (previewBot && crawler === 'human') {
+    console.log(
+      `og-html-anomaly slug=${slug || 'none'} ua=${JSON.stringify(ua)} ` +
+        `dest=${JSON.stringify(req.headers['sec-fetch-dest'])} ` +
+        `mode=${JSON.stringify(req.headers['sec-fetch-mode'])} ` +
+        `site=${JSON.stringify(req.headers['sec-fetch-site'])} ` +
+        `isLinkPreviewBot=${isLinkPreviewBot(ua)} ` +
+        `allHeaders=${JSON.stringify(req.headers)}`
+    )
+  }
+
   const pending = startReport(API, req, { asset: 'html', slug })
 
   /**
