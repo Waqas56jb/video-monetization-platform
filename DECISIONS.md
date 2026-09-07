@@ -456,6 +456,18 @@ the 12 already-shipped issues plus the one named smoke-test failure — not new 
 this is reported in `REGRESSION-FINAL.md` and `report.txt` with full evidence for a deliberate,
 separate decision on priority, rather than patched under this same instruction.
 
+**RESOLVED 2026-09-07**, once asked to actually root-cause it rather than only flag it. A CDP
+network trace taken from inside the ad's own iframe settled the hypothesis above: it was neither
+a React remount nor a broken ad creative. Cloudflare's own Stream API confirms the ad's video is
+healthy (`readyToStream: true`, correct `allowedOrigins`, `requireSignedURLs` honoured). The trace
+showed the ad's own SDK script alone costing ~2s cold (a 301-then-refetch, the same cost already
+measured for the main player), with its first real media request not going out until ~6.28s — the
+4000ms watchdog was tearing the iframe down while those requests were still mid-flight, which is
+why they showed as aborted rather than failed. Raised to 10000ms and given the ad its own poster
+(`AdBreak.jsx`, commit `a490ffa`). Billing was checked and needed no change — `ads.js` already
+bills only a completed impression, so 504/66 was 438 real, correctly-uncounted failures, not a
+billing gap. Re-run live: Chromium 23/23, Pixel 7 23/23, the ad reaching skip-ready both times.
+
 ---
 
 ## 2026-09-06 · Creator Capital's admin-workflow leg used demo.asha, not a fresh creator
@@ -513,3 +525,20 @@ would hand the wrong (crawler) document to every visitor of that exact URL for u
 afterward, on any browser, which raises the stakes of finding the real cause above "a Firefox
 quirk". Reported with full repro evidence in `REGRESSION-FINAL.md` and `report.txt` rather than
 patched blind.
+
+**RESOLVED 2026-09-07**, once asked to actually root-cause it rather than only flag it. A
+temporary diagnostic log (commit `1aab2c5`) plus `vercel logs` (the CLI was already authenticated
+and the project already linked on this machine) gave the real, wire-level headers Vercel's
+function received: `sec-fetch-dest: empty` / `sec-fetch-mode: same-origin` / `sec-fetch-site:
+same-origin` — fetch-shaped, not navigation-shaped — for a request Playwright's own `resourceType`
+and every header-reporting API agreed was a genuine `document` navigation. A raw curl and a raw
+HTTP/2 request built with those exact fetch-shaped values, no browser involved, both correctly
+returned the crawler document — `isUnfurlFetch()` was never wrong about the values it was given;
+Firefox sent the wrong values, specifically when re-navigating to the same pathname with only the
+query string changed on an already-loaded page (exactly what Share does). Fixed by also treating
+`Upgrade-Insecure-Requests: 1` paired with an `Accept` that prefers `text/html` above all else as
+decisive proof of a human navigation — both sent only by a real top-level navigation, neither sent
+by `warmShare.js`'s own same-origin `fetch()` (`ogDocument.js`, commit `e3d9c5b`, exact captured
+header set now a permanent unit test). Re-run live: the exact repro passed 3/3 after the fix
+(`x-vercel-cache: MISS` each time, ruling out cache either way); a direct production A/B in both
+cache directions confirmed the 2026-09-02 Vary fix is unaffected. Firefox regression cell: 8/8.

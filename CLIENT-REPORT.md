@@ -1101,25 +1101,39 @@ there rather than pass or fail, exactly as it has been every round; real Safari 
 this, and it is what `BROWSER-CHECKLIST.md` is for. The other two are genuine, newly found defects,
 confirmed by running the actual journey rather than reading the code:
 
-**A Free + Ads advert can silently never show.** The countdown you already saw fixed used to run
-over a black screen; testing the whole path end to end this time found something new underneath
-it — on this platform's one active advertising campaign, the advert's own player fails to start
-within about four seconds on every run, and the safety net built to stop a broken advert trapping
-a viewer (added earlier in this project) correctly lets the film play — with the side effect that
-no advert is ever actually seen. This matches your own numbers: 504 impressions logged for that
-campaign, only 66 completed. This needs one more piece of information only your production logs
-can give — whether it is this specific advert's file or something in how two players compete for
-the same moment — before it is safe to fix rather than guess at, given it touches money.
+**A Free + Ads advert could silently never show — found 2026-09-06, fixed 2026-09-07.** The
+countdown you already saw fixed used to run over a black screen; testing the whole path end to end
+found something new underneath it — on this platform's one active advertising campaign, the
+advert's own player was failing to start within about four seconds on every run, and the safety
+net built to stop a broken advert trapping a viewer (added earlier in this project) was correctly
+letting the film play — with the side effect that no advert was ever actually seen. **Root cause,
+confirmed by watching the advert's own player load, second by second, against your production
+account:** nothing was broken. The advert's own video is healthy — Cloudflare confirms it is fully
+processed and correctly permissioned. The player simply needed longer than four seconds to boot on
+a cold connection — its own start-up software alone costs about two seconds, the same cost this
+report already measured for the film itself — and the safety net was cutting it off before it ever
+had a real chance. **Fix:** that wait is now ten seconds instead of four, and — matching Issue 2's
+fix for the film itself — the advert now shows its own picture while it loads instead of a black
+box. Checked and confirmed unrelated: your money was never at risk here — an advert has only ever
+been billed once it genuinely finished playing, so the 504-logged/66-completed figure was 438 real
+failed deliveries correctly going uncharged, not a billing mistake. Re-tested against production
+after the fix: the advert now reaches its skip button reliably, confirmed twice over.
 
-**Firefox can occasionally be shown the WhatsApp preview page instead of the real one.** Confirmed
-twice, not a one-off: browsing normally and then opening a video a second time can serve the
-static preview document meant for WhatsApp's own crawler, to a real person, on Firefox specifically
-— even though the server's own record of the request shows it correctly recognised a human being.
-It is not a caching mistake — confirmed fresh, on a link never requested before. The precise cause
-needs the actual production request log to pin down, but there is a real stake attached to fixing
-it soon regardless of the exact cause: this project's own hosting sets every video page to be
-cached for five minutes, so if this ever happens on a video people are actually sharing, everyone
-who opens that same link in the next five minutes — on any browser — would see the wrong page too.
+**Firefox could occasionally be shown the WhatsApp preview page instead of the real one — found
+2026-09-06, fixed 2026-09-07.** Confirmed twice, not a one-off: browsing normally and then opening
+a video a second time could serve the static preview document meant for WhatsApp's own crawler, to
+a real person, on Firefox specifically — even though the server's own record of the request showed
+it correctly recognised a human being. It was not a caching mistake — confirmed fresh, on a link
+never requested before. **Root cause, found by reading your production server's own request log,
+not by guessing:** Firefox itself, in one specific circumstance — reopening the same video with
+only a small tracking detail changed in the address, which is exactly what happens when Share is
+used — was sending your server a technical signal that looked identical to a background request,
+not a person browsing. Every other browser sends the correct signal in that same circumstance;
+this was Firefox's own doing, not something in your code that was reading the signal wrong.
+**Fix:** the server now also checks two other signals real browsers always send on a genuine visit
+and a background request never does, and trusts those instead whenever they disagree with the one
+Firefox got wrong. Re-tested against production: fixed, confirmed three times over, with the exact
+real request that once broke it now checked automatically on every future change.
 
 Full matrix, every step by every profile, is in `REGRESSION-FINAL.md` at the project root.
 
@@ -1135,7 +1149,6 @@ correctly, Low Power Mode, the scrolling "vibration," and a backgrounded tab res
 is unchanged and still outstanding for exactly the same reason as before: none of it can be
 produced by any tool available on this computer.
 
-The two defects found in the final regression above — the advert that can fail to show, and
-Firefox occasionally getting the wrong page — are **not** on this list, deliberately. Neither needs
-a phone; both need production request logs this computer cannot see, which is a different kind of
-access than a device provides.
+The two defects found in the final regression above — the advert that could fail to show, and
+Firefox occasionally getting the wrong page — are **not** on this list. Both were root-caused
+against your production logs and fixed the following day; neither needed a phone to begin with.

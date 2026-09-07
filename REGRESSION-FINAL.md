@@ -5,9 +5,15 @@ installed and confirmed with a live screenshot per engine before this run starte
 run per profile with the same step order the client asked for; a fresh e2e viewer created at the
 start of every mutating run and reversed afterward through `cleanup-e2e.mjs`.
 
+**Update, 2026-09-07: both real findings below are now fixed, deployed and re-verified live.**
+The matrix and finding write-ups below are left exactly as first observed, on 2026-09-06 — each
+finding's own section now carries a "RESOLVED" postscript with the fix, the commit, and the
+re-run that confirms it. Nothing in the original run was rewritten.
+
 **Read this like the rest of this project's evidence: PASS means checked and true, N/A means the
 engine cannot judge it (documented why), FAIL means it did not do what the client's list says it
-should — two of those FAILs are real, live, and explained below rather than argued away.**
+should — two of those FAILs were real and live when first observed, both now fixed (see the
+postscripts on Findings 1 and 2).**
 
 ---
 
@@ -27,8 +33,8 @@ should — two of those FAILs are real, live, and explained below rather than ar
 | 10 | Automatic resume (continue-veil, no second Play) | PASS | PASS | PASS | PASS | PASS | N/A¹ |
 | 11 | Server confirms full entitlement before playback is trusted | PASS | PASS | PASS | PASS | PASS | N/A¹ |
 | 12 | Free+Ads: ad shows before the countdown | PASS | PASS | N/A² | N/A² | N/A² | N/A¹ |
-| 13 | Skip becomes available at the configured delay | **FAIL³** | **FAIL³** | N/A² | N/A² | N/A² | N/A¹ |
-| 14 | Share opens the sheet, WhatsApp href well-formed | PASS | PASS | PASS | PASS | PASS | **FAIL⁴** |
+| 13 | Skip becomes available at the configured delay | **FAIL³ → PASS** | **FAIL³ → PASS** | N/A² | N/A² | N/A² | N/A¹ |
+| 14 | Share opens the sheet, WhatsApp href well-formed | PASS | PASS | PASS | PASS | PASS | **FAIL⁴ → PASS** |
 | 15 | Share card matrix on a fresh slug (crawler view) | PASS | PASS | PASS | PASS | PASS | PASS |
 | 16 | Follow a creator | PASS | PASS | PASS | PASS | PASS | N/A¹ |
 | 17 | Add to My List | PASS | PASS | PASS | PASS | PASS | N/A¹ |
@@ -37,7 +43,7 @@ should — two of those FAILs are real, live, and explained below rather than ar
 | 20 | Login (one attempt) | PASS | PASS | PASS | PASS | PASS | N/A¹ |
 | 21 | Continue Watching shows it, tap resumes | PASS | PASS | N/A² | N/A² | N/A² | N/A¹ |
 | 22 | Recently Watched | PASS | PASS | PASS | PASS | PASS | N/A¹ |
-| 23 | Creator public profile (Watch/Share) | PASS | PASS | PASS | PASS | PASS | **FAIL⁴** |
+| 23 | Creator public profile (Watch/Share) | PASS | PASS | PASS | PASS | PASS | **FAIL⁴ → PASS** |
 
 **¹** Firefox ran the read-only leg only, per the brief — no new fixture account or sandbox
 purchase was created on this engine.
@@ -104,6 +110,21 @@ and exactly one exists on production right now. This is core to the platform's m
 guessing at a fix without being able to verify which layer is actually at fault was judged worse
 than reporting it precisely. Full reasoning in `DECISIONS.md`, 2026-09-06.
 
+**RESOLVED, 2026-09-07.** A CDP network trace captured from *inside the ad's own iframe*
+(`debug-ad-cdp.mjs`) settled the open question: the ad's own Cloudflare Stream SDK script is
+answered with a redirect and re-fetched, the same 301-then-200 cost already measured for the main
+content player, landing around 5.2s cold; its first real media request does not go out until
+~6.28s. The 4000ms watchdog was tearing the iframe down *while those requests were still in
+flight* — the `net::ERR_ABORTED` was the teardown's effect, not the cause. Checked directly
+against Cloudflare's own Stream API: the ad's video is `readyToStream: true`, correctly
+`allowedOrigins`, `requireSignedURLs` honoured — never broken. Fixed by raising the watchdog to
+10000ms and giving the ad its own poster (`AdBreak.jsx`, commit `a490ffa`) so the wait is never
+plain black either. Billing was checked and was never the problem: `ads.js` already bills only a
+genuine completion, so the campaign's 504/66 history was 438 real, correctly-uncounted delivery
+failures, not a billing gap. Re-run live: Chromium desktop 23/23 (was 22/23), Pixel 7 23/23 (was
+22/23) — the ad now reaches `skip-ready` on both, 2/2 confirmation runs each. Full account:
+`report.txt`, "PROMPT D".
+
 ## Finding 2 — Firefox can be served the crawler document instead of the interactive player
 
 **What the client's list asks for:** a shared link lands on the exact video, playing.
@@ -126,6 +147,25 @@ every `/watch/*` response — if this misclassification ever lands on a real, po
 edge would serve the wrong document to every visitor of that exact URL for up to five minutes
 afterward, on any browser. That raises this from "a Firefox quirk" to worth root-causing properly
 against real logs before the next release. Full reasoning in `DECISIONS.md`, 2026-09-06.
+
+**RESOLVED, 2026-09-07.** Pulled the real Vercel function logs (`vercel logs --environment
+production -q "og-html-anomaly"`, via a temporary diagnostic log added in commit `1aab2c5`) for
+the exact anomalous request. What the function actually received was `sec-fetch-dest: empty` /
+`sec-fetch-mode: same-origin` / `sec-fetch-site: same-origin` — fetch-shaped, not navigation-shaped
+— while Playwright's own `resourceType()` said `document` and every one of its header-reporting
+APIs agreed with what a real navigation should send. A raw curl and a raw HTTP/2 request carrying
+those exact fetch-shaped values, no browser involved, both correctly return the crawler document —
+`isUnfurlFetch()` was never wrong about the values it was given; Firefox sent the wrong values, in
+this one case (re-navigating to the same pathname with only the query string changed, on an
+already-loaded page — exactly what Share does). Fixed by also checking for `Upgrade-Insecure-
+Requests: 1` paired with an `Accept` that prefers `text/html` above all else — both sent only by a
+real top-level navigation, neither sent by `warmShare.js`'s own same-origin `fetch()` — as decisive
+proof of a human regardless of Sec-Fetch-* (`ogDocument.js`, commit `e3d9c5b`, with the exact
+captured header set now a permanent unit test). Re-run live: the exact repro sequence passed 3/3
+after the fix (was 5/5 failing before); a direct production A/B in both cache directions
+(crawler-then-human, human-then-crawler, each on a fresh never-requested URL) confirms the
+existing Vary-based cache partitioning is unaffected. Firefox regression cell: 8/8 (was 6/8). Full
+account: `report.txt`, "PROMPT D".
 
 ---
 
@@ -161,8 +201,12 @@ db:status → 037_creator_capital.sql is the latest migration, all applied, noth
 ```
 
 No migrations, no production code changes were needed for this pass beyond the one smoke-harness
-fix above — everything else here is test evidence and two newly-found, clearly-scoped defects for
-a deliberate decision on priority.
+fix above.
+
+**2026-09-07 addendum:** both Finding 1 and Finding 2 were subsequently root-caused and fixed (see
+their RESOLVED postscripts above and `report.txt`, "PROMPT D"). After those three commits:
+`client: npm test → 174/174` (2 new tests), `client: npm run verify → green`. Neither fix touched
+server code or required a migration.
 
 ## Test data
 

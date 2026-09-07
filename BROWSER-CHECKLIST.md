@@ -17,12 +17,12 @@ What is left is only what a headless browser genuinely cannot do. There are thre
 Test on the **client's own devices if possible**: a MacBook with Safari, and an iPad. Otherwise
 any iPhone and any iPad.
 
-**Before you start section 2:** the final regression (`REGRESSION-FINAL.md`, 2026-09-06) found
-that the one live advertising campaign currently fails to actually show on *every* engine tested,
-Chrome included — not a Safari-only gap. Section 2 below is still worth running once to confirm
-the same thing happens on a real phone, but do not spend five repeats on it as originally
-instructed; the cause is already substantially evidenced from production's own delivery numbers
-(504 impressions logged, 66 completed) and is waiting on a decision, not more device time.
+**Section 2 note:** the final regression (`REGRESSION-FINAL.md`, 2026-09-06) found the one live
+advertising campaign was failing to show on *every* engine tested, Chrome included — not a
+Safari-only gap. This was root-caused and fixed 2026-09-07 (the pre-roll's own "never started"
+timeout was too short for a cold connection) and re-confirmed live. Section 2 below is worth its
+full five repeats again — it is no longer a known-broken item, and a real phone is genuinely the
+one thing left this fix hasn't been checked against.
 
 ---
 

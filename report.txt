@@ -1560,3 +1560,82 @@ harness gaps, not a product bug — see `server/src/cli/smoke.js` diff in commit
 No migrations, no production code changes beyond the smoke-harness fix. `server npm test`: 137/137.
 All regression fixture accounts reversed via `cleanup-e2e.mjs --apply`; zero orphaned
 purchases/earnings rows confirmed after.
+
+---
+
+# PROMPT D — the two findings from PROMPT C, root-caused and fixed (2026-09-07)
+
+Both were diagnosed with real evidence (CDP network traces, Cloudflare's own Stream API, Vercel's
+own production function logs pulled via the CLI) rather than guessed at, per instruction. Both
+are now fixed, tested, deployed, confirmed live, and the exact regression cells that first caught
+them were re-run clean.
+
+## D1 — Free+Ads pre-roll now reaches skippable, not the "never started" bail-out
+
+**Diagnosis.** CDP network trace captured inside the ad's own iframe on a live reproduction
+(`debug-ad-cdp.mjs`): ad iframe attaches at ~2.4s; its Cloudflare Stream SDK script
+(`sdk-iframe-integration.fla9.latest.js`) is answered with a 301 and has to be re-requested —
+identical to the already-documented main-player cost (report.txt, Issue 5) — landing at ~5.2s;
+bundled chunks follow to ~5.7s; the ad's own first real media request
+(`9d020308a383a74ead2126fbdbd690ed/{audio,video}/.../init.mp4`) does not go out until ~6.28s. The
+"advert never started" watchdog in `AdBreak.jsx` was 4000ms — it fires and tears the iframe down
+*while those init requests are still in flight*, which is why they showed as `net::ERR_ABORTED`:
+aborted by the teardown, not failed on their own. Checked directly against Cloudflare's Stream API
+(`GET /accounts/:id/stream/9d020308a383a74ead2126fbdbd690ed`): `readyToStream: true`,
+`status.state: "ready"`, `allowedOrigins` includes the real client origin, `requireSignedURLs: true`
+correctly honoured on the signed iframe URL that loaded with a 200. **The ad asset itself is
+healthy — this was purely a timing race the watchdog lost every time.**
+
+**Fix.** `AdBreak.jsx`'s watchdog raised 4000ms → 10000ms (the absolute `(duration + 12s)` cap is
+unchanged as the true worst-case backstop). `AdBreak` now passes the campaign's own `thumbnail`
+into `StreamPlayer`'s existing `poster` prop (added for Issue 2, never wired up for ads), so the
+wait is never plain black. Commit `a490ffa`.
+
+**Billing, checked, unchanged.** `ads.js:253` — `const billable = completed && campaign != null &&
+midrollValid` — already counts money only on a genuine completion. The campaign's own
+504-impressions/66-completed history was never a billing-accuracy bug; it was 438 real, uncounted,
+unbilled failed-delivery attempts, exactly matching this timing race. Nothing here needed changing.
+
+**Re-verified live**, both cells that originally failed: Chromium desktop 23/23 (was 22/23), Pixel
+7 23/23 (was 22/23) — "skip becomes available" now genuinely reaches `skip-ready` on both, 2/2 runs
+each after the fix.
+
+## D2 — Firefox no longer served the crawler document on a genuine navigation
+
+**Diagnosis.** Added temporary diagnostic logging (commit `1aab2c5`), reproduced live, then pulled
+the actual Vercel function logs with `vercel logs --environment production -q "og-html-anomaly"`
+(the CLI was already authenticated and the project already linked on this machine). The real,
+wire-level headers Vercel's function received for the exact anomalous request:
+`sec-fetch-dest: empty`, `sec-fetch-mode: same-origin`, `sec-fetch-site: same-origin` —
+fetch-shaped, not navigation-shaped — while Playwright's own `resourceType()` said `document` and
+every one of its header-reporting APIs (`headers()`, `allHeaders()`, `headersArray()`) reported the
+correct navigation-shaped values for that same request. A raw curl and a raw HTTP/2 request built
+with the exact fetch-shaped values Vercel actually received, no browser involved, both correctly
+return the crawler document — `isUnfurlFetch()`'s existing logic is internally consistent; Firefox
+is what sent the wrong signal, specifically when re-navigating to the same pathname with only the
+query string changed on an already-loaded page (exactly what opening Share does).
+
+**Fix.** `isUnfurlFetch()` (`client/api/_lib/ogDocument.js`) now also treats `Upgrade-Insecure-
+Requests: 1` paired with an `Accept` that prefers `text/html` above everything else as decisive
+proof of a real navigation, overriding Sec-Fetch-* — both signals only a genuine top-level
+navigation sends; `warmShare.js`'s own same-origin cache-warming `fetch()` sends neither. The exact
+captured production header set is now a permanent unit test. Commit `e3d9c5b`.
+
+**Re-verified live**: the exact repro sequence that reproduced 5/5 before the fix now passes 3/3
+after it (`x-vercel-cache: MISS` each time, ruling out a cache artifact either way). Direct
+production A/B: crawler-then-human on one fresh URL → `crawler` then `shell`; human-then-crawler on
+another fresh URL → `shell` then `crawler` — the cache-direction rule from the 2026-09-02 CORS/Vary
+fix holds in both directions, unaffected by this change. Firefox regression cell: 8/8 (was 6/8).
+
+## Suites and deploy, this pass
+
+```
+client: npm test          → 174/174 (2 new tests, both pinning production-captured evidence)
+client: npm run verify    → green (test + hover:audit + split:audit + build + smoke:render)
+server: unaffected — neither fix touches server code
+```
+
+3 commits (`1aab2c5` diagnostic, `e3d9c5b` D2 fix, `a490ffa` D1 fix), each pushed, each confirmed
+live via `X-Build` before the next regression run. All fresh e2e viewer accounts created during
+re-verification reversed via `cleanup-e2e.mjs --apply`; zero orphaned purchases/earnings confirmed
+after.
