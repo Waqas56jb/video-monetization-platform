@@ -22,9 +22,41 @@ export function isLinkPreviewBot(ua) {
   return true
 }
 
+/**
+ * Firefox has been caught, live (2026-09-07), reporting `Sec-Fetch-Dest:
+ * empty` / `Sec-Fetch-Mode: same-origin` for a genuine top-level navigation
+ * — specifically, re-navigating to the same pathname with only the query
+ * string changed while that page is already loaded (exactly what opening
+ * the Share sheet does: it does not change path, only `?s=`/`?share=`).
+ * Reproduced against production: Playwright's own `resourceType` says
+ * `document` and every one of its header-reporting APIs agree with what a
+ * real navigation should send, yet Vercel's function received the fetch-
+ * shaped values above for that exact request. A raw curl and a raw HTTP/2
+ * request carrying those same fetch-shaped values, with no other browser
+ * involved, correctly get treated as an unfurl fetch — so the header
+ * values are internally consistent with the code; it is what Firefox
+ * chose to send, in this one case, that is wrong.
+ *
+ * `Upgrade-Insecure-Requests: 1` and an `Accept` that prefers `text/html`
+ * above all else are both requests only a real top-level navigation makes
+ * — `warmShare.js`'s own same-origin cache-warming `fetch()` sends neither
+ * (a plain fetch call has no reason to ask for an HTTPS upgrade, and its
+ * default Accept is the everything-wildcard unless told otherwise), and no
+ * unfurl client this project has seen constructs that pair either. Both are
+ * required together before this overrides Sec-Fetch-*, so a genuine unfurl
+ * fetch that happens to carry just one of them is not accidentally let
+ * through.
+ */
+function looksLikeARealNavigationRegardlessOfSecFetch(req) {
+  const accept = String(req.headers['accept'] || '').split(',')[0].trim()
+  const upgrade = String(req.headers['upgrade-insecure-requests'] || '')
+  return accept.toLowerCase() === 'text/html' && upgrade === '1'
+}
+
 export function isUnfurlFetch(req) {
   const ua = req.headers['user-agent'] || ''
   if (isLinkPreviewBot(ua)) return true
+  if (looksLikeARealNavigationRegardlessOfSecFetch(req)) return false
   const dest = String(req.headers['sec-fetch-dest'] || '')
   const mode = String(req.headers['sec-fetch-mode'] || '')
   if (dest === 'document' || mode === 'navigate') return false

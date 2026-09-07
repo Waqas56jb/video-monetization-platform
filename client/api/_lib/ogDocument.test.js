@@ -98,6 +98,46 @@ test('WhatsApp Web CORS unfurl is treated as a crawler fetch', () => {
   )
 })
 
+test('a genuine Firefox navigation is never treated as an unfurl fetch, even with fetch-shaped Sec-Fetch headers', () => {
+  // Captured live from Vercel's own function logs, 2026-09-07: re-opening
+  // the same /watch/:slug with a new query string, from an already-loaded
+  // page, in real Firefox 155 driven by Playwright. resourceType was
+  // 'document' and Playwright's own header APIs all reported
+  // dest=document/mode=navigate/site=none for this request — Vercel's
+  // function received this instead. See DECISIONS.md, 2026-09-07.
+  const firefoxNavigationMisreportingSecFetch = {
+    headers: {
+      host: 'video-monetization-platform-chi.vercel.app',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
+      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'accept-language': 'en-US,en;q=0.9',
+      'accept-encoding': 'gzip, deflate, br, zstd',
+      'upgrade-insecure-requests': '1',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'same-origin',
+      'sec-fetch-site': 'same-origin',
+      connection: 'close',
+    },
+  }
+  assert.equal(isUnfurlFetch(firefoxNavigationMisreportingSecFetch), false)
+
+  // The same-origin warming fetch this fix must not start letting through:
+  // warmShare.js's own `fetch(u, { mode: 'no-cors' })`, no Accept override
+  // and no Upgrade-Insecure-Requests -- a plain fetch() sends neither.
+  assert.equal(
+    isUnfurlFetch({
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0',
+        accept: '*/*',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'same-origin',
+        'sec-fetch-site': 'same-origin',
+      },
+    }),
+    true
+  )
+})
+
 test('slugFrom strips /s/ and /watch/ and query', () => {
   assert.equal(slugFrom({ query: { slug: 'live-at-arusha-full-set' } }), 'live-at-arusha-full-set')
   assert.equal(slugFrom({ query: {}, url: '/s/studio-session-track-4' }), 'studio-session-track-4')
