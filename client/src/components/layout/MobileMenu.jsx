@@ -14,6 +14,7 @@ const LINKS = [
   { section: 'how', label: 'How it Works' },
   { section: 'features', label: 'Features' },
   { section: 'creators', label: 'For Creators' },
+  { to: '/creator-capital', label: 'Creator Capital' },
   // Was missing here while the desktop header offered it, so the same menu
   // showed different things depending on the size of the screen.
   { section: 'stories', label: 'Stories' },

@@ -238,6 +238,24 @@ FIX SIZE: L — new full-width section with 4 sub-components (steps, tiles, stat
 responsive across 320-1920, plus nav wiring. Depends on section 2's label mapping being settled
 first (the status card renders those labels).
 
+RESOLUTION (2026-09-11): Built. `CreatorCapital.jsx` rebuilt full-width, moved in Landing.jsx to sit
+immediately before `<Trending />` (was after `<ForCreators />`, well down the page). New: headline +
+tagline + subtext + disclaimer, the 4-step "How Creator Capital Works" row, the 4 funding-use tiles,
+a status card (real for a signed-in creator via `api.capital.status()`, illustrative-and-clearly-
+labelled otherwise — same card shape either way, so nothing shifts on load), the CTA pair + trust
+row, and an `AirPayLogoPlaceholder` component (a one-line `<img>` swap once the client sends the real
+asset). Reused from Issue 10 as designed: `/creator-capital` route + `CreatorCapitalInfo.jsx`
+unchanged as the "Learn How It Works" target, `api.capital.status()`, the badge/disclaimer visual
+language. Status-card labels reuse §2's exact building/unlocked split — no new state. "Creator
+Capital" added to both `NAV_LINKS` (Header.jsx) and mobile `LINKS` (MobileMenu.jsx) -> `/creator-
+capital`. All spacing/color from existing tokens (`--purple`/`--gold`/`--card`/`--border`, `.badge`/
+`.btn-gold`/`.btn-ghost`/`.capital-bar`), no new design-system work. Verified: full client build
+clean; `npm run verify` green including the `renderToString` Landing smoke case (the component's
+only server-renderable state is the illustrative one — data-fetching effects don't run during SSR
+regardless of auth, so that's the meaningful state to smoke-test, and it already was); 8 new source
+tests; visually checked live in a real browser at 1440px and 375px (Playwright screenshots) — both
+render cleanly, nav link click-through confirmed to `/creator-capital`.
+
 ================================================================================
 ## 4 — Free+Ads: "seconds still disappear before the viewer sees the ad"
 ================================================================================

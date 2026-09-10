@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { section: 'how', label: 'How it Works' },
   { section: 'features', label: 'Features' },
   { section: 'creators', label: 'For Creators' },
+  { to: '/creator-capital', label: 'Creator Capital' },
   { section: 'stories', label: 'Stories' },
 ]
 

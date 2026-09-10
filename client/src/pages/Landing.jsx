@@ -48,12 +48,14 @@ export default function Landing() {
           continue. It renders nothing otherwise, so the page is unchanged for
           everybody else. */}
       <ContinueWatching />
+      {/* Immediately before Trending, per the Sep 09 mockup (report2.txt §3)
+          — was after ForCreators, well down the page. */}
+      <CreatorCapital />
       <Trending />
       <HowItWorks />
       <AccessModels />
       <Features />
       <ForCreators />
-      <CreatorCapital />
       <Testimonials />
       <CallToAction />
       <Footer />
