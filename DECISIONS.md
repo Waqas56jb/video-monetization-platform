@@ -638,3 +638,21 @@ kind of regression "check every consumer before shipping" was warned against, an
 been caught by a source-text test alone (server/src/modules/account.routes.sideAware.test.js checks
 the server's own shaping; this was a client-side consumer bug, caught by re-reading `save()` while
 tracing every place `data.creator`/`isCreator` is read, not by an assertion).
+
+---
+
+## 2026-09-11 · A second consumer of GET /api/account needed an explicit side — found by grep, not by accident
+
+**What happened.** After fixing Issue 7 and its `ProfileTab.jsx` follow-on, a full grep for every
+`api.account.get(` call site (not just ones reached through `useAuth()`, which the first pass
+checked) turned up `EarningsTab.jsx:40` calling it with no `side` at all, then reading
+`creator.payoutPhone`/`creator.payoutMethod` to pre-fill the withdrawal form (lines 56-59). This tab
+only ever renders on the Create side, so it always wants the full object — but with `GET /api/account`
+now defaulting to the reduced, name-only shape when `side` is omitted, the pre-fill would have
+silently stopped working the moment this deployed.
+
+**Fixed, not left as a known gap.** Changed the call to `api.account.get('creator')` — explicit,
+since this tab's own identity (Earnings is creator-only) makes the side unambiguous regardless of
+whatever the global Watch/Create toggle happens to be at the moment it renders. `BecomeCreatorTab.jsx`
+and `SettingsTab.jsx` were checked the same way and read nothing off `.creator` at all — no change
+needed there.

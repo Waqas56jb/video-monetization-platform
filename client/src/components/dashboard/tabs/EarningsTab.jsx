@@ -37,7 +37,10 @@ export default function EarningsTab() {
 
   const summary = useApi(() => api.earnings.summary(), [])
   const withdrawals = useApi(() => api.earnings.withdrawals(), [])
-  const account = useApi(() => api.account.get(), [])
+  // This tab only ever renders on the Create side — explicit 'creator' so it
+  // keeps getting payoutPhone/payoutMethod to pre-fill the withdrawal form
+  // now that GET /api/account defaults to a reduced, name-only object.
+  const account = useApi(() => api.account.get('creator'), [])
 
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('mpesa')
