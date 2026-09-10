@@ -268,6 +268,16 @@ production trace, not inferred)
 FIX SIZE: S — the loading-gap fix is a one-condition change (`!booted && !playing` -> `!playing`)
 in AdBreak.jsx, no schema/API change.
 
+RESOLUTION — 4a (2026-09-11): Fixed. AdBreak.jsx's loading note now renders on `!playing` alone
+("Advert loading…" pre-`booted`, "Advert starting…" once `booted` but still pre-`playing`) — the
+poster was already showing throughout via StreamPlayer's own `poster` prop, so this closes the
+window with zero added network cost. Countdown semantics unchanged: `playing`/`elapsed` are still
+written only from `noteAirtime`, still gated on real airtime (`adAirtimeStarted`), never on mount or
+on `booted`. Added a regression test (AdBreak.test.js) pinning the new condition and asserting the
+old `!booted && !playing` form is gone. Client suite: 176/176 pass; `npm run verify` green.
+Re-run of the same DOM-timing trace used to find this, once deployed, is recorded under the Day-1
+push verification below rather than repeated per-item.
+
 Design — configurable pre-roll target + later second-ad position (both admin-side, new settings,
 ties to section 5):
   - `preroll_target_seconds` (new `platform_settings` column, default 10) — not currently a concept

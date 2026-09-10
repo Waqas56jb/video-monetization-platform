@@ -133,7 +133,17 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
         </button>
       )}
 
-      {!booted && !playing && <p className="ad-loading-note">Advert loading…</p>}
+      {/*
+       * Feedback must never go dark between the tap and the first counted
+       * second. It used to be `!booted && !playing` — the instant the
+       * player reported `canplay` this line vanished even though real
+       * airtime (`playing`) was still seconds away, leaving a static poster
+       * with nothing moving on it. Measured live: a 4.4s gap, tap to
+       * countdown, with zero on-screen indication anything was happening in
+       * the middle of it (report2.txt §4). Gated on `!playing` alone now, so
+       * something is always on screen until the ad genuinely starts airing.
+       */}
+      {!playing && <p className="ad-loading-note">{booted ? 'Advert starting…' : 'Advert loading…'}</p>}
 
       <p className="ad-note">
         This video is free because of adverts like this one — the creator earns from it.

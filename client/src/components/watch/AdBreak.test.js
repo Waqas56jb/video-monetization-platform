@@ -71,3 +71,17 @@ test('the "advert never started" watchdog clears a cold Cloudflare bootstrap, an
   assert.doesNotMatch(src, /\}, 4000\)/)
   assert.match(src, /poster=\{ad\.thumbnail\}/)
 })
+
+/**
+ * Measured live against production (report2.txt §4, 2026-09-10): a Playwright
+ * DOM-timing trace found a 4.4s window — the player had already reported
+ * `canplay` (booted) but airtime had not started (playing) — where nothing
+ * rendered at all, because the loading note was gated `!booted && !playing`
+ * and vanished the instant `booted` flipped true. Feedback now depends only
+ * on `!playing`, so something is on screen for the whole wait, with copy that
+ * tells the two phases apart.
+ */
+test('the loading note stays up for the whole wait to airtime, not just until the player is ready', () => {
+  assert.match(src, /\{!playing && <p className="ad-loading-note">\{booted \? 'Advert starting…' : 'Advert loading…'\}<\/p>\}/)
+  assert.doesNotMatch(src, /\{!booted && !playing && </, 'the note must not go dark once booted flips before playing does')
+})
