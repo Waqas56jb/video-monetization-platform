@@ -1236,9 +1236,8 @@ ad genuinely starts — it just changes what it says partway through ("Advert lo
 starting…") so you always know something is happening. The skip countdown itself was already correct
 (it only ever starts once the ad has genuinely begun playing) — that part didn't need to change.
 
-*(Both fixed 2026-09-11 and pushed; full regression suite green. Live re-verification on production
-after deploy is recorded in report2.txt once that push completes — see there for command-level
-detail and test counts.)*
+*(Both fixed 2026-09-11, pushed, and re-verified live on production after deploy — see report2.txt's
+"Day-1 push verification" section for command-level detail and test counts.)*
 
 ### 6. Desktop sharing — link still shows raw on WhatsApp
 

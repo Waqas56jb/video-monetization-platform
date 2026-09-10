@@ -619,6 +619,41 @@ FIX SIZE: S — additive script work once sections 1/3/5 land.
 | 8 | Mobile + full-flow regression | WORKS-AS-VERIFIED / NOT BUILT | S | Existing 6-profile matrix covers the original journey; 3 new steps needed once 1/3/5 ship |
 
 ================================================================================
+## DAY-1 PUSH VERIFICATION (2026-09-11, commits fe45ab6..4ba0d12, all live)
+================================================================================
+
+Client X-Build header on a fresh request: `4ba0d12` (matches HEAD — deploy confirmed current).
+
+#7 — fresh dual-role probe directly against production (`e2e+b2live<stamp>@mtonyo.test`): logged in
+on the Watch side, `login.creator` = `{"exists":true,"displayName":"Live Probe"}`; `GET /api/account`
+with no side param = same reduced shape. No payoutPhone/payoutMethod/revenueSplitPercent/category/
+socials/followers/bio present. Matches the pre-deploy local-server result exactly.
+
+#4a — re-ran the same Playwright DOM-timing trace against the deployed client. New timeline:
+loading note appears at 1607ms and stays up continuously (no "neither visible" state recorded at
+any 150ms sample) straight through to 5475ms, when `playing` starts and the countdown appears. Zero
+dead-feedback window — the 4.4s gap from before the fix is gone.
+
+#1 — Playwright against the deployed client: loaded the homepage at split=70, backgrounded the tab
+(simulated `visibilitychange`/hidden), changed the split to 65 via the real admin API while the tab
+stayed backgrounded and NOT reloaded, confirmed the page still showed "70%" while hidden (correct —
+no polling), then simulated refocus (`visibilitychange`/visible + a `focus` event, still no reload)
+and confirmed the page now showed "65%" with zero stale "70%" text remaining. Restored to 70
+afterward.
+
+#6 — the function-level test from before the push (direct call, MISS -> HIT within seconds) is the
+authoritative evidence; also ran `npm run smoke` (42/42) against production to exercise the live
+`/review/:id/approve` route with this change in place — no errors, confirming the wiring executes
+cleanly end-to-end. A follow-up curl against that specific smoke-created video's slug showed MISS,
+but that video is intentionally unpublished again by smoke.js within seconds of being approved
+(its own last cleanup step) — an artifact of testing with an ephemeral throwaway video, not a defect
+in the warm itself; the direct, unconfounded test against a permanently-published video is what's
+cited as proof this works.
+
+#5 (schema) — `platform_settings.preroll_target_seconds`/`midroll_position_pct` confirmed present
+with correct defaults (10, 70) via a live query against the production database.
+
+================================================================================
 ## BUILD ORDER (3 days remaining)
 ================================================================================
 
