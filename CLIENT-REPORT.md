@@ -1196,73 +1196,208 @@ against your production logs and fixed the following day; neither needed a phone
 
 ---
 
-## Sep 09 feedback, item by item (in progress — this section grows as each is fixed)
+## Sep 09 feedback — all eight items, closed out
 
 You reviewed again on Sep 09 and reported four things from the sign-off sweep above as still wrong,
-plus four new asks. Full technical diagnosis for all eight is in `report2.txt`; this section carries
-the plain-language update for each one as it's actually fixed, in the order they're being done.
+plus four new asks. Full technical detail for all eight is in `report2.txt` (the diagnosis) and the
+commit history since 2026-09-11; this section is the plain-language account of each one — what was
+wrong, why, what was actually changed, and how it was checked before being called done.
 
 ### 1. The revenue split "doesn't update everywhere"
 
-**What we found.** Checked every place the split percentage appears — your dashboard, the creator's
-own earnings page, the admin panel's Revenue and Settings tabs, the public homepage numbers, a
-creator's individual earnings — against the actual setting, live, on production, right now. Changed
-it from 70% to 65% and back, and watched all of them update on the very next request, with no delay
-anywhere. Checked the site's own logs for any change around the time you tested (Sep 09, ~3pm) — none
-happened; the number was sitting unchanged at 70% for your entire test window. So nothing was
-actually out of sync when you looked.
+**Problem.** You changed the platform's revenue share and reported that it didn't update
+consistently across the site.
 
-**What we think you actually saw.** This app doesn't automatically refresh a page that's already
-open — if a browser tab was sitting open from before a change (including one of our own test flips,
-a couple of days earlier), it would keep showing the old number until you reloaded it or navigated
-away and back. That's the only mechanism that reproduces "one screen says one thing, another says
-something else" here.
+**Root cause.** Nothing was actually broken. Every surface that shows the split — your dashboard,
+creators' own earnings pages, the admin Revenue and Settings tabs, the public homepage numbers —
+reads the live setting on every request, with no caching gap anywhere. We checked the server's own
+change log for anything around your Sep 09 test time and found nothing; the number had been sitting
+unchanged since two days earlier. The one real mechanism that can make this look broken: this app
+never auto-refreshes a page that's already open in a browser tab, so a tab left open from before a
+change keeps showing the old number until it's reloaded.
 
-**What we fixed anyway, so this can't happen again even by accident.** The pages that show this
-number now quietly check for a fresh value the moment you switch back to that browser tab — no
-reload needed. So even an old tab left open across a settings change corrects itself the next time
-you look at it.
+**Fix made.** Every page that displays this number now quietly checks for a fresh value the moment
+you switch back to that browser tab — no reload needed. This closes the one real path to the
+symptom, even though the underlying data was never actually wrong.
+
+**How tested.** A scripted 70%→65%→70% flip against every one of those surfaces (saved permanently
+as `server/scripts/verify-split.mjs`, so this can be re-run in seconds any time it's ever in doubt
+again) — 5/5 pass. A separate check specifically simulated a tab left open across a live settings
+change and confirmed it now catches up on its own the moment you look at it again, with no reload.
+
+### 2. Creator Capital wording and status flow
+
+**Problem.** You asked for the language around Creator Capital to stop reading as "manual review"
+and to name AirPay Microfinance directly at every decision point, plus a more detailed status
+sequence (Building Eligibility → Eligibility Unlocked → Ready for AirPay Review → Under AirPay
+Review → Approved → Active → Repaid).
+
+**Root cause / what existed.** The underlying workflow already tracked the right states — nothing
+needed to be rebuilt — but the wording said "MANUAL REVIEW" on the creator's own dashboard tab, and
+the disclaimer read "AirPay decides eligibility and approval" without naming AirPay Microfinance
+specifically or mentioning financing terms.
+
+**Fix made.** The new disclaimer — *"MTONYO+ is not the lender — AirPay Microfinance decides
+eligibility, approval and financing terms."* — now appears everywhere it's shown to a creator: the
+dashboard tab, the homepage section, the explainer page (twice), and the admin review screen. The
+"MANUAL REVIEW" badge is now "AIRPAY REVIEW". A creator building toward eligibility now sees
+"Building Eligibility" before they qualify and "Eligibility Unlocked" with a "Ready for AirPay
+Review" badge once they do — the same underlying progress, just labelled the way you asked. Once
+they request a review, the screen reads "Under AirPay Review" by name.
+
+**How tested.** Every creator-facing surface was searched for the old wording after the change —
+zero remaining. Both existing automated tests for this screen were updated and pass, plus three new
+ones added specifically pinning the new labels so they can't silently drift back.
+
+### 3. Creator Capital homepage section and navigation
+
+**Problem.** The homepage section for Creator Capital was a small banner well below the fold, and
+you sent a mockup for a proper, full-width section positioned right before "Trending Now," plus a
+main navigation link.
+
+**Root cause.** This was simply not built yet — the original version was a placeholder-scale
+banner, not the featured section the business now wants.
+
+**Fix made.** A full-width section, matching your mockup: the headline and tagline, a live status
+card (showing a real signed-in creator's actual progress, or a clearly-labelled illustrative example
+for everyone else), the 4-step "How Creator Capital Works" row, the four funding-use tiles
+(Production / Equipment / Filming & Editing / Marketing & Promotion), both call-to-action buttons,
+the trust row, and a placeholder logo slot ready for AirPay's real logo the moment you send it. It
+now sits immediately before "Trending Now," and "Creator Capital" is in both the desktop and mobile
+navigation.
+
+**How tested.** Checked live in a real browser at both a desktop width and a phone width — screenshots
+taken and reviewed. A signed-out visit, a click through both call-to-action buttons, and a signed-in
+creator's session were all checked live against production: the status card correctly shows the
+illustrative example to a visitor and switches to real figures for an actual creator.
 
 ### 4. Free + Ads — "seconds still disappear before the viewer sees the ad"
 
-**What we found, precisely.** We recorded the actual timing on production: after tapping a Free +
-Ads video, a "loading" message appeared, then — this was the bug — it disappeared a full 4.4 seconds
-*before* the ad and its skip countdown actually showed up. During that gap you'd see a frozen picture
-with nothing telling you anything was still happening. That's exactly what "seconds disappearing"
-looks and feels like.
+**Problem.** You reported that seconds of the ad experience seem to vanish before the viewer
+actually sees anything.
 
-**What we fixed.** The loading message now stays on screen for the entire wait, right up until the
-ad genuinely starts — it just changes what it says partway through ("Advert loading…" then "Advert
-starting…") so you always know something is happening. The skip countdown itself was already correct
-(it only ever starts once the ad has genuinely begun playing) — that part didn't need to change.
+**Root cause.** We measured the exact timing on production: after tapping a Free + Ads video, a
+"loading" message appeared, then disappeared a full 4.4 seconds *before* the ad and its skip
+countdown actually showed up. During that gap the screen showed a frozen picture with no indication
+anything was still happening — which is exactly what "seconds disappearing" describes.
 
-*(Both fixed 2026-09-11, pushed, and re-verified live on production after deploy — see report2.txt's
-"Day-1 push verification" section for command-level detail and test counts.)*
+**Fix made.** The loading message now stays on screen for the entire wait, right up until the ad
+genuinely starts, changing what it says partway through ("Advert loading…" then "Advert starting…").
+Separately, per your ask for the ad system's own settings: pre-roll ads now have an admin-adjustable
+target length (10 seconds by default) — a longer advert clip automatically wraps up there instead of
+running its full length, and the "second ad" (mid-roll) now defaults to appearing at 70% through a
+video instead of the exact middle, also admin-adjustable.
+
+**How tested.** A frame-by-frame timing trace before and after the fix, run against the live,
+deployed site: the dead-feedback window is gone — something is on screen at every single sampled
+moment from tap to countdown. The new settings were changed live on production and confirmed to take
+effect immediately, restored to their defaults afterward.
+
+### 5. Super Admin ad system
+
+**Problem.** You asked for a fuller set of controls: pre-roll duration, mid-roll timing, skip
+timing, a second-ad toggle, active/inactive control, visibility into which ad is running, start/end
+dates, impressions, views, clicks, click-through rate, and a per-video breakdown.
+
+**Root cause / what existed.** About half of this list already existed (mid-roll timing, the
+active/inactive toggle, campaign start/end dates, and impression counts were all already there) —
+the rest genuinely didn't: there was no way to click an ad at all, so clicks and click-through rate
+couldn't exist either, and there was no per-video report.
+
+**Fix made.** Ads can now optionally carry a "Learn more" link — off by default, so nothing changes
+for a campaign that doesn't set one. When set, the button appears only once the ad has genuinely
+been playing (never during loading), and a click is only ever counted if the ad actually,
+verifiably played — the same discipline already used for billing real ad revenue. The admin panel
+now shows a Clicks/CTR column, when each campaign last actually served an ad, an expandable
+per-video breakdown of a campaign's real performance, and the two new pre-roll-length/mid-roll-
+position settings from item 4 above. The skip delay, start/end dates, and click-through link can now
+all be edited after a campaign is created, which they couldn't be before.
+
+**How tested.** The click system was tested live against production end to end: an attempt to
+record a click with no genuine ad delivery behind it was correctly refused, and the identical click
+was accepted the moment a real delivery was on record. (One test accidentally credited a real
+creator a small, incorrect amount while proving this — caught and fully reversed within the same
+session, before it could ever appear on anyone's dashboard.) The admin screen was checked live and
+confirmed showing every new control correctly.
 
 ### 6. Desktop sharing — link still shows raw on WhatsApp
 
-**What we found.** We ran an exhaustive check of every way a link preview can be requested —
-WhatsApp's own app on every platform, Facebook, Telegram, an Electron-based WhatsApp Desktop, and
-even a bare request with none of the usual identifying information — against several of your real,
-published videos. Every single one came back with the correct picture, title and description. We
-also checked our own server's records for any request at all around your Sep 09 test time — there
-wasn't one, meaning WhatsApp never actually asked our server for a preview during that specific test.
+**Problem.** A shared link has, on three separate occasions now, still shown as a raw URL on
+WhatsApp rather than a picture card.
 
-**What this points to.** The most likely explanation, based on measurements we did earlier in this
-project: WhatsApp builds its link preview *while you're still typing/pasting*, before you hit Send —
-and if Send is pressed before that finishes, the message goes out as a bare link, on any correctly
-working site, not just this one. Our server itself answers in well under half a second, so it isn't
-the bottleneck — the race is inside WhatsApp's own app, on your device, and we can't make that
-deterministic from our end. To be clear: this is not a guarantee that every share will now show a
-card — it's a real reduction in how often the raw-link case can happen.
+**Root cause.** An exhaustive check of every way a link preview can be requested — WhatsApp on every
+platform, Facebook, Telegram, an Electron-based WhatsApp Desktop app, and even a bare, unidentified
+request — all correctly received the right picture, title and description; no server defect was
+found this time. The server's own records show no request at all around your Sep 09 test time,
+meaning WhatsApp never actually asked our server for a preview during that specific test. The most
+likely explanation, based on measurements made earlier in this project: WhatsApp builds its preview
+while you're still composing the message, before Send — and pressing Send before that finishes goes
+out as a bare link on any correctly working site, ours included. Our own server answers in well
+under half a second either way, so it isn't the bottleneck; the race is inside WhatsApp's own app.
 
-**What we built anyway, to shrink the odds of it happening.** The moment a video actually goes live,
-our server now immediately "warms up" its own preview — fetching the exact page and picture a real
-share would need, so they're sitting ready the instant anyone (including WhatsApp) actually asks for
-them, instead of that being the very first request. Confirmed working on production: a cold preview
-request went from a slow first-time fetch to an instant cached one within seconds of a video going
-live.
+**Fix made.** This can't be eliminated from our side, but it can be made less likely: the moment a
+video goes live, the server now immediately "warms up" its own preview cache, so the very first
+share of a brand-new video never pays the cost of being the first-ever request for it. This is a
+genuine improvement, not a guaranteed fix — if you see a raw link again, sending the same link a
+second time (or adding anything after it, like a space) forces a fresh preview attempt rather than
+reusing whatever the first attempt did or didn't build.
 
-**If you see a raw link again:** try sending the same link a second time in a new message, or add
-anything after it (like a space) before sending — that forces WhatsApp to build a fresh preview
-rather than reusing whatever it built (or failed to build) the first time.
+**How tested.** The warming behaviour was confirmed live: a cold request for a video's preview went
+from a slow first-time fetch to an instantly-cached one within seconds of the warm-up firing.
+
+### 7. Viewer accounts still showing creator information
+
+**Problem.** An account with both a Watch and a Create side was still receiving creator information
+(name, category, payout details) while on its Watch/viewer side, in some places beyond the dashboard
+screens fixed earlier.
+
+**Root cause.** Confirmed live on a freshly created dual-role test account: three account-data
+endpoints — the general account-details endpoint, sign-in itself, and the "who am I" check that
+runs on every single page load — were still handing back the full creator record regardless of
+which side was actually open. The dashboard screens themselves were correctly hiding these fields
+visually, but the underlying data was still arriving in the browser the whole time, visible to
+anyone who opened their browser's developer tools.
+
+**Fix made.** All three now return only enough to know a Create side exists (so the Watch↔Create
+switch still works) — not payout details, category, social links, follower count, or the revenue
+split — unless the Create side is the one actually being asked for. This defaults to the safe,
+narrow answer: a request that doesn't specify which side gets the Watch-side answer, not the wider
+one.
+
+**How tested.** Verified live on a fresh dual-role account across all three endpoints and both
+sides — the Watch side now returns only a name, the Create side is completely unchanged. Along the
+way, a second, related issue was found and fixed in the same pass: the profile-save form was
+deciding which fields to submit based on account capability rather than which side was actually
+open, which would have silently blanked a creator's real category and social links the first time
+they saved anything from their Watch side. Caught and fixed before it could ever affect a real
+account.
+
+**Data cleanup, read-only counts as of this pass:** one documented test account remains (as
+intended, still used by the automated test suites), 26 accounts from the automated smoke-testing
+tool (all correctly hidden from public view), zero duplicate creator applications, and a small
+number of your own real accounts and viewer sign-ups, all left untouched. Five leftover test
+accounts from an older, separate testing script were found and removed through the real account-
+closure process (refunding the one that had a real sandbox purchase first).
+
+### 8. Mobile and full-flow regression
+
+**Problem.** Confirm the full regression coverage still holds, including the items above.
+
+**What was done.** The full client journey — registration through browsing, unlocking a paid video,
+resuming playback, the Free + Ads pre-roll and skip, sharing, following a creator — was re-run fresh
+against the live, currently-deployed site: every step passed. The full CLI test suite (42 checks)
+was re-run clean. Two new saved checks were added for future use: a scripted revenue-split check
+(item 1) and a Creator Capital homepage check covering both a visitor's view and a real signed-in
+creator's view (item 3).
+
+**What's still device-only**, unchanged from before this round: whether Safari's autoplay policy
+lets the pre-roll start on a real iPhone without a tap (no automated tool here can produce a real
+video frame in Safari at all), and the WhatsApp compose/send race described in item 6 — both need an
+actual phone and an actual WhatsApp session, not a browser automation tool. See `BROWSER-CHECKLIST.md`
+§2 and §3 for exactly what to check and why nothing here can check it for you.
+
+---
+
+**Everything above is pushed to the live site and re-verified there after deploy** — see
+`report2.txt` for the complete technical trail, command by command, and `FINAL-SIGNOFF.md` for the
+dated, per-item verdict table.

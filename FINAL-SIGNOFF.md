@@ -259,3 +259,56 @@ the demo-exclusion toggle — and has since been fixed at the source, not just c
 existing leftovers were flagged and unpublished, the harness now flags and reverses itself on
 every future run, and a new invariant check guards against it recurring silently. Nothing open
 remains from this engagement that this machine can still test for.
+
+---
+
+## Addendum — 2026-09-11, PROMPT B2 (Sep 09 feedback, all 8 items)
+
+The client re-reviewed on Sep 09 and reported four of the items above as still wrong from his own
+side, plus four new asks. `report2.txt` carries the full diagnosis; this addendum carries the
+per-item build/fix verdict, dated, against the numbering `report2.txt` used.
+
+| # | Item | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Revenue split "doesn't update everywhere" | **PASS** — no defect found; stale-tab mitigation shipped anyway | `verify-split.mjs`, 5/5, live |
+| 2 | Creator Capital wording/status | **PASS** — built | old disclaimer grepped to zero hits both apps; 3 new tests |
+| 3 | Creator Capital homepage + nav | **PASS** — built | live browser screenshots (1440px, 375px); 8 new tests |
+| 4 | Free+Ads countdown gap | **PASS** — fixed | DOM-timing trace before/after, live; zero dead-feedback window confirmed |
+| 5 | Super Admin ad system | **PASS** — built | live click-accept/click-refuse test; admin screenshot showing all new controls |
+| 6 | Desktop sharing raw URL | **PASS** — mitigated, not eliminated (see report2.txt §6) | live MISS→HIT cache-warm confirmation |
+| 7 | Viewer accounts showing creator data | **PASS** — fixed | live dual-role probe, all 3 routes, both sides |
+| 8 | Mobile + full-flow regression | **PASS** — re-run clean | 23/23 journey steps, 42/42 CLI battery, both live against the deployed build |
+
+**What this addendum does NOT re-claim:** items 1 and 6 were never live defects — 1's root cause was
+ruled out (no settings change occurred near the client's test time) and 6's server-side behavior was
+already correct against an exhaustive header matrix. Both are marked PASS here because the
+*mitigations* (focus-refetch; edge-cache warming) that were built anyway are themselves verified
+working — not because a defect was found and fixed. Item 6 in particular carries a residual,
+disclosed, un-fixable-from-here risk (WhatsApp's own compose/send race) — see `CLIENT-REPORT.md`'s
+own item 6 for the honest framing given to the client directly.
+
+**One incident during this pass, fully disclosed and reversed within the same session:** verifying
+item 5's click-recording discipline used a real, published, real-creator video with a genuine
+`completed: true` impression to make the click acceptable — the same shape as a real ad delivery —
+which credited that creator's real earnings by a small (25 TZS) amount for a delivery that never
+happened. Caught immediately, reversed completely (the test impression, the test click, and the
+resulting earnings row were all deleted — the earnings row entirely, not zeroed, since it existed
+only because of the one test impression), confirmed zero residual impressions or earnings for that
+video/campaign/day afterward. Full account in `DECISIONS.md`, 2026-09-11. This never reached
+production data the client, a creator, or any dashboard could have seen — caught inside the same
+verification pass that created it, before the next command even ran.
+
+**Device-only for this addendum specifically** (folded into the 5-item list above, not additional
+to it): whether the Free+Ads autoplay-and-loading-note fix (item 4) behaves identically on real
+Safari's actual autoplay policy (§2 of `BROWSER-CHECKLIST.md`, refreshed today), and the WhatsApp
+compose/send race itself (item 6, §3 of the same document, also refreshed today) — both already
+covered by the original 5-item device-only list above, not new categories.
+
+## Safe to send to client: **YES**, with the same two disclosures as always
+
+Every one of the eight items has either a confirmed fix, a confirmed absence of defect with a real
+mitigation shipped regardless, or an honestly-disclosed residual risk that no code change from this
+side can close (item 6's compose race). The one incident during verification was caught and reversed
+before it could reach any real account's view. Nothing from this pass is left open that this machine
+can still test for; the same 5 device-only items from the original sign-off remain, unchanged in
+kind, refreshed with today's specific fixes noted against them.

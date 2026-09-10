@@ -52,11 +52,25 @@ the one outcome the automated tests could not have caught.
 
 ## 2 · Free + Ads — the advert, on Safari
 
+**Updated 2026-09-11 (PROMPT B2).** Two more fixes landed since the note above: the loading
+message used to go dark for a measured 4.4s between the player reporting "ready" and the advert
+actually airing (report2.txt §4) — it now stays up the whole wait, changing from "Advert loading…"
+to "Advert starting…" partway through. Separately, a pre-roll now has an admin-configurable target
+length (`preroll_target_seconds`, default 10s) — a longer creative auto-completes there instead of
+running to its own end. Both were verified with a Playwright DOM-timing trace (headless Chromium
+can play this specific campaign's Cloudflare video, unlike the general Safari/MSE gap this document
+is otherwise about) — see report2.txt §4's RESOLUTION for the measured before/after. **What still
+needs real iOS specifically:** Safari's own autoplay policy is stricter than desktop Chrome's, and
+Playwright's WebKit cannot produce a frame at all (this document's own opening note) — whether the
+muted-autoplay kick that starts the pre-roll actually fires on a real iPhone without a tap is the
+one thing no tool on this machine can confirm.
+
 | ☐ | Device | URL | Do this | Expect |
 |---|---|---|---|---|
-| ☐ | MacBook · Safari | `/watch/how-to-cook-pilau-properly`, signed out | Open it | The advert plays first, or is skipped cleanly. "Advert loading…" never stays for more than about 4 seconds. |
-| ☐ | iPhone · Safari | same | Open it | Same. |
+| ☐ | MacBook · Safari | `/watch/how-to-cook-pilau-properly`, signed out | Open it | The advert starts playing on its own (muted), or shows a single tap-to-play prompt if the browser refuses autoplay — never a silent freeze with no advert and no prompt. |
+| ☐ | iPhone · Safari | same | Open it | Same — this is the real autoplay-policy test no headless tool can run. |
 | ☐ | iPad · Safari | same | Open it | Same. |
+| ☐ | any | same | Watch the loading text as the advert loads | Something is always on screen — "Advert loading…" then "Advert starting…" — never a blank/frozen poster with no text at all. |
 | ☐ | any | same | Watch the skip countdown | The countdown starts when the advert has picture, not while the screen is still black. |
 
 Run each of these **five times**. An advert fault that happens once in five is still a fault.
@@ -65,6 +79,17 @@ Run each of these **five times**. An advert fault that happens once in five is s
 
 The card, the crawler, the image size and the cache are all verified from the command line —
 what cannot be verified is what the WhatsApp app itself does with the link.
+
+**Updated 2026-09-11 (PROMPT B2, report2.txt §6).** An exhaustive live header-shape matrix
+(WhatsApp on every platform, Electron-based WhatsApp Desktop, a bare no-Sec-Fetch GET) all
+correctly receive the right preview server-side — no server defect was found. The remaining "still
+raw" cases most likely match a **WhatsApp-side compose/send race**: it builds the preview while
+you're still typing, and pressing Send before that finishes goes out as a bare link on any working
+site, not just this one — our own server answers in well under half a second either way. What was
+built anyway: the moment a video goes live, the server now pre-warms its own preview cache, so the
+very first share of a brand-new video no longer pays a cold-cache delay. **This does not make the
+send-race disappear** — it only removes one contributor to it. This section is still the one
+genuine test of the underlying race a real phone can run that nothing else here can.
 
 | ☐ | Device | URL | Do this | Expect |
 |---|---|---|---|---|
