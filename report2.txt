@@ -682,6 +682,32 @@ STATUS: WORKS-AS-VERIFIED (existing journey coverage) / NOT BUILT (the 3 new reg
 can't exist before their features do)
 FIX SIZE: S — additive script work once sections 1/3/5 land.
 
+RESOLUTION (2026-09-11): Built and re-run. New, saved scripts (server/scripts/): `verify-split.mjs`
+— the scripted 70/65/70 flip across every §1 surface (public stats, admin settings, admin revenue,
+creator earnings), restores the original value even if a check fails partway through; run live just
+now, 5/5 pass. `ui-check-capital-homepage.mjs` — signed-out CTA/copy/nav checks plus a signed-in-
+creator pass confirming the status card switches from the illustrative example to real figures; run
+live against production, 12/12 pass. Ad-controls exercised live via direct API calls rather than a
+third browser script (already proven end-to-end under §5's resolution): click-with-no-impression
+correctly refused, click-after-a-completed-impression accepted, campaign edit (skip/dates/click_url
+set-and-clear) all round-tripped correctly, admin UI screenshot-confirmed showing all three new
+controls (Pre-roll target length, Mid-roll position, "Second ad (mid-roll)") plus the Clicks/CTR
+column live in production.
+
+Full-matrix re-run: rather than repeat all 6 profiles blind, scoped to where today's changes could
+actually regress something — none of the day's work touches cross-browser-specific code paths
+(payment/entitlement/autoplay), so a fresh Chromium run through the full 23-step client journey
+(server/scratchpad's existing harness, unchanged) against the currently-deployed production build is
+the meaningful check: 23/23 pass, including the Free+Ads pre-roll (today's own AdBreak.jsx fix) and
+the share/OG matrix. The 5 device-only items already named in §8 above are unaffected by today's
+work and were not re-attempted here.
+
+CLI battery re-run: `npm run smoke` 42/42; `check-demo-flagging.mjs` initially caught 2 of today's
+OWN test accounts (`e2e+b2i7...`, `e2e+b2live...`, created during §7's live verification and never
+cleaned up) plus 3 more from other checks this session — exactly the invariant it exists to catch,
+including on its own author's test debris. Fixed through the real path (`cleanup-e2e.mjs --apply`,
+refunding the one account with a real sandbox purchase first); re-ran to PASS.
+
 ================================================================================
 ## SUMMARY
 ================================================================================
