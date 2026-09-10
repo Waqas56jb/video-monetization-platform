@@ -122,8 +122,8 @@ export default function CapitalTab() {
       >
         <p className="field-note" style={{ marginTop: -4 }}>
           <ShieldCheck size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-          MTONYO+ is not the lender — AirPay decides eligibility and approval. Actions here record
-          that decision; they do not disburse or collect money.
+          MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and financing
+          terms. Actions here record that decision; they do not disburse or collect money.
         </p>
 
         {problem && (

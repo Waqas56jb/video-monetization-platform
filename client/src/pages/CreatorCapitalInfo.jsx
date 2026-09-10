@@ -69,7 +69,10 @@ export default function CreatorCapitalInfo() {
             <section>
               <h2>Who decides</h2>
               <p>
-                <strong>MTONYO+ is not the lender — AirPay decides eligibility and approval.</strong>{' '}
+                <strong>
+                  MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and
+                  financing terms.
+                </strong>{' '}
                 MTONYO+ verifies your earnings history and puts your request in front of AirPay;
                 AirPay makes the credit decision, sets the amount and the terms, and is who you
                 repay.
@@ -92,7 +95,8 @@ export default function CreatorCapitalInfo() {
             </button>
             <p className="capital-disclaimer" style={{ marginTop: 14 }}>
               <ShieldCheck size={13} aria-hidden="true" />
-              MTONYO+ is not the lender — AirPay decides eligibility and approval.
+              MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and
+              financing terms.
             </p>
           </div>
         </div>

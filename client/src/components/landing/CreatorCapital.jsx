@@ -3,7 +3,7 @@ import { ArrowRight, Landmark, ShieldCheck } from 'lucide-react'
 import { useRole } from '@/context/AuthContext'
 
 /**
- * Creator Capital™ — manual review, no lending engine.
+ * Creator Capital™ — AirPay reviews and decides, no lending engine here.
  *
  * Copy here is the client's own, verbatim — title, tagline, subtext and
  * both button labels are not placeholders. "Learn More" goes to the static
@@ -47,7 +47,8 @@ export default function CreatorCapital() {
         </div>
         <p className="capital-disclaimer" style={{ justifyContent: 'center', marginTop: 22, border: 'none', paddingTop: 0 }}>
           <ShieldCheck size={13} aria-hidden="true" />
-          MTONYO+ is not the lender — AirPay decides eligibility and approval.
+          MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and financing
+          terms.
         </p>
       </div>
     </section>

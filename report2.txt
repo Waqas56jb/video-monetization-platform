@@ -162,6 +162,20 @@ exactly as they are; only their creator-visible framing needs the disclaimer/bad
 STATUS: NOT BUILT (the new copy/labels; the underlying state machine already supports it)
 FIX SIZE: M — text/label changes across 5 files + 2 test files, no migration, no new state.
 
+RESOLUTION (2026-09-11): Fixed, per the mapping above. `building` now renders "Building Eligibility"
+below the months threshold and "Eligibility Unlocked" + a "Ready for AirPay Review" badge at/above it
+(driven by the same `monthsWithEarnings >= monthsRequired` comparison the disabled-button check
+already used — no new persisted state). `under_review` heading renamed "Under AirPay Review". Tab
+badge "MANUAL REVIEW" -> "AIRPAY REVIEW". New disclaimer ("...AirPay Microfinance decides
+eligibility, approval and financing terms.") replaces the old string in all 5 creator-facing spots
+(CreatorCapitalTab.jsx, landing CreatorCapital.jsx, CreatorCapitalInfo.jsx x2) plus the admin
+CapitalTab.jsx lead sentence and the copy.js:393 short variant; both test files' assertions updated
+to match, plus 3 new tests pinning the building-split, the under_review label, and the badge text.
+Admin's own internal labels ("Under review", "Building eligibility" filter options, the "manual
+review only" code comment) were left as-is per the brief — staff-facing, not creator-facing, and
+never part of the ask. Grepped after: zero remaining hits for the old disclaimer string anywhere in
+either app. Client suite 179/179 (was 176 — 3 new), both apps build clean, `npm run verify` green.
+
 ================================================================================
 ## 3 — Creator Capital homepage section + navigation
 ================================================================================

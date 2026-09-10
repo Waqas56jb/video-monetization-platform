@@ -7,15 +7,23 @@ import api from '@/lib/api'
 import { useToast } from '@/context/ToastContext'
 
 /**
- * Creator Capital — manual review, no lending engine.
+ * Creator Capital — AirPay reviews and decides, no lending engine here.
  *
  * MTONYO+ never decides who is approved or for how much; AirPay does, once
  * a creator has enough verified history to be worth reviewing. Everything
  * this tab shows is a status — building eligibility, waiting on a decision,
  * an offer to accept, or a balance being repaid — never a calculation this
  * platform performs on its own.
+ *
+ * `building` carries two distinct labels over one status, not two statuses:
+ * "Building Eligibility" before the months threshold, "Eligibility
+ * Unlocked" / "Ready for AirPay Review" after it — both derived from
+ * monthsWithEarnings vs monthsRequired, which the API already returns, so
+ * no new persisted state or migration was needed for either label
+ * (report2.txt §2).
  */
-const DISCLAIMER = 'MTONYO+ is not the lender — AirPay decides eligibility and approval.'
+const DISCLAIMER =
+  'MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and financing terms.'
 
 export default function CreatorCapitalTab() {
   const showToast = useToast()
@@ -54,13 +62,22 @@ export default function CreatorCapitalTab() {
         action={
           <span className="badge">
             <Landmark style={{ width: 14, height: 14 }} />
-            MANUAL REVIEW
+            AIRPAY REVIEW
           </span>
         }
       >
         {status === 'building' && (
           <div className="capital-state">
-            <h4>Building Eligibility</h4>
+            {monthsWithEarnings >= monthsRequired ? (
+              <>
+                <h4>Eligibility Unlocked</h4>
+                <span className="badge" style={{ marginBottom: 4 }}>
+                  Ready for AirPay Review
+                </span>
+              </>
+            ) : (
+              <h4>Building Eligibility</h4>
+            )}
             <p>
               {monthsWithEarnings} of {monthsRequired} months of verified earnings.
             </p>
@@ -79,11 +96,11 @@ export default function CreatorCapitalTab() {
               disabled={busy || monthsWithEarnings < monthsRequired}
               onClick={requestReview}
             >
-              Request Review
+              Request AirPay Review
             </button>
             {monthsWithEarnings < monthsRequired && (
               <p className="field-hint">
-                Request Review unlocks once you reach {monthsRequired} months of verified earnings.
+                Request AirPay Review unlocks once you reach {monthsRequired} months of verified earnings.
               </p>
             )}
           </div>
@@ -91,7 +108,7 @@ export default function CreatorCapitalTab() {
 
         {status === 'under_review' && (
           <div className="capital-state">
-            <h4>Your request is under review</h4>
+            <h4>Under AirPay Review</h4>
             <p>AirPay is reviewing your verified earnings history. This is not instant — check back here for a decision.</p>
           </div>
         )}

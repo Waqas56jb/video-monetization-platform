@@ -17,7 +17,10 @@ test('the homepage section uses the client\'s exact copy', () => {
   )
   assert.match(src, />\s*Learn More\s*</)
   assert.match(src, />\s*Build Eligibility\s*</)
-  assert.match(src, /MTONYO\+ is not the lender — AirPay decides eligibility and approval\./)
+  assert.match(
+    src,
+    /MTONYO\+ is not the lender — AirPay Microfinance decides eligibility, approval and\s+financing\s+terms\./
+  )
 })
 
 test('"Learn More" goes to the static explainer, "Build Eligibility" is role-aware', () => {
