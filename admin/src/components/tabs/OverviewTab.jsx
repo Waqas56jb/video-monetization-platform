@@ -40,7 +40,8 @@ export default function OverviewTab() {
 
   const overview = useApi(() => api.admin.overview(), [])
   const withdrawals = useApi(() => api.admin.withdrawals(), [], { skip: !seeWithdrawals })
-  const revenue = useApi(() => api.admin.revenue(), [], { skip: !seeRevenue })
+  // Display-only here (no edit form) — see RevenueTab.jsx for the same fix.
+  const revenue = useApi(() => api.admin.revenue(), [], { skip: !seeRevenue, refetchOnFocus: true })
   const activity = useApi(() => api.admin.activity(), [])
 
   const o = overview.data

@@ -34,7 +34,11 @@ export function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
  * Fetch from the API and keep the three states that always come with it:
  * loading, error, and the data.
  */
-export default function useApi(fetcher, deps = [], { skip = false, keepPreviousData = false, timeoutMs = FETCH_TIMEOUT_MS, initialData = null } = {}) {
+export default function useApi(
+  fetcher,
+  deps = [],
+  { skip = false, keepPreviousData = false, timeoutMs = FETCH_TIMEOUT_MS, initialData = null, refetchOnFocus = false } = {}
+) {
   const [data, setData] = useState(initialData)
   const [loading, setLoading] = useState(!skip && initialData == null)
   const [isRefetching, setIsRefetching] = useState(false)
@@ -104,6 +108,30 @@ export default function useApi(fetcher, deps = [], { skip = false, keepPreviousD
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skip, keepPreviousData, timeoutMs, ...deps])
+
+  /**
+   * Opt-in only, for the handful of screens showing a platform setting that
+   * an admin can change out from under a tab someone left open — this app
+   * never polls, so without this the only way to see a changed value is to
+   * navigate away and back. A quiet reload on refocus (not a fresh fetch on
+   * every render) kills that stale-tab mechanism instead of only explaining
+   * it (report2.txt §1). Skipped while the tab is already fetching so a
+   * flurry of focus events cannot pile up requests.
+   */
+  useEffect(() => {
+    if (!refetchOnFocus || skip) return
+    const onFocus = () => {
+      if (document.visibilityState === 'hidden') return
+      reload({ quiet: true })
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refetchOnFocus, skip, reload])
 
   return { data, loading, error, isRefetching, reload, setData }
 }

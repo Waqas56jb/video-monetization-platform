@@ -64,6 +64,11 @@ export default function Hero() {
 
   const stats = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
     initialData: readLanding(LANDING_KEYS.stats),
+    // The revenue split shown here is an admin-editable setting with no
+    // polling — a tab left open across a settings change stayed stale until
+    // navigated away and back (report2.txt §1). Refocusing the tab refreshes
+    // it quietly instead.
+    refetchOnFocus: true,
   })
 
   /**

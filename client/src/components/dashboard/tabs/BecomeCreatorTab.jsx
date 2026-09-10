@@ -26,7 +26,8 @@ export default function BecomeCreatorTab() {
   const status = useApi(() => api.account.creatorApplication(), [])
   const application = status.data?.application || null
   const terms = status.data?.terms || ''
-  const stats = useApi(() => api.stats.platform(), [])
+  // See landing/Hero.jsx — same setting, same stale-tab mechanism, same fix.
+  const stats = useApi(() => api.stats.platform(), [], { refetchOnFocus: true })
   const creatorShare = stats.data?.creatorSplitPercent ?? 70
 
   const PERKS = [

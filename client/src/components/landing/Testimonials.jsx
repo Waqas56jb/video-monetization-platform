@@ -21,6 +21,8 @@ export default function Testimonials() {
 
   const stats = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
     initialData: readLanding(LANDING_KEYS.stats),
+    // See Hero.jsx — same setting, same stale-tab mechanism, same fix.
+    refetchOnFocus: true,
   })
   const top = useApi(landingFetcher(LANDING_KEYS.topCreators, () => api.stats.topCreators()), [], {
     initialData: readLanding(LANDING_KEYS.topCreators),

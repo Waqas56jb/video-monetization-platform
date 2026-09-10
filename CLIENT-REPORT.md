@@ -1193,3 +1193,49 @@ produced by any tool available on this computer.
 The two defects found in the final regression above — the advert that could fail to show, and
 Firefox occasionally getting the wrong page — are **not** on this list. Both were root-caused
 against your production logs and fixed the following day; neither needed a phone to begin with.
+
+---
+
+## Sep 09 feedback, item by item (in progress — this section grows as each is fixed)
+
+You reviewed again on Sep 09 and reported four things from the sign-off sweep above as still wrong,
+plus four new asks. Full technical diagnosis for all eight is in `report2.txt`; this section carries
+the plain-language update for each one as it's actually fixed, in the order they're being done.
+
+### 1. The revenue split "doesn't update everywhere"
+
+**What we found.** Checked every place the split percentage appears — your dashboard, the creator's
+own earnings page, the admin panel's Revenue and Settings tabs, the public homepage numbers, a
+creator's individual earnings — against the actual setting, live, on production, right now. Changed
+it from 70% to 65% and back, and watched all of them update on the very next request, with no delay
+anywhere. Checked the site's own logs for any change around the time you tested (Sep 09, ~3pm) — none
+happened; the number was sitting unchanged at 70% for your entire test window. So nothing was
+actually out of sync when you looked.
+
+**What we think you actually saw.** This app doesn't automatically refresh a page that's already
+open — if a browser tab was sitting open from before a change (including one of our own test flips,
+a couple of days earlier), it would keep showing the old number until you reloaded it or navigated
+away and back. That's the only mechanism that reproduces "one screen says one thing, another says
+something else" here.
+
+**What we fixed anyway, so this can't happen again even by accident.** The pages that show this
+number now quietly check for a fresh value the moment you switch back to that browser tab — no
+reload needed. So even an old tab left open across a settings change corrects itself the next time
+you look at it.
+
+### 4. Free + Ads — "seconds still disappear before the viewer sees the ad"
+
+**What we found, precisely.** We recorded the actual timing on production: after tapping a Free +
+Ads video, a "loading" message appeared, then — this was the bug — it disappeared a full 4.4 seconds
+*before* the ad and its skip countdown actually showed up. During that gap you'd see a frozen picture
+with nothing telling you anything was still happening. That's exactly what "seconds disappearing"
+looks and feels like.
+
+**What we fixed.** The loading message now stays on screen for the entire wait, right up until the
+ad genuinely starts — it just changes what it says partway through ("Advert loading…" then "Advert
+starting…") so you always know something is happening. The skip countdown itself was already correct
+(it only ever starts once the ad has genuinely begun playing) — that part didn't need to change.
+
+*(Both fixed 2026-09-11 and pushed; full regression suite green. Live re-verification on production
+after deploy is recorded in report2.txt once that push completes — see there for command-level
+detail and test counts.)*

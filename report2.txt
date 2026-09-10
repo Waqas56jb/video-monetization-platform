@@ -76,6 +76,18 @@ STATUS: WORKS-AS-VERIFIED
 FIX SIZE: S — no code defect found. Recommended: a short client-facing note (not a code change)
 that any open tab must be refreshed after a settings change, since the app does not poll.
 
+RESOLUTION (2026-09-11): Mitigated. Added an opt-in `refetchOnFocus` option to both apps' `useApi`
+hook (client and admin have separate hook files — both updated) — a quiet reload fires when the tab
+regains focus/visibility. Applied to every settings-driven surface on the client's own list: landing
+Hero/ForCreators/Testimonials (`/api/stats`), the dashboard's BecomeCreatorTab and EarningsTab
+summary, and admin's OverviewTab/RevenueTab (both display-only, safe to always refresh) and
+SettingsTab's platform-settings edit form (guarded: only refetches when the form has no unsaved
+change, comparing against the last-loaded snapshot, so a refocus can never silently overwrite an
+admin's in-progress edit — a real risk this form specifically carries that the read-only surfaces
+don't). Client suite 176/176, admin + client builds both clean, `npm run verify` green. Evidence
+section added to CLIENT-REPORT.md. Live re-verification (the same 70<->65<->70 flip, now checked with
+a tab intentionally left open across the change) recorded under the Day-1 push verification below.
+
 ================================================================================
 ## 2 — Creator Capital wording + status flow
 ================================================================================

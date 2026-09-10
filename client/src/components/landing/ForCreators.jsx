@@ -14,6 +14,8 @@ export default function ForCreators() {
   // that would quietly become a lie the day it was changed.
   const { data } = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
     initialData: readLanding(LANDING_KEYS.stats),
+    // See Hero.jsx — same setting, same stale-tab mechanism, same fix.
+    refetchOnFocus: true,
   })
   const creatorShare = data?.creatorSplitPercent ?? 70
 

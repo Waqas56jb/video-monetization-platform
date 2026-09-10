@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  *
  *   const { data, loading, error, reload } = useApi(() => api.admin.users(), [])
  */
-export default function useApi(fetcher, deps = [], { skip = false } = {}) {
+export default function useApi(fetcher, deps = [], { skip = false, refetchOnFocus = false } = {}) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(!skip)
   const [error, setError] = useState(null)
@@ -61,6 +61,27 @@ export default function useApi(fetcher, deps = [], { skip = false } = {}) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skip, ...deps])
+
+  /**
+   * Opt-in, for display-only screens showing a `platform_settings` value
+   * another admin session can change at any time with no polling — a tab
+   * left open stayed stale until navigated away and back (report2.txt §1).
+   * A quiet reload on refocus kills that instead of only explaining it.
+   */
+  useEffect(() => {
+    if (!refetchOnFocus || skip) return
+    const onFocus = () => {
+      if (document.visibilityState === 'hidden') return
+      run({ quiet: true })
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refetchOnFocus, skip, run])
 
   return { data, loading, error, reload: run, setData }
 }

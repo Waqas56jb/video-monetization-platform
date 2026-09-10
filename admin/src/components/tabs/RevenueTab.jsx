@@ -18,7 +18,12 @@ import { useToast } from '@/context/ToastContext'
  */
 export default function RevenueTab() {
   const showToast = useToast()
-  const { data, loading, error, reload } = useApi(() => api.admin.revenue(), [])
+  // The default split is a platform_settings value another admin session
+  // (or this one, saved from a different tab) can change at any time — a
+  // tab left open stayed stale until navigated away and back (report2.txt
+  // §1). refetchOnFocus fixes that; the slider only snaps to a refreshed
+  // value when defaultSplitPercent itself actually changed (see below).
+  const { data, loading, error, reload } = useApi(() => api.admin.revenue(), [], { refetchOnFocus: true })
 
   const [share, setShare] = useState(70)
   const [saving, setSaving] = useState(false)

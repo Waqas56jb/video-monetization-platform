@@ -35,7 +35,8 @@ const STATUS_LABEL = {
 export default function EarningsTab() {
   const showToast = useToast()
 
-  const summary = useApi(() => api.earnings.summary(), [])
+  // splitPercent here is settings-driven too — see landing/Hero.jsx.
+  const summary = useApi(() => api.earnings.summary(), [], { refetchOnFocus: true })
   const withdrawals = useApi(() => api.earnings.withdrawals(), [])
   // This tab only ever renders on the Create side — explicit 'creator' so it
   // keeps getting payoutPhone/payoutMethod to pre-fill the withdrawal form

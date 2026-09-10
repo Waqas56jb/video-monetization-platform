@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   KeyRound,
   Mail,
@@ -260,23 +260,52 @@ function PlatformPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+  // What the server last said, so a refocus refetch can tell an untouched
+  // form from one with an admin's in-progress edit still sitting in it.
+  const loadedRef = useRef(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true)
     try {
       const res = await api.admin.settings()
       setSettings(res.settings)
+      loadedRef.current = res.settings
       setError(null)
     } catch (err) {
-      setError(err.message)
+      if (!quiet) setError(err.message)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     load()
   }, [load])
+
+  /**
+   * Every value on this screen is a `platform_settings` column another admin
+   * (or this same admin, in another tab) can change at any time, with no
+   * polling to notice — a tab left open kept showing whatever it loaded with
+   * until navigated away and back (report2.txt §1). Refocusing refetches it
+   * quietly, but only when nothing here is unsaved: this is a live edit
+   * form, and clobbering an admin's in-progress change on refocus would be
+   * worse than the staleness it fixes.
+   */
+  useEffect(() => {
+    const onFocus = () => {
+      if (document.visibilityState === 'hidden') return
+      if (!loadedRef.current || !settings) return
+      const dirty = JSON.stringify(settings) !== JSON.stringify(loadedRef.current)
+      if (dirty) return
+      load({ quiet: true })
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [settings, load])
 
   const set = (key) => (e) => {
     const raw = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -313,6 +342,7 @@ function PlatformPanel() {
         ...Object.fromEntries(TOGGLES.map(([key]) => [key, Boolean(settings[key])])),
       })
       setSettings(res.settings)
+      loadedRef.current = res.settings
       showToast('Platform settings saved')
     } catch (err) {
       showToast(err.message)
