@@ -656,3 +656,30 @@ since this tab's own identity (Earnings is creator-only) makes the side unambigu
 whatever the global Watch/Create toggle happens to be at the moment it renders. `BecomeCreatorTab.jsx`
 and `SettingsTab.jsx` were checked the same way and read nothing off `.creator` at all — no change
 needed there.
+
+---
+
+## 2026-09-11 · A live functional test of the new click-recording route briefly credited a real creator with fake ad revenue — reversed immediately
+
+**What happened.** Verifying `POST /api/ads/impression` -> `POST /api/ads/click`'s discipline (a
+click must be refused without a prior completed impression, accepted once one exists) end-to-end
+against a local server pointed at the production database, the impression call used a real,
+published, real-creator video (`how-to-cook-pilau-properly`) with `completed: true` to make the
+click acceptable — which is exactly what the real billing path does with a genuine ad play: it
+credited that creator's real earnings row by a real (small: 25 TZS gross, 18 TZS creator share)
+amount for a delivery that never actually happened.
+
+**Reversed within the same minute, before this was ever pushed or could reach any dashboard.**
+Deleted the test `ad_clicks` row, the test `ad_impressions` row, and — since the resulting
+`earnings` row existed *only* because of that one impression (the insert is gated on
+`revenue_micro > 0`, and every other impression against this video/campaign today was a genuine
+`completed:false` $0 row from earlier trace-script testing, itself cleaned up in the same pass) —
+deleted the `earnings` row entirely rather than merely zeroing it, so no residual row is left for a
+future real impression to double-count against. Verified: 0 impressions and 0 earnings rows remain
+for this video/campaign/day after cleanup.
+
+**Going forward:** any further live testing of the impression/click/earnings path should use a
+disposable smoke-pattern video (or `completed: false`, which is non-billable by design and exercises
+the reject-without-impression case just as well) rather than a real creator's real published video,
+even briefly — the discipline `npm run smoke` already applies (refund/unpublish its own artifacts
+before finishing) is the right model, not manual DB cleanup after the fact.

@@ -11,7 +11,7 @@ import { notify, notifyMany } from '../services/notify.js'
 import { studioVideo, thumbnailFor } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
-import { campaignPerformance, microToTzs } from '../services/ads.js'
+import { campaignPerformance, campaignPerformanceByVideo, microToTzs } from '../services/ads.js'
 import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails } from '../lib/cloudflare.js'
 import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
 import { capabilities, env } from '../config/env.js'
@@ -1332,6 +1332,12 @@ router.patch(
       midroll_max_count: z.coerce.number().int().min(1).max(10).optional(),
       postroll_enabled: z.boolean().optional(),
       show_demo_content_in_stats: z.boolean().optional(),
+      /* Caps a pre-roll's own airtime — a creative longer than this
+         auto-completes at the target instead of running to its own end. */
+      preroll_target_seconds: z.coerce.number().int().min(5).max(60).optional(),
+      /* Where the single mid-roll lands, as % through the video, replacing
+         the old hard-coded 50% midpoint (report2.txt §4). */
+      midroll_position_pct: z.coerce.number().int().min(20).max(90).optional(),
     })
   ),
   asyncHandler(async (req, res) => {
@@ -1468,7 +1474,7 @@ const CAMPAIGN_COLS = `
   duration_seconds, thumbnail_url, starts_at, ends_at,
   placements::text[] as placements,
   target_video_ids, target_categories, target_creator_ids,
-  skip_after_seconds, notes, created_by, updated_at`
+  skip_after_seconds, click_url, notes, created_by, updated_at`
 
 /** Shape a campaign row plus its measured performance for the admin UI. */
 const campaignOut = (c, perf) => ({
@@ -1487,6 +1493,7 @@ const campaignOut = (c, perf) => ({
   targetCategories: c.target_categories || [],
   targetCreatorIds: c.target_creator_ids || [],
   skipAfterSeconds: c.skip_after_seconds,
+  clickUrl: c.click_url,
   notes: c.notes,
   createdAt: c.created_at,
   updatedAt: c.updated_at,
@@ -1503,6 +1510,7 @@ const campaignOut = (c, perf) => ({
   performance: perf || {
     impressions: 0, completed: 0, videos: 0,
     revenueTzs: 0, creatorTzs: 0, platformTzs: 0, lastServedAt: null,
+    clicks: 0, ctrPercent: null,
   },
 })
 
@@ -1560,6 +1568,13 @@ const campaignSchema = z.object({
   targetCategories: z.array(z.string().trim().min(1).max(60)).max(60).default([]),
   targetCreatorIds: z.array(z.string().uuid()).max(500).default([]),
   skipAfterSeconds: z.coerce.number().int().min(0).max(120).default(5),
+  /**
+   * Null (the default) keeps the ad watch-only, exactly as before this
+   * existed. An empty string on PATCH clears an existing one — distinct
+   * from omitting the field, which leaves it untouched (same `undefined`
+   * vs `''` convention account.routes.js's own `clearable()` already uses).
+   */
+  clickUrl: z.union([z.literal(''), z.string().trim().url('Enter a full web address, starting with https://')]).optional(),
   notes: z.string().trim().max(1000).optional(),
 })
 
@@ -1581,14 +1596,14 @@ router.post(
       `insert into ad_campaigns
          (name, advertiser, cpm_tzs, active, starts_at, ends_at, placements,
           target_video_ids, target_categories, target_creator_ids,
-          skip_after_seconds, notes, created_by)
-       values ($1,$2,$3,$4,$5,$6,$7::ad_placement[],$8::uuid[],$9::text[],$10::uuid[],$11,$12,$13)
+          skip_after_seconds, click_url, notes, created_by)
+       values ($1,$2,$3,$4,$5,$6,$7::ad_placement[],$8::uuid[],$9::text[],$10::uuid[],$11,$12,$13,$14)
        returning ${CAMPAIGN_COLS}`,
       [
         b.name, b.advertiser || null, b.cpmTzs, b.active,
         b.startsAt || null, b.endsAt || null, b.placements,
         b.targetVideoIds, b.targetCategories, b.targetCreatorIds,
-        b.skipAfterSeconds, b.notes || null, req.user.id,
+        b.skipAfterSeconds, b.clickUrl || null, b.notes || null, req.user.id,
       ]
     )
 
@@ -1627,7 +1642,8 @@ router.patch(
          target_categories  = coalesce($10::text[], target_categories),
          target_creator_ids = coalesce($11::uuid[], target_creator_ids),
          skip_after_seconds = coalesce($12, skip_after_seconds),
-         notes              = coalesce($13, notes),
+         click_url          = case when $13::text is null then click_url when $13 = '' then null else $13 end,
+         notes              = coalesce($14, notes),
          updated_at         = now()
        where id = $1 returning ${CAMPAIGN_COLS}`,
       [
@@ -1635,7 +1651,8 @@ router.patch(
         b.name ?? null, b.advertiser ?? null, b.cpmTzs ?? null, b.active ?? null,
         b.startsAt ?? null, b.endsAt ?? null, b.placements ?? null,
         b.targetVideoIds ?? null, b.targetCategories ?? null, b.targetCreatorIds ?? null,
-        b.skipAfterSeconds ?? null, b.notes ?? null,
+        b.skipAfterSeconds ?? null, b.clickUrl === undefined ? null : b.clickUrl,
+        b.notes ?? null,
       ]
     )
 
@@ -1651,6 +1668,17 @@ router.patch(
       detail: { changed: Object.keys(b) },
     })
     res.json({ campaign: campaignOut(c, perf.get(c.id)) })
+  })
+)
+
+/** Per-video breakdown of one campaign's genuine deliveries. */
+router.get(
+  '/ads/:id/videos',
+  asyncHandler(async (req, res) => {
+    const campaign = await one('select id, name from ad_campaigns where id = $1', [req.params.id])
+    if (!campaign) throw notFound('Campaign not found')
+    const videos = await campaignPerformanceByVideo(campaign.id)
+    res.json({ campaignId: campaign.id, campaignName: campaign.name, videos })
   })
 )
 

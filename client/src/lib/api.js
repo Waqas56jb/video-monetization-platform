@@ -443,6 +443,7 @@ export const api = {
     breaks: (videoId) => get(`/api/ads/breaks/${videoId}`, { auth: Boolean(getAccessToken()) }),
     preroll: (videoId) => get(`/api/ads/preroll/${videoId}`, { auth: Boolean(getAccessToken()) }),
     impression: (body) => post('/api/ads/impression', body, { auth: Boolean(getAccessToken()) }),
+    click: (body) => post('/api/ads/click', body, { auth: Boolean(getAccessToken()) }),
   },
 
   /** Your own account: details, picture, preferences, how you are getting on. */

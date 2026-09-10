@@ -316,6 +316,19 @@ STATUS (design pieces): NOT BUILT
 FIX SIZE: M — one migration (2 columns), one service-logic change, one admin UI pair; depends on
 section 5's schema/admin-pattern work landing first per the stated build order.
 
+RESOLUTION — 4b/c (2026-09-11): Built. `midrollSchedule()`'s single-mid-roll branch now reads
+`midroll_position_pct` (clamped 20-90, default 70) instead of dividing by 2 — the production default
+itself moves from 50% to 70% as a result, matching the client's "later part" ask directly, not just
+making it configurable while quietly keeping the old default. `preroll_target_seconds` (clamped
+5-60, default 10) flows through `adPayload()` to the client, pre-roll placement only (null on
+mid/post-roll), and `AdBreak.jsx`'s `noteAirtime` now auto-`finish(true)`s once watched time reaches
+it — a genuine, billable completion (server re-verifies regardless, same as any other), not a fake
+one; a creative shorter than the target is unaffected, it just ends on its own via `onEnded` first.
+Admin inputs for both added to AdsTab.jsx's "Where ads may run" panel. Verified live (local server,
+production DB): PATCH of both settings round-trips correctly; `midrollSchedule` unit tests rewritten
+for the new default (all pre-existing "midpoint" assertions recalculated for 70%, not 50%) plus new
+boundary/clamp/pre-038-row-defaults-to-70 tests, 8/8 green. Server suite 163/163.
+
 ================================================================================
 ## 5 — Super Admin ad system
 ================================================================================
@@ -417,6 +430,40 @@ preroll_target_seconds` (default 10, check 5-60) + `midroll_position_pct` (defau
 Confirmed live: all three new pieces present with correct defaults. UI/API layer (campaign edit,
 click recording, per-video report, admin config for the two new settings) is Day-2 work — see the
 Day-2 entry below for the rest of this item.
+
+RESOLUTION — UI/API (2026-09-11): Built.
+  - Campaign edit (skip/dates/click-through), post-creation: a proper inline edit row in AdsTab.jsx
+    (datetime-local inputs, not a window.prompt() chain — dates have format ambiguity a number
+    doesn't, so they get the more robust UI CPM's prompt() already gets away with). All three fields
+    already had PATCH-route support (report2.txt's own original finding); this closes the "UI never
+    exposed it" gap only.
+  - Click-through CTA + tracking: `ad_campaigns.click_url` (nullable, inert by default), a "Learn
+    more" button in AdBreak.jsx shown only once the ad has genuine airtime (same gating as Skip),
+    `POST /api/ads/click` recording only against a play_id with an existing completed impression —
+    server-enforced (`recordClick`, services/ads.js), not client discipline. The client sequences a
+    click as `finish(true)` (records + awaits the impression) *then* the click POST, so the
+    invariant holds in practice, not just on paper. Verified live end-to-end (local server,
+    production DB): a click attempted before any impression was refused
+    (`{"recorded":false,"reason":"no completed impression on record for this play"}`); the identical
+    click succeeded once a real completed impression existed for the same play_id. (This test
+    briefly credited a real creator with ~25 TZS of fake ad revenue via a real published video —
+    caught and fully reversed within the same session; see DECISIONS.md, 2026-09-11, for the
+    incident and the cleanup discipline adopted going forward.)
+  - Clicks + CTR: new "Clicks / CTR" column in AdsTab.jsx (shows "watch-only" for a campaign with no
+    click_url, so the distinction from "0 clicks so far" stays visible); `campaignPerformance()` now
+    joins `ad_clicks` and computes `ctrPercent`.
+  - Per-video report: `GET /api/admin/ads/:id/videos` (`campaignPerformanceByVideo`, grouped by
+    `video_id` — the column was already indexed, this is a query addition, not a schema change) +
+    an expandable "View by video" row in AdsTab.jsx. Verified live: returned real per-video figures
+    for the campaign's actual delivery history (477 impressions, 61 completed, TZS 1,525 on one
+    video) before the test-data cleanup above.
+  - `lastServedAt`: already computed server-side, never rendered — now shown as a sub-line under the
+    Window column.
+  - Billability re-confirmed unchanged: `recordClick` never touches `earnings`/revenue columns —
+    clicks are informational (CTR) only, never a second billing path alongside impressions; pinned
+    in a new test (`ads.recordClick.test.js`).
+  Server suite 163/163 (7 new: ads.recordClick.test.js x5, admin.routes.clickUrl.test.js x3 — some
+  overlap with the count above from 4b/c's tests, counted once). Both apps build clean.
 
 ================================================================================
 ## 6 — Desktop sharing STILL raw URL (WhatsApp Web + WhatsApp Desktop)

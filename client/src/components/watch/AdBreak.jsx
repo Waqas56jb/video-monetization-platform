@@ -33,13 +33,30 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     if (!adAirtimeStarted(t)) return
     setPlaying(true)
     setElapsed(watched.current)
+
+    /**
+     * A pre-roll's own target watched duration (report2.txt §4,
+     * platform_settings.preroll_target_seconds, migration 038) — a creative
+     * longer than the target auto-completes here rather than running to its
+     * own end. Still a genuine completion: counted `completed`, billable
+     * under the same rule as any other (server re-verifies regardless — see
+     * recordImpression). A shorter creative is unaffected; it simply ends
+     * on its own via onEnded before this line could ever fire.
+     */
+    if (
+      ad?.placement === 'pre_roll' &&
+      ad?.prerollTargetSeconds > 0 &&
+      watched.current >= ad.prerollTargetSeconds
+    ) {
+      finish(true)
+    }
   }
 
   const finish = (completed) => {
-    if (done.current) return
+    if (done.current) return Promise.resolve()
     done.current = true
 
-    api.ads
+    const posted = api.ads
       .impression({
         videoId,
         campaignId: ad.campaignId,
@@ -52,6 +69,26 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
       .catch(() => {})
 
     onFinished?.()
+    return posted
+  }
+
+  /**
+   * The click-through CTA — only present when the campaign has a
+   * `clickUrl` (null on every campaign until an admin sets one). A click is
+   * treated as a genuine completion, the same as watching the ad through:
+   * `finish(true)` is awaited first so its impression POST has landed
+   * before the click-record request fires, because the server only ever
+   * accepts a click against a play_id that already has one (services/ads.js
+   * `recordClick`) — never merely because the CTA was tapped mid-load.
+   */
+  const clickThrough = async () => {
+    await finish(true)
+    try {
+      await api.ads.click({ videoId, campaignId: ad.campaignId, playId })
+    } catch {
+      /* the click just goes unrecorded — the advertiser's page still opens */
+    }
+    window.open(ad.clickUrl, '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {
@@ -130,6 +167,17 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
           ) : (
             `Skip in ${remaining}`
           )}
+        </button>
+      )}
+
+      {/*
+       * Not the whole overlay as a link — a mis-click magnet right next to
+       * the Skip button people are already reaching for. Only once the ad
+       * has genuine airtime (`playing`), same gating as Skip.
+       */}
+      {ad.clickUrl && playing && (
+        <button className="ad-learn-more" type="button" onClick={clickThrough}>
+          Learn more
         </button>
       )}
 

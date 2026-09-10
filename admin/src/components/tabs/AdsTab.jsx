@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Megaphone, Plus, Upload } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { StatGrid } from '@/components/ui/StatCard'
 import { TableWrap, EmptyRow, IconButton } from '@/components/ui/Table'
 import { Async } from '@/components/ui/States'
-import useApi, { tzs, compact, shortDate } from '@/hooks/useApi'
+import useApi, { tzs, compact, shortDate, timeAgo } from '@/hooks/useApi'
 import api from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { useConfirm } from '@/context/ConfirmContext'
@@ -41,6 +41,8 @@ const BLANK = {
 
 /** `datetime-local` gives no timezone; the API wants a real instant. */
 const toInstant = (local) => (local ? new Date(local).toISOString() : null)
+/** The reverse, for pre-filling an edit form from what the server sent back. */
+const toLocalInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 16) : '')
 
 export default function AdsTab() {
   const showToast = useToast()
@@ -54,6 +56,20 @@ export default function AdsTab() {
   const [form, setForm] = useState(BLANK)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(null)
+
+  // The inline "skip / window / click-through" editor — one campaign at a
+  // time, a proper datetime-local input rather than a window.prompt() for
+  // dates, which is what CPM already gets away with only because a number
+  // has no format ambiguity.
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  // Per-campaign "view by video" — fetched on demand, not with the rest of
+  // the table, since most campaigns are never expanded.
+  const [videoReportId, setVideoReportId] = useState(null)
+  const [videoReport, setVideoReport] = useState(null)
+  const [videoReportLoading, setVideoReportLoading] = useState(false)
 
   const campaigns = data?.campaigns || []
   const categories = data?.options?.categories || []
@@ -180,6 +196,75 @@ export default function AdsTab() {
       .catch((err) => showToast(err.message))
   }
 
+  /**
+   * Skip delay, the run window, and the click-through link — all three
+   * existed on creation already; the PATCH route already accepted every one
+   * of them (report2.txt §5's "editing gap" was UI-only). An empty
+   * click-through field clears it; an empty date field leaves the existing
+   * one untouched, matching what the PATCH route actually does with a
+   * missing value (see admin.routes.js's own click_url case/coalesce).
+   */
+  const openEdit = (c) => {
+    setEditingId(c.id)
+    setEditForm({
+      skipAfterSeconds: c.skipAfterSeconds ?? 5,
+      startsAt: toLocalInput(c.startsAt),
+      endsAt: toLocalInput(c.endsAt),
+      clickUrl: c.clickUrl || '',
+    })
+  }
+  const closeEdit = () => {
+    setEditingId(null)
+    setEditForm(null)
+  }
+  const saveEdit = async (c, e) => {
+    e.preventDefault()
+    setSavingEdit(true)
+    try {
+      const patch = {
+        skipAfterSeconds: Math.max(0, Math.min(120, Number(editForm.skipAfterSeconds) || 0)),
+        clickUrl: editForm.clickUrl.trim(),
+      }
+      // Only send a date if this field actually changed from what the
+      // campaign already has — sending the same instant back is harmless,
+      // but sending nothing at all when the admin never touched the field
+      // is what lets the "leave dates alone" case stay exactly that.
+      const startsAtLocal = toLocalInput(c.startsAt)
+      const endsAtLocal = toLocalInput(c.endsAt)
+      if (editForm.startsAt !== startsAtLocal) patch.startsAt = toInstant(editForm.startsAt)
+      if (editForm.endsAt !== endsAtLocal) patch.endsAt = toInstant(editForm.endsAt)
+
+      await api.admin.updateCampaign(c.id, patch)
+      showToast(`"${c.name}" updated`)
+      closeEdit()
+      reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const toggleVideoReport = async (c) => {
+    if (videoReportId === c.id) {
+      setVideoReportId(null)
+      setVideoReport(null)
+      return
+    }
+    setVideoReportId(c.id)
+    setVideoReport(null)
+    setVideoReportLoading(true)
+    try {
+      const data = await api.admin.adVideoReport(c.id)
+      setVideoReport(data.videos || [])
+    } catch (err) {
+      showToast(err.message)
+      setVideoReportId(null)
+    } finally {
+      setVideoReportLoading(false)
+    }
+  }
+
   const remove = (c) =>
     confirm({
       title: `Delete "${c.name}"?`,
@@ -231,7 +316,7 @@ export default function AdsTab() {
   const ps = settings.data?.settings
   const AD_TOGGLES = [
     ['preroll_enabled', 'Pre-roll ads', 'Shown before a Free + Ads video starts'],
-    ['midroll_enabled', 'Mid-roll ads', 'Part way through videos long enough to have a middle'],
+    ['midroll_enabled', 'Second ad (mid-roll)', 'Part way through videos long enough to have a middle'],
     ['postroll_enabled', 'Post-roll ads', 'Shown after the video ends'],
     ['ads_on_expired_premieres', 'Ads once a premiere ends', 'When the paid window on a video closes'],
     ['share_ad_revenue', 'Share ad revenue with creators', 'Uses the same split as sales'],
@@ -270,6 +355,52 @@ export default function AdsTab() {
                   <small>The default; a campaign may set its own</small>
                 </div>
                 <b style={{ color: 'var(--gold)' }}>{ps.preroll_skip_after_secs}s</b>
+              </div>
+              <div className="toggle-row">
+                <div>
+                  <b>Pre-roll target length</b>
+                  <small>
+                    A creative longer than this auto-completes here (still a genuine, billable
+                    delivery) — a shorter one just ends on its own
+                  </small>
+                </div>
+                <div className="ad-mins-field">
+                  <input
+                    type="number"
+                    className="ad-mins-input"
+                    min={5}
+                    max={60}
+                    disabled={!isAdmin}
+                    key={`preroll-target-${ps.preroll_target_seconds}`}
+                    defaultValue={ps.preroll_target_seconds ?? 10}
+                    onBlur={saveCount('preroll_target_seconds', 5, 60)}
+                    aria-label="Pre-roll target length, in seconds"
+                  />
+                  <span className="field-suffix">sec</span>
+                </div>
+              </div>
+              <div className="toggle-row">
+                <div>
+                  <b>Mid-roll position</b>
+                  <small>
+                    How far through a video the single mid-roll lands, on any video short enough to
+                    get only one
+                  </small>
+                </div>
+                <div className="ad-mins-field">
+                  <input
+                    type="number"
+                    className="ad-mins-input"
+                    min={20}
+                    max={90}
+                    disabled={!isAdmin}
+                    key={`midroll-pos-${ps.midroll_position_pct}`}
+                    defaultValue={ps.midroll_position_pct ?? 70}
+                    onBlur={saveCount('midroll_position_pct', 20, 90)}
+                    aria-label="Mid-roll position, as a percentage through the video"
+                  />
+                  <span className="field-suffix">%</span>
+                </div>
               </div>
               <div className="toggle-row">
                 <div>
@@ -552,17 +683,19 @@ export default function AdsTab() {
                 <th>Window</th>
                 <th>CPM</th>
                 <th>Impressions</th>
+                <th>Clicks / CTR</th>
                 <th>Revenue</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {campaigns.length === 0 && <EmptyRow colSpan={9}>No campaigns yet.</EmptyRow>}
+              {campaigns.length === 0 && <EmptyRow colSpan={10}>No campaigns yet.</EmptyRow>}
               {campaigns.map((c) => {
                 const perf = c.performance || {}
                 return (
-                  <tr key={c.id}>
+                  <Fragment key={c.id}>
+                  <tr>
                     <td>
                       <b>{c.name}</b>
                       {c.advertiser && <div className="cell-sub">{c.advertiser}</div>}
@@ -604,12 +737,29 @@ export default function AdsTab() {
                       ) : (
                         <span style={{ color: 'var(--muted)' }}>always</span>
                       )}
+                      {/* Computed server-side all along (services/ads.js
+                          campaignPerformance) but never rendered until now. */}
+                      {perf.lastServedAt && (
+                        <div className="cell-sub">last served {timeAgo(perf.lastServedAt)}</div>
+                      )}
                     </td>
                     <td>{tzs(c.cpmTzs)}</td>
                     <td>
                       {compact(perf.impressions)}
                       {perf.completed != null && perf.impressions > 0 && (
                         <div className="cell-sub">{compact(perf.completed)} completed</div>
+                      )}
+                    </td>
+                    <td>
+                      {c.clickUrl ? (
+                        <>
+                          {compact(perf.clicks)}
+                          <div className="cell-sub">
+                            {perf.ctrPercent != null ? `${perf.ctrPercent}% CTR` : 'no impressions yet'}
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--muted)' }}>watch-only</span>
                       )}
                     </td>
                     <td className="money">
@@ -631,6 +781,16 @@ export default function AdsTab() {
                     <td>
                       <div className="actions">
                         <IconButton icon="percent" title="Change CPM" onClick={() => editCpm(c)} />
+                        <IconButton
+                          icon="pencil"
+                          title="Edit skip delay, window, click-through link"
+                          onClick={() => (editingId === c.id ? closeEdit() : openEdit(c))}
+                        />
+                        <IconButton
+                          icon={videoReportId === c.id ? 'eye-off' : 'eye'}
+                          title="View performance by video"
+                          onClick={() => toggleVideoReport(c)}
+                        />
                         {isAdmin && (
                           <IconButton
                             icon="trash-2"
@@ -642,6 +802,118 @@ export default function AdsTab() {
                       </div>
                     </td>
                   </tr>
+
+                  {editingId === c.id && editForm && (
+                    <tr>
+                      <td colSpan={10}>
+                        <form onSubmit={(e) => saveEdit(c, e)} className="camp-form" style={{ margin: '4px 0' }}>
+                          <div className="invite-grid">
+                            <div className="field">
+                              <label htmlFor={`edit-skip-${c.id}`}>Seconds before Skip appears</label>
+                              <div className="input-wrap">
+                                <input
+                                  id={`edit-skip-${c.id}`}
+                                  type="number"
+                                  min={0}
+                                  max={120}
+                                  value={editForm.skipAfterSeconds}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, skipAfterSeconds: e.target.value }))}
+                                />
+                              </div>
+                              <p className="field-note" style={{ margin: '4px 0 0' }}>0 = not skippable</p>
+                            </div>
+                            <div className="field">
+                              <label htmlFor={`edit-from-${c.id}`}>Runs from</label>
+                              <div className="input-wrap">
+                                <input
+                                  id={`edit-from-${c.id}`}
+                                  type="datetime-local"
+                                  value={editForm.startsAt}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, startsAt: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="field">
+                              <label htmlFor={`edit-to-${c.id}`}>Runs until</label>
+                              <div className="input-wrap">
+                                <input
+                                  id={`edit-to-${c.id}`}
+                                  type="datetime-local"
+                                  value={editForm.endsAt}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, endsAt: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="field">
+                            <label htmlFor={`edit-click-${c.id}`}>Click-through link</label>
+                            <div className="input-wrap">
+                              <input
+                                id={`edit-click-${c.id}`}
+                                type="url"
+                                placeholder="https://advertiser.example.com — blank clears it"
+                                value={editForm.clickUrl}
+                                onChange={(e) => setEditForm((f) => ({ ...f, clickUrl: e.target.value }))}
+                              />
+                            </div>
+                            <p className="field-note" style={{ margin: '4px 0 0' }}>
+                              Leaving this blank removes the "Learn more" button from the ad — it goes
+                              back to watch-only. Never shown until the ad has genuine airtime.
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-gold btn-sm" type="submit" disabled={savingEdit}>
+                              {savingEdit ? 'Saving…' : 'Save'}
+                            </button>
+                            <button className="btn btn-ghost btn-sm" type="button" onClick={closeEdit}>
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  )}
+
+                  {videoReportId === c.id && (
+                    <tr>
+                      <td colSpan={10}>
+                        {videoReportLoading && <p className="field-note">Loading…</p>}
+                        {!videoReportLoading && videoReport && videoReport.length === 0 && (
+                          <p className="field-note">No impressions recorded for this campaign yet.</p>
+                        )}
+                        {!videoReportLoading && videoReport && videoReport.length > 0 && (
+                          <TableWrap>
+                            <thead>
+                              <tr>
+                                <th>Video</th>
+                                <th>Impressions</th>
+                                <th>Completed</th>
+                                <th>Clicks / CTR</th>
+                                <th>Revenue</th>
+                                <th>Last served</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {videoReport.map((v) => (
+                                <tr key={v.videoId}>
+                                  <td>{v.title}</td>
+                                  <td>{compact(v.impressions)}</td>
+                                  <td>{compact(v.completed)}</td>
+                                  <td>
+                                    {compact(v.clicks)}
+                                    {v.ctrPercent != null && <div className="cell-sub">{v.ctrPercent}% CTR</div>}
+                                  </td>
+                                  <td className="money">{tzs(v.revenueTzs)}</td>
+                                  <td style={{ fontSize: 12 }}>{v.lastServedAt ? timeAgo(v.lastServedAt) : '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </TableWrap>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
             </tbody>

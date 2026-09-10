@@ -11,6 +11,7 @@ const DEFAULTS = {
   midroll_long_after_secs: 1200, // 20 min
   midroll_gap_secs: 600, // 10 min
   midroll_max_count: 3,
+  midroll_position_pct: 70, // migration 038's default — see below for why 70, not 50
 }
 
 test('under 5 minutes: no mid-roll at all', () => {
@@ -20,10 +21,31 @@ test('under 5 minutes: no mid-roll at all', () => {
   assert.deepEqual(midrollSchedule(300, DEFAULTS), [])
 })
 
-test('5 to 20 minutes: exactly one mid-roll, at the midpoint', () => {
-  assert.deepEqual(midrollSchedule(301, DEFAULTS), [150])
-  assert.deepEqual(midrollSchedule(600, DEFAULTS), [300])
-  assert.deepEqual(midrollSchedule(1199, DEFAULTS), [599])
+/**
+ * report2.txt §4: the client asked for the single mid-roll to sit later
+ * than the previous hard-coded midpoint (duration/2). midroll_position_pct
+ * (migration 038, default 70) replaces that constant — these values are
+ * duration * 0.7, not duration * 0.5.
+ */
+test('5 to 20 minutes: exactly one mid-roll, at midroll_position_pct through the file', () => {
+  assert.deepEqual(midrollSchedule(301, DEFAULTS), [210])
+  assert.deepEqual(midrollSchedule(600, DEFAULTS), [420])
+  assert.deepEqual(midrollSchedule(1199, DEFAULTS), [839])
+})
+
+test('midroll_position_pct is configurable, and clamped to its 20-90 bounds', () => {
+  assert.deepEqual(midrollSchedule(1000, { ...DEFAULTS, midroll_position_pct: 50 }), [500])
+  assert.deepEqual(midrollSchedule(1000, { ...DEFAULTS, midroll_position_pct: 20 }), [200])
+  assert.deepEqual(midrollSchedule(1000, { ...DEFAULTS, midroll_position_pct: 90 }), [900])
+  // Out-of-range input (a stale/bad settings row) clamps rather than placing
+  // a mark in the first or last instant of the file.
+  assert.deepEqual(midrollSchedule(1000, { ...DEFAULTS, midroll_position_pct: 5 }), [200])
+  assert.deepEqual(midrollSchedule(1000, { ...DEFAULTS, midroll_position_pct: 99 }), [900])
+})
+
+test('a settings row from before migration 038 (no midroll_position_pct at all) still defaults to 70%', () => {
+  const preMigration = { midroll_after_secs: 300, midroll_long_after_secs: 1200, midroll_gap_secs: 600, midroll_max_count: 3 }
+  assert.deepEqual(midrollSchedule(1000, preMigration), [700])
 })
 
 test('20 minutes or more: repeating every 10 minutes, capped at 3', () => {
@@ -43,7 +65,10 @@ test('never places a mark inside the last half-gap of the file', () => {
 
 test('admin-configured settings are honoured, not the defaults', () => {
   const custom = { midroll_after_secs: 60, midroll_long_after_secs: 300, midroll_gap_secs: 120, midroll_max_count: 5 }
-  assert.deepEqual(midrollSchedule(90, custom), [45])
+  // No midroll_position_pct in `custom` either — same as a pre-038 row,
+  // defaults to 70%: Math.floor(90 * 0.7) = 62 (floating point: 90*0.7 is
+  // 62.999...998, not exactly 63).
+  assert.deepEqual(midrollSchedule(90, custom), [62])
   assert.deepEqual(midrollSchedule(600, custom), [120, 240, 360, 480])
 })
 

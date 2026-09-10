@@ -368,6 +368,7 @@ export const api = {
     /** Ask Cloudflare for somewhere to put the advert, then send it there. */
     adUploadTicket: (id) => post(`/api/admin/ads/${id}/upload`, {}),
     adMedia: (id) => get(`/api/admin/ads/${id}/media`),
+    adVideoReport: (id) => get(`/api/admin/ads/${id}/videos`),
 
     runPremiereExpiry: () => post('/api/admin/jobs/premiere-expiry'),
   },

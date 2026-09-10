@@ -85,3 +85,41 @@ test('the loading note stays up for the whole wait to airtime, not just until th
   assert.match(src, /\{!playing && <p className="ad-loading-note">\{booted \? 'Advert starting…' : 'Advert loading…'\}<\/p>\}/)
   assert.doesNotMatch(src, /\{!booted && !playing && </, 'the note must not go dark once booted flips before playing does')
 })
+
+/**
+ * report2.txt §5's click-through CTA. The server (services/ads.js
+ * recordClick) only accepts a click against a play_id that already has a
+ * completed impression on record — so the client MUST record the
+ * impression first and wait for it, or every real click would be rejected.
+ */
+test('a click-through records the impression and waits for it before recording the click', () => {
+  assert.match(src, /const clickThrough = async \(\) => \{/)
+  const body = src.slice(src.indexOf('const clickThrough = async'), src.indexOf('const clickThrough = async') + 600)
+  assert.match(body, /await finish\(true\)/, 'must await finish(true), not fire it and move on')
+  const finishIdx = body.indexOf('await finish(true)')
+  const clickIdx = body.indexOf('api.ads.click(')
+  assert.ok(clickIdx > finishIdx, 'the click POST must be issued after the impression POST is awaited')
+})
+
+test('the CTA button only renders once the ad has genuine airtime, and never when the campaign has no click_url', () => {
+  assert.match(src, /\{ad\.clickUrl && playing && \(/)
+})
+
+test('opening the advertiser link never hands the new tab a reference back to this one', () => {
+  assert.match(src, /window\.open\(ad\.clickUrl, '_blank', 'noopener,noreferrer'\)/)
+})
+
+/**
+ * report2.txt §4's preroll_target_seconds — a pre-roll auto-completes at
+ * its target watched duration rather than running the whole creative, and
+ * only for pre-roll: a mid-roll/post-roll must never be cut short by this,
+ * since the setting is pre-roll-specific (services/ads.js adPayload nulls
+ * it out for every other placement already).
+ */
+test('a pre-roll auto-completes at its target watched duration, scoped to pre-roll only', () => {
+  const body = src.slice(src.indexOf('const noteAirtime = (current) => {'), src.indexOf('const finish = (completed)'))
+  assert.match(body, /ad\?\.placement === 'pre_roll'/)
+  assert.match(body, /ad\?\.prerollTargetSeconds > 0/)
+  assert.match(body, /watched\.current >= ad\.prerollTargetSeconds/)
+  assert.match(body, /finish\(true\)/)
+})

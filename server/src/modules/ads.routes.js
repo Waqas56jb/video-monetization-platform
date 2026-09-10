@@ -4,7 +4,7 @@ import { one, many } from '../db/pool.js'
 import { asyncHandler, notFound, badRequest } from '../lib/errors.js'
 import { validate } from '../middleware/validate.js'
 import { optionalAuth } from '../middleware/auth.js'
-import { adBreaksFor, adEligibility, pickCampaign, adPayload, recordImpression } from '../services/ads.js'
+import { adBreaksFor, adEligibility, pickCampaign, adPayload, recordImpression, recordClick } from '../services/ads.js'
 import { getSettings } from '../services/settings.js'
 import { videoKeyParams, whereIdOrSlug } from '../lib/videoLookup.js'
 import { expireIfDue } from '../jobs/premiere.js'
@@ -84,6 +84,7 @@ router.get(
       ad: adPayload(campaign, {
         placement: 'pre_roll',
         skipAfterSeconds: check.settings.preroll_skip_after_secs,
+        prerollTargetSeconds: check.settings.preroll_target_seconds,
       }),
     })
   })
@@ -135,6 +136,36 @@ router.post(
       completed: req.body.completed,
     })
 
+    res.status(202).json(result)
+  })
+)
+
+/**
+ * Record a click on an ad's click-through CTA — informational (CTR), never
+ * billed on its own. `recordClick` refuses anything without a genuine,
+ * already-recorded completed impression for the same play — see its own
+ * doc comment for why.
+ */
+router.post(
+  '/click',
+  optionalAuth(),
+  validate(
+    z.object({
+      videoId: z.string().uuid(),
+      campaignId: z.string().uuid(),
+      playId: z.string().uuid(),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const video = await videoForAds(req.body.videoId)
+    if (!video) throw notFound('Video not found')
+
+    const result = await recordClick({
+      video,
+      campaignId: req.body.campaignId,
+      playId: req.body.playId,
+      userId: req.user?.id,
+    })
     res.status(202).json(result)
   })
 )

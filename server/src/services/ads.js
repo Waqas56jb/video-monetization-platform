@@ -119,7 +119,7 @@ export async function campaignServable({ video, campaignId, placement }) {
 }
 
 /** The advert, shaped for the player, with a signed token if the account needs one. */
-export function adPayload(campaign, { placement, skipAfterSeconds }) {
+export function adPayload(campaign, { placement, skipAfterSeconds, prerollTargetSeconds }) {
   const token = capabilities.signedPlayback
     ? cf.signPlaybackToken(campaign.cloudflare_uid, { expiresInSeconds: 3600 })
     : campaign.cloudflare_uid
@@ -132,6 +132,13 @@ export function adPayload(campaign, { placement, skipAfterSeconds }) {
     durationSeconds: campaign.duration_seconds || null,
     skipAfterSeconds:
       campaign.skip_after_seconds != null ? campaign.skip_after_seconds : skipAfterSeconds,
+    // Pre-roll only, null everywhere else — the target watched duration a
+    // pre-roll auto-completes at if its own creative runs longer
+    // (report2.txt §4's preroll_target_seconds, migration 038).
+    prerollTargetSeconds: placement === 'pre_roll' ? prerollTargetSeconds ?? null : null,
+    // Null on every campaign until an admin sets one — the overlay stays
+    // watch-only until then, exactly as it always has.
+    clickUrl: campaign.click_url || null,
     ...cf.playbackUrls(token),
   }
 }
@@ -146,7 +153,12 @@ export function adPayload(campaign, { placement, skipAfterSeconds }) {
  *                                        from the single-mid-roll rule this
  *                                        replaces: a video exactly this long
  *                                        still gets none, only one longer)
- *   longer, up to midroll_long_after_secs → exactly one, at the midpoint
+ *   longer, up to midroll_long_after_secs → exactly one, at
+ *                                           midroll_position_pct through the
+ *                                           file (report2.txt §4: the client
+ *                                           asked for later than the
+ *                                           midpoint; this was a hard-coded
+ *                                           50% — duration/2 — until now)
  *   midroll_long_after_secs or longer     → every midroll_gap_secs, capped
  *                                           at midroll_max_count, and never
  *                                           inside the last half-gap of the
@@ -159,9 +171,10 @@ export function midrollSchedule(durationSeconds, settings) {
   const long = Math.max(after, Number(settings.midroll_long_after_secs || 1200))
   const gap = Math.max(60, Number(settings.midroll_gap_secs || 600))
   const max = Math.max(1, Number(settings.midroll_max_count || 3))
+  const positionPct = Math.min(90, Math.max(20, Number(settings.midroll_position_pct ?? 70)))
 
   if (!(duration > after)) return []
-  if (duration < long) return [Math.floor(duration / 2)]
+  if (duration < long) return [Math.floor(duration * (positionPct / 100))]
 
   const marks = []
   for (let mark = gap; mark < duration - gap / 2 && marks.length < max; mark += gap) {
@@ -199,7 +212,11 @@ export async function adBreaksFor({ video, userId, userRole = null }) {
     const campaign = await pickCampaign({ video, placement: w.placement })
     if (!campaign) continue
     ads.push({
-      ...adPayload(campaign, { placement: w.placement, skipAfterSeconds: s.preroll_skip_after_secs }),
+      ...adPayload(campaign, {
+        placement: w.placement,
+        skipAfterSeconds: s.preroll_skip_after_secs,
+        prerollTargetSeconds: s.preroll_target_seconds,
+      }),
       atSeconds: w.at,
       breakIndex: w.index,
     })
@@ -333,7 +350,41 @@ export async function recordImpression({
   }
 }
 
-/** How a campaign is actually performing, straight from its impressions. */
+/**
+ * Record a click on an ad's click-through CTA, and only a genuine one.
+ *
+ * "Genuine" is enforced here, not trusted from the client: a click is only
+ * ever recorded against a `play_id` that already has a real, completed
+ * `ad_impressions` row for the same campaign and video — the same discipline
+ * `recordImpression` applies to billing, extended to clicks. The client
+ * flow that makes this true in practice is AdBreak.jsx treating a
+ * click-through as a completion (finish(true), which records the
+ * impression) *before* it ever calls this — never merely because the
+ * overlay was tapped mid-load, and never before the ad has genuinely aired.
+ */
+export async function recordClick({ video, campaignId, playId, userId }) {
+  if (!campaignId || !playId) return { recorded: false, reason: 'missing campaignId or playId' }
+
+  const impression = await one(
+    `select id from ad_impressions
+      where campaign_id = $1 and video_id = $2 and play_id = $3 and completed = true
+      limit 1`,
+    [campaignId, video.id, playId]
+  )
+  if (!impression) {
+    return { recorded: false, reason: 'no completed impression on record for this play' }
+  }
+
+  const row = await one(
+    `insert into ad_clicks (campaign_id, video_id, user_id, play_id)
+       values ($1, $2, $3, $4)
+     returning id`,
+    [campaignId, video.id, userId ?? null, playId]
+  )
+  return { recorded: true, id: row.id }
+}
+
+/** How a campaign is actually performing, straight from its impressions and clicks. */
 export async function campaignPerformance(campaignId = null) {
   const rows = await many(
     `select c.id,
@@ -343,7 +394,8 @@ export async function campaignPerformance(campaignId = null) {
             coalesce(sum(i.revenue_micro_tzs), 0)::bigint            as revenue_micro,
             coalesce(sum(i.creator_micro_tzs), 0)::bigint            as creator_micro,
             coalesce(sum(i.platform_micro_tzs), 0)::bigint           as platform_micro,
-            max(i.created_at)                                       as last_served
+            max(i.created_at)                                       as last_served,
+            (select count(*)::int from ad_clicks k where k.campaign_id = c.id) as clicks
        from ad_campaigns c
        left join ad_impressions i on i.campaign_id = c.id
       where ($1::uuid is null or c.id = $1)
@@ -361,9 +413,42 @@ export async function campaignPerformance(campaignId = null) {
       creatorTzs: microToTzs(r.creator_micro),
       platformTzs: microToTzs(r.platform_micro),
       lastServedAt: r.last_served,
+      clicks: r.clicks,
+      ctrPercent: r.impressions > 0 ? Math.round((r.clicks / r.impressions) * 1000) / 10 : null,
     })
   }
   return byId
+}
+
+/** How a campaign's genuine deliveries break down by the videos it ran on. */
+export async function campaignPerformanceByVideo(campaignId) {
+  return many(
+    `select v.id as video_id, v.title, v.slug,
+            count(i.id)::int                                as impressions,
+            count(i.id) filter (where i.completed)::int      as completed,
+            coalesce(sum(i.revenue_micro_tzs), 0)::bigint     as revenue_micro,
+            (select count(*)::int from ad_clicks k
+              where k.campaign_id = $1 and k.video_id = v.id) as clicks,
+            max(i.created_at)                                 as last_served
+       from ad_impressions i
+       join videos v on v.id = i.video_id
+      where i.campaign_id = $1
+      group by v.id, v.title, v.slug
+      order by impressions desc`,
+    [campaignId]
+  ).then((rows) =>
+    rows.map((r) => ({
+      videoId: r.video_id,
+      title: r.title,
+      slug: r.slug,
+      impressions: r.impressions,
+      completed: r.completed,
+      revenueTzs: microToTzs(r.revenue_micro),
+      clicks: r.clicks,
+      ctrPercent: r.impressions > 0 ? Math.round((r.clicks / r.impressions) * 1000) / 10 : null,
+      lastServedAt: r.last_served,
+    }))
+  )
 }
 
 /** Keep `updated_at` honest whenever a campaign is edited. */
