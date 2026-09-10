@@ -32,7 +32,7 @@ export default function ProfileTab() {
    * `showCreatorFields` adds the side the raw capability doesn't know about.
    */
   const showCreatorFields = isCreator && accountSide === 'creator'
-  const { data, loading, error, reload } = useApi(() => api.account.get(), [])
+  const { data, loading, error, reload } = useApi(() => api.account.get(accountSide), [accountSide])
 
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -71,7 +71,15 @@ export default function ProfileTab() {
       return setFormError('A web address needs to start with https://')
     }
 
-    const socials = isCreator
+    /**
+     * The Create-only fields, gated on whether they are actually showing —
+     * not on capability. `isCreator` stays true on the Watch side of a
+     * dual-role account, and `data.creator` there is a reduced, name-only
+     * object (see server/src/lib/creatorSideShape.js) — sending capability-
+     * gated fields from a Watch-side save would overwrite the real category/
+     * socials with the empty values this form was never shown them to fill.
+     */
+    const socials = showCreatorFields
       ? String(form.socials || '')
           .split(/[\n,]/)
           .map((s) => s.trim())
@@ -80,15 +88,18 @@ export default function ProfileTab() {
 
     setSaving(true)
     try {
-      await api.account.update({
-        fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
-        bio: form.bio.trim(),
-        location: form.location.trim(),
-        website: form.website.trim(),
-        ...(isCreator && form.displayName.trim() ? { displayName: form.displayName.trim() } : {}),
-        ...(isCreator ? { category: form.category || '', socials } : {}),
-      })
+      await api.account.update(
+        {
+          fullName: form.fullName.trim(),
+          phone: form.phone.trim(),
+          bio: form.bio.trim(),
+          location: form.location.trim(),
+          website: form.website.trim(),
+          ...(showCreatorFields && form.displayName.trim() ? { displayName: form.displayName.trim() } : {}),
+          ...(showCreatorFields ? { category: form.category || '', socials } : {}),
+        },
+        accountSide
+      )
       await reloadAuth() // the header shows this name
       reload({ quiet: true })
       showToast('Profile saved')

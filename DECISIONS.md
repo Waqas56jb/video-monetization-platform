@@ -594,3 +594,47 @@ true` the same way the seeded catalogue is flagged (cheapest, keeps them on reco
 the source, but changes what the suite has verified — `admin approves`/`publishes` — since before
 this whole engagement began). Disclosed in full in `FINAL-SIGNOFF.md` and `report.txt` instead, for
 a decision before the demo toggle is actually flipped off at launch.
+
+---
+
+## 2026-09-11 · PROMPT B2 / Issue 7 leak fix — `GET /api/earnings` left role-based on purpose
+
+**What happened.** Fixing the confirmed leak (`GET /api/account`, `POST /api/auth/login`, `GET
+/api/auth/me` handing back a dual-role account's full creator row — payout phone/method, revenue
+split, category, socials, followers, bio — regardless of which dashboard side was open) turned up
+one more route with the same *shape* of gap: `GET /api/earnings` returns a full creator earnings/
+balance object for any account whose `profiles.role = 'creator'`, with no side-awareness at all —
+confirmed live in report2.txt §7 against a fresh dual-role probe, on its Viewer side.
+
+**Left as-is, deliberately.** This route was never the reported leak, and it is a different kind of
+route from the three that were fixed: it returns the account's *own money* (their earnings, their
+balance), not another party's profile fields being echoed onto a screen that should not show them.
+It is also not reachable through the dashboard UI on the Viewer side — `TABS_BY_ROLE.viewer`
+(client/src/lib/accountSide.js-adjacent dashboard wiring) does not include Earnings, so a Viewer-
+side visit never renders this data even though the API would answer it if called directly with the
+account's own token. Making it side-aware would mean an account cannot see its own creator earnings
+by calling its own API with its own credentials while its Watch side happens to be open — a stronger
+restriction than anything the client asked for, and one that would need its own justification rather
+than being folded silently into this fix. Noted here rather than fixed, per the explicit brief.
+
+---
+
+## 2026-09-11 · Fixed `ProfileTab.jsx`'s save() capability-vs-side bug, found while fixing Issue 7
+
+**What happened.** `save()` decided which fields to send (`displayName`, `category`, `socials`)
+based on `isCreator` — pure capability, true on both sides of a dual-role account — while the form
+itself was already correctly gated on `showCreatorFields` (capability AND `accountSide==='creator'`).
+Before this fix, `data.creator` on the Watch side carried the *full* creator row (the leak this same
+pass closes), so `form.category`/`form.socials` were silently populated with the real values even
+though those fields were never shown, and saving was a no-op by accident. Once `GET /api/account`
+started returning a reduced, name-only creator object on the Watch side (per this fix), that accident
+would have become a real bug: a dual-role account saving anything from its Watch side (e.g. just a
+phone number) would submit `category: ''` and `socials: []`, silently wiping the real ones.
+
+**Fixed alongside the leak, not filed separately.** Changed `save()`'s three capability checks to
+`showCreatorFields`, matching the form's own gate exactly. This is a pre-existing latent bug the leak
+itself was masking, not a new one introduced by the fix — worth recording because it is exactly the
+kind of regression "check every consumer before shipping" was warned against, and it would not have
+been caught by a source-text test alone (server/src/modules/account.routes.sideAware.test.js checks
+the server's own shaping; this was a client-side consumer bug, caught by re-reading `save()` while
+tracing every place `data.creator`/`isCreator` is read, not by an assertion).

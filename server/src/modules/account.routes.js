@@ -13,6 +13,7 @@ import { invalidateProfileCache } from '../lib/profileCache.js'
 import { rebuildShareCardsForCreator } from '../lib/buildShareCard.js'
 import { isKnownCategory } from '../lib/categories.js'
 import { isKnownContentType, shapeApplication } from '../lib/creatorApplication.js'
+import { creatorForSide, sideFromQuery } from '../lib/creatorSideShape.js'
 
 /**
  * Everything about *your own* account: who you are, how you are paid, what we
@@ -77,7 +78,8 @@ router.get(
       one('select * from profiles where id = $1', [req.user.id]),
       one('select * from creator_profiles where user_id = $1', [req.user.id]),
     ])
-    res.json(shape(profile, creator))
+    const shaped = shape(profile, creator)
+    res.json({ ...shaped, creator: creatorForSide(shaped.creator, sideFromQuery(req)) })
   })
 )
 
@@ -239,7 +241,8 @@ router.patch(
       rebuildShareCardsForCreator(req.user.id).catch(() => {})
     }
 
-    res.json(shape(profile, creator))
+    const shaped = shape(profile, creator)
+    res.json({ ...shaped, creator: creatorForSide(shaped.creator, sideFromQuery(req)) })
   })
 )
 
@@ -303,13 +306,14 @@ router.get(
      * Capability alone used to decide this — so a dual-role account looking
      * at its Watch dashboard was handed full creator analytics (views,
      * unlocks, conversion, revenue) regardless, because the server had no
-     * idea which side was actually open. `side=viewer` is how the client
-     * says so; it can only ever narrow the response, never widen it — a
+     * idea which side was actually open. `side=creator` is how the client
+     * asks for the wider answer; anything else — including no `side` at
+     * all — gets the narrower one. Default-deny, not client discipline: a
      * pure viewer asking for `side=creator` still gets nothing extra below,
      * since `isCreator` is still what gates the creator half.
      */
     const isCreator = await hasCreatorAccess(req.user)
-    const wantsViewerSide = req.query.side === 'viewer'
+    const wantsViewerSide = req.query.side !== 'creator'
 
     /* ---------------- what I have watched and bought ---------------- */
     const [spend, owned, recent] = await Promise.all([

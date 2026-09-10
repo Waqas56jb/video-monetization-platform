@@ -1,0 +1,602 @@
+PROMPT A2 — SEP 09 FEEDBACK: DIAGNOSIS OF ALL 8 DELIVERABLES
+Run against production 2026-09-10/11. No code changes, no migrations — diagnosis and design only.
+Evidence: live DB (read-only), live 70->65->70 flip + restore, audit_log, Cloudflare Stream
+thumbnails, Vercel `logs`/robots.txt, and a Playwright DOM-timing trace against production.
+
+================================================================================
+## 1 — Revenue split: client changed the share and "it does not update everywhere"
+================================================================================
+
+WHAT MAIN DOES TODAY
+
+Single source of truth: `platform_settings.creator_split_percent` (platform default), overridable
+per creator via `creator_profiles.revenue_split_percent`. Resolved by `splitPercentFor(creatorId)`
+(server/src/services/settings.js:57-66) — override if set, else the platform default, else 70.
+`getSettings()` (settings.js:13-18) caches the settings row 60s in-memory, invalidated on every
+`updateSettings()` write (settings.js:49).
+
+Every surface that shows a split percentage traces back to one of these two reads, live, at
+request time — none of them found hardcoded or built-time baked:
+
+  Server (settings.js:57-66 or the raw column):
+  - stats.routes.js:47 `creatorSplitPercent` — public `/api/stats`, feeds every marketing page
+  - earnings.routes.js:80 `splitPercentFor(req.user.id)` — creator's own earnings summary
+  - admin.routes.js:1197 `/api/admin/revenue` — `defaultSplitPercent` + full per-creator
+    `overrides` list (admin.routes.js:1180-1189, `cp.revenue_split_percent`)
+  - admin.routes.js:1205 `/api/admin/settings` — always `{fresh:true}`, bypasses the 60s cache
+  - account.routes.js:66, auth.routes.js:363 — raw `revenue_split_percent` in account/`/me`
+    payloads (used for admin-facing "what is this creator on" context, not rendered as a live
+    marketing number anywhere client-side — grepped, no consumer found)
+
+  Client (all read `?? 70` only as a *pre-load* placeholder, replaced the instant the fetch
+  resolves — confirmed by reading client/src/hooks/useApi.js: no client-side cache, no staleTime,
+  fetch-on-mount every time):
+  - Hero.jsx:108, ForCreators.jsx:18, Testimonials.jsx:30 — `stats.data?.creatorSplitPercent`
+  - BecomeCreatorTab.jsx:30 — same
+  - EarningsTab.jsx:156 — `summary.data?.splitPercent` (from earnings.routes.js:80, override-aware)
+  - OverviewTab.jsx:112 — `t.splitPercent`, a write-time snapshot per transaction (correct: a past
+    sale should show the split it actually paid out at, not retroactively change)
+  - admin CreatorsTab.jsx / RevenueTab.jsx / OverviewTab.jsx — `revenue_split_percent ?? defaultSplit`
+  - `client/src/data/copy.js:319` — `title: (creatorShare) => \`Generous ${creatorShare}/...\`` —
+    parameterized, not a literal; `client/scripts/split-literal-audit.mjs` re-run just now: **0
+    offenders** (the guard built after Issue 1's original fix still holds)
+
+LIVE VERIFICATION JUST RUN (production, 2026-09-10 20:59 UTC)
+
+  1. Confirmed no creator currently has a non-null `revenue_split_percent` override (checked all
+     28 creator_profiles rows) — ruling out "an override is masking the default" as the cause.
+  2. `audit_log` shows **zero** `CHANGED_SETTINGS` rows touching `creator_split_percent` between
+     2026-09-07 21:29 and this test — i.e. the value was a static, unchanged 70 for the client's
+     entire Sep 09 ~15:00 test window. Whatever he saw, it was not a live mid-flight edit racing his
+     own page loads.
+  3. Live flip, this session: PATCH 70->65 on production, then immediately —
+       GET /api/stats            -> creatorSplitPercent: 65   (was 70)
+       GET /api/admin/settings   -> creator_split_percent: 65
+       GET /api/admin/revenue    -> defaultSplitPercent: 65
+       GET /api/earnings (creator token) -> splitPercent: 65
+     All four updated on the very next request, no delay, no stale read. Restored to 70, confirmed
+     `/api/stats` back to 70. No admin-dashboard aggregate caching found beyond the documented 60s
+     settings cache, and even that resolved instantly here (single Railway instance, no replica
+     lag observed).
+  4. No split percentage appears anywhere in buyer-facing purchase/receipt text (PurchasesTab.jsx
+     grepped clean) — the split is never shown to a viewer, so "public creator information" has
+     nothing to leak.
+
+WHAT THE CLIENT ACTUALLY SAW, AND WHY
+
+Every surface on his list is provably live and override-free right now, and the audit log rules
+out an in-flight change during his test window. The one mechanism this codebase cannot control:
+`useApi` re-fetches on mount, not on an interval or on window focus — a browser tab a person left
+open from *before* a change (including one of my own 70<->65 verification passes on 2026-09-06/07,
+which happened two days before his test but could still be the tab he had sitting open) will keep
+showing the old number until that tab is reloaded or navigated again. That is the only path left
+that reproduces "one screen says X, another says Y" without any server-side defect.
+
+STATUS: WORKS-AS-VERIFIED
+FIX SIZE: S — no code defect found. Recommended: a short client-facing note (not a code change)
+that any open tab must be refreshed after a settings change, since the app does not poll.
+
+================================================================================
+## 2 — Creator Capital wording + status flow
+================================================================================
+
+WHAT MAIN DOES TODAY (fact-finding agent, verified against source)
+
+Enum (037_creator_capital.sql:15-16): `building, under_review, approved, active, repaid, declined,
+paused`, default `building`. No row exists until the creator calls `POST /request-review` — reaching
+the months threshold changes nothing on its own (capital.routes.js:70-84 `GET /status` is a pure
+read; the only insert/status-write is capital.routes.js:116-123, gated on an explicit POST). So
+today's transition is **fully manual on the creator's side already** — nothing auto-advances.
+
+"Manual"/"Manual Review" creator-facing:
+  - CreatorCapitalTab.jsx:55-58 — rendered badge, literal text "MANUAL REVIEW"
+  - CreatorCapitalTab.jsx:94-95 — under_review state: "Your request is under review" / "AirPay is
+    reviewing your verified earnings history..."
+  (CreatorCapital.jsx homepage section and CreatorCapitalInfo.jsx: no rendered "manual"/"under
+  review" text — only in code comments, not shown to users)
+
+Current disclaimer, verbatim, 4 creator-facing locations + 1 longer admin variant:
+  "MTONYO+ is not the lender — AirPay decides eligibility and approval."
+    - CreatorCapitalTab.jsx:18,159-162 (dashboard tab)
+    - CreatorCapital.jsx:48-51 (homepage section)
+    - CreatorCapitalInfo.jsx:72 and :93-96 (explainer page, twice)
+    - client/src/data/copy.js:393 — a shorter variant, not yet traced to a render site
+  Admin (longer): CapitalTab.jsx:123-126 — "...Actions here record that decision; they do not
+  disburse or collect money."
+  Two test files assert the current string byte-for-byte (CreatorCapital.test.js:20,
+  CreatorCapitalTab.test.js:26) — both need updating alongside the copy change.
+
+DESIGN — enum/label mapping (no migration required)
+
+The current 7-value enum already has a slot for every client label except two, and those two are
+both sub-states of the *same* existing `building` status, distinguishable purely from data the API
+already returns (`monthsWithEarnings` vs `monthsRequired`, capital.routes.js:70-84) — so this maps
+to a **display-label change only**, not a schema change:
+
+  Client's label            | Backing state                                  | New column?
+  ---------------------------|-------------------------------------------------|------------
+  Building Eligibility       | status='building', monthsWithEarnings < required | No
+  Eligibility Unlocked       | status='building', monthsWithEarnings >= required | No
+  Ready for AirPay Review    | same instant as Unlocked — label on the enabled  | No
+                              | "Request Review" CTA itself, not a separate DB   |
+                              | state (avoids adding a status nobody can query   |
+                              | out of; it's the button's own state)             |
+  Under AirPay Review        | status='under_review'                            | No — rename
+  Approved                   | status='approved'                                | No — rename
+  Active                     | status='active'                                  | No — rename
+  Repaid                     | status='repaid'                                  | No — rename
+
+  `declined`/`paused` are kept as-is — exception states, not on the client's happy-path list, but
+  still needed operationally (an admin has to be able to decline or pause).
+
+Auto-transition rule: keep the creator's own "Request Review" click as the trigger from Unlocked ->
+Under Review — this already matches the 4-step homepage copy the client sent ("Unlock eligibility
+-> AirPay reviews"), and making it silently automatic would remove the one moment a creator
+consciously opts in to AirPay running a credit check on them, which is worth keeping deliberate.
+
+New disclaimer string, replacing all 5 creator-facing + updating the longer admin variant's lead
+sentence, plus both test files' assertions:
+  "MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and financing
+  terms."
+
+"Manual" language: drop it from every creator-facing surface — rename the CreatorCapitalTab.jsx
+badge from "MANUAL REVIEW" to "AIRPAY REVIEW", rewrite the under_review copy to name AirPay instead
+of "reviewing... manually". Admin-side, `CapitalTab.jsx` and the migration's own code comments can
+keep describing the workflow as manual internally (accurate: an admin is standing in for AirPay's
+system pre-integration) — that language was never creator-facing to begin with, so nothing there
+needs to change to satisfy this ask. Admin controls (record decision/amount/terms/status) stay
+exactly as they are; only their creator-visible framing needs the disclaimer/badge/copy change.
+
+STATUS: NOT BUILT (the new copy/labels; the underlying state machine already supports it)
+FIX SIZE: M — text/label changes across 5 files + 2 test files, no migration, no new state.
+
+================================================================================
+## 3 — Creator Capital homepage section + navigation
+================================================================================
+
+WHAT MAIN DOES TODAY
+
+Position: Landing.jsx:42-60 — order is Header, Hero, Marquee, ContinueWatching, **Trending**,
+HowItWorks, AccessModels, Features, ForCreators, **CreatorCapital**, Testimonials, CallToAction,
+Footer. Creator Capital sits second-to-last on the page, four sections *after* Trending, not
+immediately before it.
+
+Current component (CreatorCapital.jsx, full file, 55 lines): a slim, centered, 760px-max-width
+promotional banner — badge, one headline, one subtext paragraph, two buttons (Learn More / Build
+Eligibility), one disclaimer line. No 4-step row, no funding-use tiles, no live status card, no API
+call at all (confirmed: no `useApi`/`api.capital.*` import in the file). Structurally nothing like
+the mockup beyond sharing a badge and a CTA pair.
+
+Nav: neither the desktop `NAV_LINKS` (Header.jsx:12-19) nor the mobile `LINKS` (MobileMenu.jsx:11-20)
+contains a Creator Capital entry. The only entry points today are the homepage section's own two
+buttons and, for signed-in creators, `/dashboard?tab=capital`.
+
+REUSABLE FROM ISSUE 10 vs NEW
+
+  Reusable as-is: the `/creator-capital` route + `CreatorCapitalInfo.jsx` page (can absorb the
+  "Learn How It Works" CTA target unchanged); `api.capital.status()` + the eligibility numbers
+  already returned by `GET /api/capital/status` (months-with-earnings, months-required) — exactly
+  what a live status card needs, already wired for a signed-in creator, just not consumed by this
+  component today; the badge/disclaimer visual language (Landmark/ShieldCheck icons, `.badge`,
+  `.capital-disclaimer` classes) already exist and match the site's tokens.
+
+  New: the full-width section shell (current is a capped 760px centered block, not full-width); the
+  4-step "How Creator Capital Works" row; the 4 funding-use tiles; the live/static status-card
+  visual (needs a new small component wired to `api.capital.status()` for `authed && isCreator`,
+  and a static illustrative version otherwise); the trust row (Performance-based / Transparent /
+  Creator-first); the AirPay logo placeholder slot; the "Creator Capital" nav entries (desktop +
+  mobile); moving the section's mount position in Landing.jsx to immediately before `<Trending />`.
+
+DESIGN — placement and structure
+
+Move `<CreatorCapital />` to sit between `<ContinueWatching />` and `<Trending />` in Landing.jsx
+(immediately before Trending, matching the mockup). Rebuild the component as a full-width
+`<section>` (drop the 760px cap) with, top to bottom: headline "MTONYO+ Creator Capital™" +
+tagline "Turn your earnings history into production funding."; the 4-step row (Build earnings
+history -> Unlock eligibility -> AirPay reviews -> Get funded), 4 equal-width cards on desktop
+collapsing to a stacked/scrollable list under ~640px; "Use your funding for" — 4 tiles (Production /
+Equipment / Filming & Editing / Marketing & Promotion), same responsive collapse; the status card —
+for `authed && isCreator`, fetch `api.capital.status()` and render the real Building/Unlocked/
+Under-Review/etc. state using the section 2 label mapping; for anyone else, a static illustrative
+card (e.g. a fixed "3 of 6 months" example, clearly generic); the two CTA buttons unchanged
+(Learn How It Works -> `/creator-capital`, Start Building Eligibility -> same routing logic already
+in the file); the trust row as three small badges; the disclaimer (new string from section 2); an
+AirPay logo slot built as a bordered placeholder `<div>` with the text "AirPay Microfinance" until
+the client supplies the real asset, so nothing blocks on that file arriving. All spacing/colors from
+existing tokens (the site's black/purple/yellow palette, `.section`/`.container`/`.badge`/`.btn-*`
+classes already in use elsewhere on this page) — no new design-token work needed. Add "Creator
+Capital" to `NAV_LINKS` (Header.jsx) and `LINKS` (MobileMenu.jsx), pointing at `/creator-capital`.
+
+STATUS: NOT BUILT
+FIX SIZE: L — new full-width section with 4 sub-components (steps, tiles, status card, trust row),
+responsive across 320-1920, plus nav wiring. Depends on section 2's label mapping being settled
+first (the status card renders those labels).
+
+================================================================================
+## 4 — Free+Ads: "seconds still disappear before the viewer sees the ad"
+================================================================================
+
+WHAT MAIN DOES TODAY, AND A LIVE MEASURED GAP
+
+D1 (2026-09-07) raised the "advert never started" watchdog 4s->10s and added a poster — correctly
+fixed a *different* problem (the watchdog killing a cold-but-healthy load). It did not touch what
+is shown *during* that load. Re-read AdBreak.jsx just now:
+
+  {!booted && !playing && <p className="ad-loading-note">Advert loading…</p>}   (line 136)
+  {skippable && playing && ( ... "Skip in {remaining}" ... )}                    (line 117)
+
+`booted` flips true on Cloudflare's `canplay`/`loadedmetadata`/`loadeddata` (StreamPlayer.jsx:475-
+483) — media is ready, but `playing` (which gates the countdown) only flips true once real airtime
+has accrued (`timeupdate >= 0.25s`, adSkip.js:10-14). Between those two moments, `!booted` is false
+so the loading text disappears, and `playing` is still false so the countdown hasn't started
+either — **neither renders. The viewer sees a static poster with zero feedback.**
+
+Measured live just now (Playwright DOM-timing trace, production, `how-to-cook-pilau-properly`,
+Chromium, 150ms polling resolution):
+
+    t=1723ms   ad-stage mounts, "Advert loading…" appears
+    t=4705ms   "Advert loading…" disappears (booted=true)  <-- feedback goes dark here
+    t=9100ms   ad-stage flips to playing, "Skip in 5" appears for the first time
+    t=13932ms  "Skip ad" becomes available
+
+**A measured 4.4-second dead-feedback window (4705ms -> 9100ms)** where the viewer has already
+tapped, watched a loading message vanish, and then sees nothing move at all before the ad and its
+countdown appear. This is exactly "seconds disappear" — by the time anything visibly counts down,
+9.1s have already elapsed since the tap, more than half of it with no on-screen indication anything
+is happening.
+
+Ad creative's own first frames (Cloudflare Stream thumbnail API, signed token, the one active
+"Vodacom Tanzania" demo campaign, cloudflare_uid 9d020308a383a74ead2126fbdbd690ed, 30s duration):
+t=0s is a genuinely black frame (2.6KB JPEG vs 13-17KB for every other timestamp checked); by
+t=0.5s the creative is already showing real content. This is a real but sub-second black-open —
+consistent with `AD_AIRTIME_FLOOR=0.25s` already built into the skip-gating logic — not the
+multi-second effect measured above. (Aside, not this section's concern: this campaign is marked
+"Demo campaign. Remove with npm run demo:clear." and its thumbnail_url points at a different
+Cloudflare UID than the campaign's own video — worth a separate look before launch.)
+
+Root cause is the JSX condition itself: `!booted && !playing` should be `!playing` — the loading
+message should stay up for the *entire* wait, not just the first, `canplay`-gated portion of it.
+
+Mid-roll ("second ad slot") placement: `midrollSchedule()` (ads.js:156-174) — for any video shorter
+than `midroll_long_after_secs` (default 1200s/20min, i.e. almost everything on the site today), the
+single mid-roll is placed at exactly `Math.floor(duration / 2)` — **hardcoded to the literal
+midpoint, 50%, with no settings column controlling that fraction.** This is the "current ~50%" the
+client is describing; there is nothing to configure today.
+
+STATUS: REAL GAP (the 4.4s dead-feedback window is live and reproducible; confirmed via a measured
+production trace, not inferred)
+FIX SIZE: S — the loading-gap fix is a one-condition change (`!booted && !playing` -> `!playing`)
+in AdBreak.jsx, no schema/API change.
+
+Design — configurable pre-roll target + later second-ad position (both admin-side, new settings,
+ties to section 5):
+  - `preroll_target_seconds` (new `platform_settings` column, default 10) — not currently a concept
+    at all; today's only pre-roll-duration-adjacent value is `preroll_skip_after_secs` (skip
+    eligibility, not a target watched-duration). Needs a migration + admin input (section 5).
+  - `midroll_position_pct` (new column, default 70, replacing the hardcoded `duration/2`) — used in
+    `midrollSchedule()`'s single-mid-roll branch as `Math.floor(duration * (pct/100))` instead of
+    `Math.floor(duration/2)`. Needs a migration + admin input (section 5).
+STATUS (design pieces): NOT BUILT
+FIX SIZE: M — one migration (2 columns), one service-logic change, one admin UI pair; depends on
+section 5's schema/admin-pattern work landing first per the stated build order.
+
+================================================================================
+## 5 — Super Admin ad system
+================================================================================
+
+Checklist against the client's list (file:line from the fact-finding agent, spot-verified):
+
+  1. Pre-roll duration control        MISSING — duration is whatever Cloudflare reports after
+                                       encoding (admin.routes.js:1699-1703); only a fixed 600s
+                                       upload cap exists (admin.routes.js:1667), no admin input.
+  2. Mid-roll timing control          EXISTS — 4 full inputs in AdsTab.jsx:276-350, backed by
+                                       `midroll_after_secs`/`midroll_long_after_secs`/
+                                       `midroll_gap_secs`/`midroll_max_count`.
+  3. Skip timing control              EXISTS, with a gap — global default editable in
+                                       SettingsTab.jsx:384-393 (AdsTab only *displays* it,
+                                       267-273); per-campaign only settable at creation
+                                       (AdsTab.jsx:434-465) — no post-creation edit UI, though the
+                                       PATCH route already accepts it (admin.routes.js:1599-1650).
+  4. Second-ad enabled/disabled       MISSING — no concept anywhere; `adBreaksFor()` picks exactly
+                                       one campaign per break (ads.js:183-209).
+  5. Ad active/inactive toggle        EXISTS — clickable status pill, AdsTab.jsx:621-630, PATCH
+                                       `{active}` (admin.routes.js:1617).
+  6. Which ad is currently running    PARTIAL — a computed live/paused/scheduled/ended status pill
+                                       exists; a `lastServedAt` timestamp is computed server-side
+                                       (ads.js:346,363) but never rendered in AdsTab.jsx. No
+                                       per-video "playing right now" view exists anywhere.
+  7. Start/end dates                  EXISTS for creation, PARTIAL for editing — `starts_at`/
+                                       `ends_at` columns (007_ads_platform.sql:29-31), enforced in
+                                       scheduling (ads.js:75-76,109-110), settable at creation
+                                       (AdsTab.jsx:410-432), viewable after as a read-only "Window"
+                                       column — no post-creation edit control, though the PATCH
+                                       route validates and accepts both (admin.routes.js:1561-1566,
+                                       1607-1610).
+  8. Impressions                      EXISTS — platform 30-day total (admin.routes.js:1507-1520)
+                                       and per-campaign (ads.js:337-367), both rendered.
+  9. Views (distinct from requested)  PARTIAL — no metric literally called "views"; `completed`
+                                       (genuine play-through/legitimate skip) is the closest,
+                                       rendered as a sub-count (AdsTab.jsx:611-613).
+  10. Clicks                          MISSING — no click-tracking table, column, or route anywhere
+                                       (grepped the full repo for `ad_click`/`click_url`/
+                                       `clickUrl`/`destinationUrl`/`landingUrl`/`target_url`: zero
+                                       hits).
+  11. CTR                             MISSING — cannot exist without #10.
+  12. Per-video ad report             MISSING in the UI, PARTIAL at the data level —
+                                       `ad_impressions.video_id` exists and is indexed
+                                       (001_core_schema.sql:247-255) so it's queryable, but no
+                                       route anywhere groups by video; all current aggregates are
+                                       platform-wide or per-campaign only.
+
+Is there a click-through target at all today? No. `AdBreak.jsx`'s only interactive element is the
+Skip button (calls `finish(false)`, no navigation); `StreamPlayer.jsx`'s iframe has no anchor
+wrapper and no click handler tied to the ad. The overlay is watch-only today.
+
+Billability, confirmed correct (ads.js:248-254, quoted): `billable = completed && campaign != null
+&& midrollValid` — a request is only billed if (1) the player reported a genuine `completed=true`
+(real airtime end or a post-airtime skip, never a load failure), (2) the campaign re-validates as
+servable at the moment of recording (not merely at selection time), and (3) for mid-rolls, the
+claimed break index matches what `midrollSchedule()` would actually generate right now. Revenue
+only ever accrues on verified playback, never on a mere request — confirmed, no change needed.
+Clicks (once built) should use the identical pattern: a click record only counts once a genuine
+`completed`/served impression already exists for that play, never merely because the overlay was
+tapped mid-load.
+
+DESIGN — the missing pieces
+
+  - `ad_clicks` table: `id, campaign_id, video_id, play_id, user_id, created_at`, one row per
+    verified click, FK'd the same way `ad_impressions` is. A click is only recordable against an
+    impression that already exists for that `play_id` (prevents a click firing before the ad is
+    confirmed to have actually shown).
+  - Overlay CTA: a new optional `click_url` column on `ad_campaigns` (nullable — an ad with none
+    renders exactly as today, watch-only). When set, AdBreak.jsx renders a small "Learn more" CTA
+    (not the whole overlay — the whole-overlay-as-link pattern is a mis-click magnet on a skip
+    button people are already reaching for) that POSTs to a new `POST /api/ads/click` before
+    opening `click_url` in a new tab.
+  - Per-video report: a new admin route, `GET /api/admin/ads/:id/videos` (or a `?groupBy=video`
+    param on the existing performance query), reusing `campaignPerformance()`'s existing SQL shape
+    but grouping by `i.video_id` instead of `c.id` — the index already exists, this is a query
+    addition, not a schema change.
+  - Campaign scheduling edit UI: expose `skipAfterSeconds`/`startsAt`/`endsAt` in the Actions
+    column edit flow AdsTab.jsx already has for CPM (`editCpm`) — the API already accepts all
+    three; this is UI-only.
+  - Pre-roll target duration + mid-roll position %: new `platform_settings` columns, per section 4.
+  - Admin UI layout: follows the existing AdsTab.jsx pattern (a settings block matching
+    SettingsTab.jsx's number-input style for the two new percentages, a new "Clicks"/"CTR" pair of
+    columns next to the existing Impressions column, a small "View by video" expand/link per
+    campaign row for the new per-video report).
+
+STATUS: PARTIAL (5 of 12 client-listed controls fully exist; 2 more exist with an editing gap; 4 are
+fully missing and need new data model + UI)
+FIX SIZE: L overall — sequence as: (a) schema additions (ad_clicks, click_url, the two new
+platform_settings percentage columns) first, since section 4's config UI depends on this landing
+first per the stated build order; (b) campaign-edit UI exposure (S, no schema needed); (c) overlay
+CTA + click recording (M); (d) per-video report route + UI (M).
+
+================================================================================
+## 6 — Desktop sharing STILL raw URL (WhatsApp Web + WhatsApp Desktop)
+================================================================================
+
+TOOLING LIMITATION, STATED PLAINLY: `vercel logs` only returns a live/recent tail (confirmed just
+now — a fetch produced only the last few minutes of my own test traffic, nothing from Sep 03-09).
+This account has no Log Drain configured, so there is no way to retrieve historical Sep 09 15:00
+traffic through the CLI. `crawler_hits` (the app's own DB-backed telemetry, checked instead) has no
+row anywhere near Sep 09 15:00 either — the closest real (non-test) traffic on record is Sep 07-08.
+That does not prove nothing was fetched (the table might not capture every shape), but it is the
+best evidence available, and it does not show a WhatsApp fetch landing at his test time.
+
+robots.txt: `User-agent: *  Allow: /` — nothing blocked. No WAF/bot rule found on the client Vercel
+project. `X-Build: f32c5b1` on a fresh response just now matches the current HEAD — the live
+deployment is current, not stale.
+
+FRESH HEADER-SHAPE MATRIX, RUN LIVE JUST NOW (in addition to the existing og-matrix.mjs suite, which
+still passes in full): every combination below returned the correct crawler document with complete
+per-video OG tags (title, image, description) —
+
+  - Electron-shaped desktop-app UAs (WhatsApp Desktop, Slack Desktop, Discord Desktop patterns,
+    literal `Electron/25.9.7`-style tokens): all 3 -> `x-doc: crawler`, full tags.
+  - A bare GET carrying zero Sec-Fetch-* headers, ordinary Chrome UA (the "old client/stripped-
+    proxy" shape the prompt asked about): -> `x-doc: crawler`, full tags (title, description, and
+    `og:image` pointing at `/og/card/<slug>.jpg`).
+  - A mixed in-app-browser UA (WhatsApp token + full Android Chrome tokens, navigation-shaped
+    Sec-Fetch-* — the "tapped inside WhatsApp's own browser" case, deliberately served the SHELL
+    per a 2026-09-02 design decision so the app works instead of a dead OG stub): -> `x-doc: shell`,
+    and the shell itself **does** carry complete per-video og:title/og:image — confirmed live,
+    re-checking the same claim DECISIONS.md recorded on 2026-09-02 ("checked on six cold URLs")
+    still holds today.
+
+This is on top of the three already-fixed, already-documented root causes for this exact symptom:
+  - 2026-09-02: a Mac browser's CORS preflight was missing `Access-Control-Allow-Methods` (native
+    WhatsApp mobile apps do no CORS at all, which is why only Mac reproduced it) — fixed.
+  - D2/2026-09-07: Firefox re-navigating to the same pathname with only the query string changed
+    (exactly what Share does) sent fetch-shaped Sec-Fetch-* headers instead of navigation-shaped
+    ones — fixed, commit e3d9c5b.
+  - Neither of those, nor anything in today's fresh matrix, reproduces on any header shape I can
+    construct server-side.
+
+WHAT THE CLIENT ACTUALLY SAW, AND WHY
+
+A project memory from an earlier, separate investigation into this exact symptom
+(whatsapp-preview-race, 2026-09-02-era) already measured the full crawl chain at 0.36s for the OG
+document and 0.35s for the poster image — both far inside Meta's documented ~10s scrape window —
+and concluded the remaining "bare link" cases are a **WhatsApp-side compose/send race**: the
+preview is assembled client-side in WhatsApp's own compose box before Send, and a sender who hits
+Send before that finishes wins the race with a bare link, on any correctly-configured site. No
+server-side header/CORS/crawler-detection change can force that deterministically. The one untested
+lever from that investigation — pre-warming Meta's own crawl cache at publish time so WhatsApp's
+compose-box fetch always hits a warm cache instead of racing a cold one (`server/src/cli/unfurl.js`,
+arms A/B/C/D) — was scaffolded but never carried to a conclusion: querying its own results table
+just now shows real data for only the "D/cdn" arm (our own edge, self-warmed); the human-driven arms
+(B: paste into WhatsApp once; C: run the Facebook Sharing Debugger) were never actually executed.
+
+STATUS: WORKS-AS-VERIFIED (server-side: exhaustive header-shape matrix, all pass) /
+CLIENT-SIDE ARTIFACT (the residual bare-link cases: WhatsApp's own compose-send race, per prior
+measurement — named mechanism, not our latency or a detection gap)
+FIX SIZE: S to document/communicate this to the client as a WhatsApp-side behavior outside this
+codebase's control; M if the client wants the cache pre-warming experiment actually finished and
+shipped as a mitigation (it would reduce, not eliminate, the race — still not a guarantee).
+
+================================================================================
+## 7 — Roles: viewer accounts showing creator name, category, payout details, analytics
+================================================================================
+
+LIVE SWEEP, CONFIRMED REPRODUCIBLE (fresh dual-role probe account created for this test,
+`probe+1789073683@mtonyo.test`, both sides registered, not deleted per read-only instructions)
+
+A genuinely viewer-only account (`demo.viewer@mtonyo.demo`) shows nothing wrong on any surface
+swept (`/api/account`, `/api/account/analytics`, `/api/library`, `/api/earnings` (403, correct),
+`/api/videos/mine` (403), `/api/capital/status` (403), `/api/account/creator-application`) — Issue
+7's original fix holds for a real, single-sided viewer.
+
+The leak is specific to a **dual-role account viewed on its Viewer side** — reproduced live:
+
+  - `GET /api/account` (account.routes.js) — `shape()` returns the full `creator` object
+    (displayName, category, socials, payout phone/method, revenue split, follower count) whenever
+    a `creator_profiles` row exists, with **zero awareness of which side is open** — no `side`
+    parameter exists on this route at all. Confirmed on the probe account's Viewer side: the raw
+    JSON response carries `revenueSplitPercent`, `payoutPhone`, `payoutMethod`, etc. verbatim.
+  - `POST /api/auth/login` (auth.routes.js:316-337) — same pattern: returns creator
+    displayName/verified/payout fields whenever `sides.creator` is true, regardless of which side
+    was actually requested.
+  - `GET /api/auth/me` (auth.routes.js:358-381) — same, broader (adds bio/location/followers), no
+    `side` parameter accepted, and called by `AuthContext.reload()` on **every** dashboard page
+    load, stashing the full creator object in global app state.
+
+`ProfileTab.jsx`'s own JSX gate (`showCreatorFields = isCreator && accountSide === 'creator'`) is
+correctly scoped and does hide the input fields on the Viewer side — the rendered form is fine. The
+leak is one layer down: the *data* backing that screen (and every other screen, via global
+`AuthContext` state) still arrives in the browser regardless of side. No component was found
+currently rendering the raw leaked fields on the Viewer side, so there is no visible on-screen leak
+today from these three routes specifically — but it is trivially visible in DevTools' Network tab,
+which is almost certainly how a technical client re-discovers this after the Profile/Analytics
+display fix. Root cause: Issue 7's fix added `side`-awareness to `/api/account/analytics` and to
+`ProfileTab.jsx`'s JSX only — it never touched `GET /api/account`, `POST /api/auth/login`, or
+`GET /api/auth/me`, all three of which still hand back the unconditional full row.
+
+(Secondary, lower-priority: `GET /api/earnings` returns a full zeroed creator object for the probe
+account rather than a 403, because `requireCreator()` is role-based, not side-based — but this tab
+is not reachable through the dashboard UI on the Viewer side, since `TABS_BY_ROLE.viewer` doesn't
+include it, so it's an API-only exposure of the account's own data, not the Viewer-panel leak being
+reported.)
+
+DATA-CLEANUP COUNTS (read-only, right now)
+
+  e2e+%@mtonyo.test: 1 (the documented fixture, LAUNCH-CLEANUP.md §1 — as expected)
+  creator./viewer.%@mtonyo.test: 26 (13 pairs, all is_demo=true, all from smoke.js post-fix)
+  %@mtonyo.internal: 0
+  creator_applications with >1 row: 0 (still matches §4's claim)
+  sub_admin accounts: 6 — none hold users/creators/settings/revenue/capital permissions (correctly
+    blocked, verified live against demo.moderator@mtonyo.demo)
+  role=creator, is_demo=false: 12 real-looking accounts + this test's 1 probe account
+  role=viewer, unmatched by any known pattern: 20, including 5 `applytest.<timestamp>@gmail.com`
+    rows (2026-08-27) from `server/scripts/test-creator-apply-flow.js` — **not covered by
+    LAUNCH-CLEANUP.md or check-demo-flagging.mjs**, since they're plain @gmail.com, not
+    @mtonyo.test/.internal.
+  Both legacy unpublished-video slugs (LAUNCH-CLEANUP.md §6) still correctly `is_published=false`.
+
+Every claim in the current LAUNCH-CLEANUP.md still holds against today's live counts, with one gap:
+the 5 `applytest.*@gmail.com` leftovers it doesn't mention. Real/unknown accounts (the 12
+non-pattern creators, 20 non-pattern viewers) are the client's own — explicitly not to be touched or
+deleted, only the 5 applytest.* rows and the (still-open, judgment-call) e2e fixture account are
+candidates for cleanup, matching LAUNCH-CLEANUP.md's own existing "flag, don't guess" discipline.
+
+STATUS: REAL GAP (confirmed live, reproducible on a fresh probe account)
+FIX SIZE: S — add `side`-awareness to `GET /api/account`, `POST /api/auth/login`, `GET /api/auth/me`
+mirroring the pattern `/api/account/analytics` already uses; 3 routes, no schema change.
+
+RESOLUTION (2026-09-11): Fixed. Added a shared reducer (server/src/lib/creatorSideShape.js,
+`creatorForSide(creator, side)`) — the Watch side (or no `side` at all — default-deny) gets
+`{exists:true, displayName}` only; the Create side is unchanged. Applied to GET/PATCH /api/account,
+POST /api/auth/login, GET /api/auth/me. `GET /api/account/analytics`'s own default flipped from
+"missing side = creator-shaped" to "missing side = viewer-shaped" (the same default-deny gap, same
+fix). Along the way, found and fixed a latent bug in `ProfileTab.jsx`'s save() — it decided which
+fields to send using `isCreator` (capability, true on both sides of a dual-role account) rather than
+`showCreatorFields` (capability AND side==='creator'); before this fix that was masked by the leak
+itself (the full creator object filled the form correctly on either side), and would have become a
+real bug afterward (a Watch-side save silently wiping real category/socials with empty strings) — see
+DECISIONS.md, 2026-09-11. `GET /api/earnings` was checked and deliberately left role-based, not
+side-based — it returns the account's own money, not another party's fields, and is unreachable via
+the Watch-side UI already; reasoning recorded in DECISIONS.md rather than silently folded in.
+
+Verified live against a fresh dual-role probe account (local server, production DB, `e2e+b2i7<stamp>
+@mtonyo.test`, matches the standard e2e cleanup pattern): registered both sides, then for each of the
+4 routes confirmed the Watch/no-side response is exactly `{"exists":true,"displayName":"Probe Dual
+B2"}` — no payoutPhone, payoutMethod, revenueSplitPercent, category, socials, followers, or bio — and
+the Create-side / `?side=creator` response is unchanged (full object, all fields present). Server
+tests: 148/148 pass (added server/src/lib/creatorSideShape.test.js — 6 pure-function cases — plus
+source-wiring tests for both route files, and rewrote the stale account.analyticsSide.test.js to
+match the new default-deny logic). Client: `npm run build` and `npm run verify` both green (test +
+hover:audit + split:audit + build + smoke:render).
+
+================================================================================
+## 8 — Mobile + full-flow regression
+================================================================================
+
+The existing harness (REGRESSION-FINAL.md, 2026-09-06, 6 profiles x 20 steps, re-run multiple times
+since including the full PROMPT E sweep) already covers the client's original journey end to end —
+registration, browse, preview/unlock/payment, resume, Free+Ads pre-roll+skip, share+card matrix,
+follow/library, cross-device — across Chromium desktop, Pixel 7, WebKit desktop, iPhone 14, iPad,
+and Firefox, with documented N/A cells only where an engine cannot judge something (e.g. WebKit/
+mobile autoplay policies). It does **not** yet cover the 4 new/expanded items from this feedback
+round: Creator Capital in the homepage/nav flow (doesn't exist to test yet — section 3), the admin
+ad-system controls beyond what already exists (sections 4/5), and a scripted split-flip check as a
+standing regression cell rather than a one-off manual verification (section 1 was checked by hand
+each time, not as a saved harness step).
+
+RUN PLAN for after the fixes land: re-run the full 6-profile x 20-step matrix unchanged (regression
+guard against anything the new work might disturb), then add 3 new steps once built — (a) Creator
+Capital homepage section renders and its two CTAs route correctly, both signed-out and as a
+signed-in creator at each status; (b) a scripted 70<->65<->70 flip re-run against the full surface
+list in section 1, saved as a repeatable script rather than ad hoc; (c) the new admin ad controls
+(skip/date editing, click-through if built, per-video report) exercised once each. Device-only,
+unavoidable: real per-tap muted-autoplay behavior on iOS Safari/WebKit and the genuine WhatsApp
+Desktop/Web compose-send race from section 6 — neither can be forced or fully verified from
+Playwright/CI, both need a real device/real WhatsApp session for final sign-off.
+
+STATUS: WORKS-AS-VERIFIED (existing journey coverage) / NOT BUILT (the 3 new regression steps, which
+can't exist before their features do)
+FIX SIZE: S — additive script work once sections 1/3/5 land.
+
+================================================================================
+## SUMMARY
+================================================================================
+
+| # | Deliverable | Status | Size | What the client saw |
+|---|---|---|---|---|
+| 1 | Revenue split "doesn't update everywhere" | WORKS-AS-VERIFIED | S | Every surface confirmed live/override-free; no settings change recorded near his test time — most likely a stale open tab (app never polls) |
+| 2 | Creator Capital wording + status flow | NOT BUILT | M | New labels/disclaimer/AirPay-only-language not shipped yet; no schema change needed, maps onto the existing enum |
+| 3 | Creator Capital homepage section + nav | NOT BUILT | L | Current section is a slim 760px banner well after Trending; mockup needs a new full-width section before Trending + nav links |
+| 4 | Free+Ads countdown "seconds disappear" | REAL GAP | S (bug) / M (new settings) | Measured live: a genuine 4.4s window with zero on-screen feedback between the loading message vanishing and the ad/countdown appearing |
+| 5 | Super Admin ad system | PARTIAL | L | 5 of 12 requested controls exist; clicks/CTR/per-video report/second-ad concept/pre-roll duration control are fully missing |
+| 6 | Desktop sharing still raw URL | WORKS-AS-VERIFIED / CLIENT-SIDE ARTIFACT | S (document) / M (mitigate) | Exhaustive live header-matrix all passes; residual cases match a previously-measured WhatsApp compose-send race, not a detectable server defect |
+| 7 | Viewer accounts showing creator data | REAL GAP | S | Confirmed live on a fresh dual-role probe: /api/account, /auth/login, /auth/me leak full creator payout/split/category data on the Viewer side, invisible in the fixed UI but visible in DevTools |
+| 8 | Mobile + full-flow regression | WORKS-AS-VERIFIED / NOT BUILT | S | Existing 6-profile matrix covers the original journey; 3 new steps needed once 1/3/5 ship |
+
+================================================================================
+## BUILD ORDER (3 days remaining)
+================================================================================
+
+Day 1
+  - #7 fix: side-awareness on GET /api/account, POST /api/auth/login, GET /api/auth/me (S, no
+    schema change) — a real data leak, ship first.
+  - #4 bug fix: the AdBreak.jsx loading-condition fix (S) — closes the measured 4.4s gap.
+  - #1 and #6: no code fix needed (WORKS-AS-VERIFIED) — since both have now been reported twice,
+    prepare a short evidence packet for the client (the live flip screenshots/timestamps for #1,
+    the header-matrix results + the named WhatsApp compose-race mechanism for #6) rather than
+    re-shipping something that already works — this is a trust gap, not a technical one.
+  - Start #5's schema work (ad_clicks, click_url, the two new platform_settings percentage columns
+    from #4's design) — needed before #4's config UI can be built, and before #5's own click/CTR UI.
+
+Day 2
+  - #2: Creator Capital label/disclaimer/copy changes (M) — must land before #3, since #3's status
+    card renders these labels.
+  - #5 continued: campaign-edit UI exposure (skip/dates), overlay CTA + click recording, per-video
+    report route + UI.
+  - #4's admin config UI (pre-roll target seconds, mid-roll position %) — now that #5's schema and
+    admin-pattern work exists to build on.
+
+Day 3
+  - #3: the new homepage section + nav (L) — depends on #2 being settled.
+  - #8: add the 3 new regression steps (Creator Capital flow, scripted split-flip, new ad controls)
+    and re-run the full existing 6-profile matrix as a regression guard.
+  - Final full sweep across all 8 items + sign-off.

@@ -68,7 +68,10 @@ export function AuthProvider({ children }) {
       return null
     }
     try {
-      const data = await api.auth.me()
+      // The side stored right now, not React state — this can run before
+      // the `accountSide` state itself has settled on mount, and both read
+      // the same localStorage-backed source anyway.
+      const data = await api.auth.me(getAccountSide())
       setUser(data.user)
       setCreator(data.creator || null)
       setSides(parseSides(data.sides))

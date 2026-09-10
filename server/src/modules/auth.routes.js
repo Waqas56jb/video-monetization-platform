@@ -24,6 +24,7 @@ import { notify } from '../services/notify.js'
 import { log } from '../lib/logger.js'
 import { env, capabilities } from '../config/env.js'
 import { creatorStorefront } from '../lib/creatorStorefront.js'
+import { creatorForSide, sideFromQuery } from '../lib/creatorSideShape.js'
 
 const router = Router()
 
@@ -322,18 +323,22 @@ router.post(
       )
     }
 
+    const creatorFull = creator
+      ? {
+          displayName: creator.display_name,
+          verified: creator.verified,
+          payoutPhone: creator.payout_phone,
+          payoutMethod: creator.payout_method,
+        }
+      : null
+
     res.json({
       ...shape(profile, session),
       side,
       sides,
-      creator: creator
-        ? {
-            displayName: creator.display_name,
-            verified: creator.verified,
-            payoutPhone: creator.payout_phone,
-            payoutMethod: creator.payout_method,
-          }
-        : null,
+      // The side just logged into, not the account's capability — a dual-role
+      // sign-in on the Watch side gets only enough to offer the switch.
+      creator: creatorForSide(creatorFull, side),
     })
   })
 )
@@ -359,12 +364,24 @@ router.get(
   '/me',
   requireAuth(),
   asyncHandler(async (req, res) => {
-    const creator = await one(
+    const row = await one(
       `select display_name, bio, location, verified, revenue_split_percent,
               followers, payout_phone, payout_method
          from creator_profiles where user_id = $1`,
       [req.user.id]
     )
+    const creatorFull = row
+      ? {
+          displayName: row.display_name,
+          bio: row.bio,
+          location: row.location,
+          verified: row.verified,
+          revenueSplitPercent: row.revenue_split_percent,
+          followers: row.followers,
+          payoutPhone: row.payout_phone,
+          payoutMethod: row.payout_method,
+        }
+      : null
     /**
      * What this staff member may open.
      *
@@ -376,7 +393,11 @@ router.get(
      */
     const permissions = await permissionsFor(req.user)
     const sides = await getSides(req.user.id)
-    res.json({ ...shape(req.user, null), creator, permissions, sides })
+    // Called on every page load, both apps — reduced by default (this
+    // account's Watch side, or the admin app, which never asks for `creator`
+    // at all) so payout/split/category never leave the server unless the
+    // Create side explicitly asked for itself.
+    res.json({ ...shape(req.user, null), creator: creatorForSide(creatorFull, sideFromQuery(req)), permissions, sides })
   })
 )
 

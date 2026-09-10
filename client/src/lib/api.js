@@ -330,7 +330,7 @@ export const api = {
   auth: {
     register: (body) => post('/api/auth/register', body, { auth: false }),
     login: (body) => post('/api/auth/login', body, { auth: false }),
-    me: () => get('/api/auth/me'),
+    me: (side) => get(`/api/auth/me${side ? `?side=${side}` : ''}`),
     updateProfile: (body) => patch('/api/auth/me', body),
     becomeCreator: () => post('/api/auth/become-creator'),
     logout: () => post('/api/auth/logout'),
@@ -447,17 +447,18 @@ export const api = {
 
   /** Your own account: details, picture, preferences, how you are getting on. */
   account: {
-    get: () => get('/api/account'),
-    update: (body) => patch('/api/account', body),
-    uploadAvatar: (file) => sendFile('/api/account/avatar', file),
-    removeAvatar: () => del('/api/account/avatar'),
     /**
      * `side` tells the server which dashboard is open right now — Watch or
-     * Create — so a dual-role account looking at its Watch side gets
-     * viewer-only figures back, not the full creator analytics its
-     * capability alone would otherwise return. Optional: omitting it keeps
-     * the old capability-only behaviour for any other caller.
+     * Create. Payout phone/method, revenue split, category, socials,
+     * followers and bio only come back when `side=creator`; any other value,
+     * or omitting it, gets a reduced `creator` object (just enough to power
+     * the Watch↔Create switch). Default-deny: the narrow answer is what a
+     * caller gets unless it explicitly asks for the wide one.
      */
+    get: (side) => get(`/api/account${side ? `?side=${side}` : ''}`),
+    update: (body, side) => patch(`/api/account${side ? `?side=${side}` : ''}`, body),
+    uploadAvatar: (file) => sendFile('/api/account/avatar', file),
+    removeAvatar: () => del('/api/account/avatar'),
     analytics: (side) => get(`/api/account/analytics${side ? `?side=${side}` : ''}`),
     close: () => post('/api/account/close', { confirm: 'DELETE' }),
 
