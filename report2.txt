@@ -395,6 +395,15 @@ platform_settings percentage columns) first, since section 4's config UI depends
 first per the stated build order; (b) campaign-edit UI exposure (S, no schema needed); (c) overlay
 CTA + click recording (M); (d) per-video report route + UI (M).
 
+RESOLUTION — schema only (2026-09-11): Migration 038_ad_clicks_and_pacing.sql applied to production
+and confirmed via `npm run db:status`. Adds `ad_clicks` (campaign_id/video_id/user_id/play_id, RLS
+locked exactly like `ad_impressions` — no client write path, service role only), `ad_campaigns.
+click_url` (nullable text, inert until an overlay CTA reads it), and `platform_settings.
+preroll_target_seconds` (default 10, check 5-60) + `midroll_position_pct` (default 70, check 20-90).
+Confirmed live: all three new pieces present with correct defaults. UI/API layer (campaign edit,
+click recording, per-video report, admin config for the two new settings) is Day-2 work — see the
+Day-2 entry below for the rest of this item.
+
 ================================================================================
 ## 6 — Desktop sharing STILL raw URL (WhatsApp Web + WhatsApp Desktop)
 ================================================================================
