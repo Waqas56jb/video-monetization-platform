@@ -5,6 +5,7 @@ import { brandShareCard } from './shareCard.js'
 import { readCachedCard, writeCachedCard, ensureShareCardTable, readCardStatus } from './shareCardCache.js'
 import { uploadShareCardToStorage } from './shareCardStorage.js'
 import { shareSourceKey, shareCardUrl } from './shareMeta.js'
+import { publicWatchUrl, publicOgCardUrl } from './publicWatchUrl.js'
 import { log } from './logger.js'
 import * as cf from './cloudflare.js'
 
@@ -45,6 +46,38 @@ function pingLinkPreview(slug) {
     method: 'POST',
     signal: AbortSignal.timeout(5000),
   }).catch(() => {})
+}
+
+/**
+ * Warm our OWN edge cache for a video's share surfaces the moment it goes
+ * live, not Meta's — `pingLinkPreview` above already asks Meta to re-scrape.
+ *
+ * A first-ever share is a race between whoever's client builds a preview
+ * (WhatsApp's compose box, Facebook, an Electron desktop client) and how
+ * long that fetch takes to answer. The crawl chain itself is fast either
+ * way (report2.txt §6: 0.36s doc / 0.35s poster, measured cold) — what this
+ * changes is which fetch it races: a cold Vercel edge MISS versus a warm
+ * HIT, on the exact request a real crawler is about to make. Fire-and-
+ * forget, both surfaces every genuine viewer's share button actually uses:
+ * the crawler-shaped `/watch/:slug` document and `/og/card/:slug.jpg`.
+ * Never awaited by a caller, never throws — a failed warm just means the
+ * next real crawler pays the cold-cache cost this was trying to avoid, not
+ * a broken publish.
+ */
+export function warmShareEdge(slug) {
+  if (!slug) return
+  const docUrl = publicWatchUrl(env.publicWebUrl, slug)
+  const imgUrl = publicOgCardUrl(env.publicWebUrl, slug)
+  if (docUrl) {
+    fetch(docUrl, { headers: { 'user-agent': 'WhatsApp/2.24.15.78 A' }, signal: AbortSignal.timeout(8000) })
+      .then((r) => log.info(`share edge warm doc slug=${slug} status=${r.status}`))
+      .catch((err) => log.warn(`share edge warm doc slug=${slug}: ${err.message}`))
+  }
+  if (imgUrl) {
+    fetch(imgUrl, { signal: AbortSignal.timeout(8000) })
+      .then((r) => log.info(`share edge warm image slug=${slug} status=${r.status}`))
+      .catch((err) => log.warn(`share edge warm image slug=${slug}: ${err.message}`))
+  }
 }
 
 async function composeOnce(video) {

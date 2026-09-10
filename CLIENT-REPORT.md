@@ -1239,3 +1239,31 @@ starting…") so you always know something is happening. The skip countdown itse
 *(Both fixed 2026-09-11 and pushed; full regression suite green. Live re-verification on production
 after deploy is recorded in report2.txt once that push completes — see there for command-level
 detail and test counts.)*
+
+### 6. Desktop sharing — link still shows raw on WhatsApp
+
+**What we found.** We ran an exhaustive check of every way a link preview can be requested —
+WhatsApp's own app on every platform, Facebook, Telegram, an Electron-based WhatsApp Desktop, and
+even a bare request with none of the usual identifying information — against several of your real,
+published videos. Every single one came back with the correct picture, title and description. We
+also checked our own server's records for any request at all around your Sep 09 test time — there
+wasn't one, meaning WhatsApp never actually asked our server for a preview during that specific test.
+
+**What this points to.** The most likely explanation, based on measurements we did earlier in this
+project: WhatsApp builds its link preview *while you're still typing/pasting*, before you hit Send —
+and if Send is pressed before that finishes, the message goes out as a bare link, on any correctly
+working site, not just this one. Our server itself answers in well under half a second, so it isn't
+the bottleneck — the race is inside WhatsApp's own app, on your device, and we can't make that
+deterministic from our end. To be clear: this is not a guarantee that every share will now show a
+card — it's a real reduction in how often the raw-link case can happen.
+
+**What we built anyway, to shrink the odds of it happening.** The moment a video actually goes live,
+our server now immediately "warms up" its own preview — fetching the exact page and picture a real
+share would need, so they're sitting ready the instant anyone (including WhatsApp) actually asks for
+them, instead of that being the very first request. Confirmed working on production: a cold preview
+request went from a slow first-time fetch to an instant cached one within seconds of a video going
+live.
+
+**If you see a raw link again:** try sending the same link a second time in a new message, or add
+anything after it (like a space) before sending — that forces WhatsApp to build a fresh preview
+rather than reusing whatever it built (or failed to build) the first time.

@@ -16,7 +16,7 @@ import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails 
 import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
 import { capabilities, env } from '../config/env.js'
 import { clampFreePreviewSeconds, clampPreviewSql } from '../lib/preview.js'
-import { buildShareCard } from '../lib/buildShareCard.js'
+import { buildShareCard, warmShareEdge } from '../lib/buildShareCard.js'
 import { log } from '../lib/logger.js'
 import { shapeApplication } from '../lib/creatorApplication.js'
 
@@ -251,6 +251,10 @@ router.post(
     } catch (err) {
       log.error(`share card build on approve slug=${updated.slug}:`, err.message)
     }
+    // This route sets is_published=true itself — the video is live the
+    // instant this line runs, so this is a real "goes public" moment, not
+    // only the /publish route below.
+    warmShareEdge(updated.slug)
 
     await recordStaffAction(req, {
       action: 'APPROVED',
@@ -604,6 +608,7 @@ router.post(
     } catch (err) {
       log.error(`share card build on publish slug=${updated.slug}:`, err.message)
     }
+    warmShareEdge(updated.slug)
     res.json({ video: studioVideo(updated) })
   })
 )

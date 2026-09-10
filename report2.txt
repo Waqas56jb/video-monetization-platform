@@ -458,6 +458,21 @@ FIX SIZE: S to document/communicate this to the client as a WhatsApp-side behavi
 codebase's control; M if the client wants the cache pre-warming experiment actually finished and
 shipped as a mitigation (it would reduce, not eliminate, the race — still not a guarantee).
 
+RESOLUTION (2026-09-11): Mitigated. `warmShareEdge(slug)` (server/src/lib/buildShareCard.js) fires
+a crawler-shaped fetch of `/watch/:slug` and a plain fetch of `/og/card/:slug.jpg` — our own Vercel
+edge, not Meta's — the moment a video actually becomes public, wired into both places that happens
+(`POST /review/:id/approve`, which sets is_published itself, and `POST /videos/:id/publish`), right
+after the existing `buildShareCard()` call so the card exists before its image is warmed.
+Fire-and-forget: never awaited, every fetch independently `.catch()`'d, so a warm failure cannot
+fail (or even slow down) the approve/publish response. Verified live against production: called
+`warmShareEdge('how-to-cook-pilau-properly')` directly, waited for both of its own log lines, then
+re-requested both URLs — the doc came back `x-vercel-cache: HIT` (`x-doc: crawler`, confirming the
+right document besides), the image `x-vercel-cache: HIT`. This does not fix WhatsApp's own
+compose-send race (nothing server-side can) — it shrinks the specific window that race is won or
+lost in, for every video from the moment it goes live onward, at zero cost to the approve/publish
+path itself. 5 new source-wiring tests added; server suite 153/153. Evidence section added to
+CLIENT-REPORT.md, naming the mechanism plainly rather than promising a guarantee.
+
 ================================================================================
 ## 7 — Roles: viewer accounts showing creator name, category, payout details, analytics
 ================================================================================
