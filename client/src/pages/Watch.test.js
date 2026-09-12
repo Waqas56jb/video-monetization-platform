@@ -136,15 +136,21 @@ test('a fresh pre-roll gets a bandwidth head start over the content iframe it si
   // still requested every segment in lockstep with the ad — same host,
   // same bandwidth, no head start for the ad that actually needs one.
   assert.match(src, /preRollHeadStartDone/)
-  assert.match(src, /activeAd\?\.placement !== 'pre_roll'\) return/)
   assert.match(src, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 1500\)/)
+
+  // Keyed off the ads DATA (adAt('pre_roll')), not off `activeAd` — activeAd
+  // is only set by a later effect, one render after content has already
+  // mounted unheld, which is exactly the bug the first version of this fix
+  // shipped with and had to be corrected (report2.txt SEP12 §D).
+  assert.match(src, /const preRollCandidate = p\?\.access\?\.showsAds \? adAt\('pre_roll'\) : null/)
+  assert.doesNotMatch(src, /if \(activeAd\?\.placement !== 'pre_roll'\) return/)
 
   // The hold only ever swaps in a poster shell, fully hidden under the ad
   // layer's own opaque overlay — never a second real iframe, and never a
-  // state that outlives the ad or blocks mid-/post-roll (which do not
-  // remount content, so there is nothing there to compete with).
+  // state that blocks mid-/post-roll (which do not remount content, so
+  // there is nothing there to compete with).
   assert.match(src, /p\?\.playback\?\.iframe && holdContentForPreRoll/)
-  assert.match(src, /const holdContentForPreRoll = activeAd\?\.placement === 'pre_roll' && !preRollHeadStartDone/)
+  assert.match(src, /const holdContentForPreRoll = Boolean\(preRollCandidateId\) && !preRollHeadStartDone/)
 })
 
 test('Watch sizes the player to the file, not a forced 16:9 box', () => {

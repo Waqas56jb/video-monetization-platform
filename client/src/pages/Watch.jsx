@@ -135,49 +135,8 @@ export default function Watch() {
    * request cannot be billed twice.
    */
   const [activeAd, setActiveAd] = useState(null)
-  /**
-   * A head start for the pre-roll's own iframe before the content player --
-   * paused and hidden under it, but still requesting full audio+video
-   * segments regardless of `paused` (Cloudflare's own `preload=auto`, set
-   * unconditionally in StreamPlayer's buildSrc) -- starts competing for the
-   * same host's bandwidth.
-   *
-   * Traced live on production (report2.txt SEP12 §D): the two iframes
-   * fetched every segment within single-digit milliseconds of each other,
-   * content's video UID and the ad's interleaved from the very first
-   * init.mp4 onward, and tap-to-ad-playing ran ~5s past the point the ad's
-   * own iframe had already mounted. The pre-roll's own runtime leaves ample
-   * time for content to still be fully buffered by the time the advert
-   * ends -- see the `stream-shell is-booting` branch below, which this only
-   * delays entering, not the buffering itself once it starts. Mid-roll and
-   * post-roll are unaffected: content has already been playing and does not
-   * remount under those, so there is nothing for it to compete with there.
-   */
   const [preRollHeadStartDone, setPreRollHeadStartDone] = useState(true)
   const preRollTimedFor = useRef(null)
-  /**
-   * Set synchronously in render, not in a `useEffect` -- an effect runs
-   * after commit, so the FIRST paint of a fresh pre-roll would already have
-   * mounted the content iframe unheld (measured live: this was the original
-   * bug, not merely the theory -- an effect-only version of this hold
-   * changed nothing, because by the time it ran the contention had already
-   * started). This is React's own "adjust state during render" pattern:
-   * calling the setter here, guarded against re-firing for the same ad,
-   * makes React redo this render with the new value before anything commits.
-   */
-  const preRollIdNow = activeAd?.placement === 'pre_roll' ? (activeAd.campaignId ?? true) : null
-  if (preRollIdNow && preRollIdNow !== preRollTimedFor.current) {
-    preRollTimedFor.current = preRollIdNow
-    if (preRollHeadStartDone) setPreRollHeadStartDone(false)
-  } else if (!preRollIdNow && preRollTimedFor.current) {
-    preRollTimedFor.current = null
-  }
-  useEffect(() => {
-    if (activeAd?.placement !== 'pre_roll') return
-    const t = setTimeout(() => setPreRollHeadStartDone(true), 1500)
-    return () => clearTimeout(t)
-  }, [activeAd])
-  const holdContentForPreRoll = activeAd?.placement === 'pre_roll' && !preRollHeadStartDone
   const playedBreaks = useRef(new Set())
   const mainProgress = useRef(0)
   const [playId] = useState(() =>
@@ -533,6 +492,54 @@ export default function Watch() {
 
   /** One key per break — pre-roll and post-roll are singular, a mid-roll is not. */
   const breakKey = (ad) => (ad.placement === 'mid_roll' ? `mid_roll:${ad.breakIndex ?? 0}` : ad.placement)
+
+  /**
+   * A head start for the pre-roll's own iframe before the content player --
+   * paused and hidden under it, but still requesting full audio+video
+   * segments regardless of `paused` (Cloudflare's own `preload=auto`, set
+   * unconditionally in StreamPlayer's buildSrc) -- starts competing for the
+   * same host's bandwidth.
+   *
+   * Traced live on production (report2.txt SEP12 §D): content's and the
+   * ad's init.mp4 landed within single-digit milliseconds of each other.
+   * The first fix here keyed this off `activeAd`, set only once the pre-roll
+   * effect below has actually run -- but content already mounts as soon as
+   * `p.playback.iframe` exists, a render earlier than that effect can ever
+   * fire, so the hold never got a chance to apply. Keying it off the pre-
+   * roll CANDIDATE from the ads data instead — known on the very same
+   * render playback resolves on, before `activeAd` exists at all — closes
+   * that gap: the render that first mounts anything already knows to hold.
+   *
+   * Set synchronously here, not in a `useEffect` (which runs after commit,
+   * one render too late) -- this is React's own "adjust state during
+   * render" pattern: calling the setter here, guarded against re-firing for
+   * the same ad, makes React redo this render with the new value before
+   * anything commits or paints.
+   *
+   * Deliberately NOT guarded on `playedBreaks`, either -- once `runBreak`
+   * below fires it adds 'pre_roll' to that set in the very same tick this
+   * candidate would otherwise disappear, which very nearly reintroduced the
+   * original bug a second way: the hold would have released within a
+   * render instead of after 1500ms. `adAt('pre_roll')` keeps returning the
+   * same ad for the rest of this video regardless of whether it has already
+   * been shown, so the head-start clock this drives stays stable for the
+   * whole pre-roll.
+   */
+  const preRollCandidate = p?.access?.showsAds ? adAt('pre_roll') : null
+  const preRollCandidateId = preRollCandidate?.iframe ? (preRollCandidate.campaignId ?? true) : null
+  if (preRollCandidateId && preRollCandidateId !== preRollTimedFor.current) {
+    preRollTimedFor.current = preRollCandidateId
+    if (preRollHeadStartDone) setPreRollHeadStartDone(false)
+  } else if (!preRollCandidateId && preRollTimedFor.current) {
+    preRollTimedFor.current = null
+  }
+  useEffect(() => {
+    if (!preRollCandidateId) return
+    const t = setTimeout(() => setPreRollHeadStartDone(true), 1500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preRollCandidateId])
+  const holdContentForPreRoll = Boolean(preRollCandidateId) && !preRollHeadStartDone
 
   /**
    * Play a break unless it has already run in this sitting.
