@@ -1401,3 +1401,109 @@ actual phone and an actual WhatsApp session, not a browser automation tool. See 
 **Everything above is pushed to the live site and re-verified there after deploy** — see
 `report2.txt` for the complete technical trail, command by command, and `FINAL-SIGNOFF.md` for the
 dated, per-item verdict table.
+
+---
+
+## Sep 12 feedback — four items, evidence first, then fixed and re-measured
+
+You reported four things on Sep 12: sharing still not working on desktop (the third report of it),
+the mobile homepage feeling slow since yesterday's Creator Capital section shipped, and Free + Ads
+taking too long to start. Full technical detail, including every command run and every number
+measured, is in `report2.txt` under "SEP12 FEEDBACK". This section is the plain-language account.
+
+### A. Sharing on desktop — still not working (third report)
+
+**Problem.** Reported a third time: sharing on desktop still doesn't work.
+
+**What the evidence showed.** An exhaustive re-check of the server side — the same crawler-doc
+serving that WhatsApp and Facebook actually read when building a preview — found nothing wrong: every
+desktop client (WhatsApp Web, Windows/Mac desktop apps, a bare unidentified request) still gets the
+right picture, title and description, and a brand-new video published after yesterday's warm-up fix
+already had its card ready and cached the moment it was checked. The server's own six-hour log around
+your test time shows no fetch at all, meaning nothing on the receiving end ever asked our server for
+anything — the problem is not there.
+
+It is on the SEND side. Testing the actual Share button on a desktop browser found a real, if subtle,
+defect: when WhatsApp's desktop app isn't installed, clicking Share opens `whatsapp://` and then
+sits there completely silently for a second and a half before offering "Open WhatsApp Web" as a
+fallback — no error, no spinner, nothing on screen. On a real Mac, that silent gap is very easy to
+read as "the button did nothing," especially the first time. This is the most likely explanation for
+a third report of the same complaint after two rounds of server-side fixes each found nothing wrong
+there.
+
+**Fix made.** The fallback is now immediate and impossible to miss: the moment Share is clicked, the
+page shows "Opening WhatsApp… not installed? Open WhatsApp Web" right away, in a bigger, bolder
+button, instead of waiting a second and a half in silence first. The `whatsapp://` attempt still
+happens exactly as before for anyone who does have the app.
+
+**How tested.** Verified live: the fallback text and button now appear the instant Share is clicked,
+and clicking it opens `web.whatsapp.com` with your video's link already filled in. Four automated
+checks were added pinning this behaviour so it can't quietly regress.
+
+**One question for you, if you can check it:** on the Mac where this happened, is WhatsApp Desktop
+actually installed? If yes, this fix doesn't apply and there is a second, different mechanism to
+chase — if no, this fix should resolve it.
+
+### B & C. Mobile homepage — slow to load since yesterday
+
+**Problem.** The homepage on mobile feels slow to load since yesterday's full-width Creator Capital
+section went live above the fold.
+
+**What the evidence showed.** Measuring this produced a false alarm before it produced a real
+answer: the first measurement run showed an apparently severe regression (well over 6 seconds on a
+phone), but that number turned out to be this computer's own measurement tool getting bogged down by
+leftover browser processes from earlier testing, not the real site. Once measured cleanly, the
+real, smaller effect was still there and still worth fixing: the Creator Capital section was mounted
+directly in the page's first render, and — even though it makes no data request of its own for a
+visitor who isn't signed in — its own rendering cost was measurably delaying the very next section
+(Trending) from appearing.
+
+**Fix made.** The section now loads in its own separate chunk, after the page's essential content,
+instead of being bundled into the very first thing the browser has to process. Nothing about how it
+looks or behaves changes — it just no longer sits on the critical path to the first thing you see.
+
+**How tested, live, on a phone profile, signed out:**
+
+  first card on screen (cold visit)   1936ms   (target ≤2500ms — comfortably inside)
+  first card on screen (warm visit)   1148ms   (in line with before)
+  layout shift while the page loads   0 (target: under a small industry-standard threshold)
+  console/page errors                 0
+  requests to our API, signed out     exactly 3 — confirms the new section still makes none of its own
+  images added by the new section     0 — it's built entirely from small inline icons, not photos
+
+### D. Free + Ads — taking too long to load
+
+**Problem.** A Free + Ads video takes too long before the advert actually starts playing.
+
+**What the evidence showed.** Part of this is simply the ad genuinely playing now, which is
+correct and expected. But measuring precisely (tap to the advert visibly playing, on a real
+production video, five separate times on both a desktop browser and an Android phone) found a real,
+fixable waste: 7.7-7.8 seconds, well over what it should take. A live network trace explained why —
+the advert's own video and the paused, invisible film sitting underneath it were both pulling full
+video and audio data from the same server at the exact same time, each one slowing the other down,
+even though the film underneath can't be seen or heard yet.
+
+**Fix made.** The film underneath is now deliberately held back for the advert's first stretch, so
+the advert gets a clear head start on the shared connection it needs. Getting this genuinely working
+took four attempts and re-measurement caught the first three not actually working before they were
+called done — full detail in `report2.txt`. The film still buffers fully in time for an instant start
+the moment the advert ends, exactly as before.
+
+**How tested, live, median of five runs, tap to the advert genuinely playing:**
+
+  desktop    6734ms   (was 7764ms — about a second faster)
+  Android    6678ms   (was 7762ms — about a second faster)
+
+**Being straightforward about where this landed:** both numbers are meaningfully better but still a
+little over the 6-second target we were aiming for. What's left is a fixed cost inside Cloudflare's
+own video player — a bootstrap script it has to load fresh the first time any advert plays — that
+isn't something we can safely shave further without either making the advert's own picture-quality
+setup riskier or delaying how quickly the film is ready right after the advert ends, which nothing in
+your reports has ever flagged as a problem. We did not touch how impressions are counted or billed to
+get here, and confirmed live that the advert still only counts as watched when it is genuinely,
+visibly playing — never merely loading.
+
+---
+
+**Everything above is pushed to the live site and re-verified there after deploy** — see
+`report2.txt` for the complete technical trail, command by command.

@@ -1043,3 +1043,19 @@ measurements), remainder honestly reported as a structural Cloudflare bootstrap
 cost rather than papered over or forced past the target by touching billing.
 FIX SIZE: M (four iterations to land correctly; the shipped diff itself is
 small — one derived hold condition in Watch.jsx).
+
+## SEP12 FINAL — journey matrix re-run, all four items closed
+
+Read-only journey matrix (`scripts/e2e/matrix.mjs --read-only`), production, after all four
+Sep-12 fixes deployed: 48 pass, 0 fail, 29 n/a (need an account or MSE, unaffected by anything in
+this pass), 14 skip (real device only — WhatsApp send, iOS Low Power Mode). No regression across any
+of the seven profiles (webkit desktop, iPhone 14, iPad Pro 11 + mouse, chromium desktop, Pixel 7,
+firefox desktop, chromium Fast 3G).
+
+Summary of the four items:
+  A     Sharing on desktop        SEND-side 1.5s silent gap found and fixed; fallback now immediate
+  B+C   Mobile homepage slow      Creator Capital code-split/lazy-mounted; all acceptance criteria met
+  D     Free + Ads slow to start  ~13-14% faster (7.7-7.8s -> ~6.7s); short of 6s target, reported honestly
+
+CLIENT-REPORT.md updated with the dated Sep 12 section for all four items. All work pushed to main
+and verified live via X-Build on production after each deploy.
