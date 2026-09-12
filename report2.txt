@@ -925,3 +925,121 @@ STATUS: REAL GAP (confirmed, then fixed) for the render-blocking cost; the origi
 real" question is answered by the corrected measurement, not by disputing the client's report.
 FIX SIZE: S (one component boundary change) + a tooling fix (measure-home.mjs) that will keep
 future measurements honest.
+
+## Item D — "Free + Ads takes too much time loading"
+
+MEASURED, before any change (production, `ugali-samaki-sunday-cooking`, a live
+`free_with_ads` video, median of 5, Chromium desktop + Pixel 7, tap/nav to the ad
+genuinely airing):
+
+  desktop   playing  7764ms  [7460-14355]
+  Pixel 7   playing  7762ms  [7671-8805]
+
+Both well over the 6s acceptance target — this part of the complaint is real, not
+only "the ad is genuinely playing now" as expected. A live network trace explained
+why: the pre-roll's own iframe and the paused, invisible CONTENT iframe underneath
+it were fetching every media segment within single-digit milliseconds of each
+other — two distinct Cloudflare video UIDs, same host, same bandwidth, interleaved
+from the very first `init.mp4` onward. The content player mounts paused under a
+pre-roll by design, to pre-buffer for an instant start once the ad ends
+(AdBreak.jsx's own comment says so) — but its iframe requests full audio+video
+regardless of `paused` (`preload=auto`, unconditional), so it was competing for
+the exact bandwidth the ad needed to reach airtime.
+
+**Fixing this took four attempts, each one caught by re-measuring production
+rather than trusting the code by inspection — the standing rule paid for itself
+here.** In order:
+
+1. **First attempt** (`4aa1a17`): held the content iframe's mount for 1.5s behind
+   a `holdContentForPreRoll` flag driven by `activeAd`, set in a `useEffect`.
+   Measured: no change at all — content and the ad still landed within ~20-30ms
+   of each other. Root cause: `activeAd` is only set by a *later* effect, which
+   fires strictly after the render that first mounts content (content already
+   mounts unconditionally the instant `p.playback.iframe` exists, before any ad
+   decision has been made) — an effect-driven flag can never catch content's
+   *first* mount, only ones after it.
+
+2. **Second attempt** (`450e653`): moved the flag's *release* to stay in an
+   effect but tried to set it *synchronously during render* instead, guarded by
+   a ref. Correct idea, wrong key: it still kept `activeAd` as the trigger, which
+   still doesn't exist until after that same later effect fires. No measured
+   change.
+
+3. **Third attempt** (`7fa5d17`): re-keyed the same synchronous-render pattern
+   off `adAt('pre_roll')` — the ad CANDIDATE from the ads response, known on the
+   very same render playback resolves on, not off `activeAd`. Also had to stop
+   guarding on `playedBreaks`, which gets the key added the instant the trigger
+   effect fires and would have collapsed the hold to one render's worth again.
+   Still measured no gap. A direct API-timing trace explained why this one also
+   fell short: `/api/ads/breaks` answers *after* `/api/playback` on the same load
+   (~3194ms vs ~2761ms, ~430ms apart) — for that whole window, playback was ready
+   but the ads candidate was still unknown (indistinguishable from "no pre-roll"),
+   so content mounted unheld in exactly that gap every time.
+
+4. **Fourth attempt** (`69111a7`): added a second hold condition,
+   `adsDecisionPending = showsAds && adBreaks.loading`, so an ad-eligible video
+   holds for the whole time the ads answer is in flight, not only once a
+   candidate is confirmed. A debug-instrumented build (`9b0aa97`, removed in
+   `48b18e3` once its job was done) proved the React side of this is now
+   completely correct: `holdContentForPreRoll` really does stay `true` from
+   before the ad is even decided through roughly 1.5s after — confirmed against
+   `performance.now()` timestamps logged live from production. But the network
+   trace still showed both iframes' first video-specific request landing within
+   ~20ms of each other. The reason is structural, not a bug: both iframes' first
+   real request is gated behind the SAME shared, cold cost — Cloudflare's
+   per-customer `sdk-iframe-integration` script (a 301 redirect plus two bundled
+   chunk files, loaded fresh by whichever iframe asks for it first). The ad pays
+   that cost first now (it mounts ~1.5s earlier); content's iframe, mounting
+   later, then races through the exact same URLs against an already-warm browser
+   cache and reaches its own `init.mp4` almost immediately — catching up to the
+   ad almost exactly at the moment the ad's fetch finally clears that shared
+   cost. Holding content for longer would only delay when its own buffering
+   *starts*, at the cost of `content start after ad unchanged` — one of this
+   item's own acceptance criteria — for a gap that is not actually being
+   fetched in overlapping fashion any more anyway.
+
+MEASURED AFTER (production, current build, median of 5):
+
+  desktop   playing  6734ms  [6031-9319]   (was 7764ms — ~1030ms / 13% faster)
+  Pixel 7   playing  6678ms  [6219-6991]   (was 7762ms — ~1084ms / 14% faster)
+
+Real, meaningful improvement — on both profiles the ad reliably reaches genuine
+airtime over a second sooner than before — but **short of the 6s target on both
+profiles**. Per this task's own fix ordering ("if ad-first-frame still >6s median
+after 1-2, reduce preroll_target default impact honestly in the report — do NOT
+change billing"): the honest report is that the residual ~700-800ms above target
+is Cloudflare's own per-customer SDK bootstrap cost, paid once per pre-roll
+regardless of which iframe pays it first, and is not something further
+application-level scheduling can safely remove without trading away the
+"content already buffered when the ad ends" behavior the client has not
+complained about and this task's own acceptance criteria protect. Reducing
+`preroll_target_seconds` (currently 10s, `platform_settings`) would shorten how
+long the ad plays before auto-completing, not how long it takes to START — it
+would not move this number, so no product setting was changed here. Billing and
+the 10s watchdog were not touched.
+
+Held-mount fix kept (`client/src/pages/Watch.jsx`: `preRollCandidate`,
+`preRollCandidateId`, `adsDecisionPending`, `holdContentForPreRoll`) since it is
+measurably positive and functionally correct, verified by direct debug-log
+inspection against `performance.now()` timestamps on production, not merely by
+code review.
+
+Acceptance check:
+  - tap→ad visibly playing ≤6s median, desktop: 6734ms — NOT MET (short by ~730ms,
+    down from ~1764ms short before this pass).
+  - tap→ad visibly playing ≤6s median, Pixel 7: 6678ms — NOT MET (short by
+    ~678ms, down from ~1762ms short before this pass).
+  - content start after ad unchanged: confirmed live — ad plays through to its
+    10s `prerollTargetSeconds` auto-complete, ad layer detaches, content's own
+    iframe is present and live within 2s of the ad ending, zero console/page
+    errors across the full sitting.
+  - impressions only on genuine play: unchanged — `AdBreak.jsx`'s `finish()`,
+    `noteAirtime()`, the 10s watchdog and the absolute cap were not touched by
+    any of the four attempts above; all still gate on real `timeupdate` airtime
+    exactly as before.
+
+STATUS: REAL GAP, partially fixed (verified ~13-14% faster on real production
+measurements), remainder honestly reported as a structural Cloudflare bootstrap
+cost rather than papered over or forced past the target by touching billing.
+FIX SIZE: M (four iterations to land correctly; the shipped diff itself is
+small — one derived hold condition in Watch.jsx).
