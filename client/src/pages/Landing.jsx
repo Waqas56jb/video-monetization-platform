@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { scrollWhenReady } from '@/hooks/useSectionLink'
 import Header from '@/components/layout/Header'
@@ -11,9 +11,24 @@ import HowItWorks from '@/components/landing/HowItWorks'
 import AccessModels from '@/components/landing/AccessModels'
 import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
-import CreatorCapital from '@/components/landing/CreatorCapital'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
+
+/**
+ * Its own chunk, loaded after the page's critical content, not before it.
+ *
+ * Measured live (report2.txt SEP12 §B/C): with this section statically
+ * imported and mounted ahead of Trending, iPhone cold first-card time went
+ * from a 2502ms baseline to a 6693ms median — the section's own render cost
+ * (4 steps, 4 tiles, a status card, a trust row, a dozen icons) was
+ * delaying React's pass over everything after it in the tree, Trending's
+ * cards included, even though the section makes no API call of its own for
+ * a signed-out visitor. `lazy` + `Suspense` moves its download and its
+ * render off the critical path — React 18's concurrent renderer does not
+ * block a Suspense boundary's siblings on that boundary resolving, so
+ * Trending renders on the first pass regardless of when this chunk arrives.
+ */
+const CreatorCapital = lazy(() => import('@/components/landing/CreatorCapital'))
 
 /**
  * Marketing homepage.
@@ -49,8 +64,12 @@ export default function Landing() {
           everybody else. */}
       <ContinueWatching />
       {/* Immediately before Trending, per the Sep 09 mockup (report2.txt §3)
-          — was after ForCreators, well down the page. */}
-      <CreatorCapital />
+          — was after ForCreators, well down the page. Lazy: see the import
+          above for why. The fallback reserves roughly the section's own
+          height so replacing it does not itself cost a layout shift. */}
+      <Suspense fallback={<div className="cc-section-fallback" aria-hidden="true" />}>
+        <CreatorCapital />
+      </Suspense>
       <Trending />
       <HowItWorks />
       <AccessModels />

@@ -2751,6 +2751,15 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .cc-cta-row{flex-direction:column}
   .cc-cta-row .btn{width:100%}
 }
+
+/* Reserves roughly the real section's own rendered height while its chunk
+   loads, so swapping the fallback for the real thing is not itself a
+   layout shift (report2.txt SEP12 §B/C). Approximate on purpose — matching
+   exactly would need the real content, which is the one thing not present
+   yet — close enough keeps CLS low without pretending to be precise. */
+.cc-section-fallback{min-height:820px}
+@media (max-width:960px){.cc-section-fallback{min-height:1500px}}
+@media (max-width:560px){.cc-section-fallback{min-height:2050px}}
 .flow-split{display:flex;gap:8px}
 .flow-share{min-width:0;padding:13px 14px;border-radius:12px;border:1px solid var(--border2);flex-basis:0}
 .flow-share b{display:block;font-family:'Sora',sans-serif;font-size:21px;font-weight:800;line-height:1;letter-spacing:-.5px}
