@@ -129,6 +129,24 @@ test('Watch keeps the film mounted under a pre-roll so Play is not a second boot
   assert.doesNotMatch(src, /paused=\{Boolean\(activeAd\) \|\|/)
 })
 
+test('a fresh pre-roll gets a bandwidth head start over the content iframe it sits on', () => {
+  const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
+
+  // Traced live (report2.txt SEP12 §D): content, paused under a pre-roll,
+  // still requested every segment in lockstep with the ad — same host,
+  // same bandwidth, no head start for the ad that actually needs one.
+  assert.match(src, /preRollHeadStartDone/)
+  assert.match(src, /activeAd\?\.placement !== 'pre_roll'\) return/)
+  assert.match(src, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 1500\)/)
+
+  // The hold only ever swaps in a poster shell, fully hidden under the ad
+  // layer's own opaque overlay — never a second real iframe, and never a
+  // state that outlives the ad or blocks mid-/post-roll (which do not
+  // remount content, so there is nothing there to compete with).
+  assert.match(src, /p\?\.playback\?\.iframe && holdContentForPreRoll/)
+  assert.match(src, /const holdContentForPreRoll = activeAd\?\.placement === 'pre_roll' && !preRollHeadStartDone/)
+})
+
 test('Watch sizes the player to the file, not a forced 16:9 box', () => {
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
   assert.match(src, /videoShape/)

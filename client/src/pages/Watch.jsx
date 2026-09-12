@@ -135,6 +135,32 @@ export default function Watch() {
    * request cannot be billed twice.
    */
   const [activeAd, setActiveAd] = useState(null)
+  /**
+   * A head start for the pre-roll's own iframe before the content player --
+   * paused and hidden under it, but still requesting full audio+video
+   * segments regardless of `paused` (Cloudflare's own `preload=auto`, set
+   * unconditionally in StreamPlayer's buildSrc) -- starts competing for the
+   * same host's bandwidth.
+   *
+   * Traced live on production (report2.txt SEP12 §D): the two iframes
+   * fetched every segment within single-digit milliseconds of each other,
+   * content's video UID and the ad's interleaved from the very first
+   * init.mp4 onward, and tap-to-ad-playing ran ~5s past the point the ad's
+   * own iframe had already mounted. The pre-roll's own runtime leaves ample
+   * time for content to still be fully buffered by the time the advert
+   * ends -- see the `stream-shell is-booting` branch below, which this only
+   * delays entering, not the buffering itself once it starts. Mid-roll and
+   * post-roll are unaffected: content has already been playing and does not
+   * remount under those, so there is nothing for it to compete with there.
+   */
+  const [preRollHeadStartDone, setPreRollHeadStartDone] = useState(true)
+  useEffect(() => {
+    if (activeAd?.placement !== 'pre_roll') return
+    setPreRollHeadStartDone(false)
+    const t = setTimeout(() => setPreRollHeadStartDone(true), 1500)
+    return () => clearTimeout(t)
+  }, [activeAd])
+  const holdContentForPreRoll = activeAd?.placement === 'pre_roll' && !preRollHeadStartDone
   const playedBreaks = useRef(new Set())
   const mainProgress = useRef(0)
   const [playId] = useState(() =>
@@ -899,6 +925,23 @@ export default function Watch() {
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => playback.reload()}>
                 Try again
               </button>
+            </div>
+          ) : p?.playback?.iframe && holdContentForPreRoll ? (
+            /* Fully covered by .player-ad-layer's opaque overlay below --
+               this is never actually seen. It exists only so the content
+               iframe is not competing for bandwidth in the pre-roll's first
+               1.5s (report2.txt SEP12 §D). */
+            <div className="stream-shell is-booting" aria-hidden="true">
+              {v.thumbnailUrl ? (
+                <img
+                  className="stream-poster"
+                  src={mediaUrl(v.thumbnailUrl)}
+                  alt=""
+                  draggable={false}
+                />
+              ) : (
+                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+              )}
             </div>
           ) : p?.playback?.iframe ? (
             <>
