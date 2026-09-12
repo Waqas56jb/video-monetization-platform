@@ -154,9 +154,26 @@ export default function Watch() {
    * remount under those, so there is nothing for it to compete with there.
    */
   const [preRollHeadStartDone, setPreRollHeadStartDone] = useState(true)
+  const preRollTimedFor = useRef(null)
+  /**
+   * Set synchronously in render, not in a `useEffect` -- an effect runs
+   * after commit, so the FIRST paint of a fresh pre-roll would already have
+   * mounted the content iframe unheld (measured live: this was the original
+   * bug, not merely the theory -- an effect-only version of this hold
+   * changed nothing, because by the time it ran the contention had already
+   * started). This is React's own "adjust state during render" pattern:
+   * calling the setter here, guarded against re-firing for the same ad,
+   * makes React redo this render with the new value before anything commits.
+   */
+  const preRollIdNow = activeAd?.placement === 'pre_roll' ? (activeAd.campaignId ?? true) : null
+  if (preRollIdNow && preRollIdNow !== preRollTimedFor.current) {
+    preRollTimedFor.current = preRollIdNow
+    if (preRollHeadStartDone) setPreRollHeadStartDone(false)
+  } else if (!preRollIdNow && preRollTimedFor.current) {
+    preRollTimedFor.current = null
+  }
   useEffect(() => {
     if (activeAd?.placement !== 'pre_roll') return
-    setPreRollHeadStartDone(false)
     const t = setTimeout(() => setPreRollHeadStartDone(true), 1500)
     return () => clearTimeout(t)
   }, [activeAd])
