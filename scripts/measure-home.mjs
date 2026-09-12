@@ -71,12 +71,24 @@ const table = []
 
 for (const profile of PROFILES) {
   if (only && !only.includes(profile.name)) continue
-  const browser = await pw[profile.engine].launch()
 
   for (const state of ['cold', 'warm']) {
     const samples = []
     let cards = 0
     for (let run = 0; run <= RUNS; run++) {
+      /**
+       * A fresh browser PROCESS per run, not a shared one reused across the
+       * warm-up + RUNS contexts.
+       *
+       * Measured directly (report2.txt SEP12 §B/C): reusing one browser
+       * across 6 sequential contexts let resource pressure compound within
+       * that single process — on a machine already carrying other Chromium
+       * instances, iPhone 13 cold read 6600-12800ms on numbers a completely
+       * fresh launch per run measured at 1900-3200ms for the *identical*
+       * page. That gap is this script lying about the site, not the site
+       * being slow — worth the extra launch overhead to not report it.
+       */
+      const browser = await pw[profile.engine].launch()
       const ctx = await browser.newContext({ ...profile.opts })
       if (state === 'warm') {
         // One visit to fill the cache and the service worker, then measure the second.
@@ -86,7 +98,7 @@ for (const profile of PROFILES) {
         await first.close()
       }
       const r = await timeFirstCard(ctx)
-      await ctx.close()
+      await browser.close()
       if (run === 0) continue // warm-up discarded
       if (r.ms != null) samples.push(r.ms)
       cards = Math.max(cards, r.cards)
@@ -98,7 +110,6 @@ for (const profile of PROFILES) {
       `[${Math.min(...samples)}–${Math.max(...samples)}]  n=${samples.length}  cards=${cards}`
     )
   }
-  await browser.close()
 }
 
 /* The figures E1 must not regress against, from M2-VERIFY.md's Step 0. */
