@@ -539,7 +539,19 @@ export default function Watch() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preRollCandidateId])
-  const holdContentForPreRoll = Boolean(preRollCandidateId) && !preRollHeadStartDone
+  /**
+   * The ads request answers AFTER the playback one, not before it (traced
+   * live: playback at ~2761ms, ads breaks at ~3194ms on the same load) --
+   * so `preRollCandidateId` above is still null, not yet "no pre-roll",
+   * for a real ~400ms window on every ad-eligible video. Without this,
+   * content mounted unheld in exactly that window, every time, which is
+   * why the fix still measured no gap at all even once the render-timing
+   * bug above was fixed. An ad-eligible video holds until the ads answer
+   * is actually in, whichever way it comes back; a video that never shows
+   * ads is never held for this at all.
+   */
+  const adsDecisionPending = Boolean(p?.access?.showsAds) && adBreaks.loading
+  const holdContentForPreRoll = adsDecisionPending || (Boolean(preRollCandidateId) && !preRollHeadStartDone)
 
   /**
    * Play a break unless it has already run in this sitting.

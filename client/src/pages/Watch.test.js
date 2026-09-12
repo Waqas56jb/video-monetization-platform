@@ -145,12 +145,18 @@ test('a fresh pre-roll gets a bandwidth head start over the content iframe it si
   assert.match(src, /const preRollCandidate = p\?\.access\?\.showsAds \? adAt\('pre_roll'\) : null/)
   assert.doesNotMatch(src, /if \(activeAd\?\.placement !== 'pre_roll'\) return/)
 
+  // The ads request answers AFTER the playback one (traced live: ~2761ms vs
+  // ~3194ms on the same load) — so an ad-eligible video has to keep holding
+  // through that gap too, not just once a pre-roll candidate is confirmed,
+  // or content mounts unheld in exactly that window every time.
+  assert.match(src, /const adsDecisionPending = Boolean\(p\?\.access\?\.showsAds\) && adBreaks\.loading/)
+  assert.match(src, /const holdContentForPreRoll = adsDecisionPending \|\| \(Boolean\(preRollCandidateId\) && !preRollHeadStartDone\)/)
+
   // The hold only ever swaps in a poster shell, fully hidden under the ad
   // layer's own opaque overlay — never a second real iframe, and never a
   // state that blocks mid-/post-roll (which do not remount content, so
   // there is nothing there to compete with).
   assert.match(src, /p\?\.playback\?\.iframe && holdContentForPreRoll/)
-  assert.match(src, /const holdContentForPreRoll = Boolean\(preRollCandidateId\) && !preRollHeadStartDone/)
 })
 
 test('Watch sizes the player to the file, not a forced 16:9 box', () => {
