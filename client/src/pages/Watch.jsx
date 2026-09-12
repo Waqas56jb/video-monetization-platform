@@ -552,6 +552,19 @@ export default function Watch() {
    */
   const adsDecisionPending = Boolean(p?.access?.showsAds) && adBreaks.loading
   const holdContentForPreRoll = adsDecisionPending || (Boolean(preRollCandidateId) && !preRollHeadStartDone)
+  if (typeof window !== 'undefined' && window.__DEBUG_PREROLL__) {
+    console.log('[preroll-debug]', JSON.stringify({
+      t: Math.round(performance.now()),
+      showsAds: p?.access?.showsAds,
+      adBreaksLoading: adBreaks.loading,
+      adsLen: ads.length,
+      preRollCandidateId,
+      preRollHeadStartDone,
+      adsDecisionPending,
+      holdContentForPreRoll,
+      activeAd: activeAd?.placement || null,
+    }))
+  }
 
   /**
    * Play a break unless it has already run in this sitting.
