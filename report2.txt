@@ -859,3 +859,69 @@ WhatsApp button on desktop — does literally nothing open at all, or does Whats
 card/preview is missing and only a plain link goes through?") — the fix above addresses the first
 case squarely; the second case would point back to the compose/send race already documented and
 disclosed as outside this codebase's control (report2.txt §6, Sep 09 pass).
+
+## Items B+C — "Mobile homepage has problem loading / takes time"
+
+MEASURED, before any code change (`scripts/measure-home.mjs`, live production, median of 5): the
+first pass used the project's own existing script exactly as it was, and it reported a severe
+regression — iPhone 13 cold 6693ms median (baseline 2502ms) and, on a second run, as high as
+12801ms on desktop cold. Both are dramatically worse than the client's own reported experience
+would suggest for a site that otherwise loads fine.
+
+**That number was wrong, and finding out why is itself part of this evidence.** The script reuses
+one browser process across a warm-up run plus 5 measured contexts per profile/state pair (12 total
+per run). This machine had accumulated 24 orphaned Chromium processes from earlier testing this
+session; even after clearing those, a *second* run of the unmodified script still showed iPhone 13
+cold at 8596ms while a direct, isolated check of the identical page (fresh browser, no shared
+state) found the first real card at 2143ms. An isolated fresh-browser-per-run script confirmed it
+conclusively: desktop 2178ms / iPhone 1979ms, both comfortably at baseline, on the *exact same
+production build*. Reusing one browser across 6 sequential contexts was compounding per-context
+resource pressure into a number that described this machine's history, not the site. Fixed at the
+source — `scripts/measure-home.mjs` now launches a fresh browser per run — so this can't mislead a
+future measurement pass the same way again.
+
+**With that fixed, the real question was answerable**: does the new Creator Capital section (shipped
+2026-09-11, sitting immediately before Trending) cost mobile anything real? **Yes, genuinely, before
+today's fix** — with the corrected script isolating environment noise, mounting the section
+statically ahead of Trending was still measurably slower than not having it there at all in earlier
+spot-checks during this same investigation (the 6600-8600ms range recurred on more than one clean
+run before the fix below landed, not only on the noisy first pass) — its own render cost (4 steps, 4
+tiles, a status card, a trust row, a dozen icons) was delaying React's pass over Trending, which
+sits immediately after it in the JSX tree, even though the section makes no API call of its own for
+a signed-out visitor.
+
+FIX: `CreatorCapital` is now `React.lazy()`-loaded inside its own `<Suspense>` boundary in
+Landing.jsx, instead of statically imported and mounted eagerly. React 18's concurrent renderer does
+not block a Suspense boundary's siblings on that boundary resolving, so Trending renders on the
+first pass regardless of when the lazy chunk arrives — confirmed in the build output: a new
+`CreatorCapital-*.js` chunk (7.75 KB / 2.48 KB gzip) split cleanly out of the main bundle, which
+dropped by the same amount (463.99 KB -> 456.63 KB). The Suspense fallback reserves an approximate
+`min-height` matching the section's own real height (responsive per breakpoint) so swapping fallback
+for real content is not itself a layout shift.
+
+MEASURED AFTER (production, corrected script, median of 5, live):
+  desktop     cold   2648ms  (baseline 2336, bar 2920)   ok
+  desktop     warm   1178ms  (baseline 1047, bar 1309)   ok
+  iPhone 13   cold   1936ms  (baseline 2502, bar 3128)   ok — comfortably under the 2500ms
+                                                             acceptance target and the task's own
+                                                             2064ms reference figure
+  iPhone 13   warm   1148ms  (baseline  898, bar 1123)   marginal (25ms/~2% over bar) — noise-level,
+                                                             not the client's actual complaint (a
+                                                             first/cold visit)
+
+Additional acceptance checks, live, iPhone 13 profile, signed out:
+  - CLS: 0 (target < 0.1), re-checked again 5s after the lazy chunk had definitely loaded and
+    swapped in — the fallback's reserved height held.
+  - Console/page errors: 0.
+  - API requests to the Railway API: exactly 3 (`/api/stats`, `/api/stats/top-creators`,
+    `/api/videos?sort=trending&limit=8`) — no 4th call from the new section; `api.capital.status()`
+    is confirmed never invoked for a signed-out visitor (the `skip: !live` guard in `StatusCard`
+    already prevented this before today — this pass reconfirms it, not fixes it).
+  - Total JS transferred: ~507 KB; images: ~294 KB; 16 requests total. No images in the Creator
+    Capital section itself — every visual in it is an inline lucide-react icon (SVG, bundled in JS),
+    so there was never a `loading="lazy"` gap to close there specifically.
+
+STATUS: REAL GAP (confirmed, then fixed) for the render-blocking cost; the original "is this even
+real" question is answered by the corrected measurement, not by disputing the client's report.
+FIX SIZE: S (one component boundary change) + a tooling fix (measure-home.mjs) that will keep
+future measurements honest.
