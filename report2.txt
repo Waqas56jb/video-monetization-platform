@@ -786,3 +786,76 @@ Day 3
   - #8: add the 3 new regression steps (Creator Capital flow, scripted split-flip, new ad controls)
     and re-run the full existing 6-profile matrix as a regression guard.
   - Final full sweep across all 8 items + sign-off.
+
+================================================================================
+## SEP 12 FEEDBACK — 4 items
+================================================================================
+
+## Item A — "Sharing on desktop not working" (third report)
+
+EVIDENCE, before any code change:
+
+1. `crawler_hits` telemetry: 0 rows in the last 24 hours; the most recent row in the entire
+   table is from 2026-09-10T22:34:56Z (this project's own testing two days earlier). **This is
+   not conclusive** — `recordCrawlerHit()` (server/src/lib/crawlerLog.js:48) deliberately skips
+   any request `classifyCrawler()` labels `'human'`, by design ("Recording them would bury the
+   handful of rows that matter"). So a genuine WhatsApp/Electron fetch that got misclassified —
+   or simply no fetch at all — are indistinguishable from this table alone. Vercel's own log tail
+   was checked too and, as established in the previous pass, only covers a live/recent window —
+   it cannot reach back to a ~07:30 test from several hours earlier. **Honest conclusion: we
+   cannot confirm OR rule out whether his device's request ever reached our server from
+   telemetry.** This is a real blind spot, not a "nothing happened" finding.
+
+2. Live re-run of the full desktop matrix, this session, against production:
+   - `og-matrix.mjs` (WhatsApp/Facebook/Telegram UAs on 6 real slugs, the web.whatsapp.com CORS
+     preflight+GET pair, the Firefox anomalous-header regression guard): 23/23 pass.
+   - Electron-shaped "WhatsApp Desktop" UA: `x-doc: crawler`, correct.
+   - A video published *after* the publish-warm shipped (41a71de): none existed naturally (last
+     real publish was 2026-08-28), so `npm run smoke` was run to approve one live
+     (`smoke-premiere-a8nhnx`, approved 2026-09-12T10:56:07Z) and its cache checked while still
+     published. Result: **MISS on both the doc and the image**, ~30-40s after approval — the warm
+     did not complete in time during this run. Calling `warmShareEdge('smoke-premiere-a8nhnx')`
+     directly, standalone, immediately after: MISS -> HIT within 6 seconds, exactly as designed.
+     Confirmed the route wiring is present and deployed (indirect proof: `/api/ads/click`, shipped
+     in a *later* commit than the warm fix, responds correctly on the live server, ruling out a
+     stale Railway deploy as the explanation). **Conclusion: the mechanism itself works; it is a
+     fire-and-forget call with no confirmation or retry, and can be delayed past its 8s timeout
+     under concurrent load** — smoke.js fires many rapid sequential requests against the same
+     process, which is not representative of a single real approval, but is a real robustness gap
+     worth knowing about. Not fixed in this pass (order of priority: this delays *only the very
+     first* share of a video, for at most ~8s of missed warming, and does not affect the
+     server-side correctness confirmed above) — flagged for later hardening (e.g. awaiting the
+     warm with a short budget, or a retry-once).
+
+3. **The SEND side — this is where the third report most likely traces to.** Read
+   `client/src/lib/whatsappShare.js` and `ShareSheet.jsx`'s `onWhatsApp` handler in full. On
+   desktop, clicking "Share on WhatsApp" navigates the anchor to `whatsapp://send?text=...`
+   immediately (correct) — but until this fix, **nothing else was shown on screen for a full
+   1.5 seconds**, win or lose: the fallback link ("WhatsApp app not found — Open WhatsApp Web")
+   only appeared *after* that delay, and only if the tab was confirmed to have stayed in focus
+   (i.e., confirmed that nothing opened). A `whatsapp://` link with no handler fails **silently**
+   on both Safari and Chrome on macOS — no OS dialog, no browser prompt, nothing at all — so for a
+   person without the desktop app installed, the actual experience was: click the button, watch
+   nothing happen for a second and a half, and very plausibly conclude the button is broken and
+   stop right there, before the fallback link ever had a chance to appear. This is a strong,
+   concrete explanation for "sharing on desktop not working" that does not depend on guessing
+   what his specific machine has installed.
+
+FIX (this pass): the fallback now appears the **instant** the WhatsApp button is clicked on
+desktop — not after 1.5s — worded as a question ("Opening WhatsApp… not installed? Open WhatsApp
+Web") since at that instant we do not yet know whether the app opened or not. The 1.5s timer is
+kept, but now only to **hide** the message early if the tab genuinely loses focus (a real sign the
+app took over) — it never again *creates* the delay before something appears. Also made visually
+more prominent (bigger, bolder, higher-contrast) per the explicit ask, since a quiet correction is
+easy to miss in the same way the delayed version was.
+
+VERIFIED: 4 new tests (`ShareSheet.test.js`) pin the new immediate-fallback wiring and the new
+copy; client suite 193/193; build clean.
+
+ONE QUESTION FOR THE CLIENT (for Waqas to send, not answered by evidence alone): **"Jab tu WhatsApp
+button dabata hai desktop par — kuch bhi khulta nahi (screen bilkul khamosh rehti hai), ya WhatsApp
+khulta hai lekin card/preview missing hoti hai, sirf plain link jata hai?"** ("When you tap the
+WhatsApp button on desktop — does literally nothing open at all, or does WhatsApp open but the
+card/preview is missing and only a plain link goes through?") — the fix above addresses the first
+case squarely; the second case would point back to the compose/send race already documented and
+disclosed as outside this codebase's control (report2.txt §6, Sep 09 pass).

@@ -221,22 +221,33 @@ export default function ShareSheet({ open, video, share, onClose }) {
       healShareCard(slug)
     }
     warm()
-    setWaFallback(false)
 
     /* A phone is sent on to WhatsApp Web by itself, as before. */
     if (whatsappIsPhone()) {
+      setWaFallback(false)
       whatsappFallback(shareUrl)()
       return
     }
-    if (!whatsappNeedsVisibleFallback()) return
+    if (!whatsappNeedsVisibleFallback()) {
+      setWaFallback(false)
+      return
+    }
 
     /**
-     * A `whatsapp://` link that nothing handles fails silently, so the only way
-     * to tell "the app opened" from "nothing happened" is whether this page kept
-     * the focus. If it did, after a moment, offer WhatsApp Web instead of
-     * leaving the viewer looking at a button that appears to do nothing.
+     * A `whatsapp://` link that nothing handles fails SILENTLY on desktop —
+     * measured against a Mac profile with no WhatsApp app installed (the
+     * client's third report of this, report2.txt SEP12 §A): Safari and
+     * Chrome both show nothing at all, not a dialog, not a browser prompt,
+     * for as long as this used to wait before offering WhatsApp Web. A
+     * button that visibly does nothing for a second and a half reads as
+     * broken, not as "still working" — so the fallback now appears the
+     * INSTANT the click happens, optimistically, worded as a question
+     * ("not installed?") rather than a confirmed failure, since at t=0 we
+     * do not yet know which it is. It is cleared early only if the tab
+     * actually loses focus — a real sign the app opened and took over.
      */
     clearTimeout(waTimer.current)
+    setWaFallback(true)
     let left = false
     const onHide = () => {
       if (document.visibilityState === 'hidden') left = true
@@ -249,7 +260,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
     waTimer.current = setTimeout(() => {
       document.removeEventListener('visibilitychange', onHide)
       window.removeEventListener('blur', onBlur)
-      if (!left && document.visibilityState === 'visible') setWaFallback(true)
+      if (left) setWaFallback(false)
     }, 1500)
   }
 
@@ -561,7 +572,8 @@ export default function ShareSheet({ open, video, share, onClose }) {
           </span>
         </a>
 
-        {/* Only after a whatsapp:// link went nowhere — see onWhatsApp. */}
+        {/* Shown the instant WhatsApp is tapped on desktop, not after a
+            delay — see onWhatsApp. */}
         {waFallback && (
           <a
             className="share-wa-web"
@@ -569,7 +581,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            WhatsApp app not found — Open WhatsApp Web
+            Opening WhatsApp… not installed? Open WhatsApp Web
           </a>
         )}
 

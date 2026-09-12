@@ -2492,14 +2492,16 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   text-decoration:none;
 }
 .share-wa:hover,.share-wa:visited{color:#fff}
-/* Shown only after a whatsapp:// link went nowhere. Quiet: it is a correction,
-   not a second call to action. */
+/* Shown the instant WhatsApp is tapped on desktop (report2.txt SEP12 §A) —
+   a whatsapp:// link fails silently for up to 1.5s with nothing else on
+   screen, so this has to be prominent enough to notice immediately, not a
+   quiet afterthought. */
 .share-wa-web{
-  display:block;margin:-4px 0 10px;padding:9px 12px;border-radius:12px;
-  background:rgba(37,211,102,.10);border:1px solid rgba(37,211,102,.32);
-  color:#7ee2a8;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center;
+  display:block;margin:-4px 0 10px;padding:11px 14px;border-radius:12px;
+  background:rgba(37,211,102,.16);border:1.5px solid rgba(37,211,102,.5);
+  color:#8ff0b8;font-size:13.5px;font-weight:700;text-decoration:none;text-align:center;
 }
-.share-wa-web:hover{background:rgba(37,211,102,.16)}
+.share-wa-web:hover{background:rgba(37,211,102,.24)}
 .share-wa-copy{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2}
 .share-wa-copy b{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .share-wa-copy small{font-size:11.5px;font-weight:500;opacity:.9;text-transform:none;letter-spacing:0}
