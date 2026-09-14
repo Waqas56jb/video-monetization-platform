@@ -12,10 +12,18 @@ import { useAuth } from '@/context/AuthContext'
 /**
  * How you have been getting on.
  *
- * Two questions, one page, because it is one person: a creator wants to know
- * what is selling, and everybody wants to know what they have spent and what
- * they own. A viewer sees only the second half — there is no point showing
- * somebody a conversion rate on videos they have not made.
+ * Used to be one page for both questions — a dual-role account got its own
+ * purchase history bundled into Creator Analytics too, on the reasoning that
+ * it is one person either way. The client's Sep 14 review asked for strict
+ * separation instead: this side shows creator performance only, full stop —
+ * conversion rate, top videos, earnings — and nothing about what the same
+ * person has bought. That half now lives only under Viewer → My Activity,
+ * even for a dual-role account looking at this tab from its Create side.
+ *
+ * `isCreator` is derived from `data.role`, and the server (account.routes.js
+ * /analytics) already folds BOTH capability and the requested side into that
+ * one field — so gating on it here is gating on the side actually open, not
+ * merely on whether the account is creator-capable at all.
  *
  * Every number is counted. On a new account that means zeroes, which is the
  * truth and the only thing worth acting on.
@@ -156,57 +164,73 @@ export default function AnalyticsTab() {
       )}
 
       {/* ------------------------ what I have watched ------------------------ */}
-      <div className="stat-grid">
-        <StatCard stat={{ icon: 'library', label: 'In your library', value: String(v.videosOwned) }} />
-        <StatCard stat={{ icon: 'coins', tone: 'gold', label: 'Total spent', value: tzs(v.spentTzs) }} />
-        <StatCard
-          stat={{
-            icon: 'timer',
-            label: 'Watch time in your library',
-            value: v.ownedSeconds ? duration(v.ownedSeconds) : '0:00',
-          }}
-        />
-        <StatCard stat={{ icon: 'receipt', label: 'Purchases', value: String(v.purchases) }} />
-      </div>
+      {/**
+       * Used to render unconditionally, every time, for every account —
+       * "one page, two questions" was the deliberate original design. The
+       * client's Sep 14 review asked for the opposite: Creator Analytics is
+       * creator performance only, full stop, and viewer figures belong on
+       * Viewer → My Activity even for a dual-role account looking at this
+       * tab from its Create side. `data.role` is what the server now
+       * actually answers with — 'viewer' only when the viewer half was
+       * computed at all (account.routes.js /analytics) — so this gates on
+       * that rather than repeating the isCreator check above, which is
+       * capability, not "which half did the server send".
+       */}
+      {!isCreator && (
+        <>
+          <div className="stat-grid">
+            <StatCard stat={{ icon: 'library', label: 'In your library', value: String(v.videosOwned) }} />
+            <StatCard stat={{ icon: 'coins', tone: 'gold', label: 'Total spent', value: tzs(v.spentTzs) }} />
+            <StatCard
+              stat={{
+                icon: 'timer',
+                label: 'Watch time in your library',
+                value: v.ownedSeconds ? duration(v.ownedSeconds) : '0:00',
+              }}
+            />
+            <StatCard stat={{ icon: 'receipt', label: 'Purchases', value: String(v.purchases) }} />
+          </div>
 
-      <Panel title="What you have bought">
-        {!v.recent?.length ? (
-          <EmptyState
-            icon={Eye}
-            title="You haven't bought anything yet"
-            message="Anything you buy stays in your library, and it will be listed here."
-            action={
-              <button className="btn btn-gold" onClick={() => navigate('/explore')}>
-                <Compass />
-                Browse videos
-              </button>
-            }
-          />
-        ) : (
-          <TableScroll>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Video</th>
-                <th>Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-              {v.recent.map((r) => (
-                <tr key={r.videoId + r.purchasedAt}>
-                  <td>{shortDate(r.purchasedAt)}</td>
-                  <td>
-                    <button className="link-cell" onClick={() => navigate(`/watch/${r.slug || r.videoId}`)}>
-                      {r.title}
-                    </button>
-                  </td>
-                  <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{tzs(r.amountTzs)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </TableScroll>
-        )}
-      </Panel>
+          <Panel title="What you have bought">
+            {!v.recent?.length ? (
+              <EmptyState
+                icon={Eye}
+                title="You haven't bought anything yet"
+                message="Anything you buy stays in your library, and it will be listed here."
+                action={
+                  <button className="btn btn-gold" onClick={() => navigate('/explore')}>
+                    <Compass />
+                    Browse videos
+                  </button>
+                }
+              />
+            ) : (
+              <TableScroll>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Video</th>
+                    <th>Paid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {v.recent.map((r) => (
+                    <tr key={r.videoId + r.purchasedAt}>
+                      <td>{shortDate(r.purchasedAt)}</td>
+                      <td>
+                        <button className="link-cell" onClick={() => navigate(`/watch/${r.slug || r.videoId}`)}>
+                          {r.title}
+                        </button>
+                      </td>
+                      <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{tzs(r.amountTzs)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </TableScroll>
+            )}
+          </Panel>
+        </>
+      )}
     </div>
   )
 }

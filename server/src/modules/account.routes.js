@@ -315,45 +315,55 @@ router.get(
     const isCreator = await hasCreatorAccess(req.user)
     const wantsViewerSide = req.query.side !== 'creator'
 
-    /* ---------------- what I have watched and bought ---------------- */
-    const [spend, owned, recent] = await Promise.all([
-      one(
-        `select count(*)::int as purchases,
-                coalesce(sum(amount_tzs),0)::int as spent_tzs
-           from purchases where user_id = $1 and status = 'active'`,
-        [req.user.id]
-      ),
-      one(
-        `select count(*)::int as videos,
-                coalesce(sum(v.duration_seconds),0)::int as seconds
-           from purchases p join videos v on v.id = p.video_id
-          where p.user_id = $1 and p.status = 'active'`,
-        [req.user.id]
-      ),
-      many(
-        `select p.purchased_at, p.amount_tzs, v.title, v.slug, v.id as video_id
-           from purchases p join videos v on v.id = p.video_id
-          where p.user_id = $1 and p.status = 'active'
-          order by p.purchased_at desc limit 8`,
-        [req.user.id]
-      ),
-    ])
+    /**
+     * "Two questions, one page" was the original design — a dual-role
+     * account's Creator Analytics carried its own purchases/library stats
+     * alongside creator performance, on the reasoning that it is one person
+     * either way. The client's Sep 14 review asked for the opposite: each
+     * side shows only what belongs to that side, full stop. So the viewer
+     * half below is now computed ONLY when the viewer half is what is being
+     * returned — which also means a creator-side load no longer runs three
+     * purchase-history queries it has nothing to do with.
+     */
+    if (!isCreator || wantsViewerSide) {
+      const [spend, owned, recent] = await Promise.all([
+        one(
+          `select count(*)::int as purchases,
+                  coalesce(sum(amount_tzs),0)::int as spent_tzs
+             from purchases where user_id = $1 and status = 'active'`,
+          [req.user.id]
+        ),
+        one(
+          `select count(*)::int as videos,
+                  coalesce(sum(v.duration_seconds),0)::int as seconds
+             from purchases p join videos v on v.id = p.video_id
+            where p.user_id = $1 and p.status = 'active'`,
+          [req.user.id]
+        ),
+        many(
+          `select p.purchased_at, p.amount_tzs, v.title, v.slug, v.id as video_id
+             from purchases p join videos v on v.id = p.video_id
+            where p.user_id = $1 and p.status = 'active'
+            order by p.purchased_at desc limit 8`,
+          [req.user.id]
+        ),
+      ])
 
-    const viewer = {
-      purchases: spend.purchases,
-      spentTzs: spend.spent_tzs,
-      videosOwned: owned.videos,
-      ownedSeconds: owned.seconds,
-      recent: recent.map((r) => ({
-        videoId: r.video_id,
-        title: r.title,
-        slug: r.slug,
-        amountTzs: r.amount_tzs,
-        purchasedAt: r.purchased_at,
-      })),
+      const viewer = {
+        purchases: spend.purchases,
+        spentTzs: spend.spent_tzs,
+        videosOwned: owned.videos,
+        ownedSeconds: owned.seconds,
+        recent: recent.map((r) => ({
+          videoId: r.video_id,
+          title: r.title,
+          slug: r.slug,
+          amountTzs: r.amount_tzs,
+          purchasedAt: r.purchased_at,
+        })),
+      }
+      return res.json({ role: 'viewer', viewer, creator: null })
     }
-
-    if (!isCreator || wantsViewerSide) return res.json({ role: 'viewer', viewer, creator: null })
 
     /* ------------------------- what I am selling ------------------------- */
     const [totals, daily, topVideos, byAccess] = await Promise.all([
@@ -401,7 +411,7 @@ router.get(
 
     res.json({
       role: 'creator',
-      viewer,
+      viewer: null,
       creator: {
         videos: totals.videos,
         published: totals.published,
