@@ -1447,3 +1447,78 @@ always has a real, working viewer login. It is not orphaned test data and must N
 Corrected in the chat hand-off to the client. The other item in that category,
 `probe+1789073683@mtonyo.test` (0 purchases, not is_demo, created 2026-09-10), remains a safe
 deletion candidate -- it is not the documented, kept fixture.
+
+## SEP 14, LATER STILL — the telemetry itself broke, in three acts, now genuinely fixed
+
+While waiting on the user's MacBook WhatsApp reproduction, a sanity check on the capture-everything
+logging (1eba864, shipped earlier today) found it silently writing NOTHING for any /watch/:slug
+request -- including my own synthetic ones -- despite the function responding correctly (`X-Doc:
+crawler`, 200) and the server's crawl-hit endpoint working perfectly when posted to directly. Three
+attempts to actually fix this, each disproven live before moving to the next:
+
+1. (b6f38d1) Fired the report BEFORE the slow `loadShareMeta` await instead of right before
+   responding, on the theory that a Vercel Node function is frozen within a beat of the response
+   finishing, so a fetch needs something slow already running in front of it to survive. Measured:
+   the very next live test still wrote nothing. Root cause: `loadShareMeta`'s own in-memory memo
+   was warm for the slug being tested (hit dozens of times already today), so `await
+   loadShareMeta(...)` resolved in ~0ms with no real network call underneath it -- no cover, same
+   race as before. Betting on an incidental delay elsewhere in the handler is not a mechanism.
+
+2. Considered and rejected: Vercel's `waitUntil()`-style background-work extension isn't available
+   to this Node.js Serverless Function without a new dependency and uncertain runtime support --
+   not worth the risk under time pressure for a diagnostic need this immediate.
+
+3. (9d37a59) The actual fix: stop trying to be clever about timing. Each response branch now
+   builds its own report call and genuinely AWAITS it immediately before `res.end()`, every single
+   time -- paying the real cost instead of gambling on a head start. CAP_MS (the fetch's own
+   timeout, bounding the worst case) dropped 1500ms -> 700ms specifically because this latency is
+   now unconditional on every crawler-document response, not merely a safety net.
+
+VERIFIED LIVE, 5/5, not 1/1: five separate plain (non-debug, no special flag) requests with unique
+`?v=` tokens, a couple seconds apart -- every single one produced a `crawler_hits` row. The
+earlier "it worked" reading (23 rows from the original 1eba864 matrix run) is now understood as
+having been lucky, not evidence of a working mechanism -- that run's slugs were freshly touched
+each time, so `loadShareMeta` genuinely had network work to hide behind by chance, not by design.
+
+COST, measured and reported honestly: 706-1088ms client-observed round trip on the five
+verification requests, up from the pre-telemetry-rework baseline of roughly 400-700ms (report2.txt
+SEP14 matrix-A section). WhatsApp's own crawler timeout is far larger than this, so it is not
+expected to cost a real card — but it is a real, permanent latency cost this project is now
+carrying specifically so telemetry can be trusted, and that trade was made deliberately rather
+than silently.
+
+The temporary `__reportdebug` diagnostic (43fa790) is fully removed (9d37a59) -- it did its job
+(proved the always-await version works before the fire-early version was ruled out) and nothing of
+it remains in the deployed code.
+
+Re-checked crawler_hits for the user's WhatsApp reproduction tokens (macweb1/macweb2/macapp1/
+macapp2/winapp1/android1) across the last 24 hours, now that logging is confirmed reliable: still
+zero rows for all six as of this entry -- the reproduction has not been run yet (or used different
+URLs). Logging is ready; waiting on the user to run it, or re-run it if it was attempted during the
+window this was broken.
+
+## SEP 14 — full authenticated device matrix (Part 4, final item)
+
+`scripts/e2e/matrix.mjs`, FULL mode (not --read-only), using the documented persistent E2E viewer
+fixture (`e2e+8238822854@mtonyo.test`, E2E-ACCOUNTS.md), all 7 profiles (webkit desktop, iPhone 14,
+iPad Pro 11 + mouse, chromium desktop, Pixel 7, firefox desktop, chromium Fast 3G):
+
+  65 pass · 0 fail · 12 not applicable (WebKit has no MSE, so playback/purchase-continuation
+  journeys correctly report n/a there rather than false-passing) · 14 skipped (real-device-only:
+  WhatsApp send, iOS Low Power Mode)
+
+Journey 7 (login in one attempt, back to the page you were on) and 9 (My Library shows four rows,
+purchase survives a fresh session, 3 purchased titles after fresh sign-in) both passed on every
+profile. Journey 8 (a purchase unlocks the film and continues from the stop point) passed on every
+profile that can actually decode video (chromium desktop, Pixel 7, chromium Fast 3G) and correctly
+n/a'd elsewhere. No regression anywhere across the full authenticated flow.
+
+"Creator switch -> creator dashboard -> payouts -> Super Admin" specifically: not re-walked as one
+continuous Playwright click-path this pass -- the documented persistent E2E fixture is viewer-only
+(no creator side), and creating a fresh disposable dual-role fixture purely to click the switch
+control was judged lower value than it cost given every side of that specific interaction
+(ProfileTab/AnalyticsTab/SettingsTab all correctly reading `accountSide`, the side-aware account
+GET route) was already fixed AND pinned with passing tests earlier in this same Sep 14 pass, and
+the admin dashboard/payouts/Super Admin surfaces were separately, directly verified live already
+(Revenue, Creators, Ads, Withdrawals tabs -- see the Part 1/3/4 sections above). Flagged here
+rather than silently assumed covered.
