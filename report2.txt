@@ -1200,3 +1200,174 @@ committed alongside this entry; the essentials:
 
   HANDED TO THE CLIENT-SIDE REPRODUCTION (C, step B of the brief): the exact URLs and steps are
   in the chat hand-off and in CLIENT-REPORT.md's Sep 14 section once the run is done.
+
+
+## SEP 14 FEEDBACK — Milestone 2 close-out review (4 parts)
+
+Client's final pre-Milestone-2 review, sent as four parts. Diagnosed and fixed everything not
+requiring the client's own decision; two items are explicitly held for their answer (see FINAL
+STATUS at the end of this section).
+
+### PART 1 — Revenue split single source of truth
+
+FOUND, live, before any change: the global split was 65% (not 70%), changed 2026-09-14 04:39:17
+UTC by admin@gmail.com via the Revenue & Splits page's Save button, and never restored. This is
+what produced the "different pages show different splits" symptom — not a sync bug alone, a real
+value change plus at least one real display gap.
+
+ROOT CAUSE of "Creator Management shows creators at 70%" specifically: admin/CreatorsTab.jsx
+fetched platform settings without refetchOnFocus, unlike OverviewTab and RevenueTab (both fixed
+Sep 09) — a tab already open across the live 70->65 change kept showing 70 specifically there.
+FIXED: added refetchOnFocus: true (8acde54).
+
+ROOT CAUSE of "31 creators on some Super Admin pages, 32 on Creator Management": GET
+/api/admin/overview counts profiles where role = 'creator'; GET /api/admin/creators joined
+profiles to creator_profiles with no role filter at all. The one row present in the join but
+absent from the role count, found live: waqas56jb@gmail.com, promoted to sub_admin and
+suspended, with a leftover creator_profiles row from earlier internal testing — listed as an
+active creator to manage. FIXED: /api/admin/creators now filters p.role = 'creator' too,
+matching the definition used everywhere else in the codebase (b6612d0).
+
+Backend mechanism the client asked for ("global split controls ALL NEW transactions") was already
+correctly centralized before this pass — splitPercentFor() reads the live platform_settings row
+on every payment/ad-impression settlement, not a cached or hardcoded number; historical rows keep
+split_percent written at settlement time; per-creator overrides via
+creator_profiles.revenue_split_percent are untouched. What was inconsistent was DISPLAY staleness
+(now fixed) and the live VALUE itself (held for the client — see FINAL STATUS).
+
+### PART 2 — Viewer/Creator separation, account counts, test data
+
+FIXED — Creator Analytics carrying viewer metrics: GET /api/account/analytics used to always
+compute AND return the caller's own purchase history (viewer: {...}) even on the side=creator
+response — "two questions, one page" was the deliberate original design. Restructured so the
+viewer half is computed only when it is the half being returned (creator branch now answers
+viewer: null, and no longer runs three purchase-history queries it doesn't use); AnalyticsTab.jsx's
+viewer stat-grid and "What you have bought" panel, which rendered unconditionally before, are now
+gated on !isCreator — mutually exclusive with the creator block, both keyed off the server's own
+role (758270e).
+
+FIXED — two more creator-wording leaks onto a dual-role account's Watch side, both named by the
+client with the exact string:
+  - ProfileTab.jsx's bio placeholder read raw isCreator (capability) instead of the file's own
+    showCreatorFields (capability AND the Create side actually open) — every other creator-only
+    field in that same file already used the side-aware flag; this one line was missed when that
+    fix landed. "Tell people what you make and why they should pay for it." showed on the Watch
+    side.
+  - SettingsTab.jsx's "Email me about my account" description named "Approvals, rejections,
+    payouts" unconditionally, for every account. Worded to the side actually open, same
+    showCreatorFields pattern (a19c808).
+
+FOUND, "31 vs 32 creators": explained and fixed under Part 1 above (same root cause).
+
+FOUND, test/demo data footprint (read-only survey, nothing deleted yet — pending the cleanup
+method below): 34 accounts under @mtonyo.test (the smoke.js/probe CLI tooling's own fixture
+domain — most already is_demo=true and correctly hidden from public counts; one exception,
+probe+<ts>@mtonyo.test, is NOT flagged is_demo), 37 accounts flagged is_demo=true in total, 10
+accounts with "waqas" in the name/email (developer/admin accounts from building this platform —
+most are real, in-use admin/sub_admin logins, e.g. the account this session's own userEmail
+belongs to; exactly ONE is genuinely orphaned junk: waqas56jb@gmail.com, suspended sub_admin with
+a leftover creator_profiles row, the exact account behind the 31-vs-32 count bug above), 16 videos
+with "test"/"smoke" in the title, 97 notifications matching the same. No "Smoke Creator"/"Smoke
+Viewer" DISPLAY NAME accounts found under that literal string — the actual smoke-test fixtures use
+creator.<stamp>@mtonyo.test / viewer.<stamp>@mtonyo.test and a "Smoke Creator"/"Smoke Viewer"
+full_name, correctly flagged is_demo=true already.
+
+NOT YET ACTIONED — a safe cleanup method. Per this project's own standing rule (never raw DB writes
+for anything with a real admin path; established across every prior pass), deletion of accounts is
+exactly the kind of hard-to-reverse action that needs the client's sign-off on the METHOD before it
+runs, even though most of what would be removed is unambiguously disposable. Proposed in the chat
+hand-off to the client rather than executed silently.
+
+### PART 3 — Desktop WhatsApp sharing (4th report), financial wording
+
+RAN LIVE, as instructed, using a genuinely fresh video not touched in any earlier matrix run this
+project (studio-session-track-4, first published before this pass, never previously shared or
+tested against) plus the fresh-URL discipline (?v=<timestamp> / the real Share button's own
+?s=<sourceKey>) that defeats WhatsApp's per-URL cache regardless. Two things verified separately,
+per the client's own request to separate "what's controlled by our metadata vs WhatsApp":
+
+  OUR SIDE (fully verifiable, and verified): the real Share button, clicked via the actual UI (not
+  a simulated request), builds whatsapp://send?text=https://video-monetization-platform-
+  chi.vercel.app/watch/studio-session-track-4?s=b33b0a6072 — the real canonical watch URL with the
+  real source-key, exactly as intended. The desktop acceptance matrix
+  (scripts/e2e/desktop-share-matrix.mjs, evidence committed as scripts/e2e/evidence/
+  desktop-share-matrix-2026-09-14-fresh-video-studio-session-track-4.txt) then ran all 9 request
+  shapes — WhatsApp's three crawler UAs, a full CORS preflight+GET from Origin: web.whatsapp.com,
+  Electron/Desktop UAs with and without Sec-Fetch, bare GETs, a real navigation — against that
+  exact video, and the og:image through three origins: ALL CHECKS PASSED. Real title, real creator
+  name, absolute same-origin JPEG with CORS, canonical URL, every tag inside the first ~700 bytes,
+  no redirects.
+
+  NOT OURS TO VERIFY (a genuine limitation, stated plainly rather than glossed over): I have no
+  phone or WhatsApp account to receive a real message with, so I cannot personally reproduce
+  "recipient sees the card" the way a person can — that last hop is WhatsApp's own crawler actually
+  fetching the URL and its own app actually rendering what it fetched, which is Meta's
+  infrastructure, not ours, and the capture-everything logging shipped 2026-09-14 (commit 1eba864)
+  exists specifically so that when it happens on a real device, the request WhatsApp actually sent
+  — or the fact that no such request ever arrived — is now on record rather than invisible. If the
+  client's own MacBook reproduction (steps already handed over in chat) shows the card failing to
+  appear, crawl-hits.mjs read against that exact window will show definitively whether the failure
+  is "WhatsApp never asked us" (nothing to fix here; it is the compose/send race already
+  documented) or "WhatsApp asked and we answered wrong somehow" (which the automated matrix above
+  says is not happening for any request shape tested, but the log would catch it if a shape
+  emerges that wasn't anticipated).
+
+FIXED — "Paid" vs "Earned" wording, the exact Juma example given. Two real bugs, not one:
+  1. admin/CreatorsTab.jsx, RevenueTab.jsx, AdsTab.jsx all labelled a sum of earnings.creator_tzs
+     (accrued — nothing about a completed payout has happened to it) "Paid to Creators".
+     Withdrawals already correctly sums real completed payouts under the same word. For Juma
+     specifically: lifetime accrued = TZS 140,748 (matches the client's own number exactly),
+     actually paid = TZS 1,000 (his one real, completed withdrawal — matches Withdrawals'
+     platform-wide total exactly, since it is the only paid withdrawal in the whole system right
+     now). Relabelled "Earned by Creators" everywhere it is accrued (8acde54).
+  2. A second, separate bug found while verifying the first: earnings.routes.js's balanceFor()
+     summed amount_tzs for EVERY row matching status in ('paid','pending') into the paid field
+     with no per-row filter — so a creator holding a pending withdrawal request had it counted as
+     already paid (overstating "Already paid out" on their own dashboard) and, because available
+     then subtracted pending again on top of that, double-subtracted (understating "Available to
+     withdraw"). It did not affect Juma's own numbers (he has no pending withdrawal, verified
+     against his real row), which is exactly why it survived: no account tested so far happened to
+     have a pending request at the same time as a paid one. Fixed the SQL to filter per-row like
+     pending already did (b6612d0).
+
+### PART 4 — Creator Capital, Free + Ads, ad controls, dynamic wording, regression
+
+CONFIRMED, no change needed — Creator Capital already matches the brief exactly: AirPay stays the
+party deciding eligibility/approval/terms; monthsWithEarnings >= monthsRequired (distinct calendar
+months with a settled earnings row, default 6) automatically unlocks the "Request AirPay Review"
+button client-side AND is re-verified server-side on the actual request (never trusts whatever the
+client last fetched); the transition to approved is exclusively an admin/AirPay action with no
+automatic path — read the whole route (server/src/modules/capital.routes.js) to confirm this end
+to end.
+
+CONFIRMED, verified live with fresh evidence — the ad countdown. Polled .ad-stage's data-ad-state
+and the skip button's own text every 300ms against a real production pre-roll:
+  4872ms   ad-stage mounts, state=loading
+  10313ms  STILL state=loading, skip button already reads "Skip in 5" — frozen, not counting
+  10627ms  state flips to playing (genuine airtime detected)
+  12643ms  2 real seconds after airtime started: "Skip in 3" — exactly 5-2, counting from
+           airtime, not from mount (mount-to-here was ~7.8s of wall clock)
+The ~5.7s the ad spent loading/black cost the countdown nothing — it only ever drains once
+playing. No change needed; this was already correct (Sep 07 pass) and remains so.
+
+CONFIRMED — no hardcoded 70/30 text anywhere in the three frontends. Every surface that shows the
+split reads a live value (creatorSplitPercent, defaultSplitPercent, splitPercent) with a ?? 70
+fallback used only for a not-yet-loaded/error state, never as the displayed number itself. The
+remaining literal "70/30" strings in the repo are historical code comments describing the OLD
+design, not rendered text (client/src/data/copy.js:309, client/src/components/dashboard/
+DonutChart.jsx:61, admin/src/styles/global.css:204) — confirmed by reading each.
+
+STILL TO DO this pass: the ad-management regression (pre/mid/post-roll, timing, skip, campaign
+reporting) and the full six-profile device regression matrix (iPhone/iPad Safari, Android, desktop
+Safari/Chrome: login -> viewer -> creator switch -> preview -> share -> Free+Ads -> library/resume
+-> creator dashboard -> payouts -> Super Admin) — both underway, not yet complete as of this
+report2.txt entry.
+
+### FINAL STATUS — two items held for the client's own decision, not guessed
+
+1. THE LIVE REVENUE SPLIT VALUE. Currently 65%, real, live, applying to every transaction since
+   2026-09-14 04:39 UTC. Every display surface now shows this consistently (Part 1 fixes above),
+   but the NUMBER itself was not touched either way — restoring it to 70% or confirming 65% is a
+   business decision, not a bug fix, and real money is at stake either way.
+2. THE TEST/DEMO DATA CLEANUP METHOD. Survey above; nothing deleted. Awaiting the client's
+   confirmation of scope before any account, video, or notification is removed.
