@@ -342,6 +342,16 @@ router.post(
       ms: b.ms,
       cache: b.cache,
       region: b.region,
+      // The whole request shape (migration 039) — see crawlerLog.js for why
+      // nothing is filtered out any more.
+      method: b.method,
+      doc: b.doc,
+      ip: b.ip,
+      country: b.country,
+      city: b.city,
+      headers: b.headers && typeof b.headers === 'object' ? b.headers : null,
+      build: b.build,
+      decision: b.decision,
     })
     // Answer immediately; the caller must never wait on telemetry.
     res.status(202).end()

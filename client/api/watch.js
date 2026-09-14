@@ -42,12 +42,13 @@ import {
   escapeAttr,
   isLinkPreviewBot,
   isUnfurlFetch,
+  unfurlReason,
   setPublicCors,
   handlePreflight,
   previewCopy,
 } from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
-import { startReport, settleReport } from './_lib/report.js'
+import { reportCrawl, settleReport } from './_lib/report.js'
 
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
@@ -283,8 +284,22 @@ export default async function handler(req, res) {
 
   /* Before anything else, and before any share-meta lookup: a preflight is a
      question about permissions, and answering it with the document's work
-     spends a round trip on a request that renders nothing. */
-  if (handlePreflight(req, res)) return
+     spends a round trip on a request that renders nothing. Logged all the
+     same — a preflight arriving from web.whatsapp.com is itself the evidence
+     that a browser-side preview fetch is being attempted. */
+  if (String(req.method || 'GET').toUpperCase() === 'OPTIONS') {
+    const pending = reportCrawl(API, req, {
+      asset: 'html',
+      slug: parseSlug(req),
+      doc: 'preflight',
+      status: 204,
+      ms: Date.now() - started,
+      decision: 'preflight',
+    })
+    handlePreflight(req, res)
+    await settleReport(pending)
+    return
+  }
 
   /* Every path below is public and readable cross-origin — including the two
      that used to answer without it, the fallback document and any error. */
@@ -294,8 +309,11 @@ export default async function handler(req, res) {
   const ua = req.headers['user-agent'] || ''
   const crawler = detectCrawler(ua)
   const previewBot = isLinkPreviewBot(ua) || isUnfurlFetch(req)
-
-  const pending = startReport(API, req, { asset: 'html', slug })
+  /* The rule that chose the branch, and (below) where the title came from —
+     recorded with every hit so a desktop request that lands in the wrong
+     branch names the branch, and a slug-derived title names its cause. */
+  const decision = unfurlReason(req)
+  const metaFromMemo = Boolean(slug && memoedShareMeta(slug))
 
   /**
    * Both race for the real title. The crawler is simply allowed to wait longer.
@@ -328,6 +346,9 @@ export default async function handler(req, res) {
     : 'WATCH FREE PREVIEW · MTONYO+'
   const canonical = slug ? `${WEB}/watch/${slug}` : WEB
   const cardUrl = ogCardUrl(slug, meta?.sourceKey)
+  const why = `${decision} meta=${metaFromMemo ? 'memo' : meta ? 'api' : 'miss'}`
+  const report = (doc) =>
+    reportCrawl(API, req, { asset: 'html', slug, doc, status: 200, ms: Date.now() - started, decision: why })
 
   if (previewBot) {
     const copy = previewCopy({ title, creator: { name: creator } })
@@ -343,6 +364,7 @@ export default async function handler(req, res) {
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'crawler')
+    const pending = report('crawler')
     res.status(200)
     res.end(html)
     console.log(
@@ -381,6 +403,7 @@ export default async function handler(req, res) {
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'fallback')
+    const pending = report('fallback')
     res.status(200)
     res.end(fallbackHtml({ slug }))
     await settleReport(pending)
@@ -408,6 +431,7 @@ export default async function handler(req, res) {
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)
   res.setHeader('X-Doc', 'shell')
+  const pending = report('shell')
   res.status(200)
   res.end(html)
 

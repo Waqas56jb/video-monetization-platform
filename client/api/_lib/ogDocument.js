@@ -53,15 +53,31 @@ function looksLikeARealNavigationRegardlessOfSecFetch(req) {
   return accept.toLowerCase() === 'text/html' && upgrade === '1'
 }
 
-export function isUnfurlFetch(req) {
+/**
+ * WHY a request is or is not treated as an unfurl fetch, as one word — so the
+ * crawl log can record the rule that fired rather than only the outcome, and
+ * a real desktop request that lands in the wrong branch names the branch.
+ *
+ *   bot-ua              the User-Agent is a known preview crawler
+ *   real-navigation     Accept prefers text/html AND Upgrade-Insecure-Requests
+ *   sec-fetch-navigate  Sec-Fetch-Dest: document or Sec-Fetch-Mode: navigate
+ *   sec-fetch-fetch     Sec-Fetch-Mode: cors or Sec-Fetch-Dest: empty
+ *   no-signal           none of the above — served the shell
+ */
+export function unfurlReason(req) {
   const ua = req.headers['user-agent'] || ''
-  if (isLinkPreviewBot(ua)) return true
-  if (looksLikeARealNavigationRegardlessOfSecFetch(req)) return false
+  if (isLinkPreviewBot(ua)) return 'bot-ua'
+  if (looksLikeARealNavigationRegardlessOfSecFetch(req)) return 'real-navigation'
   const dest = String(req.headers['sec-fetch-dest'] || '')
   const mode = String(req.headers['sec-fetch-mode'] || '')
-  if (dest === 'document' || mode === 'navigate') return false
-  if (mode === 'cors' || dest === 'empty') return true
-  return false
+  if (dest === 'document' || mode === 'navigate') return 'sec-fetch-navigate'
+  if (mode === 'cors' || dest === 'empty') return 'sec-fetch-fetch'
+  return 'no-signal'
+}
+
+export function isUnfurlFetch(req) {
+  const why = unfurlReason(req)
+  return why === 'bot-ua' || why === 'sec-fetch-fetch'
 }
 
 /* --------------------------------------------------------------- CORS ----

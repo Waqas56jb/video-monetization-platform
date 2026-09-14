@@ -9,6 +9,7 @@
 import { apiOrigin } from './_lib/apiOrigin.js'
 import { SHARE_CARD_BUCKET, readCardPath } from './_lib/shareCardObjectPath.js'
 import { setPublicCors, handlePreflight } from './_lib/ogDocument.js'
+import { reportCrawl, settleReport } from './_lib/report.js'
 
 /**
  * How long the bucket leg is trusted after it starts refusing.
@@ -73,16 +74,35 @@ async function fetchJpeg(url, ms) {
 }
 
 export default async function handler(req, res) {
+  const started = Date.now()
+  const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
+  const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
+  /**
+   * Every answer this route gives is reported to the crawl log — including
+   * the fast path that serves the card straight from the bucket. That path
+   * never touches the API, so until now a poster fetch that succeeded this
+   * way left no row anywhere: the image half of the chain was invisible
+   * precisely when it worked. Started just before the bytes go out, awaited
+   * just after, for the reason report.js gives.
+   */
+  const report = (doc, status, cache) =>
+    reportCrawl(API, req, { asset: 'image', slug: slug || raw.slice(0, 200), doc, status, ms: Date.now() - started, cache })
+
   /* The poster is fetched cross-origin by browser-based link previews, so it
      needs a complete preflight answer as much as the document does — and its
      404 and 502 paths were answering with no CORS headers at all. */
-  if (handlePreflight(req, res)) return
+  if (String(req.method || 'GET').toUpperCase() === 'OPTIONS') {
+    const pending = report('preflight', 204)
+    handlePreflight(req, res)
+    await settleReport(pending)
+    return
+  }
   setPublicCors(res)
 
-  const raw = String((req.query && (req.query.slug || req.query.videoId)) || '')
-  const slug = raw.replace(/\.jpe?g$/i, '').replace(/^\/og\//, '').replace(/\/$/, '')
   if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    const pending = report('bad-slug', 404)
     res.status(404).end()
+    await settleReport(pending)
     return
   }
 
@@ -106,7 +126,9 @@ export default async function handler(req, res) {
       const fromCdn = await fetchJpeg(cdn, BUCKET_TIMEOUT_MS)
       if (fromCdn) {
         noteBucket(true)
+        const pending = report('cdn', 200, 'bucket-hit')
         sendJpeg(res, fromCdn, { 'X-Share-Card': 'cdn', 'X-Bucket': 'hit' })
+        await settleReport(pending)
         return
       }
       /* A non-2xx returns null rather than throwing, so this is the missing
@@ -123,22 +145,36 @@ export default async function handler(req, res) {
   const query = String(req.url || '').includes('?') ? `?${String(req.url).split('?')[1]}` : ''
   const target = `${API}/api/share-card/${encodeURIComponent(slug)}.jpg${query}`
   try {
-    const upstream = await fetch(target, { signal: AbortSignal.timeout(8000) })
+    /* The API's own route records image hits too. Told that this one is
+       proxied, it stands down — this route reports it, with the real
+       User-Agent and the real client address, which the API never sees. */
+    const upstream = await fetch(target, {
+      headers: { 'x-mtonyo-proxy': 'og' },
+      signal: AbortSignal.timeout(8000),
+    })
     if (!upstream.ok) {
+      const pending = report('api', upstream.status, bucketState)
       res.status(upstream.status).end()
+      await settleReport(pending)
       return
     }
     const buf = Buffer.from(await upstream.arrayBuffer())
     if (buf.length < 1000) {
+      const pending = report('api', 502, bucketState)
       res.status(502).end()
+      await settleReport(pending)
       return
     }
     const tag = upstream.headers.get('x-share-card')
     /* X-Bucket says why the fast leg did not serve this — 'skipped' means the
        breaker is open, which is how you tell "no key yet" from "key landed but
        this slug is not uploaded". */
+    const pending = report('api', 200, bucketState)
     sendJpeg(res, buf, { 'X-Share-Card': tag || 'api', 'X-Bucket': bucketState })
+    await settleReport(pending)
   } catch {
+    const pending = report('api', 502, 'error')
     res.status(502).end()
+    await settleReport(pending)
   }
 }

@@ -67,9 +67,15 @@ export async function handleShareCard(req, res) {
     /* table may not exist on a fresh deploy */
   }
 
+  /* When the frontend's /og/card proxy is the caller it reports the hit
+     itself, with the crawler's real User-Agent and address — this route only
+     ever sees the proxy's. Recording both would count one fetch twice. */
+  const proxied = Boolean(req.get('x-mtonyo-proxy'))
+
   const jpeg = asBuffer(row?.jpeg)
   if (jpeg && jpeg.length > 1000) {
     sendJpeg(res, jpeg, { built: true, sourceKey: row.source_key, isHead })
+    if (proxied) return
     recordCrawlerHit({
       asset: 'image',
       slug,
@@ -86,6 +92,7 @@ export async function handleShareCard(req, res) {
   queueBuild(slug)
   const fallback = await getFallbackShareCard()
   sendJpeg(res, fallback, { built: false, isHead })
+  if (proxied) return
   recordCrawlerHit({
     asset: 'image',
     slug,
