@@ -48,7 +48,7 @@ import {
   previewCopy,
 } from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
-import { reportCrawl, settleReport } from './_lib/report.js'
+import { reportCrawl, settleReport, __lastReportOutcome } from './_lib/report.js'
 
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
@@ -365,6 +365,13 @@ export default async function handler(req, res) {
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'crawler')
     const pending = report('crawler')
+    /* TEMPORARY (2026-09-14): ?__reportdebug=1 awaits the report BEFORE
+       responding, so its outcome can ride out as a header. Remove once the
+       silent-since-~01:05-UTC telemetry gap is found. */
+    if (req.query?.__reportdebug === '1') {
+      await settleReport(pending)
+      res.setHeader('X-Report-Debug', String(__lastReportOutcome))
+    }
     res.status(200)
     res.end(html)
     console.log(

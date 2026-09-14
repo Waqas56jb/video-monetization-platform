@@ -98,10 +98,19 @@ export function captureRequest(req) {
  *   decision  the rule that chose it (see ogDocument.js `unfurlReason`), with
  *             the share-meta source appended for a document
  */
+/**
+ * TEMPORARY (2026-09-14): the last thing this promise resolved with, so a
+ * request carrying `?__reportdebug=1` can expose it via a response header.
+ * Direct POSTs to /api/share/crawl-hit succeed with this exact body shape;
+ * /watch/:slug requests stopped producing rows sometime after ~01:05 UTC
+ * today with no code change to this file since. Remove once found.
+ */
+export let __lastReportOutcome = null
+
 export function reportCrawl(api, req, { asset, slug, doc, status, ms, cache, decision }) {
   try {
     const shape = captureRequest(req)
-    return fetch(`${api}/api/share/crawl-hit`, {
+    const p = fetch(`${api}/api/share/crawl-hit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -119,8 +128,17 @@ export function reportCrawl(api, req, { asset, slug, doc, status, ms, cache, dec
         ...shape,
       }),
       signal: AbortSignal.timeout(CAP_MS),
-    }).catch(() => {})
-  } catch {
+    })
+      .then((r) => {
+        __lastReportOutcome = `ok status=${r.status}`
+        return r
+      })
+      .catch((e) => {
+        __lastReportOutcome = `fetch-rejected: ${e && e.name}: ${e && e.message}`
+      })
+    return p
+  } catch (e) {
+    __lastReportOutcome = `sync-throw: ${e && e.name}: ${e && e.message}`
     // Telemetry is never worth an error on the path it is measuring.
     return Promise.resolve()
   }
