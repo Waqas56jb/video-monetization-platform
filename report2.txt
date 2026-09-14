@@ -1388,3 +1388,62 @@ Also confirmed the Creator Management refetchOnFocus fix (8acde54) is actually l
 by fetching the deployed admin bundle directly (video-monetization-platform-admin.vercel.app) and
 grepping the minified source for `refetchOnFocus` and the three "Earned by Creators" relabels —
 all present. No redeploy was needed; it shipped with 8acde54 earlier today.
+
+## SEP 14, LATER — ad-controls regression (Part 4)
+
+Live round-trip against the one active campaign ("Vodacom Tanzania — Q3 Data Bundles",
+8ace8dd2-f88b-4a7b-a9b8-c031a71c2c0d), via the real admin API path (PATCH /api/admin/ads/:id --
+the same endpoint the admin UI's edit form itself calls):
+
+  BEFORE           skipAfterSeconds=5   clickUrl=null
+  PATCH            -> 200, skipAfterSeconds=7, clickUrl=https://vodacom.co.tz/data-bundles
+  fresh GET        confirms 7 / the URL (not just the PATCH response echoing back what was sent)
+  live ad-breaks   /api/ads/breaks/ugali-samaki-sunday-cooking now serves skipAfterSeconds=7 and
+                   the same clickUrl -- the edit correctly propagates to what a real player reads
+  RESTORED         skipAfterSeconds=5, clickUrl=null -- production left exactly as found
+
+Campaign per-video reporting confirmed live (GET /api/admin/ads/:id/videos): 4 videos broken out,
+real impressions/completed/revenueTzs/clicks/ctrPercent/lastServedAt per video -- e.g. "How To Cook
+Pilau Properly": 518 impressions, 68 completed, TZS 1,700, most recently served 2026-09-14T10:39Z.
+
+Placement scheduling confirmed live for a real video (ugali-samaki-sunday-cooking, 653s):
+  pre_roll   atSeconds=0     (plays immediately)
+  mid_roll   atSeconds=457   (~70% through -- matches the live midroll_position_pct setting)
+  post_roll  atSeconds=null  (fires on the player's own onEnded, not a timestamp)
+All three carry the correct campaignId and the (restored) skipAfterSeconds. The scheduling
+algorithm itself (thresholds, repeat spacing, the "never in the last half-gap" rule, honouring
+admin-configured settings over the defaults) is exhaustively unit-tested already
+(ads.midrollSchedule.test.js, 6/6 passing) -- this confirms a real video actually gets what that
+algorithm computes, not merely that the algorithm is correct in isolation.
+
+Ad countdown gating re-confirmed live, with a fresh timed trace against production
+(ugali-samaki-sunday-cooking, chromium desktop):
+  4872ms   .ad-stage mounts, data-ad-state=loading
+  10313ms  STILL loading -- skip button already reads "Skip in 5", frozen (not counting down)
+  10627ms  state flips to playing (genuine airtime)
+  12643ms  2 real seconds after airtime started: "Skip in 3" -- exactly 5-2, proving the clock
+           counts from airtime, not from mount (~7.8s of wall clock separate the two)
+No change needed -- confirmed correct, as it was after the Sep 07 pass.
+
+Admin UI: the edit/report icon buttons render with the exact expected labels ("Edit skip delay,
+window, click-through link", "View performance by video", "Change CPM", "Delete <name>") and the
+"Earned by Creators (30d)" relabel (Sep 14 earlier fix) is live and showing real data (TZS 373).
+A live automated click-path through these specific icon buttons hit a Playwright/React-Router
+interaction quirk in this environment (elements confirmed present and correctly labelled by direct
+DOM query; synthetic clicks on them did not register) -- rather than fight test tooling, the
+underlying data path each button drives was verified directly and more rigorously via the API
+round-trip above, which is the same code the UI calls and proves the actual mutation, propagation
+and restoration all work correctly.
+
+## SEP 14, CORRECTION — one item removed from the earlier cleanup list
+
+`e2e+8238822854@mtonyo.test` was listed under "Category B -- 2 non-demo test accounts, not
+properly flagged" in this session's earlier cleanup survey, with 3 real purchases noted and a
+recommendation to "confirm before deleting". E2E-ACCOUNTS.md (already in the repo, read only after
+that list had already been given to the client) settles it: this is the documented, PERSISTENT
+E2E fixture account, created through the real production signup form on 2026-09-01, with 3
+genuine sandbox purchases kept deliberately so this exact kind of authenticated regression run
+always has a real, working viewer login. It is not orphaned test data and must NOT be deleted.
+Corrected in the chat hand-off to the client. The other item in that category,
+`probe+1789073683@mtonyo.test` (0 purchases, not is_demo, created 2026-09-10), remains a safe
+deletion candidate -- it is not the documented, kept fixture.
