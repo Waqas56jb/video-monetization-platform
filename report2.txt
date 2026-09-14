@@ -1371,3 +1371,20 @@ report2.txt entry.
    business decision, not a bug fix, and real money is at stake either way.
 2. THE TEST/DEMO DATA CLEANUP METHOD. Survey above; nothing deleted. Awaiting the client's
    confirmation of scope before any account, video, or notification is removed.
+
+## SEP 14, LATER — split restored to 70%, verified on all 5 named surfaces
+
+Executed via the real admin path (PATCH /api/admin/settings, same mechanism the accidental 65%
+change itself used), authenticated as admin@mtonyo.tz. Before: 65. After: 70.
+
+Verified live, fresh requests, immediately after the change:
+  1. Super Admin dashboard (Current Global Split, /api/admin/revenue defaultSplitPercent):  70
+  2. Creator Management  (/api/admin/settings creator_split_percent):                        70
+  3. Revenue & Splits page (/api/admin/revenue defaultSplitPercent):                         70
+  4. Public For Creators page (/api/stats creatorSplitPercent):                              70
+  5. Creator's own "You keep X%" (/api/earnings splitPercent, demo.asha, no override):       70
+
+Also confirmed the Creator Management refetchOnFocus fix (8acde54) is actually live in production
+by fetching the deployed admin bundle directly (video-monetization-platform-admin.vercel.app) and
+grepping the minified source for `refetchOnFocus` and the three "Earned by Creators" relabels —
+all present. No redeploy was needed; it shipped with 8acde54 earlier today.
