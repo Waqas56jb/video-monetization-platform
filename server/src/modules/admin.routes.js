@@ -926,12 +926,25 @@ router.get(
   '/creators',
   requireAdmin(),
   asyncHandler(async (_req, res) => {
+    /**
+     * `role = 'creator'` too, not merely "has a creator_profiles row".
+     *
+     * The two used to disagree by exactly one: `/overview`'s count (which
+     * DOES filter on role) said 31, this list (which did not) said 32. The
+     * odd one out, traced live, was an internal test account promoted to
+     * sub_admin and suspended, whose leftover creator_profiles row this join
+     * alone could not see past -- it listed a suspended staff account as an
+     * active creator to manage. `role` is the definition used everywhere
+     * else a "how many creators" figure is computed (stats.routes.js,
+     * staff.routes.js, demo.js) -- this is the one place it was not.
+     */
     const rows = await many(
       `select p.id, p.full_name, p.email, p.avatar_url, p.status,
               cp.display_name, cp.location, cp.verified, cp.revenue_split_percent, cp.followers,
               (select count(*)::int from videos v where v.creator_id = p.id and v.deleted_at is null) as videos,
               (select coalesce(sum(creator_tzs),0)::int from earnings e where e.creator_id = p.id) as lifetime_tzs
          from profiles p join creator_profiles cp on cp.user_id = p.id
+        where p.role = 'creator'
         order by lifetime_tzs desc`
     )
     res.json({ creators: rows })

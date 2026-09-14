@@ -52,8 +52,18 @@ async function balanceFor(creatorId) {
        from earnings where creator_id = $1`,
     [creatorId]
   )
+  /**
+   * `paid` used to sum every row matched by `status in ('paid','pending')`
+   * with no further filter — so a creator with a pending request had it
+   * counted as already paid AND as pending, both: "Already paid out"
+   * overstated by the pending amount, and "Available to withdraw"
+   * (`lifetime - paid - pending` below) double-subtracted it. Silent unless
+   * a creator has a pending withdrawal, which is exactly why report2.txt's
+   * SEP14 audit found it only by reading this query character by character,
+   * not by a number looking obviously wrong on any one account tested so far.
+   */
   const paidOut = await one(
-    `select coalesce(sum(amount_tzs),0)::int as paid,
+    `select coalesce(sum(case when status = 'paid'    then amount_tzs else 0 end),0)::int as paid,
             coalesce(sum(case when status = 'pending' then amount_tzs else 0 end),0)::int as pending
        from withdrawals where creator_id = $1 and status in ('paid','pending')`,
     [creatorId]
