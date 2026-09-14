@@ -1507,3 +1507,21 @@ visibly playing — never merely loading.
 
 **Everything above is pushed to the live site and re-verified there after deploy** — see
 `report2.txt` for the complete technical trail, command by command.
+
+---
+
+## Sep 14 feedback — Milestone 2 close-out review
+
+### 1. The revenue split
+
+The global split was accidentally changed to 65% this morning (2026-09-14, ~04:39 UTC) via the
+Revenue & Splits page, and had not been changed back — that was the actual cause of different
+pages showing different numbers, not a display bug on its own. It has now been restored to 70%,
+confirmed live on all five surfaces you listed (Super Admin dashboard, Creator Management, Revenue
+& Splits, the public For Creators page, and a creator's own "You keep X%" text). No further action
+needed from you on this. One real display bug was found and fixed along the way — Creator
+Management's own page didn't refresh itself when the split changed elsewhere, unlike the other
+admin pages — so this can't recur the same way again.
+
+*(This section will be completed with the remaining Sep 14 items — the ad-controls regression, the
+device regression, and the desktop WhatsApp reproduction — once each finishes.)*
