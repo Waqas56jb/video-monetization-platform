@@ -22,6 +22,27 @@ test('creator-only profile fields require both capability and the Create side', 
   assert.match(src, /const \{ reload: reloadAuth, isCreator, accountSide \} = useAuth\(\)/)
 })
 
+/**
+ * The bio placeholder was the one place this leak survived the
+ * showCreatorFields fix above: it read raw `isCreator` in a ternary, not a
+ * `{showCreatorFields && (...)}` block, so the doesNotMatch check for that
+ * JSX pattern never caught it. A dual-role account's Watch-side Profile
+ * showed "Tell people what you make and why they should pay for it" -- the
+ * client's own Sep 14 report named this exact string on the exact page it
+ * should not appear on (report2.txt SEP14).
+ */
+test('the bio placeholder is side-aware too, not just capability-aware', () => {
+  assert.match(
+    src,
+    /placeholder=\{\s*showCreatorFields\s*\?\s*'Tell people what you make and why they should pay for it\.'/
+  )
+  assert.doesNotMatch(
+    src,
+    /placeholder=\{\s*isCreator\s*\?/,
+    'the bio placeholder must not branch on raw capability'
+  )
+})
+
 test('the payout panel and the verified-creator note are inside a gated block', () => {
   const firstGate = src.slice(src.indexOf('{showCreatorFields && ('), src.indexOf('Social links'))
   assert.match(firstGate, /Creator name/)

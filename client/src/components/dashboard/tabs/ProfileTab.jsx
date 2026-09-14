@@ -250,7 +250,7 @@ export default function ProfileTab() {
                 rows={4}
                 maxLength={MAX_BIO}
                 placeholder={
-                  isCreator
+                  showCreatorFields
                     ? 'Tell people what you make and why they should pay for it.'
                     : 'A line or two about you.'
                 }

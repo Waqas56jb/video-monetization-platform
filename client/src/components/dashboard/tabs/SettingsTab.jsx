@@ -18,6 +18,10 @@ import { useToast } from '@/context/ToastContext'
  * people change things they did not mean to.
  */
 export default function SettingsTab() {
+  const { isCreator, accountSide } = useAuth()
+  /** Same rule as ProfileTab.jsx's `showCreatorFields`: capability alone is
+      not "currently on the Create side" — see NotificationsPanel below. */
+  const showCreatorFields = isCreator && accountSide === 'creator'
   const { data, loading, error, reload } = useApi(() => api.account.get(), [])
 
   if (loading) return <Skeleton rows={5} />
@@ -30,7 +34,11 @@ export default function SettingsTab() {
     <div>
       <div className="two-col">
         <PasswordPanel />
-        <NotificationsPanel user={data.user} onSaved={() => reload({ quiet: true })} />
+        <NotificationsPanel
+          user={data.user}
+          showCreatorFields={showCreatorFields}
+          onSaved={() => reload({ quiet: true })}
+        />
       </div>
       <SessionPanel user={data.user} />
       <DangerPanel />
@@ -137,7 +145,7 @@ function PasswordPanel() {
 
 /* ------------------------------------------------------- notifications */
 
-function NotificationsPanel({ user, onSaved }) {
+function NotificationsPanel({ user, showCreatorFields, onSaved }) {
   const showToast = useToast()
   const [prefs, setPrefs] = useState({
     emailAnnouncements: user?.preferences?.emailAnnouncements ?? true,
@@ -167,11 +175,20 @@ function NotificationsPanel({ user, onSaved }) {
     }
   }
 
+  /**
+   * Creator wording ("Approvals, rejections, payouts") describing what this
+   * one email toggle covers was shown even on a pure viewer account, and on
+   * a dual-role account's Watch-side visit -- neither ever experiences an
+   * approval, a rejection or a payout. Worded to the side actually open,
+   * same rule as ProfileTab.jsx's showCreatorFields (report2.txt SEP14).
+   */
   const ROWS = [
     [
       'emailAccountNews',
       'Email me about my account',
-      'Approvals, rejections, payouts, and password changes.',
+      showCreatorFields
+        ? 'Approvals, rejections, payouts, and password changes.'
+        : 'Password changes and important account activity.',
     ],
     [
       'emailAnnouncements',
