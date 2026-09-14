@@ -18,15 +18,30 @@
  * app; a fetch from Menlo Park is Meta's crawler), which document we chose
  * and the precise rule that chose it, and how long we took.
  *
- * WHEN IT IS SENT. A serverless function is frozen the instant its response
- * ends, and a POST still in flight is killed along with it — measured against
- * production, fire-and-forget lost 30% of document hits and half the poster
- * hits. So the report is started immediately BEFORE `res.end()`, once every
- * fact about the response is known, and awaited immediately after. The
- * crawler waits for nothing: the bytes go out the same tick the POST does.
+ * WHEN IT IS SENT, AND WHY THIS TOOK THREE TRIES TO GET RIGHT. A Vercel Node
+ * function is frozen within a beat of its response finishing, not when the
+ * async handler eventually returns — so a fetch merely STARTED before the
+ * response, then awaited after, only survives if something else already ran
+ * long enough in between to give it a head start. The version before this one
+ * tried exactly that (fire early, ride `loadShareMeta`'s own network call for
+ * cover) and measured as reliable in one live check — then failed completely
+ * on the very next one, because that "cover" evaporates the instant
+ * `loadShareMeta`'s in-memory memo is warm, which it very often is on a
+ * function instance Vercel has kept alive: no network call, no delay, no
+ * cover, same race as fire-and-forget. Relying on an incidental delay
+ * elsewhere in the handler is not a mechanism, it is luck.
+ *
+ * So this is now awaited BEFORE the caller responds, every time, not merely
+ * started before and hoped for after. That costs the crawler a real, if
+ * small, slice of latency on every request — CAP_MS below bounds the worst
+ * case tightly enough that it is not a second `loadShareMeta`-sized wait.
+ * Reliability was chosen over shaving that slice off, because the entire
+ * point of this file is to be trustworthy evidence about what actually
+ * fetched a page — a log that is fast and sometimes wrong is worse than a
+ * log that is slightly slower and right.
  */
 
-const CAP_MS = 1500
+const CAP_MS = 700
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
 /**
@@ -90,7 +105,9 @@ export function captureRequest(req) {
 }
 
 /**
- * Start the report. Returns the in-flight promise for `settleReport`.
+ * Start the report. Returns the promise `settleReport` must be awaited on
+ * BEFORE the caller responds — see the file comment above for why "before"
+ * rather than "after" is not a stylistic choice here.
  *
  *   asset     'html' | 'image'
  *   doc       what was served: crawler | shell | fallback | preflight |
@@ -98,19 +115,10 @@ export function captureRequest(req) {
  *   decision  the rule that chose it (see ogDocument.js `unfurlReason`), with
  *             the share-meta source appended for a document
  */
-/**
- * TEMPORARY (2026-09-14): the last thing this promise resolved with, so a
- * request carrying `?__reportdebug=1` can expose it via a response header.
- * Direct POSTs to /api/share/crawl-hit succeed with this exact body shape;
- * /watch/:slug requests stopped producing rows sometime after ~01:05 UTC
- * today with no code change to this file since. Remove once found.
- */
-export let __lastReportOutcome = null
-
 export function reportCrawl(api, req, { asset, slug, doc, status, ms, cache, decision }) {
   try {
     const shape = captureRequest(req)
-    const p = fetch(`${api}/api/share/crawl-hit`, {
+    return fetch(`${api}/api/share/crawl-hit`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -128,17 +136,8 @@ export function reportCrawl(api, req, { asset, slug, doc, status, ms, cache, dec
         ...shape,
       }),
       signal: AbortSignal.timeout(CAP_MS),
-    })
-      .then((r) => {
-        __lastReportOutcome = `ok status=${r.status}`
-        return r
-      })
-      .catch((e) => {
-        __lastReportOutcome = `fetch-rejected: ${e && e.name}: ${e && e.message}`
-      })
-    return p
-  } catch (e) {
-    __lastReportOutcome = `sync-throw: ${e && e.name}: ${e && e.message}`
+    }).catch(() => {})
+  } catch {
     // Telemetry is never worth an error on the path it is measuring.
     return Promise.resolve()
   }

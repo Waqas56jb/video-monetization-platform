@@ -48,7 +48,7 @@ import {
   previewCopy,
 } from './_lib/ogDocument.js'
 import { apiOrigin, publicWebOrigin } from './_lib/apiOrigin.js'
-import { reportCrawl, settleReport, __lastReportOutcome } from './_lib/report.js'
+import { reportCrawl, settleReport } from './_lib/report.js'
 
 const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7)
 
@@ -314,36 +314,16 @@ export default async function handler(req, res) {
      branch names the branch, and a slug-derived title names its cause. */
   const decision = unfurlReason(req)
   const metaFromMemo = Boolean(slug && memoedShareMeta(slug))
-
   /**
-   * Fired now, not right before the response is sent — a Vercel function is
-   * frozen within a beat of the response finishing, not when this handler
-   * eventually returns, so a fetch started there almost never survives long
-   * enough to land. `startReport` (the version this replaced) always fired
-   * here, before `loadShareMeta`'s own network call, and that gap —
-   * 350ms-2s below — was the thing actually keeping the old telemetry
-   * alive, not the `await settleReport` afterward, which is a safety net
-   * for whatever is still outstanding, not the mechanism. Moving the fire
-   * point down to each branch, right before it finishes responding, silently
-   * broke every row from ~01:05 UTC on 2026-09-14 onward — confirmed live:
-   * awaiting the fetch before responding always worked, awaiting it after
-   * never did.
-   *
-   * `doc` is guessed here (`previewBot` already decides crawler-vs-shell,
-   * before any of the async work below) and is right for both common paths.
-   * The one path this cannot predict — `loadShell()` itself failing, the
-   * `fallback` document — gets a second, best-effort report right before it
-   * finishes responding too, same reliability trade the rest of this file
-   * already accepted for OPTIONS preflights, which have nothing slow to
-   * hide behind.
+   * Starting this before the async work below and awaiting it only after
+   * responding was tried and measured live: it depends entirely on
+   * `loadShareMeta`'s own network call happening to still be running when
+   * the response is ready, and that "cover" evaporates the instant its
+   * in-memory memo is warm — which is often, on a function instance Vercel
+   * kept alive. Each branch below now builds and AWAITS its own report call
+   * immediately before responding, every time — see report.js's file
+   * comment for the full account of why "before" is not a style choice.
    */
-  const report = reportCrawl(API, req, {
-    asset: 'html',
-    slug,
-    doc: previewBot ? 'crawler' : 'shell',
-    status: 200,
-    decision,
-  })
 
   /**
    * Both race for the real title. The crawler is simply allowed to wait longer.
@@ -376,6 +356,7 @@ export default async function handler(req, res) {
     : 'WATCH FREE PREVIEW · MTONYO+'
   const canonical = slug ? `${WEB}/watch/${slug}` : WEB
   const cardUrl = ogCardUrl(slug, meta?.sourceKey)
+  const why = `${decision} meta=${metaFromMemo ? 'memo' : meta ? 'api' : 'miss'}`
 
   if (previewBot) {
     const copy = previewCopy({ title, creator: { name: creator } })
@@ -391,19 +372,14 @@ export default async function handler(req, res) {
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'crawler')
-    /* TEMPORARY (2026-09-14): ?__reportdebug=1 awaits the report BEFORE
-       responding, so its outcome can ride out as a header. Remove once this
-       is confirmed fixed on a few more live requests. */
-    if (req.query?.__reportdebug === '1') {
-      await settleReport(report)
-      res.setHeader('X-Report-Debug', String(__lastReportOutcome))
-    }
+    await settleReport(
+      reportCrawl(API, req, { asset: 'html', slug, doc: 'crawler', status: 200, ms: Date.now() - started, decision: why })
+    )
     res.status(200)
     res.end(html)
     console.log(
       `og-html slug=${slug || 'none'} status=200 ms=${Date.now() - started} crawler=${crawler} bytes=${html.length}`
     )
-    await settleReport(report)
     return
   }
 
@@ -436,21 +412,11 @@ export default async function handler(req, res) {
     res.setHeader('X-Build', BUILD)
     res.setHeader('X-Crawler', crawler)
     res.setHeader('X-Doc', 'fallback')
-    /* The early guess above (fired before we knew loadShell() would fail)
-       said 'shell' -- wrong here, and by now there is nothing slow left to
-       hide a second fetch behind, so this one carries the same lower
-       reliability the OPTIONS branch already accepts. Best effort beats
-       nothing on a path this rare. */
-    const fallbackReport = reportCrawl(API, req, {
-      asset: 'html',
-      slug,
-      doc: 'fallback',
-      status: 200,
-      decision,
-    })
+    await settleReport(
+      reportCrawl(API, req, { asset: 'html', slug, doc: 'fallback', status: 200, ms: Date.now() - started, decision: why })
+    )
     res.status(200)
     res.end(fallbackHtml({ slug }))
-    await settleReport(fallbackReport)
     return
   }
 
@@ -475,11 +441,13 @@ export default async function handler(req, res) {
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)
   res.setHeader('X-Doc', 'shell')
+  await settleReport(
+    reportCrawl(API, req, { asset: 'html', slug, doc: 'shell', status: 200, ms: Date.now() - started, decision: why })
+  )
   res.status(200)
   res.end(html)
 
   console.log(
     `og-html slug=${slug || 'none'} status=200 ms=${Date.now() - started} crawler=${crawler}`
   )
-  await settleReport(report)
 }
