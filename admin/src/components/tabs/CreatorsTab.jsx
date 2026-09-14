@@ -24,7 +24,16 @@ export default function CreatorsTab() {
   const [filter, setFilter] = useState('')
 
   const { data, loading, error, reload } = useApi(() => api.admin.creators(), [])
-  const settings = useApi(() => api.admin.settings(), [])
+  /**
+   * Without `refetchOnFocus`, a tab already open when the Super Admin's
+   * global split changed elsewhere kept showing the split it loaded with
+   * until manually reloaded -- OverviewTab and RevenueTab both already
+   * refetch on focus; this one did not, and it is one of the two named
+   * surfaces in the client's "Creator Management shows creators at 70%"
+   * report (report2.txt SEP14) while Revenue & Splits had already picked up
+   * the changed value.
+   */
+  const settings = useApi(() => api.admin.settings(), [], { refetchOnFocus: true })
   const defaultSplit = settings.data?.settings?.creator_split_percent ?? 70
 
   const all = data?.creators || []
@@ -46,10 +55,20 @@ export default function CreatorsTab() {
     { icon: 'video', label: 'Creators', value: compact(all.length) },
     { icon: 'badge-check', label: 'Verified', value: compact(all.filter((c) => c.verified).length) },
     { icon: 'clapperboard', label: 'Videos', value: compact(all.reduce((n, c) => n + (c.videos || 0), 0)) },
+    /**
+     * `lifetime_tzs` is every shilling ever ACCRUED to a creator (migration's
+     * `earnings` table), not what has actually left the platform. That is a
+     * different number from Withdrawals' own "Paid Out" — sometimes wildly
+     * different, since a payout must be requested and approved before any of
+     * this leaves an "earned" state. Calling it "Paid" here, next to a
+     * Withdrawals tab correctly showing a far smaller real total, is what
+     * report2.txt's SEP14 audit traced the client's "TZS 140,748 paid out"
+     * report to. "Earned" is the true label for a sum sourced from `earnings`.
+     */
     {
       icon: 'coins',
       tone: 'gold',
-      label: 'Paid to Creators',
+      label: 'Earned by Creators',
       value: tzs(all.reduce((n, c) => n + (c.lifetime_tzs || 0), 0)),
     },
   ]

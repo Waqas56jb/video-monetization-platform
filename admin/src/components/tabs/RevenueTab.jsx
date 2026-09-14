@@ -35,7 +35,11 @@ export default function RevenueTab() {
   const totals = data?.totals
   const stats = [
     { icon: 'coins', tone: 'gold', label: 'Gross Revenue (recorded)', value: tzs(totals?.gross) },
-    { icon: 'users', label: 'Paid to Creators (recorded)', value: tzs(totals?.creators) },
+    /* `totals.creators` sums `earnings.creator_tzs` -- accrued, not a
+       completed payout. See CreatorsTab.jsx's identical note; this is the
+       second of the two admin surfaces report2.txt's SEP14 audit found
+       calling that number "Paid". */
+    { icon: 'users', label: 'Earned by Creators (recorded)', value: tzs(totals?.creators) },
     { icon: 'landmark', label: 'Platform Share (recorded)', value: tzs(totals?.platform) },
     { icon: 'megaphone', label: 'From Advertising', value: tzs(totals?.from_ads) },
   ]

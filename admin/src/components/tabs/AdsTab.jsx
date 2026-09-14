@@ -78,7 +78,9 @@ export default function AdsTab() {
   const stats = [
     { icon: 'eye', label: 'Impressions (30d)', value: compact(s?.impressions) },
     { icon: 'coins', tone: 'gold', label: 'Ad Revenue (30d)', value: tzs(s?.revenueTzs) },
-    { icon: 'users', label: 'Paid to Creators (30d)', value: tzs(s?.creatorTzs) },
+    /* Accrued ad-revenue share, not a completed payout -- same correction as
+       CreatorsTab.jsx / RevenueTab.jsx (report2.txt SEP14). */
+    { icon: 'users', label: 'Earned by Creators (30d)', value: tzs(s?.creatorTzs) },
     { icon: 'clapperboard', label: 'Videos Showing Ads', value: compact(s?.videosWithAds) },
   ]
 
