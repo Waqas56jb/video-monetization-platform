@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "CreatorTZ — Tanzania's premium creator video platform (React frontend)",
+  "description": "CreatorTZ \u2014 Tanzania's premium creator video platform (React frontend)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

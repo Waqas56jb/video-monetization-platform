@@ -1059,3 +1059,144 @@ Summary of the four items:
 
 CLIENT-REPORT.md updated with the dated Sep 12 section for all four items. All work pushed to main
 and verified live via X-Build on production after each deploy.
+
+## SEP 14 — Desktop WhatsApp rich preview card (4th report; blocks Milestone 2)
+
+Deliverable: a link pasted from WhatsApp Web / WhatsApp Desktop (Mac + Windows) must produce the
+same rich card Android already gets. Method, per the brief: prove every link in the chain with
+evidence first (A), deploy logging that can see the real desktop request (B), fix only what B
+shows, then a real-world run on the client's own MacBook (C).
+
+### A. Automated acceptance matrix — run before any code change
+
+Script: `scripts/e2e/desktop-share-matrix.mjs` (permanent, exit code = failed checks). Two real
+published slugs, each behind a FRESH `?v=<timestamp>-<shape>` so no cache anywhere had seen the
+URL. Nine request shapes against `/watch/:slug`, then the og:image each returned through three
+origins. Full raw output (headers sent, headers received, byte offsets, timings) is in the run log
+committed alongside this entry; the essentials:
+
+  TOOLING LESSON FIRST, because it changed the answer. The first cut of the matrix used Node's
+  built-in fetch() and reported "crawler document" for all eight shapes, including the "bare"
+  ones. Captured on a local echo server: fetch() silently adds `sec-fetch-mode: cors`, `accept`,
+  `accept-language` and `accept-encoding` to every request — and `sec-fetch-mode` is the exact
+  header `isUnfurlFetch` branches on. So none of those "bare" requests were bare. The matrix was
+  rewritten over raw node:https (only the listed headers leave the process; the headers actually
+  sent are printed per request) and re-run. Every number below is from the raw-socket run.
+
+  Shape                                                            doc served   og tags complete
+  (i-a)   WhatsApp/2.23.20.0 N  (Web/Desktop crawler UA)            crawler      yes  @289–681 B
+  (i-b)   WhatsApp/2.24.15.78 A (Android)                           crawler      yes
+  (i-c)   WhatsApp/2.24.15.78 I (iOS)                               crawler      yes
+  (ii)    OPTIONS preflight + GET, Origin: https://web.whatsapp.com,
+          Chrome UA, sec-fetch cors/empty/cross-site                 crawler      yes  (preflight 204,
+                                                                                 ACAO *, Allow-Methods GET)
+  (iii-a) Electron/WhatsApp Desktop UA (Mac), NO Sec-Fetch at all    shell        yes  @293–576 B
+  (iii-b) Electron/WhatsApp Desktop UA (Win), sec-fetch no-cors/empty crawler     yes
+  (iv-a)  bare GET, curl UA, no Sec-Fetch, no Accept                 shell        yes
+  (iv-b)  bare GET, Chrome UA, no Sec-Fetch, Accept */*              shell        yes
+  (nav)   real browser navigation (document/navigate + UIR)          shell        yes  (+ <div id="root">)
+
+  On every one of the 18 document responses: og:title == the real DB title (HTML-entity-decoded —
+  "Ugali &amp; Samaki" is correct HTML for "Ugali & Samaki"), og:description ==
+  "WATCH FREE PREVIEW · <creator> · MTONYO+" with the real creator name, og:image absolute https on
+  our own origin, og:url == the canonical /watch/<slug>. Every tag sits inside the first 700 bytes
+  of the response — the shell variant included, because api/watch.js strips index.html's generic
+  tags and injects the per-video block immediately after `<head>`. Access-Control-Allow-Origin: *
+  on every document and every preflight. X-Build f08d39a on every response.
+
+  Document latency: 520–710 ms per request, all edge MISS (fresh URLs, by design). The very first
+  request of the session was 1956 ms — a cold function plus a cold share-meta memo — and every
+  later one on the same instance was ~400–700 ms.
+
+  og:image (`/og/card/<slug>.jpg?v=<sourceKey>`), 6 fetches (2 slugs × no-Origin / web.whatsapp.com
+  with preflight / Electron UA): 200 image/jpeg every time, 39–42 KB, JPEG SOI bytes, no redirect,
+  ACAO *, served from the bucket (`X-Share-Card: cdn`, `X-Bucket: hit`). Warm edge: 210–430 ms.
+  COLD EDGE MISS: 1104 ms on this run and 3430 ms on the first run of the session. That is the one
+  check in the matrix that fails the "<1 s" bar, and it fails only on the first fetch of a card
+  per edge region.
+
+  VERDICT FOR A: 106 of 107 checks pass. The server answers every request shape we can construct
+  — announced crawler, browser-side CORS fetch, Electron with or without Sec-Fetch, bare GET, real
+  navigation — with a complete, correct, early og block, and the poster is a valid same-origin
+  JPEG with CORS. What A cannot establish is which of these shapes the real desktop client
+  actually sends, or whether it sends one at all — and that is exactly what four earlier rounds
+  could not see either, for the reason in B.
+
+### B. Capture-everything logging — deployed 1eba864, migration 039 applied 2026-09-14 01:02:30
+
+  WHY THE OLD TELEMETRY COULD NEVER HAVE ANSWERED THIS. `recordCrawlerHit` returned early for any
+  request whose User-Agent classified as `human`. A desktop WhatsApp client that fetches the
+  preview from the user's own machine (an Electron shell, a Catalyst app, a browser tab on
+  web.whatsapp.com) carries an ordinary browser User-Agent, so it was `human`, so it was never
+  written. Four times "no crawler_hits row around the test time" was read as "WhatsApp never
+  asked us", when it could equally have meant "it asked, and we declined to remember". The image
+  half was worse: `/og/card` serving straight from the bucket never touched the API at all, so a
+  poster fetch that SUCCEEDED left no row anywhere.
+
+  WHAT IS RECORDED NOW, for every request the two functions see, with no filter:
+    method · asset (html|image) · slug · query · User-Agent · crawler class (now including
+    `whatsapp-desktop` for Electron shells) · doc served (crawler | shell | fallback | preflight |
+    cdn | api | bad-slug) · decision = the rule that chose the branch (bot-ua | real-navigation |
+    sec-fetch-navigate | sec-fetch-fetch | no-signal, from the new `unfurlReason`) + where the
+    title came from (meta=memo | api | miss) · status · ms · headers as jsonb (accept,
+    accept-language, accept-encoding, origin, referer, every sec-fetch-*, sec-ch-ua*,
+    upgrade-insecure-requests, purpose/sec-purpose, range, if-none-match, cache-control, pragma,
+    via, access-control-request-*) · client IP (first hop of x-forwarded-for) · country + city
+    (Vercel's x-vercel-ip-*) · build · region.
+  The IP/country is the decisive column: a fetch from Dar es Salaam is the client's own app doing
+  the fetch; a fetch from Meta's ranges (Menlo Park / Ashburn etc.) is WhatsApp's server-side
+  crawler. Those two hypotheses have been argued about for weeks; this ends the argument.
+
+  Timing of the report itself: started immediately BEFORE `res.end()` with every fact known,
+  awaited immediately after — the crawler waits for nothing, and the function is not frozen with
+  the POST still in flight (which is how fire-and-forget lost 30% of rows in an earlier
+  measurement). The API's own `/api/share-card` route stands down when the frontend proxy
+  identifies itself (`x-mtonyo-proxy: og`), so a proxied poster fetch is one row, not two.
+  Nothing on the serving path changed: `isUnfurlFetch` is the same rule, now with its reason
+  exposed; client 197/197 and server 168/168 tests green before push.
+
+  READ-BACK: `cd server && HOURS=6 node scripts/crawl-hits.mjs` (or `SLUG=…`, `SINCE=…`, `RAW=1`
+  for the full header JSON). Prints one block per request, then a tally by asset/crawler/doc.
+
+  PROOF THE LOG NOW SEES EVERYTHING — the matrix re-run against 1eba864 (01:05:25–01:05:44 UTC),
+  then `SINCE=2026-09-14T01:05:25Z node scripts/crawl-hits.mjs`. Full RAW read-back committed as
+  `scripts/e2e/evidence/crawl-hits-readback-2026-09-14-matrix.txt`; the tally:
+
+       5  html   human             doc=shell       <- bare curl, bare Chrome, real navigation: kept
+       3  html   human             doc=crawler     <- the web.whatsapp.com CORS GETs (+1 stranger, below)
+       2  html   human             doc=preflight   <- the OPTIONS from Origin: https://web.whatsapp.com
+       2  html   whatsapp-desktop  doc=shell       <- Electron UA, no Sec-Fetch  -> why=no-signal
+       2  html   whatsapp-desktop  doc=crawler     <- Electron UA, sec-fetch no-cors/empty -> sec-fetch-fetch
+       2  html   whatsapp-web      doc=crawler     <- "WhatsApp/2.23.20.0 N"    -> bot-ua
+       2  html   whatsapp-android  doc=crawler
+       2  html   whatsapp-ios      doc=crawler
+       1  image  whatsapp-web      doc=cdn         <- the poster, served from the bucket: a row at last
+       1  image  human             doc=preflight
+       1  image  human             doc=cdn
+
+  Every row carries `from 223.123.8.88  PK / Lahore` (this machine), the exact header set that
+  was sent, the branch rule and `meta=memo` (the title came from the instance memo, so the
+  function's own work was 0–1 ms — the 500–700 ms seen from outside is network + edge, not us).
+  Two rows the old log could never have held are worth naming:
+    - 01:05:30.622  whatsapp-desktop  doc=shell  why=no-signal  — an Electron shell sending no
+      Sec-Fetch headers lands on the SPA shell. Its og tags are complete (matrix iii-a), so this
+      is not a fault today, but if the real Mac app arrives in this shape we will now know it.
+    - 01:05:35.192  human  doc=crawler  from 172.190.93.117 US/Washington, Safari 18.2, referer
+      = our own /watch page, sec-fetch-site=same-origin — a real visitor's browser doing the
+      SPA's warmShare fetch. Not ours, not a fault; simply the first proof that browser-shaped
+      requests are now recorded instead of discarded.
+
+  Matrix on 1eba864: all 18 documents X-Build 1eba864, every og-tag check green, documents
+  served identical to the pre-change run (the branch rule did not move). 2 fails, both og:image
+  latency: 1683 ms on an edge MISS and, once, 1535 ms on an edge HIT (network variance from
+  Pakistan — the same URL served in 210–430 ms in every other fetch). Logged, not fixed: the
+  brief says fix only what B shows.
+
+  ONE BLIND SPOT, STATED PLAINLY. The functions run only on an edge MISS. A second fetch of the
+  SAME URL inside 60 s (crawler document) or 300 s (shell) can be answered by Vercel's edge
+  without the function ever running, and that fetch leaves no row. So the reproduction uses a
+  brand-new `?v=` value for every single paste: the first fetch of a never-seen URL cannot be
+  served from any cache and is guaranteed to reach the function and the log.
+
+  HANDED TO THE CLIENT-SIDE REPRODUCTION (C, step B of the brief): the exact URLs and steps are
+  in the chat hand-off and in CLIENT-REPORT.md's Sep 14 section once the run is done.

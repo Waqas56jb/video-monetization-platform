@@ -1,0 +1,175 @@
+2026-09-14 01:06:49 [36minfo [0m postgres pool: max=3 (serverless sizing)
+crawler_hits since 2026-09-14T01:05:25.000Z — 23 row(s)
+
+2026-09-14 01:05:28.858  html  GET     whatsapp-web           doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347926544-i-a&slug=ugali-samaki-sunday-cooking
+    ua     WhatsApp/2.23.20.0 N
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:29.408  html  GET     whatsapp-android       doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347927484-i-b&slug=ugali-samaki-sunday-cooking
+    ua     WhatsApp/2.24.15.78 A
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:29.981  html  GET     whatsapp-ios           doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347928377-i-c&slug=ugali-samaki-sunday-cooking
+    ua     WhatsApp/2.24.15.78 I
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:30.020  html  OPTIONS human                  doc=preflight 204      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347928929-ii&slug=ugali-samaki-sunday-cooking
+    ua     (none)
+    why    preflight
+    hdrs   {"accept":"*/*","origin":"https://web.whatsapp.com","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB","access-control-request-method":"GET","access-control-request-headers":"content-type"}
+
+2026-09-14 01:05:30.613  html  GET     human                  doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347928929-ii&slug=ugali-samaki-sunday-cooking
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    why    sec-fetch-fetch meta=memo
+    hdrs   {"accept":"*/*","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:30.622  html  GET     whatsapp-desktop       doc=shell     200      1ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347930095-iii-a&slug=ugali-samaki-sunday-cooking
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:31.167  html  GET     whatsapp-desktop       doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347930708-iii-b&slug=ugali-samaki-sunday-cooking
+    ua     Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36
+    why    sec-fetch-fetch meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:31.991  html  GET     human                  doc=shell     200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347931240-iv-a&slug=ugali-samaki-sunday-cooking
+    ua     curl/8.4.0
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:32.880  html  GET     human                  doc=shell     200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347932087-iv-b&slug=ugali-samaki-sunday-cooking
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:33.596  html  GET     human                  doc=shell     200      1ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=1789347933126-nav&slug=ugali-samaki-sunday-cooking
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    why    real-navigation meta=memo
+    hdrs   {"accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","upgrade-insecure-requests":"1","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:35.192  html  GET     human                  doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   172.190.93.117  US / Washington
+    slug   how-to-cook-pilau-properly  ?slug=how-to-cook-pilau-properly
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15
+    why    sec-fetch-fetch meta=memo
+    hdrs   {"accept":"*/*","referer":"https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"same-origin","accept-encoding":"gzip, deflate, br","accept-language":"en-US","x-forwarded-proto":"https","x-vercel-ip-timezone":"America/New_York","x-vercel-proxied-for":"172.190.93.117","x-vercel-ip-country-region":"VA"}
+
+2026-09-14 01:05:35.205  image GET     whatsapp-web           doc=cdn       200    445ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=2bad6d1ba8&slug=ugali-samaki-sunday-cooking.jpg
+    ua     WhatsApp/2.23.20.0 N
+    cache  bucket-hit
+    hdrs   {"accept":"*/*","cache-control":"public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:35.334  image GET     human                  doc=cdn       200    131ms  build=1eba864  region=iad1
+    from   172.190.93.117  US / Washington
+    slug   how-to-cook-pilau-properly  ?v=a1a58b1a0f&slug=how-to-cook-pilau-properly.jpg
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15
+    cache  bucket-hit
+    hdrs   {"accept":"image/webp,image/avif,image/jxl,video/*;q=0.8,image/png,image/svg+xml,image/*;q=0.8,*/*;q=0.5","referer":"https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly","cache-control":"public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"same-origin","accept-encoding":"gzip, deflate, br","accept-language":"en-US","x-forwarded-proto":"https","x-vercel-ip-timezone":"America/New_York","x-vercel-proxied-for":"172.190.93.117","x-vercel-ip-country-region":"VA"}
+
+2026-09-14 01:05:35.902  image OPTIONS human                  doc=preflight 204      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   ugali-samaki-sunday-cooking  ?v=2bad6d1ba8&slug=ugali-samaki-sunday-cooking.jpg
+    ua     (none)
+    hdrs   {"accept":"*/*","origin":"https://web.whatsapp.com","cache-control":"public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB","access-control-request-method":"GET","access-control-request-headers":"content-type"}
+
+2026-09-14 01:05:38.771  html  GET     whatsapp-web           doc=crawler   200      1ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347938310-i-a&slug=how-to-cook-pilau-properly
+    ua     WhatsApp/2.23.20.0 N
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:39.527  html  GET     whatsapp-android       doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347938921-i-b&slug=how-to-cook-pilau-properly
+    ua     WhatsApp/2.24.15.78 A
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:40.229  html  GET     whatsapp-ios           doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347939740-i-c&slug=how-to-cook-pilau-properly
+    ua     WhatsApp/2.24.15.78 I
+    why    bot-ua meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:40.802  html  OPTIONS human                  doc=preflight 204      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347940302-ii&slug=how-to-cook-pilau-properly
+    ua     (none)
+    why    preflight
+    hdrs   {"accept":"*/*","origin":"https://web.whatsapp.com","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB","access-control-request-method":"GET","access-control-request-headers":"content-type"}
+
+2026-09-14 01:05:41.469  html  GET     human                  doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347940302-ii&slug=how-to-cook-pilau-properly
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    why    sec-fetch-fetch meta=memo
+    hdrs   {"accept":"*/*","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:42.091  html  GET     whatsapp-desktop       doc=shell     200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347941550-iii-a&slug=how-to-cook-pilau-properly
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:43.382  html  GET     human                  doc=shell     200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347942916-iv-a&slug=how-to-cook-pilau-properly
+    ua     curl/8.4.0
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:43.382  html  GET     whatsapp-desktop       doc=crawler   200      0ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347942198-iii-b&slug=how-to-cook-pilau-properly
+    ua     Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36
+    why    sec-fetch-fetch meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+2026-09-14 01:05:43.990  html  GET     human                  doc=shell     200      1ms  build=1eba864  region=iad1
+    from   223.123.8.88  PK / Lahore
+    slug   how-to-cook-pilau-properly  ?v=1789347943531-iv-b&slug=how-to-cook-pilau-properly
+    ua     Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+    why    no-signal meta=memo
+    hdrs   {"accept":"*/*","cache-control":"public, s-maxage=300, stale-while-revalidate=86400","accept-encoding":"gzip","x-forwarded-proto":"https","x-vercel-ip-timezone":"Asia/Karachi","x-vercel-proxied-for":"223.123.8.88","x-vercel-ip-country-region":"PB"}
+
+### by asset / crawler / doc
+     5  html  human  doc=shell
+     3  html  human  doc=crawler
+     2  html  whatsapp-web  doc=crawler
+     2  html  whatsapp-android  doc=crawler
+     2  html  whatsapp-ios  doc=crawler
+     2  html  human  doc=preflight
+     2  html  whatsapp-desktop  doc=shell
+     2  html  whatsapp-desktop  doc=crawler
+     1  image  whatsapp-web  doc=cdn
+     1  image  human  doc=cdn
+     1  image  human  doc=preflight

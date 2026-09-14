@@ -1,0 +1,707 @@
+Desktop share matrix · https://video-monetization-platform-chi.vercel.app · 2026-09-14T00:50:18.694Z
+
+=== ugali-samaki-sunday-cooking
+    expected title:   "Ugali & Samaki — Sunday Cooking"
+    expected creator: "Neema Cooks"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347020911-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 708ms, 2261 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::dpv8j-1789347021145-4f0235d4d5cc
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  300  "Ugali & Samaki — Sunday Cooking"
+      description  @  375  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  681  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  463  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   63  "Ugali & Samaki — Sunday Cooking - MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 681)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347021624-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 548ms, 2261 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::r6mtr-1789347021843-b50cde51fb66
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  300  "Ugali & Samaki — Sunday Cooking"
+      description  @  375  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  681  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  463  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   63  "Ugali & Samaki — Sunday Cooking - MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 681)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347022174-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 528ms, 2261 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::tnbrc-1789347022377-acd585829e66
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  300  "Ugali & Samaki — Sunday Cooking"
+      description  @  375  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  681  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  463  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   63  "Ugali & Samaki — Sunday Cooking - MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 681)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347022704-ii
+    OPTIONS -> 204 in 561ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 589ms, 2261 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::ghzj4-1789347023524-d7113ca0bc5c
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  300  "Ugali & Samaki — Sunday Cooking"
+      description  @  375  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  681  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  463  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   63  "Ugali & Samaki — Sunday Cooking - MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 681)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347023855-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 552ms, 4980 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::88szf-1789347024077-7dc38ac9bfc6
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  413  "Ugali & Samaki — Sunday Cooking"
+      description  @  488  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  576  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  293  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   40  "Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 576)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347024410-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 614ms, 2261 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::ghzj4-1789347024676-420448e388c7
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  300  "Ugali & Samaki — Sunday Cooking"
+      description  @  375  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  681  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  463  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   63  "Ugali & Samaki — Sunday Cooking - MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 681)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347025025-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 604ms, 4980 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::q6hvl-1789347025282-a075ab40e38e
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  413  "Ugali & Samaki — Sunday Cooking"
+      description  @  488  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  576  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  293  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   40  "Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 576)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347025630-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 546ms, 4980 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::snmfl-1789347025854-bff8fe2bb5c5
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  413  "Ugali & Samaki — Sunday Cooking"
+      description  @  488  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  576  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  293  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   40  "Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 576)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?v=1789347026177-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 597ms, 4980 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::mhhwt-1789347026411-fbb6391a712e
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  413  "Ugali & Samaki — Sunday Cooking"
+      description  @  488  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  576  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8"
+      url          @  293  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking"
+      htmlTitle    @   40  "Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("Ugali & Samaki — Sunday Cooking")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking
+      ok    all og tags inside the first 10KB (last at byte 576)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 331ms, 41588 bytes
+      content-type: image/jpeg
+      content-length: 41588
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: bom1::iad1::s6vzp-1789347026963-3b7813b8cb8c
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41588 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 331ms (< 1000ms) [edge: HIT]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8
+    OPTIONS -> 204 in 629ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 427ms, 41588 bytes
+      content-type: image/jpeg
+      content-length: 41588
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: bom1::iad1::4pqdw-1789347028005-82a5aeaf96a5
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41588 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 427ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking.jpg?v=2bad6d1ba8
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 400ms, 41588 bytes
+      content-type: image/jpeg
+      content-length: 41588
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: bom1::iad1::r6mtr-1789347028411-d62f19949df6
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41588 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 400ms (< 1000ms) [edge: HIT]
+
+=== how-to-cook-pilau-properly
+    expected title:   "How To Cook Pilau Properly"
+    expected creator: "Neema Cooks"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347029407-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 585ms, 2198 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::snmfl-1789347029665-2d416c22e131
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  289  "How To Cook Pilau Properly"
+      description  @  353  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  658  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  441  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   63  "How To Cook Pilau Properly - MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 658)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347029994-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 561ms, 2198 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::nh6rx-1789347030216-bf28c877d687
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  289  "How To Cook Pilau Properly"
+      description  @  353  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  658  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  441  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   63  "How To Cook Pilau Properly - MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 658)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347030556-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 521ms, 2198 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::mhhwt-1789347030755-ffdae132e8a1
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  289  "How To Cook Pilau Properly"
+      description  @  353  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  658  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  441  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   63  "How To Cook Pilau Properly - MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 658)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347031079-ii
+    OPTIONS -> 204 in 550ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 609ms, 2198 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::zj2hf-1789347031910-fc0a81df1821
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  289  "How To Cook Pilau Properly"
+      description  @  353  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  658  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  441  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   63  "How To Cook Pilau Properly - MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 658)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347032239-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 548ms, 4921 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::wfl54-1789347032453-e2397a79e6ee
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  401  "How To Cook Pilau Properly"
+      description  @  465  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  553  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  282  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   40  "How To Cook Pilau Properly — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 553)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347032789-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 671ms, 2198 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::mhhwt-1789347033124-be48b6350889
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  289  "How To Cook Pilau Properly"
+      description  @  353  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  658  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  441  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   63  "How To Cook Pilau Properly - MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 658)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347033462-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 552ms, 4921 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::qq54b-1789347033681-7feb98db2ed6
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  401  "How To Cook Pilau Properly"
+      description  @  465  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  553  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  282  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   40  "How To Cook Pilau Properly — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 553)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347034018-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 579ms, 4921 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::9wqvh-1789347034277-9b992d92b06e
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  401  "How To Cook Pilau Properly"
+      description  @  465  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  553  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  282  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   40  "How To Cook Pilau Properly — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 553)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly?v=1789347034598-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 644ms, 4921 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: f08d39a
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::2w6zx-1789347034819-46d1305f334c
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  401  "How To Cook Pilau Properly"
+      description  @  465  "WATCH FREE PREVIEW · Neema Cooks · MTONYO+"
+      image        @  553  "https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f"
+      url          @  282  "https://video-monetization-platform-chi.vercel.app/watch/how-to-cook-pilau-properly"
+      htmlTitle    @   40  "How To Cook Pilau Properly — Neema Cooks | MTONYO+"
+      ok    og:title is the real DB title ("How To Cook Pilau Properly")
+      ok    og:description names the creator ("Neema Cooks")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/how-to-cook-pilau-properly
+      ok    all og tags inside the first 10KB (last at byte 553)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 1104ms, 39577 bytes
+      content-type: image/jpeg
+      content-length: 39577
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: MISS
+      x-vercel-id: bom1::iad1::5brnb-1789347035449-96b4047a27f4
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 39577 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      FAIL  served in 1104ms (< 1000ms) [edge: MISS]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f
+    OPTIONS -> 204 in 544ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 408ms, 39577 bytes
+      content-type: image/jpeg
+      content-length: 39577
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: bom1::iad1::snmfl-1789347037129-3081d691e0a8
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 39577 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 408ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/how-to-cook-pilau-properly.jpg?v=a1a58b1a0f
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 389ms, 39577 bytes
+      content-type: image/jpeg
+      content-length: 39577
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: bom1::iad1::qq54b-1789347037536-b7d09df1ebbb
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 39577 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 389ms (< 1000ms) [edge: HIT]
+
+### timings (ms, with the edge cache status the response reported)
+  ugali-samaki-sunday-cooking      doc i-a             708  MISS
+  ugali-samaki-sunday-cooking      doc i-b             548  MISS
+  ugali-samaki-sunday-cooking      doc i-c             528  MISS
+  ugali-samaki-sunday-cooking      doc ii              589  MISS
+  ugali-samaki-sunday-cooking      doc iii-a           552  MISS
+  ugali-samaki-sunday-cooking      doc iii-b           614  MISS
+  ugali-samaki-sunday-cooking      doc iv-a            604  MISS
+  ugali-samaki-sunday-cooking      doc iv-b            546  MISS
+  ugali-samaki-sunday-cooking      doc nav             597  MISS
+  ugali-samaki-sunday-cooking      image bot           331  HIT
+  ugali-samaki-sunday-cooking      image web           427  HIT
+  ugali-samaki-sunday-cooking      image electron      400  HIT
+  how-to-cook-pilau-properly       doc i-a             585  MISS
+  how-to-cook-pilau-properly       doc i-b             561  MISS
+  how-to-cook-pilau-properly       doc i-c             521  MISS
+  how-to-cook-pilau-properly       doc ii              609  MISS
+  how-to-cook-pilau-properly       doc iii-a           548  MISS
+  how-to-cook-pilau-properly       doc iii-b           671  MISS
+  how-to-cook-pilau-properly       doc iv-a            552  MISS
+  how-to-cook-pilau-properly       doc iv-b            579  MISS
+  how-to-cook-pilau-properly       doc nav             644  MISS
+  how-to-cook-pilau-properly       image bot          1104  MISS
+  how-to-cook-pilau-properly       image web           408  HIT
+  how-to-cook-pilau-properly       image electron      389  HIT
+
+1 FAILED CHECK(S)
