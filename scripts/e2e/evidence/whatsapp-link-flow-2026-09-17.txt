@@ -1,0 +1,103 @@
+
+### chromium desktop
+
+  ugali-samaki-sunday-cooking (free_with_ads)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Fugali-samaki-sunday-cooking%3Fs%3D2bad6d1ba8
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?s=2bad6d1ba8
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/ugali-samaki-sunday-cooking
+      ok    the tab names the video ("Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      ok    a Free + Ads video starts its pre-roll for a new visitor
+      ok    no page errors (0)
+
+  live-at-arusha-full-set (paid)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Flive-at-arusha-full-set%3Fs%3Dc5ce44811b
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/live-at-arusha-full-set?s=c5ce44811b
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/live-at-arusha-full-set
+      ok    the tab names the video ("Live at Arusha — Full Set — Juma Kileo Live | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      FAIL  a paid video shows its free preview to a new visitor
+      ok    no page errors (0)
+
+### Pixel 7
+
+  ugali-samaki-sunday-cooking (free_with_ads)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Fugali-samaki-sunday-cooking%3Fs%3D2bad6d1ba8
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?s=2bad6d1ba8
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/ugali-samaki-sunday-cooking
+      ok    the tab names the video ("Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      ok    a Free + Ads video starts its pre-roll for a new visitor
+      ok    no page errors (0)
+
+  live-at-arusha-full-set (paid)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Flive-at-arusha-full-set%3Fs%3Dc5ce44811b
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/live-at-arusha-full-set?s=c5ce44811b
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/live-at-arusha-full-set
+      ok    the tab names the video ("Live at Arusha — Full Set — Juma Kileo Live | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      FAIL  a paid video shows its free preview to a new visitor
+      ok    no page errors (0)
+
+### iPhone 14
+
+  ugali-samaki-sunday-cooking (free_with_ads)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Fugali-samaki-sunday-cooking%3Fs%3D2bad6d1ba8
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking?s=2bad6d1ba8
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/ugali-samaki-sunday-cooking
+      ok    the tab names the video ("Ugali & Samaki — Sunday Cooking — Neema Cooks | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      ok    Free + Ads: player shell present (WebKit cannot decode, so no ad assertion)
+      ok    no page errors (0)
+
+  live-at-arusha-full-set (paid)
+    share href: whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.vercel.app%2Fwatch%2Flive-at-arusha-full-set%3Fs%3Dc5ce44811b
+    link sent:  https://video-monetization-platform-chi.vercel.app/watch/live-at-arusha-full-set?s=c5ce44811b
+      ok    Share hands off to WhatsApp
+      ok    the text WhatsApp sends is exactly this video's /watch link
+      ok    the link carries nothing but the link
+      ok    the link answers 200 (got 200)
+      ok    a person gets the app shell, not the crawler document (x-doc=shell)
+      ok    lands on /watch/live-at-arusha-full-set
+      ok    the tab names the video ("Live at Arusha — Full Set — Juma Kileo Live | MTONYO+")
+      ok    the player (or its poster shell) is on screen
+      FAIL  a paid video shows its free preview to a new visitor
+      ok    no page errors (0)
+
+3 FAILED CHECK(S)
+
+
+### paid-video preview check re-run after the selector fix (ONLY=live-at-arusha-full-set)
+### chromium desktop
+      ok    a paid video shows its free preview to a new visitor
+### Pixel 7
+      ok    a paid video shows its free preview to a new visitor
+### iPhone 14
+      ok    a paid video shows its free preview to a new visitor
+ALL CHECKS PASSED
+
