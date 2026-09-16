@@ -35,7 +35,7 @@ export default function Testimonials() {
     {
       icon: ShieldCheck,
       title: 'Your work stays yours',
-      text: 'You set the price and the free preview. Nobody can publish, reprice or remove your video without you — and once someone buys it, their copy never disappears either.',
+      text: 'You set the price and the free preview. Nobody can publish, reprice or remove your video without you — and once someone buys it, their access stays, unless it ever has to be withdrawn for a legal, rights or safety reason.',
     },
     {
       icon: Wallet,

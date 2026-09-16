@@ -166,7 +166,7 @@ export const LEGAL_DOCS = {
       {
         h: 'Removing your content',
         p: [
-          'You can ask for a video to be taken down at any time. You cannot delete one yourself, and this is deliberate: if somebody has paid for permanent access, that access cannot simply disappear because you changed your mind.',
+          'You can ask for a video to be taken down at any time. You cannot delete one yourself, and this is deliberate: if somebody has paid for permanent access, that access is not withdrawn simply because you changed your mind. Access is withdrawn only where a legal, rights or safety requirement makes it necessary — a valid rights claim or takedown, a court order, or content that breaks the law or these terms.',
           'An administrator decides each request. Where there are buyers, the usual outcome is that the video is unpublished — new sales stop, existing buyers keep what they paid for.',
         ],
       },
