@@ -106,7 +106,13 @@ export default function Hero() {
   const heroStats = s?.hasActivity
     ? [
         { icon: 'wallet', count: s.paidToCreatorsTzs, prefix: 'TZS ', suffix: '', label: 'Earned by creators' },
-        { icon: 'users', count: s.creators, prefix: '', suffix: '', label: 'Creators earning' },
+        /* "Creators earning" over the count of creators who EXIST said 31 when
+           most of them had earned TZS 0 (client's Sep 17 review). Counted
+           properly now — creators with settled earnings — and when that is
+           zero the honest caption is simply how many creators there are. */
+        s.creatorsEarning > 0
+          ? { icon: 'users', count: s.creatorsEarning, prefix: '', suffix: '', label: 'Creators earning' }
+          : { icon: 'users', count: s.creators, prefix: '', suffix: '', label: 'Creators on MTONYO+' },
         { icon: 'clapperboard', count: s.publishedVideos, prefix: '', suffix: '', label: 'Exclusive releases' },
       ]
     : [
