@@ -184,10 +184,14 @@ export default function ReviewTab() {
                   {v.freePreviewSeconds > 0 && (
                     <span className="pill info">{Math.round(v.freePreviewSeconds / 60)} min free</span>
                   )}
+                  {/* The creator's own declaration (own it, or hold the
+                      necessary rights/permissions/licences) — recorded, not
+                      verified by MTONYO+, so it must never read "confirmed"
+                      (client's Sep 17 review, item 6). */}
                   {v.rightsConfirmedAt ? (
-                    <span className="pill ok">Rights confirmed</span>
+                    <span className="pill ok">Rights declared · creator attested</span>
                   ) : (
-                    <span className="pill bad">Rights not confirmed</span>
+                    <span className="pill bad">No rights declaration</span>
                   )}
                 </div>
                 <small className="rv-time">Submitted {timeAgo(v.submittedAt || v.createdAt)}</small>

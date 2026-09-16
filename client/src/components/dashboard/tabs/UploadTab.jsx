@@ -254,7 +254,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
     if (!video) return
     if (form.title.trim().length < 3) return setError('Give the video a title')
     if (!rightsOk) {
-      return setError('Confirm you hold the rights to this content before submitting')
+      return setError('Declare that you own this content or hold the necessary rights before submitting')
     }
     const previewSecs = toSeconds(form.previewValue, form.previewUnit)
     const mostPreview = maxFreePreviewSeconds(durationSeconds)
@@ -670,10 +670,12 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
               disabled={submitted}
             />
             <span>
-              I hold the rights to this content
+              I declare that I own this content or hold the necessary rights to it
               <small>
-                I made it, or I hold every right needed to sell it on MTONYO+ — including the
-                rights of anyone appearing in it and of any music used.
+                Either I made it myself, or I hold every right, permission or licence needed to sell
+                it on MTONYO+ — including the rights of anyone appearing in it and of any music
+                used. This is my own declaration as the creator; MTONYO+ records it with this
+                video.
               </small>
             </span>
           </label>
@@ -697,7 +699,7 @@ export default forwardRef(function UploadTab({ onSubmitted }, ref) {
                 !canSubmit
                   ? 'Finish uploading your video first'
                   : !rightsOk
-                    ? 'Confirm you hold the rights to this content'
+                    ? 'Declare that you own or hold the necessary rights to this content'
                     : 'Send this to the review team'
               }
             >
