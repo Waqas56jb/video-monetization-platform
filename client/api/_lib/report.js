@@ -31,14 +31,20 @@
  * cover, same race as fire-and-forget. Relying on an incidental delay
  * elsewhere in the handler is not a mechanism, it is luck.
  *
- * So this is now awaited BEFORE the caller responds, every time, not merely
- * started before and hoped for after. That costs the crawler a real, if
- * small, slice of latency on every request — CAP_MS below bounds the worst
- * case tightly enough that it is not a second `loadShareMeta`-sized wait.
- * Reliability was chosen over shaving that slice off, because the entire
- * point of this file is to be trustworthy evidence about what actually
- * fetched a page — a log that is fast and sometimes wrong is worse than a
- * log that is slightly slower and right.
+ * So for the CRAWLER document, and for preflights, this is awaited BEFORE
+ * the caller responds, every time, not merely started before and hoped for
+ * after. That costs the crawler a real, if small, slice of latency on every
+ * request — CAP_MS below bounds the worst case tightly enough that it is
+ * not a second `loadShareMeta`-sized wait. Reliability was chosen over
+ * shaving that slice off, because the entire point of this file is to be
+ * trustworthy evidence about what actually fetched a page — a log that is
+ * fast and sometimes wrong is worse than a log that is slightly slower and
+ * right.
+ *
+ * The SHELL — a person's own page load — is the one exception: it is not
+ * evidence about crawling, and it is the only response whose latency a
+ * person feels, so there the report is started before and settled after,
+ * best effort, and the page never waits on it.
  */
 
 const CAP_MS = 700

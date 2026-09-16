@@ -441,13 +441,20 @@ export default async function handler(req, res) {
   res.setHeader('X-Build', BUILD)
   res.setHeader('X-Crawler', crawler)
   res.setHeader('X-Doc', 'shell')
-  await settleReport(
-    reportCrawl(API, req, { asset: 'html', slug, doc: 'shell', status: 200, ms: Date.now() - started, decision: why })
-  )
+  /**
+   * Best effort here, unlike the crawler branch above. A person opening the
+   * page is not evidence about crawling, and this is the only branch whose
+   * latency a person actually feels — awaiting the report before responding
+   * added ~300-700ms to every cold mobile page load for a row that answers
+   * no question the log exists for. Started before the response, settled
+   * after: it lands when the runtime allows, and the page never waits.
+   */
+  const pending = reportCrawl(API, req, { asset: 'html', slug, doc: 'shell', status: 200, ms: Date.now() - started, decision: why })
   res.status(200)
   res.end(html)
 
   console.log(
     `og-html slug=${slug || 'none'} status=200 ms=${Date.now() - started} crawler=${crawler}`
   )
+  await settleReport(pending)
 }
