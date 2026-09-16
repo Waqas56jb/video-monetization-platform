@@ -146,7 +146,15 @@ const CONSENT_MESSAGE =
  */
 router.post(
   '/request-review',
-  validate(z.object({ consent: z.boolean().refine((v) => v === true, { message: CONSENT_MESSAGE }) })),
+  validate(
+    z.object({
+      /* Named reason whether the field is false, missing or not a boolean —
+         zod's own "Required" for a missing key told the caller nothing. */
+      consent: z
+        .boolean({ required_error: CONSENT_MESSAGE, invalid_type_error: CONSENT_MESSAGE })
+        .refine((v) => v === true, { message: CONSENT_MESSAGE }),
+    })
+  ),
   asyncHandler(async (req, res) => {
     const existing = await one(
       `select id, status from creator_capital

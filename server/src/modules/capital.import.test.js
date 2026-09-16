@@ -106,7 +106,7 @@ test('item 3: one LIVE record per creator — index over every non-terminal stat
 test('item 5: consent is required by the server and recorded against the request', () => {
   assert.match(migration, /add column if not exists consent_at timestamptz/)
   const rr = creatorSrc.slice(creatorSrc.indexOf("'/request-review'"))
-  assert.match(rr, /validate\(z\.object\(\{ consent: z\.boolean\(\)\.refine\(\(v\) => v === true/)
+  assert.match(rr, /consent: z\s*\.boolean\(\{ required_error: CONSENT_MESSAGE, invalid_type_error: CONSENT_MESSAGE \}\)\s*\.refine\(\(v\) => v === true/)
   assert.match(creatorSrc, /consent to MTONYO\+ sharing your verified earnings and account data with AirPay Microfinance/)
   assert.match(rr, /consent_at = now\(\)/)
   assert.match(rr, /requested_at, consent_at\)/)
