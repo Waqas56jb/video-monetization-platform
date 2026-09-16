@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test src/components/tabs/financialWording.test.js"
+    "test": "node --test src/components/tabs/financialWording.test.js src/components/tabs/sep17Review.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.462.0",
