@@ -284,10 +284,6 @@ input,select,textarea{font-family:inherit}
 .ph-secure svg{color:var(--green);flex-shrink:0}
 .ph-methods{display:flex;justify-content:center;align-items:center;gap:4px;margin-top:8px;flex-wrap:nowrap}
 .ph-methods small{font-size:8.5px;color:var(--muted2);font-weight:600;white-space:nowrap}
-.ph-mc{display:inline-flex;align-items:center;padding:3px 6px;border:1px solid var(--border2);border-radius:99px;flex-shrink:0}
-.ph-mc i{width:9px;height:9px;border-radius:50%;display:block}
-.ph-mc i:first-child{background:#eb001b}
-.ph-mc i:last-child{background:#f79e1b;margin-left:-4px}
 .ph-methods span{font-size:8px;font-weight:700;color:var(--muted);border:1px solid var(--border2);padding:3px 6px;border-radius:99px;white-space:nowrap;letter-spacing:.2px}
 /* Title beside its icon, description underneath — the shape in the design. */
 .float-card{
@@ -426,7 +422,11 @@ input,select,textarea{font-family:inherit}
 .lib-progress{height:4px;border-radius:99px;background:var(--border2);overflow:hidden}
 .lib-progress span{display:block;height:100%;background:var(--gold);border-radius:99px}
 /* Top-LEFT, because the Save pin owns the top-right corner of every poster. */
-.lib-forget{position:absolute;top:10px;left:10px;z-index:4;width:36px;height:36px;display:grid;place-items:center;
+/* Top-RIGHT, not top-left: the access badge (.vid-tag — FREE + ADS / PAY ONCE /
+   PAID PREMIERE) lives at top-left of every card, and this X sat on exactly
+   that corner, covering it (client's Sep 17 review). Nothing else occupies
+   the top-right of a card. */
+.lib-forget{position:absolute;top:10px;right:10px;left:auto;z-index:4;width:36px;height:36px;display:grid;place-items:center;
   border:0;border-radius:50%;background:rgba(10,10,18,.62);color:#fff;cursor:pointer;
   backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent}
 .vid-meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border2);padding-top:13px}

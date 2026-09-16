@@ -42,7 +42,14 @@ export default function UsersTab() {
     { icon: 'users', label: 'Total Accounts', value: compact(rows.length) },
     { icon: 'user-check', label: 'Active', value: compact(rows.filter((u) => u.status === 'active').length) },
     { icon: 'video', label: 'Creators', value: compact(rows.filter((u) => u.role === 'creator').length) },
-    { icon: 'ban', label: 'Blocked', value: compact(rows.filter((u) => u.status === 'blocked').length) },
+    /* Both non-active states, so this card plus "Active" always adds up to
+       "Total Accounts". Counting only `blocked` read 77 / 76 / 0 while one
+       account sat suspended (client's Sep 17 review). */
+    {
+      icon: 'ban',
+      label: 'Suspended or blocked',
+      value: compact(rows.filter((u) => u.status !== 'active').length),
+    },
   ]
 
   const setStatusOn = async (user, next, message) => {

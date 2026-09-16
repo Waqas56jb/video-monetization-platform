@@ -99,8 +99,10 @@ export default function PhoneMockup({ video, onUnlock }) {
             <Zap />
             {cta}
           </button>
-          {/* Named providers plus an honest "more", rather than a list that
-              implies these are the only ways to pay. */}
+          {/* Exactly the ways a person can pay at launch, and no others. Visa
+              and Mastercard marks and a "+ more" used to sit here too — a
+              promise the checkout does not keep (client's Sep 17 review). Put
+              a brand back only when it is actually accepted. */}
           <div className="ph-secure">
             <Lock size={11} />
             Secure payment
@@ -108,12 +110,6 @@ export default function PhoneMockup({ video, onUnlock }) {
           <div className="ph-methods">
             <span>M-PESA</span>
             <span>AIRTEL MONEY</span>
-            <span>VISA</span>
-            <span className="ph-mc" aria-label="Mastercard">
-              <i />
-              <i />
-            </span>
-            <small>+ more</small>
           </div>
         </div>
       </div>
