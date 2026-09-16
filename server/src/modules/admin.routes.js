@@ -100,7 +100,9 @@ router.get(
     const [users, videos, money, pending] = await Promise.all([
       one(`select count(*)::int as total,
                   count(*) filter (where role = 'creator')::int as creators,
-                  count(*) filter (where status = 'blocked')::int as blocked
+                  count(*) filter (where status = 'active')::int as active,
+                  count(*) filter (where status = 'blocked')::int as blocked,
+                  count(*) filter (where status = 'suspended')::int as suspended
              from profiles`),
       one(`select count(*)::int as total,
                   count(*) filter (where is_published)::int as published,
@@ -1351,6 +1353,9 @@ router.patch(
       /* Where the single mid-roll lands, as % through the video, replacing
          the old hard-coded 50% midpoint (report2.txt §4). */
       midroll_position_pct: z.coerce.number().int().min(20).max(90).optional(),
+      /* The ONE Creator Capital eligibility rule (migration 040) — every
+         surface reads this, none carries its own copy. */
+      capital_months_required: z.coerce.number().int().min(1).max(36).optional(),
     })
   ),
   asyncHandler(async (req, res) => {
@@ -2095,7 +2100,14 @@ router.post(
    never itself drift from the two numbers it comes from).
    ==================================================================== */
 
-function shapeCapitalAdmin(row) {
+/**
+ * `monthsRequired` is the platform's ONE rule (platform_settings.
+ * capital_months_required, migration 040), not the row's own copy — the row
+ * column is a record of what the rule was when that request was made, and
+ * showing it here is exactly how Super Admin came to say "3 of 2" while the
+ * rest of the site said 6.
+ */
+function shapeCapitalAdmin(row, monthsRequired) {
   return {
     id: row.id,
     creatorId: row.creator_id,
@@ -2103,7 +2115,8 @@ function shapeCapitalAdmin(row) {
     creatorEmail: row.email,
     verified: Boolean(row.verified),
     status: row.status,
-    monthsRequired: row.months_required,
+    monthsRequired: monthsRequired ?? row.months_required,
+    consentAt: row.consent_at,
     monthsWithEarnings: Number(row.months_with_earnings || 0),
     lifetimeCreatorTzs: Number(row.lifetime_creator_tzs || 0),
     recent90dCreatorTzs: Number(row.recent_90d_creator_tzs || 0),
@@ -2173,20 +2186,28 @@ router.get(
     })
   ),
   asyncHandler(async (req, res) => {
-    const rows = await many(
-      `${CAPITAL_LIST_SQL}
-       where ($1::text is null or cc.status::text = $1)
-       order by case when cc.status = 'under_review' then 0 else 1 end, cc.requested_at desc nulls last`,
-      [req.query.status || null]
-    )
-    const counts = await one(
-      `select count(*) filter (where status = 'under_review')::int as under_review,
-              count(*) filter (where status = 'approved')::int     as approved,
-              count(*) filter (where status = 'active')::int       as active,
-              count(*)::int                                        as total
-         from creator_capital`
-    )
-    res.json({ applications: rows.map(shapeCapitalAdmin), counts })
+    const [rows, counts, settings] = await Promise.all([
+      many(
+        `${CAPITAL_LIST_SQL}
+         where ($1::text is null or cc.status::text = $1)
+         order by case when cc.status = 'under_review' then 0 else 1 end, cc.requested_at desc nulls last`,
+        [req.query.status || null]
+      ),
+      one(
+        `select count(*) filter (where status = 'under_review')::int as under_review,
+                count(*) filter (where status = 'approved')::int     as approved,
+                count(*) filter (where status = 'active')::int       as active,
+                count(*)::int                                        as total
+           from creator_capital`
+      ),
+      getSettings(),
+    ])
+    const monthsRequired = Number(settings?.capital_months_required) || 6
+    res.json({
+      applications: rows.map((r) => shapeCapitalAdmin(r, monthsRequired)),
+      counts,
+      monthsRequired,
+    })
   })
 )
 
@@ -2199,9 +2220,13 @@ const capitalDecideSchema = z.object({
 })
 
 /**
- * Review → Approve or Decline. "Approve" here means AirPay's decision has
- * already been made outside this platform and an admin is recording it —
- * it does not itself publish an offer to the creator (see /publish-offer).
+ * Review → Record AirPay's approval or decline. "Approve" here means
+ * AirPay's decision has already been made outside this platform and an
+ * admin is recording it — it does not itself publish an offer to the
+ * creator (see /publish-offer). Recording an approval needs BOTH the amount
+ * and the repayment terms AirPay set: an offer with either missing is not
+ * an offer, and the client's Sep 17 review asked for both to be required
+ * before anything can be published.
  */
 router.post(
   '/capital/:id/decide',
@@ -2215,8 +2240,8 @@ router.post(
 
     const b = req.body
     const nextStatus = b.decision === 'approve' ? 'approved' : 'declined'
-    if (b.decision === 'approve' && !b.approvedAmountTzs) {
-      throw badRequest('An approved amount is required to approve a request')
+    if (b.decision === 'approve' && (!b.approvedAmountTzs || !String(b.repaymentTerms || '').trim())) {
+      throw badRequest("AirPay's approved amount and repayment terms are both required to record an approval")
     }
 
     const updated = await one(
@@ -2245,7 +2270,7 @@ router.post(
       action: b.decision === 'approve' ? 'CAPITAL_APPROVED' : 'CAPITAL_DECLINED',
       entityType: 'creator_capital',
       entityId: existing.id,
-      summary: `${who(req)} ${b.decision === 'approve' ? 'approved' : 'declined'} a Creator Capital request`,
+      summary: `${who(req)} recorded AirPay's ${b.decision === 'approve' ? 'approval' : 'decline'} of a Creator Capital request`,
       detail: { decision: b.decision, approvedAmountTzs: b.approvedAmountTzs ?? null, note: b.note ?? null },
     })
 
@@ -2281,12 +2306,17 @@ router.post(
     const existing = await one('select * from creator_capital where id = $1', [req.params.id])
     if (!existing) throw notFound('Creator Capital request not found')
     if (existing.status !== 'approved') throw conflict('Only an approved request can have its offer published')
+    /* Belt and braces with /decide's own check: nothing reaches a creator
+       as "your offer" without the amount and the terms AirPay actually set. */
+    if (!existing.approved_amount_tzs || !String(existing.repayment_terms || '').trim()) {
+      throw badRequest("Record AirPay's approved amount and repayment terms before publishing the offer")
+    }
 
     await recordStaffAction(req, {
       action: 'CAPITAL_OFFER_PUBLISHED',
       entityType: 'creator_capital',
       entityId: existing.id,
-      summary: `${who(req)} published a Creator Capital offer`,
+      summary: `${who(req)} published an AirPay Creator Capital offer`,
     })
 
     await notify({

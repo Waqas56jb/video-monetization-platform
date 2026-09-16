@@ -18,6 +18,7 @@ import {
 import { useRole } from '@/context/AuthContext'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
+import { LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /**
  * Creator Capital™ — AirPay reviews and decides, no lending engine here.
@@ -97,6 +98,17 @@ const STATUS_LABEL = {
 }
 
 /**
+ * The illustrative card's example creator: partway there. One coherent
+ * state — the client's Sep 17 review caught the previous example claiming
+ * "6 months" + "60% complete" + Building Eligibility + Eligibility Unlocked
+ * all at once, which is four things that cannot be true together. Now: N
+ * months required (the platform's one rule, from the same cached stats the
+ * Hero already fetched — no extra request for a visitor), 4 of them earned,
+ * the bar and the single status label both derived from exactly that.
+ */
+const EXAMPLE_MONTHS_EARNED = 4
+
+/**
  * Real status for a signed-in creator, a static illustrative example for
  * everyone else — same card shape either way, so nothing shifts on load
  * (CLS: the skeleton and the loaded card share one fixed-height frame).
@@ -110,6 +122,9 @@ function StatusCard() {
     // Visitors, logged-out, non-creators, and the brief loading window for a
     // real creator all share this: a clearly-labelled illustrative example,
     // never presented as anyone's real figures.
+    const exampleRequired = Number(readLanding(LANDING_KEYS.stats)?.capitalMonthsRequired) || 6
+    const exampleEarned = Math.min(EXAMPLE_MONTHS_EARNED, Math.max(1, exampleRequired - 1))
+    const examplePct = Math.round((exampleEarned / exampleRequired) * 100)
     return (
       <aside className="cc-status-card is-illustrative">
         <div className="cc-status-head">
@@ -120,19 +135,18 @@ function StatusCard() {
         </div>
         <p className="cc-status-row">
           <span>Verified earnings history:</span>
-          <b>6 months</b>
+          <b>
+            {exampleEarned} of {exampleRequired} months
+          </b>
         </p>
         <p className="cc-status-row">
           <span>Status:</span>
-          <span className="cc-status-pills">
-            <span className="pill-gold">Building Eligibility</span>
-            <span className="pill-green">Eligibility Unlocked</span>
-          </span>
+          <span className="pill-gold">{buildingLabel(exampleEarned, exampleRequired)}</span>
         </p>
         <div className="capital-bar">
-          <div className="capital-bar-fill" style={{ width: '60%' }} />
+          <div className="capital-bar-fill" style={{ width: `${examplePct}%` }} />
         </div>
-        <p className="cc-status-sub">60% complete</p>
+        <p className="cc-status-sub">{examplePct}% complete</p>
         <div className="cc-status-uses">
           <Camera size={14} />
           <span>Use your funding for: Camera, Editing, Promotion</span>
@@ -163,7 +177,9 @@ function StatusCard() {
       </div>
       <p className="cc-status-row">
         <span>Verified earnings history:</span>
-        <b>{monthsWithEarnings} months</b>
+        <b>
+          {monthsWithEarnings} of {monthsRequired} months
+        </b>
       </p>
       <p className="cc-status-row">
         <span>Status:</span>

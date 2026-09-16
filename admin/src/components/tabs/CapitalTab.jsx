@@ -17,8 +17,8 @@ const FILTERS = [
 ]
 
 const STATUS_PILL = {
-  under_review: { className: 'pend', label: 'Under review' },
-  approved: { className: 'info', label: 'Approved — offer not yet published' },
+  under_review: { className: 'pend', label: 'Under AirPay review' },
+  approved: { className: 'info', label: 'AirPay approved — offer not yet published' },
   active: { className: 'ok', label: 'Active' },
   paused: { className: 'gold', label: 'Paused' },
   repaid: { className: 'ok', label: 'Repaid' },
@@ -34,10 +34,12 @@ const when = (iso) =>
  *
  * MTONYO+ never decides who is approved or for how much. AirPay does; this
  * screen is where an admin, standing in for that decision, records it —
- * Review, Approve or Decline, then Publish Offer once AirPay's terms are
- * ready, then Pause or Mark Repaid as the balance moves. No interest, no
- * schedule math: the only arithmetic anywhere here is amount repaid against
- * amount approved.
+ * Review, then Record AirPay Approval (amount AND repayment terms required)
+ * or Record AirPay Decline, then Publish AirPay Offer, then Pause or Mark
+ * Repaid as the balance moves. Every button says "AirPay" because none of
+ * them is MTONYO+ deciding anything (client's Sep 17 review, item 4). No
+ * interest, no schedule math: the only arithmetic anywhere here is amount
+ * repaid against amount approved.
  */
 export default function CapitalTab() {
   const confirm = useConfirm()
@@ -68,21 +70,23 @@ export default function CapitalTab() {
 
   const approve = (row) => {
     const f = form[row.id] || {}
-    if (!f.approvedAmountTzs) return setProblem('An approved amount is required to approve a request')
+    if (!f.approvedAmountTzs || !(f.repaymentTerms || '').trim()) {
+      return setProblem("AirPay's approved amount and repayment terms are both required to record an approval")
+    }
     run(row.id, () =>
       api.admin.decideCapital(row.id, {
         decision: 'approve',
         approvedAmountTzs: Number(f.approvedAmountTzs),
         purpose: f.purpose || undefined,
-        repaymentTerms: f.repaymentTerms || undefined,
+        repaymentTerms: f.repaymentTerms.trim(),
       })
     )
   }
 
   const decline = (row) =>
     confirm({
-      title: `Decline this Creator Capital request?`,
-      text: `${row.creatorName} will be notified. They may request review again once eligible.`,
+      title: `Record AirPay's decline of this request?`,
+      text: `${row.creatorName} will be notified that AirPay was not able to approve it. They may request review again once eligible.`,
       onConfirm: () => run(row.id, () => api.admin.decideCapital(row.id, { decision: 'decline', note: (form[row.id]?.note || '').trim() || undefined })),
     })
 
@@ -143,7 +147,7 @@ export default function CapitalTab() {
             title: filter === 'under_review' ? 'Nobody is waiting' : 'Nothing here',
             hint:
               filter === 'under_review'
-                ? 'Creators who request a review after 6 months of verified earnings appear here.'
+                ? `Creators who request a review after ${list.data?.monthsRequired ?? 6} months of verified earnings appear here.`
                 : 'Try another filter.',
           }}
         >
@@ -160,6 +164,11 @@ export default function CapitalTab() {
                       {r.verified && (
                         <span className="pill info">
                           <BadgeCheck size={12} /> Verified
+                        </span>
+                      )}
+                      {r.consentAt && (
+                        <span className="pill ok" title={`Consented ${when(r.consentAt)} to MTONYO+ sharing verified earnings and account data with AirPay`}>
+                          <ShieldCheck size={12} /> Data-sharing consent
                         </span>
                       )}
                     </div>
@@ -237,15 +246,15 @@ export default function CapitalTab() {
                       />
                       <input
                         type="text"
-                        placeholder="Repayment terms, from AirPay (optional)"
+                        placeholder="Repayment terms, from AirPay (required)"
                         value={f.repaymentTerms || ''}
                         onChange={setField(r.id, 'repaymentTerms')}
                       />
                       <button className="btn btn-sm btn-gold" type="button" disabled={busy === r.id} onClick={() => approve(r)}>
-                        <Check size={14} /> Approve
+                        <Check size={14} /> Record AirPay Approval
                       </button>
                       <button className="btn btn-sm btn-ghost" type="button" disabled={busy === r.id} onClick={() => decline(r)}>
-                        <X size={14} /> Decline
+                        <X size={14} /> Record AirPay Decline
                       </button>
                     </div>
                   )}
@@ -253,7 +262,7 @@ export default function CapitalTab() {
                   {r.status === 'approved' && (
                     <div className="app-actions">
                       <button className="btn btn-sm btn-gold" type="button" disabled={busy === r.id} onClick={() => publishOffer(r)}>
-                        <Wallet size={14} /> Publish Offer
+                        <Wallet size={14} /> Publish AirPay Offer
                       </button>
                     </div>
                   )}

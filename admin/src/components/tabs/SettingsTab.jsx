@@ -339,6 +339,7 @@ function PlatformPanel() {
         default_premiere_days: Number(settings.default_premiere_days),
         default_preview_seconds: Number(settings.default_preview_seconds),
         preroll_skip_after_secs: Number(settings.preroll_skip_after_secs),
+        capital_months_required: Number(settings.capital_months_required),
         ...Object.fromEntries(TOGGLES.map(([key]) => [key, Boolean(settings[key])])),
       })
       setSettings(res.settings)
@@ -389,6 +390,20 @@ function PlatformPanel() {
               value={settings.min_withdrawal_tzs ?? ''}
               onChange={set('min_withdrawal_tzs')}
             />
+            <Field
+              id="set-capital-months"
+              label="Creator Capital eligibility (months of verified earnings)"
+              icon="banknote"
+              type="number"
+              min={1}
+              max={36}
+              value={settings.capital_months_required ?? ''}
+              onChange={set('capital_months_required')}
+            />
+            <p className="field-note">
+              The one eligibility rule. The public site, the creator dashboard and the Creator
+              Capital screen here all read this number — change it once, it changes everywhere.
+            </p>
             <Field
               id="set-premiere"
               label="Default Paid Premiere window (days)"

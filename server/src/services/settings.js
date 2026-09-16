@@ -41,6 +41,7 @@ export async function updateSettings(patch) {
     'show_demo_content_in_stats',
     'preroll_target_seconds',
     'midroll_position_pct',
+    'capital_months_required',
   ]
   const entries = Object.entries(patch).filter(([k, v]) => allowed.includes(k) && v !== undefined)
   if (!entries.length) return getSettings({ fresh: true })

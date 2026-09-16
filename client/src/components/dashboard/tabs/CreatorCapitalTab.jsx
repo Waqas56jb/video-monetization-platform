@@ -29,6 +29,13 @@ export default function CreatorCapitalTab() {
   const showToast = useToast()
   const { data, loading, error, reload } = useApi(() => api.capital.status(), [])
   const [busy, setBusy] = useState(false)
+  /**
+   * Requesting a review means MTONYO+ hands AirPay the creator's verified
+   * earnings and account details. That is the creator's to give, so it is
+   * asked for here, in words, and sent with the request — the server refuses
+   * a request that does not carry it (client's Sep 17 review, item 5).
+   */
+  const [consent, setConsent] = useState(false)
 
   if (loading) return <Skeleton rows={4} />
   if (error) return <ErrorState error={error} onRetry={reload} />
@@ -36,6 +43,8 @@ export default function CreatorCapitalTab() {
 
   const capital = data.capital
   const monthsWithEarnings = data.monthsWithEarnings || 0
+  /* One rule, from platform_settings.capital_months_required — never a local
+     copy of "6" (migration 040). The fallback only covers a missing field. */
   const monthsRequired = data.monthsRequired || 6
   const status = capital?.status || 'building'
 
@@ -52,7 +61,8 @@ export default function CreatorCapitalTab() {
     }
   }
 
-  const requestReview = () => act(() => api.capital.requestReview(), 'Requested — an admin will be in touch')
+  const requestReview = () =>
+    act(() => api.capital.requestReview({ consent }), 'Requested — AirPay will review your verified history')
   const acceptOffer = () => act(() => api.capital.acceptOffer(), 'Offer accepted')
 
   return (
@@ -90,18 +100,40 @@ export default function CreatorCapitalTab() {
               Verified earnings are settled sales and ad revenue that have already cleared to your
               account — not views, not pending payments.
             </p>
+            {monthsWithEarnings >= monthsRequired && (
+              <label className="check-row capital-consent">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  disabled={busy}
+                />
+                <span>
+                  I consent to MTONYO+ sharing my verified earnings history and relevant account
+                  details with AirPay Microfinance for this review
+                  <small>
+                    What is shared: your months of verified earnings, lifetime and recent revenue,
+                    paying and repeat buyers, refund rate, and the name and contact details on your
+                    creator account — for AirPay&apos;s review of this request and nothing else.
+                    AirPay makes the decision; MTONYO+ is not the lender.
+                  </small>
+                </span>
+              </label>
+            )}
             <button
               className="btn btn-gold"
               type="button"
-              disabled={busy || monthsWithEarnings < monthsRequired}
+              disabled={busy || monthsWithEarnings < monthsRequired || !consent}
               onClick={requestReview}
             >
               Request AirPay Review
             </button>
-            {monthsWithEarnings < monthsRequired && (
+            {monthsWithEarnings < monthsRequired ? (
               <p className="field-hint">
                 Request AirPay Review unlocks once you reach {monthsRequired} months of verified earnings.
               </p>
+            ) : (
+              !consent && <p className="field-hint">Tick the consent above to send your request.</p>
             )}
           </div>
         )}
@@ -110,6 +142,14 @@ export default function CreatorCapitalTab() {
           <div className="capital-state">
             <h4>Under AirPay Review</h4>
             <p>AirPay is reviewing your verified earnings history. This is not instant — check back here for a decision.</p>
+            {/* The request itself is the proof it went in — no second button,
+                so a second request cannot be sent from here while this one
+                is pending (client's Sep 17 review, item 3). */}
+            <p className="field-hint">
+              Requested {capital?.requestedAt ? new Date(capital.requestedAt).toLocaleDateString() : 'recently'}
+              {capital?.consentAt ? ' · data-sharing consent recorded' : ''}. One request at a time — you
+              cannot send another while this one is open.
+            </p>
           </div>
         )}
 

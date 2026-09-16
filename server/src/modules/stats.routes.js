@@ -22,7 +22,7 @@ router.get(
   asyncHandler(async (_req, res) => {
     const settings = await getSettings()
 
-    const [people, videos, money] = await Promise.all([
+    const [people, videos, money, earning] = await Promise.all([
       one(`select count(*) filter (where role = 'creator')::int as creators,
                   count(*) filter (where role = 'viewer')::int   as viewers
              from profiles where status = 'active'`),
@@ -34,11 +34,29 @@ router.get(
       one(`select coalesce(sum(creator_tzs),0)::int as to_creators,
                   coalesce(sum(gross_tzs),0)::int   as gross
              from earnings`),
+      /**
+       * Creators who have actually earned something, as distinct from
+       * creators who exist. The homepage used to caption the second number
+       * "Creators earning" — 31, of whom most had earned TZS 0 (client's
+       * Sep 17 review). Respects the demo-content switch the same way
+       * /top-creators does.
+       */
+      one(
+        `select count(distinct e.creator_id)::int as n
+           from earnings e join profiles p on p.id = e.creator_id
+          where e.creator_tzs > 0 and p.status = 'active'
+            and ($1::boolean or not p.is_demo)`,
+        [Boolean(settings.show_demo_content_in_stats)]
+      ),
     ])
 
     res.json({
       creators: people.creators,
+      creatorsEarning: earning.n,
       viewers: people.viewers,
+      /** The ONE Creator Capital eligibility rule (migration 040), for the
+          public explainer and the homepage's illustrative status card. */
+      capitalMonthsRequired: Number(settings.capital_months_required) || 6,
       publishedVideos: videos.published,
       totalViews: videos.views,
       paidUnlocks: videos.unlocks,

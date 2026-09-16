@@ -4,16 +4,28 @@ import { ArrowLeft, ArrowRight, Landmark, ShieldCheck } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useRole } from '@/context/AuthContext'
+import useApi from '@/hooks/useApi'
+import api from '@/lib/api'
+import { LANDING_KEYS, landingFetcher, readLanding } from '@/lib/landingCache'
 
 /**
  * The static explainer behind the homepage's "Learn More" — not a policy
  * document (Legal.jsx's "MTONYO+ POLICIES" framing and "Last updated" date
  * would misdescribe a product explainer as legal text), so this is its own
  * small page rather than a sixth entry in `legal.js`.
+ *
+ * "N months" is the platform's one eligibility rule
+ * (platform_settings.capital_months_required, migration 040), read from the
+ * same public stats the homepage uses — never a "6" typed in here, which is
+ * how this page and Super Admin came to disagree.
  */
 export default function CreatorCapitalInfo() {
   const navigate = useNavigate()
   const { authed, isCreator } = useRole()
+  const stats = useApi(landingFetcher(LANDING_KEYS.stats, () => api.stats.platform()), [], {
+    initialData: readLanding(LANDING_KEYS.stats),
+  })
+  const months = Number(stats.data?.capitalMonthsRequired) || 6
 
   useEffect(() => {
     window.document.title = 'Creator Capital™ — MTONYO+'
@@ -46,7 +58,7 @@ export default function CreatorCapitalInfo() {
             </span>
             <h1>Create. Earn. Build Your Record. Unlock Capital.</h1>
             <p>
-              Build 6 months of verified MTONYO+ transaction history and become eligible for
+              Build {months} months of verified MTONYO+ transaction history and become eligible for
               Creator Capital review in partnership with AirPay.
             </p>
           </div>
@@ -56,8 +68,9 @@ export default function CreatorCapitalInfo() {
               <h2>How it works</h2>
               <p>
                 Every sale and every advertising payout you earn on MTONYO+ is verified — settled
-                money, not views or pending payments. Once you have six months of that history,
-                you can request a review.
+                money, not views or pending payments. Once you have {months} months of that history,
+                you can request a review — and you will be asked to consent to MTONYO+ sharing that
+                verified history and your account details with AirPay for the review.
               </p>
               <p>
                 A review is not automatic and is not instant. It looks at your months of verified

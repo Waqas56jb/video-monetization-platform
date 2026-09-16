@@ -12,9 +12,40 @@ test('every status the server can return has a rendered state, and the default i
   assert.match(src, /Building Eligibility/)
 })
 
-test('Request Review is disabled below the required months, not just hidden', () => {
+test('Request Review is disabled below the required months AND without consent, not just hidden', () => {
   const buildingBlock = src.slice(src.indexOf("status === 'building'"), src.indexOf("status === 'under_review'"))
-  assert.match(buildingBlock, /disabled=\{busy \|\| monthsWithEarnings < monthsRequired\}/)
+  assert.match(buildingBlock, /disabled=\{busy \|\| monthsWithEarnings < monthsRequired \|\| !consent\}/)
+})
+
+/**
+ * Client's Sep 17 review, item 5: requesting an AirPay review shares the
+ * creator's verified earnings and account data with AirPay, so the creator
+ * consents in words first, and the request carries that consent — the server
+ * refuses one that does not (capital.routes.js).
+ */
+test('the creator consents to data sharing with AirPay before requesting, and the request carries it', () => {
+  const buildingBlock = src.slice(src.indexOf("status === 'building'"), src.indexOf("status === 'under_review'"))
+  assert.match(src, /const \[consent, setConsent\] = useState\(false\)/)
+  assert.match(buildingBlock, /className="check-row capital-consent"/)
+  assert.match(buildingBlock, /I consent to MTONYO\+ sharing my verified earnings history and relevant account\s+details with AirPay Microfinance/)
+  assert.match(buildingBlock, /MTONYO\+ is not the lender/)
+  assert.match(src, /api\.capital\.requestReview\(\{ consent \}\)/)
+})
+
+/**
+ * Item 3: once a request is pending there is no button to send another.
+ * The under_review state renders no Request button at all, and says so.
+ */
+test('under_review shows no way to request again', () => {
+  const block = src.slice(src.indexOf("status === 'under_review'"), src.indexOf("status === 'approved'"))
+  assert.doesNotMatch(block, /requestReview|Request AirPay Review/)
+  assert.match(block, /One request at a time/)
+})
+
+test('the required months come from the API (the platform rule), with 6 only as a missing-field fallback', () => {
+  assert.match(src, /const monthsRequired = data\.monthsRequired \|\| 6/)
+  const hardcodedSix = src.match(/\b6 months\b/g) || []
+  assert.equal(hardcodedSix.length, 0, 'no rendered "6 months" literal — the number is the setting')
 })
 
 test('the AirPay disclaimer is always rendered, not tucked inside one state', () => {

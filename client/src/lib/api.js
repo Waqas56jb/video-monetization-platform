@@ -411,7 +411,9 @@ export const api = {
   /** Manual-review eligibility and offer state — see server/src/modules/capital.routes.js. */
   capital: {
     status: () => get('/api/capital/status'),
-    requestReview: () => post('/api/capital/request-review'),
+    /* `consent` is the creator's agreement to MTONYO+ sharing their verified
+       earnings and account data with AirPay; the server refuses without it. */
+    requestReview: (body) => post('/api/capital/request-review', body),
     acceptOffer: () => post('/api/capital/accept-offer'),
   },
 

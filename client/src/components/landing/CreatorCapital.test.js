@@ -64,6 +64,31 @@ test('the status card labels match the dashboard tab\'s own building/unlocked sp
   assert.match(src, /monthsWithEarnings >= monthsRequired \? 'Eligibility Unlocked' : 'Building Eligibility'/)
 })
 
+/**
+ * Client's Sep 17 review, item 2: the illustrative example claimed "6 months"
+ * + "60% complete" + Building Eligibility + Eligibility Unlocked at once.
+ * One coherent state now — months earned, months required, the bar and the
+ * single label all derived from the same two numbers, and the required
+ * number is the platform's one rule read from the cached public stats (no
+ * extra request for a visitor), not a literal.
+ */
+test('the illustrative card shows exactly one status, derived from one pair of numbers', () => {
+  const example = src.slice(src.indexOf('is-illustrative'), src.indexOf('Illustrative example'))
+  assert.match(src, /const exampleRequired = Number\(readLanding\(LANDING_KEYS\.stats\)\?\.capitalMonthsRequired\) \|\| 6/)
+  assert.match(example, /\{exampleEarned\} of \{exampleRequired\} months/)
+  assert.match(example, /\{buildingLabel\(exampleEarned, exampleRequired\)\}/)
+  assert.match(example, /width: `\$\{examplePct\}%`/)
+  assert.doesNotMatch(example, /pill-green/, 'no second, contradictory status pill')
+  assert.doesNotMatch(example, /60%|<b>6 months<\/b>/, 'no literals that could disagree with the rule')
+  // Exactly one pill rendered in the example.
+  assert.equal((example.match(/className="pill-gold"/g) || []).length, 1)
+})
+
+test('the real card states months as "X of N", with N from the API', () => {
+  const real = src.slice(src.indexOf('const capital = data.capital'))
+  assert.match(real, /\{monthsWithEarnings\} of \{monthsRequired\} months/)
+})
+
 test('the AirPay logo is a labelled placeholder component, not a hard-coded image the client never sent', () => {
   assert.match(src, /function AirPayLogoPlaceholder\(\)/)
   // Rendered twice (real status + illustrative), never as a bare <img> —
