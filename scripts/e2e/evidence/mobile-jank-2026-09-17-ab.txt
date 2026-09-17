@@ -1,0 +1,51 @@
+Mobile freeze — cause, fix, and a paired A/B on the same machine · 2026-09-17
+
+WHAT WAS MEASURED
+  scripts/measure-mobile-jank.mjs — Pixel 7 profile, CPU throttled 4x (a mid-range Android),
+  Playwright Chromium. Per page: long tasks during load, then a scripted thumb-scroll watching
+  the frame clock. "jank" = frames that arrived >100ms late; "LT#/LTms" = long tasks (>50ms)
+  during the scroll and their total.
+
+WHAT CAUSED IT (DevTools invalidation trace of one Home scroll, same profile)
+  341 style recalculations and 340 layouts (192 forced) in ~80 scroll steps; 257 compositor commits.
+  The trace's own reasons:
+     538×  SPAN            — Animation    .vid-play span  (pulse, one per video card, forever)
+     298×  .marquee-track  — Animation    the feature ticker (transform, forever)
+     298×  ::after         — Animation
+     164×  .skeleton  ×3   — Animation    the placeholder shimmer (background-position, forever)
+      90×  InvalidateLayout from useScrolled (window.scrollY read in rAF) — 174ms forced layout
+  CPU profile of the same scroll: JavaScript 6–9% of the window; "(program)" — Chromium's own
+  style/layout/paint — 33–41%. Blocking playback warms or images changed nothing (checked).
+
+THE FIX (client/src/styles/global.css touch block; client/src/hooks/useScrolled.js)
+  On touch / low-power devices: .vid-play span, .marquee-track and .skeleton no longer animate
+  (the ticker becomes a swipeable strip). useScrolled watches a 1px sentinel with an
+  IntersectionObserver instead of reading scrollY on every scroll event.
+
+PAIRED A/B — production (old code) vs local preview of the fixed build, alternating, 3 rounds
+  (load columns are not comparable across origins; the scroll columns are CPU-bound and are)
+
+  Home /                    scroll: frames  jank  worstGap  LT#   LTms
+    BEFORE  production           241     1      117    19   1230
+    AFTER   fixed build          232     0       83     6    357
+    BEFORE  production           242     0       83    15    953
+    AFTER   fixed build          212     0       83     8    564
+    BEFORE  production           214     6      150    14   1060
+    AFTER   fixed build          222     1      117    10    649
+    → long tasks during the scroll roughly halved (14–19 → 6–10), blocked time 953–1230ms → 357–649ms
+
+  Explore /explore          scroll: frames  jank  worstGap  LT#   LTms
+    BEFORE  production            66     2      117     4    253
+    AFTER   fixed build           49     0       67     0      0
+    BEFORE  production            68     1      133     1    111
+    AFTER   fixed build           51     0       67     0      0
+    BEFORE  production            66     2      117     1     75
+    AFTER   fixed build           48     0       83     1     55
+    → scroll is clean
+
+WHAT IS LEFT, HONESTLY
+  The paid watch page's worst gap (~1.2s during player boot at 4x throttle) is the Cloudflare
+  Stream player's own iframe bundle (sdk-iframe-integration, 21% of the boot in the CPU profile)
+  plus React's first render. It is not ours to shrink; deferring the iframe would move the
+  pause, not remove it. The pre-roll/preview/entitlement flows depend on that boot and were not
+  touched.

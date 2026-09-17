@@ -1258,9 +1258,38 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   /* A glowing dot on every badge, pulsing a box-shadow forever. Small, but it
      repaints for the whole life of the page and there is one in each section. */
   .badge .dot { animation: none }
-  .marquee-track { animation-duration: 40s }
   .vid-card, .feat, .step, .testi, .stat-card { transition-duration: .2s }
   .vid-card:hover { transform: none }
+
+  /* ======================================================================
+     No infinite animation that the main thread has to tick.
+
+     "The mobile freezes in so many areas" — traced on a Pixel 7 profile
+     with the CPU throttled 4x (scripts/measure-mobile-jank.mjs, and a
+     DevTools invalidation trace of the same scroll, 2026-09-17). One
+     scripted scroll down the homepage produced 341 style recalculations
+     and 340 layouts, and the trace's own reasons for them were:
+
+        538×  SPAN            — Animation   (.vid-play span, pulse, one per card)
+        298×  .marquee-track  — Animation   (the feature ticker)
+        298×  ::after         — Animation
+        164×  .skeleton ×3    — Animation   (the shimmer, three per placeholder)
+
+     None of these is a transition someone triggered; they are keyframe
+     animations that never stop, and they were being serviced on the main
+     thread — one style recalc, one layout pass and one repaint per frame,
+     for every one of them on screen, on top of the scroll. Twenty-four
+     pulsing play buttons is twenty-four of those per frame.
+
+     Decoration is not worth a frame. A phone shows the play button, the
+     ticker and the placeholder still. The desktop keeps them moving.
+     ====================================================================== */
+  .vid-play span { animation: none }
+  .skeleton, .is-shimmer .skeleton { animation: none }
+  /* The ticker's items stay reachable: it becomes a strip you can swipe. */
+  .marquee-track { animation: none }
+  .marquee { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch }
+  .marquee::-webkit-scrollbar { display: none }
 
   /* ======================================================================
      No backdrop-filter. Anywhere.

@@ -1,0 +1,9 @@
+Mobile jank · Pixel 7 · CPU x4 · https://video-monetization-platform-chi.vercel.app · 2026-09-16T23:42:54.931Z
+
+  page                                 load   LT#  TBT   worst | scroll: frames jank  worstGap  LT#  LTms
+  /                                    10163    8  1179    926 |    180   18      200   32  2820
+  /explore                              6355    6   737    430 |     49    6      200    6   489
+  /watch/ugali-samaki-sunday-cooking    3267    8   849    356 |     17    1      350    3   571
+  /watch/live-at-arusha-full-set        2561    9   554    282 |     16    5     1200    5  1560
+  /creator-capital                      3072    2    89    115 |     32    3      117    1    86
+  /login                                1085    2   126    147 |     30    0       17    0     0
