@@ -16,12 +16,20 @@ import { adAirtimeStarted, adCanSkip, adSkipRules } from '@/lib/adSkip'
  * while we get out of the way. That is a failed load, not a skip, and it is
  * not billed as airtime.
  */
-export default function AdBreak({ ad, videoId, playId, onFinished }) {
+/**
+ * `onAirtime` fires once, the first time the advert is genuinely airing —
+ * frames moving, not merely mounted or buffered. Watch uses it to know when
+ * the pre-roll has the screen, and only then mounts the film underneath it:
+ * before that the two players were booting side by side and splitting the
+ * phone's bandwidth, which is most of why a Free + Ads start felt slow.
+ */
+export default function AdBreak({ ad, videoId, playId, onFinished, onAirtime }) {
   const [elapsed, setElapsed] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [booted, setBooted] = useState(false)
   const done = useRef(false)
   const watched = useRef(0)
+  const airedOnce = useRef(false)
 
   const { skippable, skipAfter } = adSkipRules(ad?.skipAfterSeconds)
   const canSkip = adCanSkip(ad?.skipAfterSeconds, elapsed, playing)
@@ -31,6 +39,10 @@ export default function AdBreak({ ad, videoId, playId, onFinished }) {
     const t = Number(current) || 0
     watched.current = Math.max(watched.current, t)
     if (!adAirtimeStarted(t)) return
+    if (!airedOnce.current) {
+      airedOnce.current = true
+      onAirtime?.()
+    }
     setPlaying(true)
     setElapsed(watched.current)
 

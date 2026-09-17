@@ -533,9 +533,26 @@ export default function Watch() {
   } else if (!preRollCandidateId && preRollTimedFor.current) {
     preRollTimedFor.current = null
   }
+  /**
+   * The head start is now real: the film mounts once the advert is AIRING.
+   *
+   * The 1.5s timer this replaces never gave the advert anything, and it is
+   * worth being exact about why (measured on production, Pixel 7 profile,
+   * 2026-09-17, scripts/e2e/evidence/player-white-2026-09-17-before.txt):
+   * the advert layer was rendered in the same JSX branch as the film, so
+   * while the hold was on NEITHER was mounted. Both iframes then appeared in
+   * the same frame, 1.5s late, and booted side by side — the segment log
+   * shows the film's and the advert's media interleaved for the whole boot.
+   * A Free + Ads start paid the 1.5s and still got the contention.
+   *
+   * Now the advert layer renders in both branches, the film waits for the
+   * advert's `onAirtime` (frames actually moving), and this timer is only a
+   * ceiling — an advert that has not started airing in 6s no longer holds
+   * the film hostage (AdBreak's own watchdog gives up at 10s regardless).
+   */
   useEffect(() => {
     if (!preRollCandidateId) return
-    const t = setTimeout(() => setPreRollHeadStartDone(true), 1500)
+    const t = setTimeout(() => setPreRollHeadStartDone(true), 6000)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preRollCandidateId])
@@ -590,8 +607,31 @@ export default function Watch() {
       const at = Math.floor(mainProgress.current)
       setSeekTo({ seconds: at, nonce: `mid_roll:${at}` })
     }
+    /* A pre-roll that ends — played, skipped or failed — releases the film
+       whether or not it ever reported airtime. */
+    if (activeAd?.placement === 'pre_roll') setPreRollHeadStartDone(true)
     setActiveAd(null)
   }, [activeAd?.placement])
+
+  /**
+   * The advert layer, rendered from BOTH branches below — the one that holds
+   * the film for the pre-roll and the one that shows it. It used to live
+   * only in the second, which is how the "head start" held the advert too.
+   */
+  const renderAdLayer = () =>
+    activeAd ? (
+      <div className="player-ad-layer">
+        <AdBreak
+          ad={activeAd}
+          videoId={v.id}
+          playId={playId}
+          onFinished={adFinished}
+          onAirtime={() => {
+            if (activeAd.placement === 'pre_roll') setPreRollHeadStartDone(true)
+          }}
+        />
+      </div>
+    ) : null
 
   // The pre-roll goes before anything else, once we know the video plays freely.
   // Wait until the breaks request has finished — otherwise the film starts, then
@@ -963,22 +1003,27 @@ export default function Watch() {
               </button>
             </div>
           ) : p?.playback?.iframe && holdContentForPreRoll ? (
-            /* Fully covered by .player-ad-layer's opaque overlay below --
-               this is never actually seen. It exists only so the content
-               iframe is not competing for bandwidth in the pre-roll's first
-               1.5s (report2.txt SEP12 §D). */
-            <div className="stream-shell is-booting" aria-hidden="true">
-              {v.thumbnailUrl ? (
-                <img
-                  className="stream-poster"
-                  src={mediaUrl(v.thumbnailUrl)}
-                  alt=""
-                  draggable={false}
-                />
-              ) : (
-                <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
-              )}
-            </div>
+            /* The film is held back until the pre-roll is airing (see
+               holdContentForPreRoll) so the advert boots alone. The advert
+               layer is rendered here too — the hold used to keep both out,
+               which cost every Free + Ads start 1.5s and then made the two
+               players fight for the same bandwidth anyway. The poster shell
+               is the thumbnail until the ads answer comes back. */
+            <>
+              <div className="stream-shell is-booting" aria-hidden="true">
+                {v.thumbnailUrl ? (
+                  <img
+                    className="stream-poster"
+                    src={mediaUrl(v.thumbnailUrl)}
+                    alt=""
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="stream-poster stream-poster-fallback" aria-hidden="true" />
+                )}
+              </div>
+              {renderAdLayer()}
+            </>
           ) : p?.playback?.iframe ? (
             <>
               <StreamPlayer
@@ -1091,11 +1136,7 @@ export default function Watch() {
                   }
                 }}
               />
-              {activeAd && (
-                <div className="player-ad-layer">
-                  <AdBreak ad={activeAd} videoId={v.id} playId={playId} onFinished={adFinished} />
-                </div>
-              )}
+              {renderAdLayer()}
               {needsPayment && !previewOver && (
                 /* Spell out how much of the film this preview is. The client
                    could not tell a paid video from a free one because nothing

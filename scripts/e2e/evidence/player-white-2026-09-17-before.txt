@@ -1,0 +1,119 @@
+Player white screen + ad delay — production, Pixel 7 profile, CPU x4 · 2026-09-17 (BEFORE any change, build f9158b1)
+scripts/e2e/probe-player-white.mjs — every ~300ms: what is mounted in the player box and how white it is (share of near-white pixels).
+
+
+######## ugali-samaki-sunday-cooking · CPU x4 · net=none ########
+  9235ms lum= 79 white=  0%  ad=- note="" boot=n frames=[] posters=[]
+  9790ms lum= 82 white=  0%  ad=- note="" boot=y frames=[] posters=[film:shown/op1/true]
+ 11750ms lum= 66 white=  0%  ad=loading note="Advert loading…" boot=n frames=[film:clear/op0 ad:clear/op0] posters=[film:shown/op1/true ad:shown/op1/true]
+ 14030ms lum=  9 white=  0%  ad=loading note="Advert loading…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op1/true ad:hidden/op1/true]
+ 14828ms lum=  9 white=  0%  ad=loading note="Advert loading…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 15451ms lum=  9 white=  0%  ad=loading note="Advert starting…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 18010ms lum= 63 white=  0%  ad=loading note="Advert starting…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 18807ms lum= 67 white=  0%  ad=playing note="" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 22984ms lum= 75 white=  0%  ad=skippable note="" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+--- white (>=50% near-white pixels): first at never, total 0ms
+--- network (cloudflarestream + api):
+  5623ms 200 embed.cloudflarestream.com/embed/sdk.latest.js
+  8023ms 200 video-monetization-platform-production.up.railway.app/api/videos/ugali-samaki-sunday-cooki
+  8862ms 200 video-monetization-platform-production.up.railway.app/api/playback/ugali-samaki-sunday-coo
+  9022ms 200 video-monetization-platform-production.up.railway.app/api/videos/ugali-samaki-sunday-cooki
+  9309ms 200 video-monetization-platform-production.up.railway.app/api/ads/breaks/ugali-samaki-sunday-c
+ 11458ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 11644ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 12145ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 12665ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 12977ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13031ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js
+ 13033ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js
+ 13219ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13537ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13545ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13552ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13555ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13709ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 13715ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 14027ms 202 video-monetization-platform-production.up.railway.app/api/videos/97ef24d6-16e1-4d30-b3ec-f
+
+######## live-at-arusha-full-set · CPU x4 · net=none ########
+  2586ms lum=  3 white=  0%  ad=- note="" boot=n frames=[] posters=[]
+  3766ms lum= 79 white=  0%  ad=- note="" boot=n frames=[film:clear/op0] posters=[film:shown/op1/false]
+  5491ms lum=  3 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op1/true]
+  6063ms lum=  4 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+ 13665ms lum= 59 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+--- white (>=50% near-white pixels): first at never, total 0ms
+--- network (cloudflarestream + api):
+  1000ms 200 embed.cloudflarestream.com/embed/sdk.latest.js
+  1991ms 200 video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set
+  2003ms 200 video-monetization-platform-production.up.railway.app/api/ads/breaks/live-at-arusha-full-s
+  2162ms 200 video-monetization-platform-production.up.railway.app/api/playback/live-at-arusha-full-set
+  2806ms 200 video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set/r
+  3190ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  3849ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  5397ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js
+  5399ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js
+  5471ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  6682ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  6687ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  7553ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  8397ms 202 video-monetization-platform-production.up.railway.app/api/videos/85bd6939-5fa5-4cad-b5ec-9
+
+################ 3G ################
+
+######## ugali-samaki-sunday-cooking · CPU x4 · net=3g ########
+  4518ms lum=  1 white=  0%  ad=- note="" boot=n frames=[] posters=[]
+  5048ms lum=  1 white=  0%  ad=- note="" boot=y frames=[] posters=[film:shown/op1/false]
+  6040ms lum=  4 white=  0%  ad=loading note="Advert loading…" boot=n frames=[film:clear/op0 ad:clear/op0] posters=[film:shown/op1/false ad:shown/op1/false]
+  7809ms lum=223 white= 79%  ad=loading note="Advert loading…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op1/true ad:hidden/op1/false]
+  8267ms lum=223 white= 79%  ad=loading note="Advert loading…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 12429ms lum=  9 white=  0%  ad=loading note="Advert loading…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 13655ms lum=  9 white=  0%  ad=loading note="Advert starting…" boot=n frames=[film:painted/op1 ad:painted/op1] posters=[film:hidden/op0/true ad:hidden/op0/true]
+ 16273ms lum=  1 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+ 19236ms lum= 44 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+--- white (>=50% near-white pixels): first at 7809ms, total 2274ms
+--- network (cloudflarestream + api):
+  1459ms 200 embed.cloudflarestream.com/embed/sdk.latest.js
+  3365ms 200 video-monetization-platform-production.up.railway.app/api/videos/ugali-samaki-sunday-cooki
+  3377ms 200 video-monetization-platform-production.up.railway.app/api/playback/ugali-samaki-sunday-coo
+  3973ms 200 video-monetization-platform-production.up.railway.app/api/ads/breaks/ugali-samaki-sunday-c
+  4630ms 200 video-monetization-platform-production.up.railway.app/api/videos/ugali-samaki-sunday-cooki
+  7608ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  7610ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  8776ms 202 video-monetization-platform-production.up.railway.app/api/videos/97ef24d6-16e1-4d30-b3ec-f
+  9517ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 10101ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+ 10556ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 10764ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 10989ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js
+ 10993ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js
+ 11367ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 11376ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 11380ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 11384ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 11768ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 11848ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+ 17398ms 202 video-monetization-platform-production.up.railway.app/api/ads/impression
+
+######## live-at-arusha-full-set · CPU x4 · net=3g ########
+  3966ms lum=  3 white=  0%  ad=- note="" boot=n frames=[] posters=[]
+  4551ms lum= 79 white=  0%  ad=- note="" boot=n frames=[film:clear/op0] posters=[film:shown/op1/true]
+  5799ms lum=231 white= 84%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op1/true]
+  7037ms lum=  4 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+ 13716ms lum= 44 white=  0%  ad=- note="" boot=n frames=[film:painted/op1] posters=[film:hidden/op0/true]
+--- white (>=50% near-white pixels): first at 5799ms, total 715ms
+--- network (cloudflarestream + api):
+  1100ms 200 embed.cloudflarestream.com/embed/sdk.latest.js
+  3014ms 200 video-monetization-platform-production.up.railway.app/api/ads/breaks/live-at-arusha-full-s
+  3034ms 200 video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set
+  3059ms 200 video-monetization-platform-production.up.railway.app/api/playback/live-at-arusha-full-set
+  3943ms 200 video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set/r
+  4043ms 301 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  5986ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+  6793ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  6874ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js
+  6926ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js
+  7205ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  7207ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  7294ms 200 customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGR
+  8329ms 202 video-monetization-platform-production.up.railway.app/api/videos/85bd6939-5fa5-4cad-b5ec-9
+

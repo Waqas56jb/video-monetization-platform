@@ -65,7 +65,7 @@ test('nothing of ours is ever drawn OVER the Cloudflare player', () => {
   // passes none), it sits behind the iframe rather than over it, and it is
   // hidden by the exact same `painted` flag that reveals the iframe — not a
   // timer or an SDK event of its own, so it inherits that flag's existing
-  // 1.5s failsafe rather than needing (or risking) a new one.
+  // last-resort failsafe rather than needing (or risking) a new one.
   assert.match(src, /poster && \(/)
   assert.match(src, /className=\{`stream-poster \$\{painted \? 'is-hidden' : ''\}`/)
 
@@ -75,9 +75,12 @@ test('nothing of ours is ever drawn OVER the Cloudflare player', () => {
 
   // `painted` is not a loading state — it skips the embed document's own white
   // background, which is what the poster was really hiding. It is revealed by
-  // the iframe's load, by the SDK's first event, and unconditionally after a
-  // moment, so a working player can never be left invisible.
-  assert.match(src, /setTimeout\(\(\) => setPainted\(true\), 1500\)/)
+  // the iframe's load or by the SDK's first event. The unconditional timer is
+  // a LAST resort at 8s, not 1.5s: measured on production over a 3G-class
+  // network (2026-09-17), the 1.5s version fired before Cloudflare's player
+  // script had arrived and uncovered a white document for 2–5s on every start
+  // — the client's "white screen". See playerBoot.test.js.
+  assert.match(src, /setTimeout\(\(\) => setPainted\(true\), 8000\)/)
   assert.match(src, /onLoad=\{\(\) => \{\s*\n[^}]*setPainted\(true\)/)
   assert.match(src, /const announceReady = \(\) => \{\s*\n\s*setPainted\(true\)/)
 
@@ -118,7 +121,10 @@ test('the only overlay left is a real failure', () => {
 
 test('the ad layer exists only while an advert is on screen', () => {
   const src = readFileSync(join(dir, 'Watch.jsx'), 'utf8')
-  assert.match(src, /\{activeAd && \(\s*\n\s*<div className="player-ad-layer">/)
+  // One definition, gated on activeAd, rendered from both the held and the
+  // live branch (the hold used to keep the advert out too — playerBoot.test.js).
+  assert.match(src, /const renderAdLayer = \(\) =>\s*\n\s*activeAd \? \(\s*\n\s*<div className="player-ad-layer">/)
+  assert.match(src, /\) : null/)
 })
 
 test('Watch keeps the film mounted under a pre-roll so Play is not a second boot', () => {
@@ -135,8 +141,12 @@ test('a fresh pre-roll gets a bandwidth head start over the content iframe it si
   // Traced live (report2.txt SEP12 §D): content, paused under a pre-roll,
   // still requested every segment in lockstep with the ad — same host,
   // same bandwidth, no head start for the ad that actually needs one.
+  // The head start is the advert's AIRTIME now, not a 1.5s timer: measured
+  // 2026-09-17, the timer held both players (the ad layer lived in the same
+  // branch) and then booted them side by side anyway. 6s is only a ceiling.
   assert.match(src, /preRollHeadStartDone/)
-  assert.match(src, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 1500\)/)
+  assert.match(src, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 6000\)/)
+  assert.match(src, /onAirtime=\{\(\) => \{\s*if \(activeAd\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)/)
 
   // Keyed off the ads DATA (adAt('pre_roll')), not off `activeAd` — activeAd
   // is only set by a later effect, one render after content has already

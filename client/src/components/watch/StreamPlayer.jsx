@@ -99,7 +99,7 @@ export default function StreamPlayer({
    *
    * The iframe starts transparent (`.stream-frame` opacity 0) over the
    * shell's plain black background, revealed on `painted` — which already
-   * has a 1.5s failsafe (below) so it can never get stuck. This just gives
+   * has an 8s last-resort failsafe (below) so it can never get stuck. This just gives
    * that same transparent window a picture instead of solid black: a static
    * layer with no event of its own to wait on, so it carries no new way to
    * get stuck the way the poster this replaced once did (see the file
@@ -314,9 +314,28 @@ export default function StreamPlayer({
     setFailed(false)
     setPainted(false)
     if (!iframeSrc) return
-    /* A reveal that depends on one event is a black screen when that event is
-       missed. This one cannot be. */
-    const failsafe = setTimeout(() => setPainted(true), 1500)
+    /**
+     * A reveal that depends on one event is a stuck poster when that event
+     * is missed, so there is still a failsafe — but a LATE one.
+     *
+     * It was 1.5s, and that was the white screen the client reported
+     * (2026-09-17). Measured on production, Pixel 7 profile, 3G-class
+     * network: the embed document arrives quickly but is a bare white page
+     * until Cloudflare's own ~600KB player script lands and paints — 3–6s
+     * after the frame is mounted on that network. The 1.5s timer uncovered
+     * it in the middle of that: the player box went 79–84% white for 2–5
+     * seconds on every start, film and advert alike
+     * (scripts/e2e/evidence/player-white-2026-09-17-before.txt). Matching the
+     * iframe's color-scheme to the document's was tried and measured too;
+     * it made no difference — the white is the document's own.
+     *
+     * So the reveal waits for the iframe's `load` (the document, script
+     * included, has run — it is Cloudflare's black from then on) or the
+     * SDK's ready events, whichever is first, with the thumbnail showing
+     * meanwhile. This timer only exists for a browser that fires neither,
+     * and 8s is past any measured boot, slow network included.
+     */
+    const failsafe = setTimeout(() => setPainted(true), 8000)
     /* Autoplay means most viewers never tap anything, so a tap is not a
        boundary we can measure from. This one always happens. */
     markPerf('playerBoot')
