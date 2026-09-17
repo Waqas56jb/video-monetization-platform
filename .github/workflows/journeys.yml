@@ -79,19 +79,24 @@ jobs:
       - name: Wait for this commit to be live
         env:
           API: https://video-monetization-platform-production.up.railway.app
+          WEB: https://video-monetization-platform-chi.vercel.app
         run: |
-          # X-Build carries the deployed commit. Poll until it is this one, so
-          # the journeys below test the code that was just pushed rather than
-          # whatever was there a minute ago.
+          # X-Build carries the deployed commit — the API sends it on every
+          # route, the client on /watch/:slug (client/api/watch.js). Poll until
+          # BOTH are this commit: the journeys drive the Vercel site, and Vercel
+          # and Railway deploy independently, so an API-only check could pass
+          # while the matrix still exercised the previous frontend build.
           for i in $(seq 1 60); do
-            live=$(curl -sI "$API/api/health" | tr -d '\r' | awk 'tolower($1)=="x-build:"{print $2}')
-            echo "attempt $i — live build: ${live:-unknown}, wanted: $GITHUB_SHA"
-            case "$GITHUB_SHA" in
-              "$live"*) echo "deployed"; exit 0 ;;
-            esac
+            api=$(curl -sI "$API/api/health" | tr -d '\r' | awk 'tolower($1)=="x-build:"{print $2}')
+            web=$(curl -sI -A "WhatsApp/2.23.20.0" "$WEB/watch/live-at-arusha-full-set" | tr -d '\r' | awk 'tolower($1)=="x-build:"{print $2}')
+            echo "attempt $i — api: ${api:-unknown}, web: ${web:-unknown}, wanted: $GITHUB_SHA"
+            ok=0
+            case "$GITHUB_SHA" in "$api"*) ok=$((ok+1));; esac
+            case "$GITHUB_SHA" in "$web"*) ok=$((ok+1));; esac
+            if [ "$ok" = 2 ] && [ -n "$api" ] && [ -n "$web" ]; then echo "deployed"; exit 0; fi
             sleep 20
           done
-          echo "::warning::the API never reported this commit; running against whatever is live"
+          echo "::warning::API or frontend never reported this commit; running against whatever is live"
 
       - name: Read-only journeys, all profiles
         env:

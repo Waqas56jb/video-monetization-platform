@@ -1699,3 +1699,40 @@ After deploy (de820cb live on client, scripts/e2e/evidence/player-white-2026-09-
   3G, paid preview: white 0ms (frame hidden until its load at 8.0s; thumbnail until then).
   fast, both: white 0ms; advert "playing" at 10.4s from navigation on the Free+Ads title.
   Regression after deploy: WhatsApp link flow ALL CHECKS PASSED; matrix --read-only 48 pass · 0 fail.
+
+================================================================================
+## SEP 17, LATER — GitHub Actions "journeys" pipeline red
+================================================================================
+
+The user got the failure e-mail for run 80 (1b6c919). Checked the history first: every completed
+run of .github/workflows/journeys.yml from run 43 (Sep 7) to run 80 is `failure` or `cancelled` —
+the pipeline had never been green, so nothing pushed today broke it. Every failure is the same
+step, "Read-only journeys, all profiles"; unit suites, builds and the deploy wait pass each time.
+Run 80's log (37 pass · 11 fail): the three Chromium profiles fail journeys 5 and 6 with
+"content reaches —s" (the Cloudflare <video> never advances), and the three WebKit profiles fail
+journeys 1/13 (and iPhone 14 journey 10) on 60s selector timeouts — the Home cards never render.
+The identical script passes on this laptop (48 pass · 0 fail, several times today).
+
+Rather than guess (codecs? runner IPs? Linux WebKit?), a dispatchable workflow was added —
+diagnose.yml → scripts/e2e/ci-diagnose.mjs — that prints from inside the runner: canPlayType /
+MediaSource support for H.264/AAC per Chromium build, whether the Cloudflare player's <video>
+advances on the Free+Ads watch page, and every console/page/request error plus the DOM state
+while Linux WebKit loads Home. Result (run 1, 2026-09-17 01:02Z, playwright@1.63.0):
+  chromium (Playwright's build, default headless): h264 "probably", MSE true, <video> t=0.99s → PLAYS
+  chromium (channel=chromium, new headless):                                 t=0.31s → PLAYS
+  chromium (Google Chrome):                                                  t=1.14s → PLAYS
+  webkit 26.6 desktop:  8 cards / 8 watch links at +11s, no errors (one harmless viewport warning)
+  webkit 26.6 iPhone 14: 8 cards / 8 watch links at +10s, same
+The workflow pinned playwright@1.49.1; the laptop runs 1.63.0. That version was the whole
+difference — the 1.49.1 Chromium/WebKit builds on the runner could not decode the stream / render
+the page; 1.63.0's can. Fix (abfb667): journeys.yml installs playwright@1.63.0 with matching
+browsers; actions/checkout and setup-node bumped to v5 (Node 20 runtime deprecation warnings);
+matrix.mjs gains a PW_CHANNEL=chrome escape hatch, unused. Stale queued runs on the old pin were
+cancelled so run 85 (abfb667) started at once.
+
+Run 85 (abfb667): SUCCESS — every step green; the deploy wait matched on attempt 1; matrix
+48 pass · 0 fail · 29 not applicable · 14 skipped (real device), 8 minutes end to end (the red runs
+took 19–30). The first green run in this workflow's history. Follow-up in the same pass: the deploy
+wait now also checks the CLIENT's X-Build (on /watch/:slug), not only the API's — the journeys
+drive the Vercel site and the two deploy independently, so an API-only check could have passed
+while the matrix still exercised the previous frontend build.
