@@ -1522,3 +1522,180 @@ GET route) was already fixed AND pinned with passing tests earlier in this same 
 the admin dashboard/payouts/Super Admin surfaces were separately, directly verified live already
 (Revenue, Creators, Ads, Withdrawals tabs -- see the Part 1/3/4 sections above). Flagged here
 rather than silently assumed covered.
+
+================================================================================
+## SEP 17 — Milestone 2 close-out list: 8 items, cleanup, WhatsApp minimum, mobile freeze
+================================================================================
+
+Rules kept: production evidence first, then the fix, then re-verification live. One commit per
+item. Tests + builds green before every push. No entitlement/purchase math weakened. No raw DB
+writes where an admin path exists. Every setting toggled for a check was restored.
+
+Commits, all on main, all live (client and API `X-Build` checked after each deploy; final f9158b1):
+  9a3b039  capital: one global eligibility rule, consent, one live record, AirPay-named admin actions (items 1–5)
+  bf08d79  rights: "declared / creator attested", declaration covers owning OR holding rights (item 6)
+  bb4d308  copy: no absolute "never disappears" (item 7)
+  2d89e76  hero: "Creators earning" counts creators who earned (item 8)
+  1836ad7  cleanup: Users counters reconcile, Library X off the badge, launch payment methods only
+  d08e74e  tests pinning every item, incl. a repo-wide scan for any rendered "70/30" literal
+  0e25973  share: a person's own page load no longer waits on the crawl report
+  0783be6  capital: consent refusal names its reason (false / missing / malformed)
+  a897a50  WhatsApp functional link flow, desktop + Pixel 7 + iPhone 14
+  ca9a444  mobile: scroll freeze traced to its cause and removed
+  1b6c919  production reset plan, dry-run-first script (nothing applied)
+  f9158b1  mobile: the last animation still ticking (hero wheel hint)
+
+--- Item 1 — ONE eligibility rule ---------------------------------------------------------------
+Evidence: public + dashboard said 6; Super Admin showed "3 of 2" and "2 of 2". Cause: the admin
+list read each row's own `months_required`, and three creator_capital rows seeded by hand on
+Sep 11 for a manual test (months_required = 2) were still there. Fix: migration 040 adds
+`platform_settings.capital_months_required` (default 6, 1–36, editable in Super Admin → Settings);
+the creator route (`requiredMonths()`), the admin list (`/capital` returns `monthsRequired`) and the
+public `/api/stats.capitalMonthsRequired` all read that one value; rows keep `months_required` only
+as a record of the rule at request time. The three seeded rows were deleted by id before the
+migration (the new index would have refused the duplicate). Live: PATCH the rule to 7 → /api/stats,
+demo.asha's /capital/status and the admin list all said 7 within a second; restored to 6.
+
+--- Item 2 — public example card -------------------------------------------------------------
+The illustrative card on the homepage / Creator Capital page showed "6 months · 60% · Building
+Eligibility · Eligibility Unlocked" together. It now shows one state computed from the live rule:
+"4 of 6 months · 67% · Building eligibility" (EXAMPLE_MONTHS_EARNED = 4 of `capitalMonthsRequired`,
+read from the landing cache so no extra request). The real dashboard card reads "X of N months".
+
+--- Item 3 — duplicate review requests ------------------------------------------------------
+Evidence: the same creator had a `building` row and an `under_review` row; `/status` did an
+unordered `limit 1`, so the dashboard sometimes showed "Request AirPay Review" over a pending
+request. The old unique index `creator_capital_one_open` only covered open statuses. Fix: unique
+index `creator_capital_one_live` over building/under_review/approved/active/paused; `/status`
+returns the live record first; `/request-review` refuses any open request (409), turns a leftover
+`building` row into the request instead of inserting beside it, and inserts `on conflict … do
+nothing` as the last line of defence. The button is disabled once pending, with "One request at a
+time". Honest limit: no creator on the platform has 6 months of earnings yet (it is ~2 months old),
+so the happy path could not be exercised on live data — it is covered by the index, the code and
+tests, and the refusals were verified live (below).
+
+--- Item 4 — AirPay is the lender ----------------------------------------------------------
+Buttons: "Record AirPay Approval", "Record AirPay Decline", "Publish AirPay Offer". Recording an
+approval requires the approved amount AND repayment terms (400: "AirPay's approved amount and
+repayment terms are both required to record an approval"); publishing checks both again. Pills:
+"Under AirPay review", "AirPay approved — offer not yet published". Audit summaries say "recorded
+AirPay's approval/decline".
+
+--- Item 5 — creator consent ---------------------------------------------------------------
+The request needs `consent: true`; the server refuses with the named reason whether the field is
+false, missing or malformed ("You need to consent to MTONYO+ sharing your verified earnings and
+account data with AirPay Microfinance before requesting a review"); `consent_at` is stored and
+shown to admins as a "Data-sharing consent" pill. Live as demo.asha: no consent → 400 with that
+message; consent but under the rule → 400 "You need 4 more month(s) of verified earnings…".
+
+--- Items 6, 7, 8 --------------------------------------------------------------------------
+6: upload declaration "I declare that I own this content or hold the necessary rights to it"
+   (+ every right, permission or licence needed to sell it); admin review pill "Rights declared ·
+   creator attested" / "No rights declaration".
+7: Testimonials + legal copy: purchased access stays, with the legal/rights/safety exception
+   stated; the absolute "never disappears" is gone from the bundle (grepped).
+8: `/api/stats.creatorsEarning` = distinct active creators with creator_tzs > 0 (demo switch
+   respected). Hero shows "Creators earning" with that number when > 0, otherwise "Creators on
+   MTONYO+" with the headcount. Live: creatorsEarning=19, creators=36.
+
+--- Cleanup ---------------------------------------------------------------------------------
+Users counters: overview returns active + suspended; the tab shows "Suspended or blocked" so
+77 = 76 + 1 reconciles. Library: the X/forget control sits top-right, off the FREE + ADS / PAY
+ONCE / PAID PREMIERE badge. Payment visuals: Visa/Mastercard removed from the phone mockup
+(M-PESA, AIRTEL MONEY only), `.ph-mc` CSS gone, bundle grepped. 70/30: a repo-wide test proves
+no rendered "70/30" literal exists — every surface reads `creator_split_percent`.
+
+Production reset: PRODUCTION-RESET.md + server/scripts/production-reset.mjs (dry run by default;
+money reversed via the admin refund path, never deleted; videos via the admin soft-delete; any
+creator whose films real people bought is BLOCKED; the E2E fixture kept). Dry run 2026-09-17
+(scripts/e2e/evidence/production-reset-dry-run-2026-09-17.txt): default scopes remove 33 test
+accounts, refund 10 sandbox purchases (9,500 TZS), soft-delete 16 unpublished smoke videos, drop the
+"test" announcement + 27 inbox rows, switch demo content out of public stats. `--with-demo`: 38 in
+scope, 2 BLOCKED — demo.asha (8 purchases by 7 real accounts) and demo.juma (14 by 13) — the only
+published content on the site is theirs. NOTHING APPLIED; the client chooses keep-and-hide
+(default) or refund-and-retire.
+
+--- WhatsApp minimum acceptance ---------------------------------------------------------------
+scripts/e2e/whatsapp-link-flow.mjs: chromium desktop, Pixel 7, iPhone 14 (WebKit) × Free+Ads
+(ugali) and paid (live-at-arusha). For each: Share → WhatsApp href is `whatsapp://send?text=<the
+exact /watch link and nothing else>`; a fresh visitor opening that link gets 200, the app shell
+(x-doc=shell), the right path and title, the player, the free preview on the paid film and the
+pre-roll on the Free+Ads film, no page errors. ALL CHECKS PASSED (evidence file committed with
+a897a50). The rich card is deferred past M2 per the client; the macweb reproduction tokens still
+have zero telemetry rows (the reproduction was never run). Telemetry: crawler + preflight branches
+await the report (reliable); the shell branch is best-effort so a person's load never waits (0e25973).
+
+--- Mobile freeze -----------------------------------------------------------------------------
+Measured before touching anything (scripts/measure-mobile-jank.mjs, Pixel 7, CPU x4): Home scroll
+18 jank frames, 32 long tasks, 2.8s blocked; Explore 6 jank; paid watch worst gap 1.2s in player
+boot. First hypotheses were checked and rejected: blocking the playback warms or the images changed
+nothing, and a CPU profile put JavaScript at 6–9% of the scroll with Chromium's own style/layout/
+paint at 33–41%. A DevTools invalidation trace (scripts/trace-mobile-scroll.mjs) then named it:
+341 style recalcs / 340 layouts per scroll, caused by infinite keyframe animations serviced on the
+main thread — `.vid-play span` pulse (538, one per card), `.marquee-track` (298), `::after` (298),
+`.skeleton` shimmer (164×3) — plus `useScrolled` reading `window.scrollY` in rAF (90 forced
+layouts, 174ms). Fix (ca9a444): on touch/low-power those animations do not run (ticker becomes a
+swipeable strip; desktop unchanged) and the header watches a 1px IntersectionObserver sentinel.
+Paired A/B, same machine, 3 rounds: Home scroll long tasks 14–19 → 6–10, blocked 953–1230ms →
+357–649ms; Explore 1–4 → 0–1 (scripts/e2e/evidence/mobile-jank-2026-09-17-ab.txt).
+After deploy, a count-based trace of production Home showed recalcs 1769 → 379, layouts 305 → 171,
+and ONE animation still ticking every frame: `document.getAnimations()` named the hero's
+mouse-wheel hint, whose ::after animates `top` forever in portrait. Hidden on touch (f9158b1).
+Production Home now: 0 running animations; layout invalidations 344 → 43 (none from useScrolled);
+the only "Animation" recalcs left are the thumbnails' one-off fade-in.
+Time-based numbers after deploy were taken while the user's machine was busy (their Chrome on a
+call, three other dev servers) and swung 10×; the paired A/B above is the reliable comparison.
+Left, honestly: the paid watch page's ~1.2s pause at 4x throttle is the Cloudflare Stream player's
+own iframe bundle (21% of the boot in the profile) + React's first render; not ours to shrink, and
+deferring the iframe would move the pause, not remove it.
+
+--- Final regression (after f9158b1) ---------------------------------------------------------
+scripts/e2e/whatsapp-link-flow.mjs: ALL CHECKS PASSED (chromium desktop, Pixel 7, iPhone 14 × Free+Ads,
+paid). scripts/e2e/matrix.mjs --read-only, 7 profiles: 48 pass · 0 fail · 29 not applicable (the
+account journeys are n/a in read-only mode; they passed in FULL mode on Sep 14) · 14 skipped (real
+device only).
+
+================================================================================
+## SEP 17, LATER — "video and ads delay, a white screen appears on play"
+================================================================================
+
+Evidence first (scripts/e2e/probe-player-white.mjs — Pixel 7 profile, CPU x4, samples the player
+box every ~300ms: what is mounted, what is revealed, how many pixels are near-white; evidence in
+scripts/e2e/evidence/player-white-2026-09-17-before.txt):
+  fast network: no white — Cloudflare's player script arrived within ~1s, before the reveal.
+  3G-class network (150ms RTT, 1.6Mbps):
+    Free+Ads (ugali):  player box 79% WHITE from 7.8s to 12.4s. Both iframes (film + advert)
+                       mounted at 6.0s; the 1.5s failsafe revealed them at ~7.6s; the advert's
+                       player script (customer-….cloudflarestream.com/embed/sdk-iframe-integration,
+                       301 + ~600KB) only landed at 9.5–10.1s; first media segment 11.4s; advert
+                       airing ~16s.
+    Paid preview (Arusha): 84% WHITE at 5.8s for ~1.2s, same mechanism (script at 6.0s, chunks 6.9s).
+Cause 1 — the white: the Stream embed document is 3KB of HTML with NO background rule
+(`html,body{height:100%} body{margin:0;overflow:hidden}`) — a white page until Cloudflare's script
+paints the player. StreamPlayer hides the frame (opacity 0) until `painted`, but `painted` had a
+1.5s failsafe that fired before the script arrived on a slow network. A second hypothesis —
+Chromium paints a cross-origin iframe opaque when its color-scheme differs from the document's —
+was A/B-tested live with injected CSS (frame forced visible, `color-scheme: dark` vs `normal`, 3G):
+84% white for ~2.7s either way. Disproved; the white is the document's own.
+Cause 2 — the delay: the pre-roll "head start" (SEP12 §D) held the film for 1.5s — but the advert
+layer was rendered in the same JSX branch, so during the hold NEITHER was mounted. Both iframes then
+appeared in the same frame, 1.5s late, and booted side by side: the segment log shows the film's
+(f76fb…) and the advert's (9d0203…) media interleaved for the entire boot. Every Free+Ads start paid
+the 1.5s and still got the contention.
+
+Fix (de820cb):
+  StreamPlayer: reveal on the iframe's own `load` or the SDK's ready events; thumbnail stays until
+  then; the unconditional timer is an 8s last resort (past any measured boot, 3G included).
+  AdBreak: new `onAirtime`, fired once when frames are genuinely moving (after AD_AIRTIME_FLOOR).
+  Watch: the advert layer renders in both branches (one `renderAdLayer()`); the film mounts when the
+  pre-roll reports airtime, or when it ends (played/skipped/failed), with a 6s ceiling. Three
+  earlier tests that pinned the 1.5s numbers were updated to the measured truth; playerBoot.test.js
+  pins the new one. Client 220/220.
+
+After deploy (de820cb live on client, scripts/e2e/evidence/player-white-2026-09-17-after.txt):
+  3G, Free+Ads: white 0ms. Only the advert frame is mounted at 6.0s ("Advert loading…" over the
+    thumbnail); its document paints at 9.2s; the film frame mounts at 11.4s — once the advert is
+    airing — and paints at 13.6s; the advert ends at 16.1s. No moment without a picture.
+  3G, paid preview: white 0ms (frame hidden until its load at 8.0s; thumbnail until then).
+  fast, both: white 0ms; advert "playing" at 10.4s from navigation on the Free+Ads title.
+  Regression after deploy: WhatsApp link flow ALL CHECKS PASSED; matrix --read-only 48 pass · 0 fail.

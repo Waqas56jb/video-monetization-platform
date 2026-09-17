@@ -1523,5 +1523,167 @@ needed from you on this. One real display bug was found and fixed along the way 
 Management's own page didn't refresh itself when the split changed elsewhere, unlike the other
 admin pages — so this can't recur the same way again.
 
-*(This section will be completed with the remaining Sep 14 items — the ad-controls regression, the
-device regression, and the desktop WhatsApp reproduction — once each finishes.)*
+### 2. The rest of the Sep 14 list
+
+The ad-controls regression and the full device regression were both run and passed (65 pass, 0
+fail across seven browser profiles; the details are in `report2.txt` under "SEP 14, LATER —
+ad-controls regression" and "SEP 14 — full authenticated device matrix"). The desktop WhatsApp
+reproduction never produced any telemetry rows — the tracking tokens were not used — and on Sep 17
+you deferred the rich card past Milestone 2, so the sharing work below is scoped to the link flow.
+
+## Sep 17 — Milestone 2 close-out list
+
+Every item below was checked on the live site before it was changed, changed, and checked again
+after deployment. All of it is pushed and live.
+
+### 1 · Creator Capital uses one requirement everywhere
+
+**What you saw.** Public page and dashboard said 6 months; Super Admin showed "3 of 2" and "2 of 2".
+
+**What it was.** Super Admin was reading a number stored on each request, and three requests left
+over from a manual test on Sep 11 had "2" stored on them. There was no single place the rule lived.
+
+**What changed.** There is now one setting — Super Admin → Settings → "Creator Capital eligibility
+(months of verified earnings)", default 6 — and every surface reads it: the homepage example, the
+Creator Capital page, a creator's dashboard card, the Super Admin list, and the public stats. The
+three leftover test requests were removed. Checked live: changing the setting to 7 updated all of
+them within a second; it was set back to 6.
+
+### 2 · The public example shows one status
+
+The illustrative card used to show "6 months", "60%", "Building Eligibility" and "Eligibility
+Unlocked" all at once. It now shows a single consistent example — "4 of 6 months · 67% · Building
+eligibility" — with the 6 coming from the setting above.
+
+### 3 · No duplicate review requests
+
+**What it was.** A creator could end up with two requests because a half-created one was left
+beside a real one, and the dashboard sometimes showed the wrong one — so the button came back
+while a request was still pending.
+
+**What changed.** The database now refuses a second live request outright; the dashboard always
+shows the live one; the button locks as soon as a request is pending ("One request at a time");
+and the server refuses another request with a clear message. One honest note: nobody on the
+platform has six months of earnings yet, so a real end-to-end request could not be made on live
+data — the protection is in the database rule, the code and the tests, and the refusals were
+verified live.
+
+### 4 · Super Admin buttons say what they do
+
+"Record AirPay Approval", "Record AirPay Decline", "Publish AirPay Offer". An approval cannot be
+recorded without AirPay's approved amount **and** repayment terms, and an offer cannot be
+published without both. Status labels read "Under AirPay review" and "AirPay approved — offer not
+yet published". Nothing implies MTONYO+ is the lender.
+
+### 5 · Creator consent before review
+
+Before requesting a review a creator must tick "I consent to MTONYO+ sharing my verified earnings
+and account data with AirPay Microfinance". The server refuses a request without it (with that
+exact reason), records when consent was given, and Super Admin shows a "Data-sharing consent"
+mark on the request.
+
+### 6 · "Rights declared" and the upload declaration
+
+The badge now reads "Rights declared · creator attested" (or "No rights declaration"). The upload
+declaration reads "I declare that I own this content or hold the necessary rights to it", with the
+note that this means every right, permission or licence needed to sell it on MTONYO+.
+
+### 7 · No absolute "never disappears"
+
+Purchased access is described as staying with the viewer, with the exception stated: content can
+be removed for legal, rights or safety reasons. The old wording is gone from the site and the legal
+page.
+
+### 8 · "31 creators earning"
+
+The homepage now counts creators who have actually earned — 19 today — and labels it "Creators
+earning". If that number were ever zero it would show the headcount labelled "Creators on MTONYO+"
+instead. It will never again claim earnings for creators at TZS 0.
+
+### Cleanup items
+
+- **User totals reconcile.** Super Admin → Users now shows "Suspended or blocked" as a third
+  counter, so 77 = 76 active + 1 suspended.
+- **My Library.** The X no longer sits on the FREE + ADS / PAY ONCE / PAID PREMIERE badge; it is
+  in the top-right corner of the card.
+- **Payment visuals.** Visa and Mastercard are gone; the phone mock-up shows M-Pesa and Airtel
+  Money only.
+- **70/30.** Confirmed: no page has "70/30" typed into it. Every place that shows the split reads
+  the global setting on Super Admin → Revenue & Splits, and an automated check now fails the build
+  if anyone ever types a fixed split into the site again.
+- **Safe reset before launch.** The plan is written up in `PRODUCTION-RESET.md` and built as a
+  script that only reports until told to act. It refunds test purchases through the real refund
+  path (so no creator balance is left wrong), removes test videos through the real admin delete
+  (so the audit log has them), and **refuses to delete any creator whose films real people have
+  bought**. Its dry run today: 33 smoke/test accounts, 10 sandbox purchases (9,500 TZS), 16
+  unpublished test videos, the "test" announcement in 27 inboxes, and switching demo content out
+  of the public numbers. The two demo creators (Asha, Juma) are blocked from deletion because 13
+  of your own testers hold 20 purchases of their films, and theirs are the only published videos
+  on the site — so the decision is yours: keep the showcase and hide it from the stats (the
+  default), or refund those purchases and retire it. **Nothing has been deleted.** Say the word
+  and the default run goes.
+
+### WhatsApp — the minimum acceptance
+
+Tested automatically on desktop Chrome, a Pixel 7 profile and an iPhone 14 profile, on a Free +
+Ads video and a paid video: Share hands off to WhatsApp with exactly the video's link and nothing
+else; a person who taps that link lands on the correct video, sees the title and the player, and
+gets the free preview (paid) or the pre-roll (Free + Ads). All checks passed on all three. The rich
+preview card remains deferred, as you decided.
+
+### The mobile freeze
+
+**What you saw.** "It freezes in so many areas."
+
+**What it was, measured.** On a Pixel 7 profile with the processor slowed 4× to imitate a mid-range
+Android, one scroll down the homepage made the browser recalculate the page's styling 341 times and
+its layout 340 times. The browser's own trace named the causes: decorative animations that never
+stop — the glowing play button on every video card, the scrolling feature ticker, the shimmering
+grey placeholders, and the little "scroll" mouse-wheel hint in the hero — each costing the phone
+work on every single frame, plus the header asking the browser "how far have we scrolled?" in a way
+that forced it to stop and re-measure the page 90 times per scroll. (The first guesses — video
+pre-loading, images — were tested and ruled out.)
+
+**What changed.** On phones and tablets those animations simply do not run (the desktop keeps
+them), and the header now learns it has scrolled without asking. Comparing the old and new site
+side by side on the same machine, three times: the work blocking the homepage scroll roughly
+halved (long tasks 14–19 → 6–10; blocked time 0.95–1.2 s → 0.36–0.65 s), and the Explore page's
+scroll became clean. On the live site after deployment the homepage now runs **zero** animations
+while you scroll, and the forced re-measuring is gone entirely.
+
+**What is left.** On a paid video the first second of the player starting is Cloudflare's own
+player code loading; that is not something we can make smaller, and the preview, pre-roll and
+purchase flows were deliberately not touched.
+
+## Sep 17, later — "video and adverts delay, and a white screen appears when they start"
+
+**What you saw.** A white rectangle where the video or advert should be, for a few seconds, then
+the picture; and a Free + Ads video taking a long time before the advert started.
+
+**What it was, measured.** Reproduced on the live site on a Pixel 7 profile over a 3G-class
+connection, sampling the player box every third of a second:
+
+- The player box went **79–84% white for 2–5 seconds on every start**, film and advert alike.
+  Cloudflare's player frame is a blank white page until its own player script (about 600 KB) has
+  downloaded and run. Our page kept the frame hidden behind the thumbnail until the player was
+  ready — but with a 1.5-second "just in case" timer that uncovered it anyway, and on a slower
+  connection that timer fired before Cloudflare's script had arrived. Result: white.
+- A Free + Ads start held **both** the film and the advert back for 1.5 seconds (a bug in the
+  "head start" that was meant to let the advert load first), then started both players at the
+  same instant so they fought for the same connection. The advert only started playing about
+  10 seconds after the page knew it had one.
+
+On a fast connection neither problem shows, which is why it did not appear in earlier checks.
+
+**What changed.** The frame is now uncovered only when Cloudflare's own page reports it has
+loaded (or its player reports ready) — until then the thumbnail stays on screen, never white —
+with a last-resort timer of 8 seconds instead of 1.5. The advert now starts loading immediately
+and alone; the film is loaded underneath it only once the advert is genuinely playing, so the
+advert gets the whole connection to itself for its start.
+
+**Checked after deployment.** The same probe, same phone profile, same 3G-class connection, on
+the live site: **no white at any point** on either the Free + Ads video or the paid preview (0 ms,
+measured every third of a second for 24 seconds), and the same on a fast connection. The advert
+now starts loading the moment the page knows about it, alone; the film loads underneath only once
+the advert is playing. The full read-only device regression (48 checks across 7 browser profiles)
+and the WhatsApp link flow were re-run afterwards: all passing.
