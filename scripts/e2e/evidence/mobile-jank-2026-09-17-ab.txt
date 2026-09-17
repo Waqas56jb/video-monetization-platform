@@ -43,6 +43,17 @@ PAIRED A/B — production (old code) vs local preview of the fixed build, altern
     AFTER   fixed build           48     0       83     1     55
     → scroll is clean
 
+PRODUCTION AFTER DEPLOY — count-based (scripts/trace-mobile-scroll.mjs; counts do not depend on machine load)
+  after ca9a444:  style recalcs 1769 → 379 · layouts 305 → 171 · one animation still ticking every frame:
+                  document.getAnimations() named `wheel · span.wheel::after` — the hero's mouse-wheel hint,
+                  animating `top` (a layout property) forever in portrait.
+  after f9158b1:  document.getAnimations() = 0 on load, at 1600px and mid-page ·
+                  InvalidateLayout 344 → 43 (none from useScrolled) ·
+                  the only "Animation" style recalcs left are the thumbnails' one-off fade-in (57×, composited opacity).
+  Time-based numbers after the deploy were taken while this machine was busy (the user's Chrome on a
+  call, three other dev servers) and swung 10× between identical runs; the paired A/B above is the
+  reliable comparison.
+
 WHAT IS LEFT, HONESTLY
   The paid watch page's worst gap (~1.2s during player boot at 4x throttle) is the Cloudflare
   Stream player's own iframe bundle (sdk-iframe-integration, 21% of the boot in the CPU profile)
