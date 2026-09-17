@@ -472,7 +472,18 @@ for (const profile of PROFILES) {
   if (onlyProfiles && !onlyProfiles.includes(profile.name)) continue
   let browser
   try {
+    /**
+     * PW_CHANNEL=chrome makes the Chromium profiles run in Google Chrome.
+     *
+     * Playwright's own Chromium build on the Linux CI runner never decoded a
+     * frame of Cloudflare's H.264/AAC stream — every playback journey there
+     * reported "content reaches —s" on every run since the workflow was
+     * written, while the same script passed on Windows. Chrome carries the
+     * proprietary codecs; the workflow installs it and sets this.
+     */
+    const channel = profile.engine === 'chromium' && process.env.PW_CHANNEL ? process.env.PW_CHANNEL : undefined
     browser = await pw[profile.engine].launch({
+      ...(channel ? { channel } : {}),
       args: profile.engine === 'chromium' ? ['--autoplay-policy=no-user-gesture-required'] : [],
     })
   } catch (err) {

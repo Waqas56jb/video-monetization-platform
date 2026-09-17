@@ -1,0 +1,38 @@
+# On-demand diagnosis of the journey matrix's environment on this runner.
+#
+# The matrix (journeys.yml) failed on every completed run since it was written,
+# always at the same step and always in the same two clusters, while the same
+# script passed on a laptop. This job does not test the product; it prints,
+# from inside the runner, whether each browser build can decode Cloudflare's
+# stream and what Linux WebKit actually sees on the homepage — so the matrix
+# can be fixed on facts (scripts/e2e/ci-diagnose.mjs).
+
+name: diagnose
+
+on:
+  workflow_dispatch:
+    inputs:
+      playwright:
+        description: 'Playwright version to install'
+        required: false
+        default: '1.63.0'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright, its browsers, and Google Chrome
+        run: |
+          npm init -y --scope=@mtonyo >/dev/null 2>&1 || true
+          npm i --no-save "playwright@${{ github.event.inputs.playwright || '1.63.0' }}"
+          npx playwright install --with-deps chromium webkit
+          npx playwright install chrome || echo "::warning::Google Chrome could not be installed"
+      - name: Diagnose
+        env:
+          PLAYWRIGHT_MODULE: playwright
+        run: node scripts/e2e/ci-diagnose.mjs
