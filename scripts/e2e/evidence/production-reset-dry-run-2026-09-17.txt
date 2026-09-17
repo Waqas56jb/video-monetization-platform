@@ -1,0 +1,274 @@
+Production reset — dry runs against the live database · 2026-09-17
+(nothing was written; real testers' addresses are masked in this copy)
+
+######## DEFAULT SCOPES: node server/scripts/production-reset.mjs ########
+
+DRY RUN — nothing will be written   scopes: smoke, probe, e2e, test-other, orphans, test-announcement, demo-stats
+kept: e2e+8238822854@mtonyo.test   api: https://video-monetization-platform-production.up.railway.app
+
+── creator.xg0x1k@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 413b2a0a-d325-4fc3-8011-80ca761517d3
+── viewer.xg0x1k@mtonyo.test   viewer · active · demo · smoke
+   refund 5,000 TZS · live-at-arusha-full-set · payment 70aedc07-3d7a-42a8-940e-bb24ff6eb775 (success)
+   delete account 21188b2e-551c-407e-b60e-c7e519cf3c31
+── creator.5pqzgw@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account d7dd017e-24df-47cd-9dfc-1ff36508ce7b
+── viewer.5pqzgw@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-5pqzgw · payment 2f0ae30f-91ec-427e-8aa8-138c7587a390 (success)
+   delete account 339b9b80-fa7c-4025-bfab-4b800ed5c334
+── creator.qrw8zn@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 3f10744f-f89a-4c5b-b124-9f748a00b56e
+── viewer.qrw8zn@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-qrw8zn · payment f3105a09-b3bc-4c3d-b1ae-bfb0caed9411 (success)
+   delete account 4b69487e-841d-49f8-a208-539938e85ec9
+── creator.rqhwa6@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account a1876f53-c0c1-4125-a2ae-e2fde6370e9d
+── viewer.rqhwa6@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-rqhwa6 · payment 553fc17b-3918-46c1-bb3e-5cc70505176c (success)
+   delete account 7679b69c-a8cf-4e86-b968-40db3d5b74fe
+── creator.vzj3ol@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 4f332564-476b-4767-9214-ec058bcd80fc
+── viewer.vzj3ol@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-vzj3ol · payment c0850635-8658-46da-9292-46ff02d87c77 (success)
+   delete account 932c5eb0-9048-4796-9b83-d31fd4fcb751
+── creator.6zin4n@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account cb6b6fe6-d80e-48f3-8da3-882cc67341f5
+── viewer.6zin4n@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-6zin4n · payment 0940c4ec-ca1c-4895-9095-b4e6810f57a9 (success)
+   delete account a42ab647-2c60-4cc5-8602-eb1c8242cd28
+── creator.hljczj@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account d23a74d3-3611-4af8-9737-1cf32ded7474
+── viewer.hljczj@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-hljczj · payment 38542184-916e-4e40-98ad-cf6fce275096 (success)
+   delete account 4c209926-f8b2-49ec-8f48-77af75b6caab
+── creator.o80cw2@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account f745f983-c794-4aa5-8c3f-667cf489eee1
+── viewer.o80cw2@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-o80cw2 · payment 322bf711-4932-4fb7-92c4-12f9fb7a924d (success)
+   delete account d4c5a187-64eb-4da0-847b-6be2624dea88
+── creator.fec1kh@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 86a06e86-1808-4888-aca5-55eb5b6eae3a
+── viewer.fec1kh@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-fec1kh · payment 55ab9da3-6591-4fd5-a3bc-566b6245e618 (success)
+   delete account 72ea65c0-c73b-4d4e-a884-5dbc0775d7d4
+── creator.ln0c04@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 5aa39cbe-831f-45af-904a-ddfc4d51f843
+── viewer.ln0c04@mtonyo.test   viewer · active · demo · smoke
+   delete account c526b3f3-557a-402b-93f3-8b57cb05c7b6
+── creator.ll2vkb@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 7a746b02-196c-4839-abca-a483240ee277
+── viewer.ll2vkb@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-ll2vkb · payment 828ab80c-563d-4ea6-8dbf-c5b7c7adc7be (success)
+   delete account 56307557-e7f1-44df-8caf-6684694ab8d6
+── creator.8awudo@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account a2fade25-776b-439c-9ad0-9ecfc0d2be12
+── viewer.8awudo@mtonyo.test   viewer · active · demo · smoke
+   delete account 5a9555de-edbb-4b83-b220-a79778cf594c
+── creator.43ymof@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account df3ddc9e-c72a-4289-a513-3cbc8ddd9af5
+── viewer.43ymof@mtonyo.test   viewer · active · demo · smoke
+   delete account 51354752-6065-4cf1-aee4-13df8638b91b
+── creator.13phf0@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 827dc50e-aab1-429b-9a77-3895d20e4850
+── viewer.13phf0@mtonyo.test   viewer · active · demo · smoke
+   delete account 4dee7d7d-c6fa-48b0-8332-13c9b2e71d4c
+── creator.r07glb@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 1edde67d-391f-4d34-b269-8245a5b7e94e
+── viewer.r07glb@mtonyo.test   viewer · active · demo · smoke
+   delete account 4a598e65-761a-48a2-84e6-b4276d66a5bd
+── creator.a8nhnx@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 2285d4e4-063d-46dc-bad5-2417a2912be6
+── viewer.a8nhnx@mtonyo.test   viewer · active · demo · smoke
+   delete account 5c336629-0030-4246-9a24-cba6c8da56eb
+── probe+1789073683@mtonyo.test   creator · active · probe
+   delete account 09561ebe-f5e7-4e80-9261-e0ba7f1a2db9
+
+── creator_profiles rows on accounts that are not creators
+   wa***@gmail.com (sub_admin) — remove the dangling creator_profiles row
+
+── announcements titled "test"
+   "test" db212068-be25-4162-ad6c-621580e8171c sent 2026-08-23 — 27 inbox row(s) go with it (FK cascade) — delete via admin path
+
+── platform_settings.show_demo_content_in_stats
+   true → set false via PATCH /api/admin/settings (homepage counts, top creators and /api/stats stop counting demo rows)
+
+══ DRY RUN ══
+   accounts in scope: 33   blocked: 0   would delete: 33
+   refunds via admin path: 10 (9,500 TZS)   videos soft-deleted: 16   need a human: 0
+
+   Re-run with --apply (ADMIN_EMAIL/ADMIN_PASSWORD + SUPABASE_SERVICE_ROLE_KEY set) to make these changes.
+
+   now: 17 real active creators · 34 @mtonyo.test accounts · 37 demo accounts · 8 published videos
+
+
+######## WITH DEMO ACCOUNTS: node server/scripts/production-reset.mjs --with-demo ########
+
+DRY RUN — nothing will be written   scopes: smoke, probe, e2e, test-other, orphans, test-announcement, demo-stats, demo
+kept: e2e+8238822854@mtonyo.test   api: https://video-monetization-platform-production.up.railway.app
+
+── creator.xg0x1k@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 413b2a0a-d325-4fc3-8011-80ca761517d3
+── viewer.xg0x1k@mtonyo.test   viewer · active · demo · smoke
+   refund 5,000 TZS · live-at-arusha-full-set · payment 70aedc07-3d7a-42a8-940e-bb24ff6eb775 (success)
+   delete account 21188b2e-551c-407e-b60e-c7e519cf3c31
+── creator.5pqzgw@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account d7dd017e-24df-47cd-9dfc-1ff36508ce7b
+── viewer.5pqzgw@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-5pqzgw · payment 2f0ae30f-91ec-427e-8aa8-138c7587a390 (success)
+   delete account 339b9b80-fa7c-4025-bfab-4b800ed5c334
+── creator.qrw8zn@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 3f10744f-f89a-4c5b-b124-9f748a00b56e
+── viewer.qrw8zn@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-qrw8zn · payment f3105a09-b3bc-4c3d-b1ae-bfb0caed9411 (success)
+   delete account 4b69487e-841d-49f8-a208-539938e85ec9
+── creator.rqhwa6@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account a1876f53-c0c1-4125-a2ae-e2fde6370e9d
+── viewer.rqhwa6@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-rqhwa6 · payment 553fc17b-3918-46c1-bb3e-5cc70505176c (success)
+   delete account 7679b69c-a8cf-4e86-b968-40db3d5b74fe
+── creator.vzj3ol@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 4f332564-476b-4767-9214-ec058bcd80fc
+── viewer.vzj3ol@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-vzj3ol · payment c0850635-8658-46da-9292-46ff02d87c77 (success)
+   delete account 932c5eb0-9048-4796-9b83-d31fd4fcb751
+── creator.6zin4n@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account cb6b6fe6-d80e-48f3-8da3-882cc67341f5
+── viewer.6zin4n@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-6zin4n · payment 0940c4ec-ca1c-4895-9095-b4e6810f57a9 (success)
+   delete account a42ab647-2c60-4cc5-8602-eb1c8242cd28
+── creator.hljczj@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account d23a74d3-3611-4af8-9737-1cf32ded7474
+── viewer.hljczj@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-hljczj · payment 38542184-916e-4e40-98ad-cf6fce275096 (success)
+   delete account 4c209926-f8b2-49ec-8f48-77af75b6caab
+── creator.o80cw2@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account f745f983-c794-4aa5-8c3f-667cf489eee1
+── viewer.o80cw2@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-o80cw2 · payment 322bf711-4932-4fb7-92c4-12f9fb7a924d (success)
+   delete account d4c5a187-64eb-4da0-847b-6be2624dea88
+── creator.fec1kh@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 86a06e86-1808-4888-aca5-55eb5b6eae3a
+── viewer.fec1kh@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-fec1kh · payment 55ab9da3-6591-4fd5-a3bc-566b6245e618 (success)
+   delete account 72ea65c0-c73b-4d4e-a884-5dbc0775d7d4
+── creator.ln0c04@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 5aa39cbe-831f-45af-904a-ddfc4d51f843
+── viewer.ln0c04@mtonyo.test   viewer · active · demo · smoke
+   delete account c526b3f3-557a-402b-93f3-8b57cb05c7b6
+── creator.ll2vkb@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   ledger: 350 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account 7a746b02-196c-4839-abca-a483240ee277
+── viewer.ll2vkb@mtonyo.test   viewer · active · demo · smoke
+   refund 500 TZS · smoke-premiere-ll2vkb · payment 828ab80c-563d-4ea6-8dbf-c5b7c7adc7be (success)
+   delete account 56307557-e7f1-44df-8caf-6684694ab8d6
+── creator.8awudo@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account a2fade25-776b-439c-9ad0-9ecfc0d2be12
+── viewer.8awudo@mtonyo.test   viewer · active · demo · smoke
+   delete account 5a9555de-edbb-4b83-b220-a79778cf594c
+── creator.43ymof@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account df3ddc9e-c72a-4289-a513-3cbc8ddd9af5
+── viewer.43ymof@mtonyo.test   viewer · active · demo · smoke
+   delete account 51354752-6065-4cf1-aee4-13df8638b91b
+── creator.13phf0@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 827dc50e-aab1-429b-9a77-3895d20e4850
+── viewer.13phf0@mtonyo.test   viewer · active · demo · smoke
+   delete account 4dee7d7d-c6fa-48b0-8332-13c9b2e71d4c
+── creator.r07glb@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 1edde67d-391f-4d34-b269-8245a5b7e94e
+── viewer.r07glb@mtonyo.test   viewer · active · demo · smoke
+   delete account 4a598e65-761a-48a2-84e6-b4276d66a5bd
+── creator.a8nhnx@mtonyo.test   creator · active · demo · smoke
+   videos: 1 live (0 published) — soft-delete via admin path
+   delete account 2285d4e4-063d-46dc-bad5-2417a2912be6
+── viewer.a8nhnx@mtonyo.test   viewer · active · demo · smoke
+   delete account 5c336629-0030-4246-9a24-cba6c8da56eb
+── probe+1789073683@mtonyo.test   creator · active · probe
+   delete account 09561ebe-f5e7-4e80-9261-e0ba7f1a2db9
+── demo.asha@mtonyo.demo   creator · active · demo · demo
+   BLOCKED — 8 active purchase(s) by 7 real account(s): ab***@gmail.com, cr***@gmail.com, e2e+8238822854@mtonyo.test, fs***@gmail.com, go***@gmail.com, ha***@gmail.com, wa***@gmail.com
+   (deleting this account would cascade into those rows — refund those buyers in Admin → Payments first, or keep the account)
+── demo.juma@mtonyo.demo   creator · active · demo · demo
+   BLOCKED — 14 active purchase(s) by 13 real account(s): ab***@gmail.com, ab***@gmail.com, al***@gmail.com, cr***@gmail.com, d.***@gmail.com, e2e+8238822854@mtonyo.test, fs***@gmail.com, go***@gmail.com, ha***@gmail.com, ha***@gmail.com, sa***@gmail.com, ta***@gmail.com, wa***@gmail.com
+   (deleting this account would cascade into those rows — refund those buyers in Admin → Payments first, or keep the account)
+── demo.neema@mtonyo.demo   creator · active · demo · demo
+   videos: 2 live (2 published) — soft-delete via admin path
+   ledger: 1,871 TZS earned · 0 withdrawal(s) — goes with the account (test money, never paid out)
+   delete account b9e30da9-bffd-4270-a8b6-95095d03d972
+── demo.viewer@mtonyo.demo   viewer · active · demo · demo
+   refund 800 TZS · ugali-samaki-sunday-cooking · payment 54ac2952-559b-4782-bf0f-5d02c00fdad3 (success)
+   refund 2,500 TZS · behind-the-fame-a-coast-documentary · payment 12ff8c8c-fcf4-454b-a7fd-9fad3361ddf8 (success)
+   refund 1,500 TZS · the-fishermen-of-kilwa · payment 78f15b65-ac1e-433d-94db-653857dd7b8e (success)
+   refund 1,000 TZS · whatsapp-video-2026-08-15-at-11-50-34-pm · payment 6d45b6ae-82ff-4edb-83b4-98b12d591ae4 (success)
+   delete account aed9cdd8-9617-4171-ba47-09048403c36e
+── demo.moderator@mtonyo.demo   sub_admin · active · demo · demo
+   delete account d4877dfa-6c70-4cb7-b04a-f989141db346
+
+── creator_profiles rows on accounts that are not creators
+   wa***@gmail.com (sub_admin) — remove the dangling creator_profiles row
+
+── announcements titled "test"
+   "test" db212068-be25-4162-ad6c-621580e8171c sent 2026-08-23 — 27 inbox row(s) go with it (FK cascade) — delete via admin path
+
+── platform_settings.show_demo_content_in_stats
+   true → set false via PATCH /api/admin/settings (homepage counts, top creators and /api/stats stop counting demo rows)
+
+══ DRY RUN ══
+   accounts in scope: 38   blocked: 2   would delete: 36
+   refunds via admin path: 14 (15,300 TZS)   videos soft-deleted: 18   need a human: 0
+
+   Blocked accounts (kept as they are):
+     demo.asha@mtonyo.demo: 8 active purchase(s) by 7 real account(s): ab***@gmail.com, cr***@gmail.com, e2e+8238822854@mtonyo.test, fs***@gmail.com, go***@gmail.com, ha***@gmail.com, wa***@gmail.com
+     demo.juma@mtonyo.demo: 14 active purchase(s) by 13 real account(s): ab***@gmail.com, ab***@gmail.com, al***@gmail.com, cr***@gmail.com, d.***@gmail.com, e2e+8238822854@mtonyo.test, fs***@gmail.com, go***@gmail.com, ha***@gmail.com, ha***@gmail.com, sa***@gmail.com, ta***@gmail.com, wa***@gmail.com
+
+   Re-run with --apply (ADMIN_EMAIL/ADMIN_PASSWORD + SUPABASE_SERVICE_ROLE_KEY set) to make these changes.
+
+   now: 17 real active creators · 34 @mtonyo.test accounts · 37 demo accounts · 8 published videos
+
