@@ -475,11 +475,13 @@ for (const profile of PROFILES) {
     /**
      * PW_CHANNEL=chrome makes the Chromium profiles run in Google Chrome.
      *
-     * Playwright's own Chromium build on the Linux CI runner never decoded a
-     * frame of Cloudflare's H.264/AAC stream — every playback journey there
-     * reported "content reaches —s" on every run since the workflow was
-     * written, while the same script passed on Windows. Chrome carries the
-     * proprietary codecs; the workflow installs it and sets this.
+     * Kept as an escape hatch, not used by the workflow. It was added while
+     * chasing why every CI run's playback journeys reported "content reaches
+     * —s"; scripts/e2e/ci-diagnose.mjs then showed on the runner itself that
+     * Playwright's own Chromium decodes Cloudflare's H.264/AAC stream fine at
+     * playwright@1.63.0 — the pinned 1.49.1 was the difference, not the
+     * browser brand. If a future build drops the codecs again, this is the
+     * one-line way to run the matrix in Chrome instead.
      */
     const channel = profile.engine === 'chromium' && process.env.PW_CHANNEL ? process.env.PW_CHANNEL : undefined
     browser = await pw[profile.engine].launch({

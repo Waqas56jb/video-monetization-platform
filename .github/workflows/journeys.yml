@@ -23,6 +23,17 @@
 # It waits for the deployment before it looks. A push triggers Vercel and Railway
 # at the same moment as this workflow, so testing immediately tests the previous
 # build — which is worse than not testing, because it passes.
+#
+# WHY THIS PLAYWRIGHT VERSION, EXACTLY. Every completed run from the day this
+# workflow was written to 2026-09-17 (runs 43–80) failed at the journeys step,
+# in two clusters the same script never showed on a laptop: the Chromium
+# profiles never saw playback time advance ("content reaches —s"), and Linux
+# WebKit never rendered the Home cards inside 60s. diagnose.yml, run on this
+# runner on 2026-09-17, settled it: with playwright@1.63.0 — the version the
+# laptop runs — Playwright's own Chromium reports H.264/AAC "probably", the
+# Cloudflare player's <video> advances within seconds, and WebKit 26.6 renders
+# the 8 Home cards in ~10s with no console or page errors. The 1.49.1 pinned
+# before was the difference. Keep this in step with what is run locally.
 
 name: journeys
 
@@ -48,16 +59,16 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
 
       - name: Install Playwright and its browsers
         run: |
           npm init -y --scope=@mtonyo >/dev/null 2>&1 || true
-          npm i --no-save playwright@1.49.1
+          npm i --no-save playwright@1.63.0
           npx playwright install --with-deps chromium webkit firefox
 
       - name: Unit suites and builds
