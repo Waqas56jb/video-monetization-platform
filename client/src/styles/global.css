@@ -1286,6 +1286,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
      ====================================================================== */
   .vid-play span { animation: none }
   .skeleton, .is-shimmer .skeleton { animation: none }
+  /* The hero's mouse-wheel hint animates `top` — a layout property — on its
+     ::after, forever, and was the one animation still ticking after the
+     first fix (171 recalcs + 171 layouts per scroll, one per frame, found
+     with document.getAnimations()). A wheel hint means nothing to a thumb. */
+  .scroll-hint { display: none }
   /* The ticker's items stay reachable: it becomes a strip you can swipe. */
   .marquee-track { animation: none }
   .marquee { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch }

@@ -50,6 +50,13 @@ test('on touch, skeleton placeholders do not shimmer', () => {
   assert.match(block, /\.skeleton, \.is-shimmer \.skeleton \{ animation: none \}/)
 })
 
+test('on touch, the hero mouse-wheel hint is gone — its ::after animated `top` every frame for the life of the page', () => {
+  const block = touchBlock()
+  assert.match(block, /\.scroll-hint \{ display: none \}/)
+  // It is still a layout-property animation on desktop, where it is one element and a pointer exists.
+  assert.match(css, /@keyframes wheel\{0%\{opacity:1;top:7px\}100%\{opacity:0;top:20px\}\}/)
+})
+
 test('the header learns it has scrolled from an IntersectionObserver sentinel, never by reading scrollY on the hot path', () => {
   assert.match(useScrolled, /new IntersectionObserver\(/)
   assert.match(useScrolled, /document\.body\.appendChild\(sentinel\)/)
