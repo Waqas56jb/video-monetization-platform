@@ -149,7 +149,8 @@ attach(page)
 console.log(`Normal session · ${BASE} · target ${MINUTES} min · ${new Date().toISOString()}`)
 
 /* The per-leg dwell that spreads the session over the target length. */
-const watchDwell = Math.max(20_000, Math.round((MINUTES * 60_000 - 6 * 60_000) / 8))
+/* Six dwell legs plus ~3 minutes of navigation: MINUTES is the wall clock, measured. */
+const watchDwell = Math.max(20_000, Math.round((MINUTES * 60_000 - 180_000) / 6))
 
 await step('Home', () => page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 90000 }), 8000)
 await step('Trending — scroll down, hover four cards', async () => {
@@ -215,7 +216,6 @@ await step('Log in on the Create side and walk the creator dashboard', async () 
   }
 }, 3000)
 
-let paymentId = null
 let buyVideoId = null
 await step('Payment test — Watch side buys the one video it does not own (sandbox)', async () => {
   check(await signIn(page, ctx, VIEWER, 'viewer'), 'viewer signed in again')
@@ -238,34 +238,33 @@ await step('Payment test — Watch side buys the one video it does not own (sand
   await page.waitForTimeout(6000)
   const unlockAfter = await page.locator('button', { hasText: /unlock/i }).first().isVisible({ timeout: 2000 }).catch(() => false)
   check(!unlockAfter, 'the film is unlocked after paying')
-  const vt = await tokenFor(VIEWER, 'viewer')
-  const purchases = await api('GET', '/api/library/purchases', null, vt)
-  const row = (purchases.body?.purchases || purchases.body?.items || []).find((p) => (p.video?.slug || p.slug) === BUY)
-  buyVideoId = row?.video?.id || row?.videoId || null
-  paymentId = row?.paymentId || row?.payment?.id || null
-  console.log(`     · purchase row: ${JSON.stringify(row || purchases.body).slice(0, 200)}`)
+  const meta = await api('GET', `/api/playback/${BUY}/playback`)
+  buyVideoId = meta.body?.videoId || null
+  const ent = await api('GET', `/api/library/entitlement/${buyVideoId}`, null, await tokenFor(VIEWER, 'viewer'))
+  check(ent.body?.owned === true, `the API says the viewer now owns it (${JSON.stringify(ent.body).slice(0, 100)})`)
 }, 4000)
 
 /* ---------------------------------------------------------- reversal */
 await step('Reverse the test purchase through the admin refund path', async () => {
   const at = await tokenFor(ADMIN, 'viewer')
   if (!at) { check(false, 'admin sign-in failed — refund the purchase by hand in Admin → Payments'); return }
-  if (!paymentId) {
-    const list = await api('GET', '/api/admin/payments?limit=50', null, at)
-    const rows = list.body?.payments || list.body?.items || []
-    const mine = rows.filter((p) => (p.user?.email || p.userEmail || p.email) === VIEWER.email && (p.video?.slug || p.videoSlug || p.slug) === BUY && (p.status === 'success'))
-    mine.sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at))
-    paymentId = mine[0]?.id || null
-    if (!paymentId) console.log(`     · could not find the payment in the admin list (${rows.length} rows); first row: ${JSON.stringify(rows[0] || {}).slice(0, 200)}`)
+  const me = (await api('GET', '/api/auth/me', null, await tokenFor(VIEWER, 'viewer'))).body
+  const viewerId = me?.user?.id || me?.id
+  const list = await api('GET', '/api/admin/payments?limit=100', null, at)
+  const rows = list.body?.payments || list.body?.items || []
+  /* The admin list is snake_case (user_id, video_id). The first version of
+     this step looked for camelCase, found nothing, and left a purchase to be
+     refunded by hand. Matched on the viewer's id + the video's id, success only. */
+  const mine = rows
+    .filter((p) => (p.user_id || p.userId) === viewerId && (p.video_id || p.videoId) === buyVideoId && p.status === 'success')
+    .sort((x, y) => new Date(y.created_at || y.createdAt) - new Date(x.created_at || x.createdAt))
+  if (!mine.length) { check(false, `no success payment for ${VIEWER.email} × ${BUY} in the admin list (${rows.length} rows) — refund by hand`); return }
+  for (const p of mine) {
+    const r = await api('POST', `/api/admin/payments/${p.id}/refund`, { reason: 'E2E normal-session payment test, reversed' }, at)
+    check(r.status === 200, `refund ${p.id} (${p.provider_ref || ''}, ${p.amount_tzs} TZS) → ${r.status}`)
   }
-  if (!paymentId) { check(false, 'no payment id — refund by hand in Admin → Payments (viewer ' + VIEWER.email + ', video ' + BUY + ')'); return }
-  const r = await api('POST', `/api/admin/payments/${paymentId}/refund`, { reason: 'E2E normal-session payment test, reversed (2026-09-18)' }, at)
-  check(r.status === 200, `refund ${paymentId} → ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`)
-  const vt = await tokenFor(VIEWER, 'viewer')
-  if (buyVideoId) {
-    const ent = await api('GET', `/api/library/entitlement/${buyVideoId}`, null, vt)
-    check(ent.body?.owned === false || ent.body?.entitled === false || ent.body?.access?.owned === false, `entitlement withdrawn after refund (${JSON.stringify(ent.body).slice(0, 100)})`)
-  }
+  const ent = await api('GET', `/api/library/entitlement/${buyVideoId}`, null, await tokenFor(VIEWER, 'viewer'))
+  check(ent.body?.owned === false, `entitlement withdrawn after refund (${JSON.stringify(ent.body).slice(0, 100)})`)
 })
 
 /* ------------------------------------------------------------ summary */

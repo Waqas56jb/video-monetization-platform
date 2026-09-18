@@ -1807,3 +1807,25 @@ problem, the key was.
 GET /health → proxy: { ip: "116.90.124.28", hops: 2, trustProxyHops: 2, ok: true }
   — `ip` is now MY address, i.e. the caller's. Three requests to /api/stats: remaining 119 → 118
   → 117, exactly one per request — nobody else is in this bucket any more.
+
+--- CI on the fix, and one flaky check made honest ----------------------------------------------
+Run 88 (665eedd, 04:25–04:33Z): 47 pass · 1 fail. The one miss was journey 4 ("the watch page never
+looks frozen") on the chromium Fast 3G profile only: it sampled the DOM exactly 3s after the shell's
+DOMContentLoaded and saw shell:false poster:false frame:0 — on a 150ms/1.6Mbps emulation, 32s after
+the Railway rollout of that very commit. The other six profiles saw shell+poster+frame at the same
+instant, and runs 85, 86, 87 and 89 (7254dfe, same code) passed it 48/48. A fixed 3-second budget
+racing the lazy Watch chunk on a cold deploy is a timing test, not a "never blank" test — the
+matrix's own comment had already said so about its previous form. Hardened: journey 4 now polls
+up to 10s and reports WHEN something of ours appeared; it fails only if nothing ever does. Three
+local runs on the Fast 3G profile against production: 2189ms, 1112ms, 1057ms.
+
+--- The 20-minute session (client's acceptance) -------------------------------------------------
+Session #1 (04:28–04:41Z, evidence rate-limit-2026-09-18-session-1.txt): 13.2 min · 137 API
+requests · 10.4 req/min · peak 56 in any 60s (limit 120) · 0 × 429 · every functional check
+passed, including a real sandbox purchase that unlocked the film. Two script faults, both mine:
+the dwell maths made 13 minutes of a 20-minute target, and the auto-refund step matched the admin
+payments list on camelCase keys where the list is snake_case, so it could not find the row. The
+purchase was reversed by hand through the same admin refund route two minutes later (payment
+0c999b9e-248d-4981-97c3-c6ce5362d167, 500 TZS sandbox → refunded; entitlement owned:false;
+playback requiresPayment:true). Both faults fixed in scripts/e2e/normal-session.mjs; session #2
+runs a true 20 minutes and refunds itself — result below.

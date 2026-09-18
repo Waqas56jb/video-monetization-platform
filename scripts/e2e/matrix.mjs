@@ -226,7 +226,6 @@ const JOURNEYS = [
     everywhere: true,
     async run({ page, t }) {
       await page.goto(`${BASE}/watch/${FREE_SLUG}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-      await page.waitForTimeout(3000)
       /**
        * The classes the page actually renders, not invented ones.
        *
@@ -241,18 +240,39 @@ const JOURNEYS = [
        * `.stream-shell.is-booting` with a poster inside it, then `.stream-boot`
        * carrying the words. Once playback resolves, the iframe. Any of those is
        * "not a blank box"; the absence of all of them is the reported fault.
+       *
+       * MEASURED, NOT AT A FIXED INSTANT. The second version sampled once,
+       * exactly 3s after the shell's DOMContentLoaded. On the Fast 3G profile
+       * that is a race against the lazy Watch chunk and two API answers over a
+       * 150ms/1.6Mbps link: CI run 88 (2026-09-18 04:32:42Z, 32s after a
+       * Railway rollout) saw shell:false poster:false frame:0 at the 3s mark on
+       * that one profile while the other six saw shell+poster+frame, and runs
+       * 85–89 passed it on the same code. The page was loading, not frozen. So
+       * this polls: the claim is that something of ours appears, and it says
+       * WHEN it appeared. Ten seconds is past any cold path measured; a page
+       * that is blank for ten seconds on a phone is the bug this exists for.
        */
-      const shown = await page.evaluate(() => ({
-        shell: Boolean(document.querySelector('.stream-shell')),
-        poster: Boolean(document.querySelector('.stream-poster')),
-        words: document.querySelector('.stream-boot-msg')?.textContent?.trim() || null,
-        frame: document.querySelectorAll('iframe').length,
-        fallback: Boolean(document.querySelector('.stream-fallback')),
-      }))
+      const t0 = Date.now()
+      let shown = null
+      let at = null
+      while (Date.now() - t0 < 10000) {
+        shown = await page.evaluate(() => ({
+          shell: Boolean(document.querySelector('.stream-shell')),
+          poster: Boolean(document.querySelector('.stream-poster')),
+          words: document.querySelector('.stream-boot-msg')?.textContent?.trim() || null,
+          frame: document.querySelectorAll('iframe').length,
+          fallback: Boolean(document.querySelector('.stream-fallback')),
+        }))
+        if (shown.shell || shown.poster || shown.frame > 0 || shown.fallback) {
+          at = Date.now() - t0
+          break
+        }
+        await page.waitForTimeout(250)
+      }
       t(
-        shown.shell || shown.poster || shown.frame > 0 || shown.fallback,
-        `something is on screen at 3 s — shell:${shown.shell} poster:${shown.poster} frame:${shown.frame}` +
-        `${shown.words ? ` words:"${shown.words}"` : ''}`
+        at != null,
+        `${at != null ? `something is on screen within ${at} ms` : 'nothing of ours on screen after 10 s'} — ` +
+        `shell:${shown.shell} poster:${shown.poster} frame:${shown.frame}${shown.words ? ` words:"${shown.words}"` : ''}`
       )
       t((await noOverflow(page)) <= 0, 'no horizontal overflow')
     },
