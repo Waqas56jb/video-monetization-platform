@@ -1,0 +1,176 @@
+Normal-user session #2 — production, build 665eedd → 47bcac1 · started 2026-09-18 04:44:00Z · INVALID AS A 20-MINUTE RUN, KEPT FOR WHAT IT SHOWS
+
+Windows power log (System, Kernel-Power):
+  05:01:14Z  session transition 19→20 (Modern Standby entered)   ← t+1025s: the payment-sheet click 'timed out'
+  05:38:00Z  exiting Modern Standby                                ← t+3245s: the refund step ran into 'fetch failed' (network not yet up)
+  10:36:34Z  exiting Modern Standby                                ← t+21156s: browser.close() resolved; script reports 352.6 min
+The click timeout, the fetch failure and the six-hour duration are the laptop sleeping, not the site.
+Money: no purchase was made (admin payments since 04:44Z for this viewer × video: 0; entitlement owned:false).
+
+The one REAL finding — leg 4, 04:44:30Z–04:51:18Z: 2 × 429, RateLimit remaining=0.
+  Legs 1–3 show this IP's bucket falling by exactly the session's own counts (120→117→113→110): per-IP keying works.
+  Leg 4 made 14 requests; the bucket still hit 0 → ~106 requests inside one 60s window came from ELSEWHERE ON THIS
+  SAME PUBLIC IP (this machine/network: the operator's own browser and/or my test tooling at the time). Not the
+  client's fault mode (that was the shared edge address, fixed in 665eedd) — but proof that a per-IP bucket is
+  shared by everyone behind one router, which is how an office of testers would hit it too.
+  Live probe 12:18–12:21Z, 24 requests at 5s intervals: remaining fell by exactly 1 per request (one 2-step blip).
+
+-------------------------------------------------------------------------------------------------
+normal-session.mjs patched
+syntax ok
+Normal session · https://video-monetization-platform-chi.vercel.app · target 20 min · 2026-09-18T04:44:00.455Z
+
+## Home  (t+1s)
+   3 requests · 0 × 429 · bucket remaining after: 117
+      1×  GET /api/stats/top-creators
+      1×  GET /api/videos
+      1×  GET /api/stats
+
+## Trending — scroll down, hover four cards  (t+10s)
+      ok    8 cards on the homepage
+   4 requests · 0 × 429 · bucket remaining after: 113
+      1×  GET /api/playback/how-to-cook-pilau-properly/playback
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+      1×  GET /api/playback/studio-session-track-4/playback
+
+## Explore, then a category filter and back  (t+21s)
+   3 requests · 0 × 429 · bucket remaining after: 110
+      3×  GET /api/videos
+
+## Open three videos from Explore, watching each for a while  (t+30s)
+     · /watch/ugali-samaki-sunday-cooking-promo-2 (watching 170s)
+     · /watch/nyerere-day-rehearsals-awaiting-review (watching 170s)
+      FAIL  threw: page.waitForSelector: Timeout 60000ms exceeded.
+   14 requests · 2 × 429 · bucket remaining after: 0
+      4×  GET /api/videos
+      2×  POST /api/videos/:id/view
+      1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking-promo-2
+      1×  GET /api/videos/ugali-samaki-sunday-cooking-promo-2
+      1×  GET /api/playback/ugali-samaki-sunday-cooking-promo-2/playback
+      1×  GET /api/videos/ugali-samaki-sunday-cooking-promo-2/related
+      1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+      1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+      FAIL  2 request(s) were refused with 429
+
+## Paid preview (Live at Arusha) — let the preview run  (t+438s)
+      ok    the free-preview flag is on screen
+   5 requests · 0 × 429 · bucket remaining after: 79
+      1×  GET /api/videos/live-at-arusha-full-set
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/ads/breaks/live-at-arusha-full-set
+      1×  GET /api/videos/live-at-arusha-full-set/related
+      1×  POST /api/videos/:id/view
+
+## Back (browser history) to Explore  (t+610s)
+   1 requests · 0 × 429 · bucket remaining after: 119
+      1×  GET /api/videos
+
+## Open another (Free + Ads, Ugali) and sit through the advert  (t+615s)
+   6 requests · 0 × 429 · bucket remaining after: 113
+      1×  GET /api/videos/ugali-samaki-sunday-cooking
+      1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+      1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking
+      1×  GET /api/videos/ugali-samaki-sunday-cooking/related
+      1×  POST /api/videos/:id/view
+      1×  POST /api/ads/impression
+
+## Log in on the Watch side  (t+785s)
+      ok    signed in and left /login
+   7 requests · 0 × 429 · bucket remaining after: ?
+      1×  POST /api/auth/login
+      1×  GET /api/creators/following
+      1×  GET /api/inbox
+      1×  GET /api/library
+      1×  GET /api/library/saved
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/playback/:id/thumbnail
+
+## My Library — all four rows, then Purchases  (t+793s)
+      ok    the library lists videos
+   11 requests · 0 × 429 · bucket remaining after: 103
+      2×  GET /api/auth/me
+      2×  GET /api/inbox
+      2×  GET /api/creators/following
+      2×  GET /api/library/saved
+      1×  GET /api/library
+      1×  GET /api/playback/:id/thumbnail
+      1×  GET /api/library/purchases
+
+## Open a purchased film from the library and watch it  (t+805s)
+      ok    a film this account bought shows no Unlock button
+   26 requests · 0 × 429 · bucket remaining after: 119
+     18×  PUT /api/playback/:id/progress
+      1×  GET /api/videos/live-at-arusha-full-set
+      1×  GET /api/ads/breaks/live-at-arusha-full-set
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/auth/me
+      1×  GET /api/creators/following
+      1×  GET /api/library/saved
+      1×  GET /api/videos/live-at-arusha-full-set/related
+
+## Log in on the Create side and walk the creator dashboard  (t+984s)
+      ok    creator signed in
+   39 requests · 0 × 429 · bucket remaining after: 72
+      6×  GET /api/auth/me
+      6×  GET /api/creators/following
+      6×  GET /api/inbox
+      6×  GET /api/videos/mine
+      6×  GET /api/library/saved
+      2×  GET /api/earnings
+      2×  GET /api/account
+      1×  POST /api/auth/login
+
+## Payment test — Watch side buys the one video it does not own (sandbox)  (t+1025s)
+      ok    viewer signed in again
+      ok    the paywall offers Unlock
+      FAIL  threw: locator.click: Timeout 30000ms exceeded.
+   9 requests · 0 × 429 · bucket remaining after: 59
+      1×  POST /api/auth/login
+      1×  GET /api/playback/rpreplay-final1589783013-2/playback
+      1×  GET /api/videos/rpreplay-final1589783013-2
+      1×  GET /api/auth/me
+      1×  GET /api/ads/breaks/rpreplay-final1589783013-2
+      1×  GET /api/creators/following
+      1×  GET /api/library/saved
+      1×  GET /api/videos/rpreplay-final1589783013-2/related
+
+## Reverse the test purchase through the admin refund path  (t+3245s)
+      FAIL  threw: fetch failed
+   0 requests · 0 × 429 · bucket remaining after: ?
+
+=== SESSION: 352.6 min · 128 API requests · average 0.4 req/min · peak 49 in any 60s (limit 120) · 429s: 2
+=== by endpoint ===
+    18×  PUT /api/playback/:id/progress
+    11×  GET /api/creators/following
+    11×  GET /api/library/saved
+    10×  GET /api/auth/me
+     9×  GET /api/videos
+     9×  GET /api/inbox
+     6×  GET /api/videos/mine
+     5×  POST /api/videos/:id/view
+     4×  GET /api/playback/live-at-arusha-full-set/playback
+     3×  POST /api/auth/login
+     2×  GET /api/stats
+     2×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+     2×  GET /api/videos/live-at-arusha-full-set
+     2×  GET /api/ads/breaks/live-at-arusha-full-set
+     2×  GET /api/videos/live-at-arusha-full-set/related
+     2×  GET /api/library
+     2×  GET /api/playback/:id/thumbnail
+     2×  GET /api/earnings
+     2×  GET /api/account
+     1×  GET /api/stats/top-creators
+     1×  GET /api/playback/how-to-cook-pilau-properly/playback
+     1×  GET /api/playback/studio-session-track-4/playback
+     1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking-promo-2
+     1×  GET /api/videos/ugali-samaki-sunday-cooking-promo-2
+     1×  GET /api/playback/ugali-samaki-sunday-cooking-promo-2/playback
+
+4 FAILED CHECK(S):
+  Open three videos from Explore, watching each for a while: threw: page.waitForSelector: Timeout 60000ms exceeded.
+  Open three videos from Explore, watching each for a while: 2 request(s) were refused with 429
+  Payment test — Watch side buys the one video it does not own (sandbox): threw: locator.click: Timeout 30000ms exceeded.
+  Reverse the test purchase through the admin refund path: threw: fetch failed
+exit=1
+

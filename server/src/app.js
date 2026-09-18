@@ -19,6 +19,7 @@ import { query, closePool } from './db/pool.js'
 import routes from './routes/index.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { getSettings } from './services/settings.js'
+import { rateLimitKey } from './middleware/rateLimitKey.js'
 
 const app = express()
 
@@ -193,6 +194,9 @@ app.use(
     limit: env.isProd ? 120 : 1000,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    /* A signed-in person is their own bucket; an address is shared by everyone
+       behind one router. See middleware/rateLimitKey.js for the measurement. */
+    keyGenerator: rateLimitKey,
     message: { error: { message: 'Too many requests — slow down a moment', code: 'RATE_LIMIT' } },
   })
 )
