@@ -1736,3 +1736,74 @@ took 19–30). The first green run in this workflow's history. Follow-up in the 
 wait now also checks the CLIENT's X-Build (on /watch/:slug), not only the API's — the journeys
 drive the Vercel site and the two deploy independently, so an API-only check could have passed
 while the matrix still exercised the previous frontend build.
+
+================================================================================
+## SEP 18 — "Too many requests — slow down a moment" across the whole site (M2 blocked)
+================================================================================
+
+Client, 2026-09-18: rate-limit error on videos, Trending and the payment sheet at once; other
+sites fine; "find the ROOT CAUSE, do not just raise the limit". Evidence first, nothing changed
+until the cause was on the screen (scripts/e2e/evidence/rate-limit-2026-09-18-before.txt).
+
+--- The cause, in one request ----------------------------------------------------------------
+GET /health on production at 04:15Z answered:
+    proxy: { ip: "152.233.15.121", hops: 2, trustProxyHops: 1, host: "railway" }
+My own public address was 116.90.124.28. 152.233.15.121 is AS60068 Datacamp/Datapacket,
+Singapore — an edge in front of Railway. So Railway's proxy chain writes TWO entries into
+X-Forwarded-For, the app trusted ONE (`app.set('trust proxy', 1)`, app.js), and Express
+resolved `req.ip` to the edge address for EVERY caller. express-rate-limit keys its buckets on
+`req.ip` → the entire site — every viewer, the CI matrix, my probes — shared ONE bucket of 120
+requests per minute. That is exactly the failure the comment above that line described
+("every viewer shares one 120-requests-per-minute bucket and the site rate-limits itself under
+load"); the comment was right and nobody was reading /health. Only the rate limiter uses
+req.ip (grepped) — no auth, audit or login-throttle blast radius.
+
+What filled the bucket on Sep 17: the CI journeys workflow ran the full 7-profile matrix
+against production on every push (~500 requests per run, ~10 pushes that day), plus the mobile
+and player probes, the matrix re-runs and the dry-run reset script — all drawing from the same
+bucket as the client's browser. The limiter did its job on the wrong key.
+
+--- The client's browser, measured and cleared -------------------------------------------------
+scripts/e2e/count-requests.mjs, chromium desktop, signed out, on production: Home → Trending
+hover ×3 → Explore → filter + clear → paid preview → back → Free+Ads through the ad → another
+video → /login: 24 API requests in 2.1 min = 11.4 req/min, 0 × 429. Per page: Home 3 (videos,
+stats, top-creators), Explore 1, a watch page 5–6 (video, playback, ads/breaks, related, one
+view POST, one ad impression POST). No endpoint fetched twice on one page. `dedupedGet`
+collapses concurrent identical GETs; `useApi` has no retry; `request()` retries only a 401
+once; the three `refetchOnFocus` stats readers dedupe to one request; the notification bell
+polls at 60s only on the dashboard; the payment sheet polls at 2s only while a payment is
+open. Nothing loops, nothing double-fires. The extra evidence in the same run: between my
+first two legs the shared bucket dropped by 5 for 3 of my requests — other callers were in it.
+
+The other two places the client asked about, checked and not involved: Vercel serves the SPA
+and its two functions (/watch shell + og card) with no rate limit of their own, and neither
+function calls the API on a person's page load (share-meta is fetched only for crawler UAs).
+Supabase is reached through one pooled Postgres connection per API process (max 3) and its
+own Auth rate limit surfaces as "Too many sign-in attempts…" — a different message, on login
+only, and not in the client's report.
+
+--- What changed (665eedd) -------------------------------------------------------------------
+server/src/app.js
+  · `trust proxy` default 1 → 2, matching the chain Railway sends today. TRUST_PROXY_HOPS in
+    the environment still overrides it (a deployment property; set it if the host changes).
+  · One loud log line, once per process, the first time a request's X-Forwarded-For carries
+    more hops than trusted: "…req.ip is a proxy address; every caller shares one rate-limit
+    bucket. Set TRUST_PROXY_HOPS=N." — the next drift is found in the logs, not by a customer.
+  · /health.proxy gains `ok: hops <= trustProxyHops` — a health check instead of a comment.
+server/src/app.proxy.test.js (new, 3 tests): boots the app, sends the exact two-hop chain, and
+  asserts on the address Express resolves: default → the caller; TRUST_PROXY_HOPS=1 → the
+  edge (what production was doing), ok:false; env override wins. Server 189/189.
+client/src/lib/api.js
+  · One bounded retry on a 429, GETs only, honouring Retry-After (or draft-7 `reset`), capped
+    at 5s, marked so it can never retry twice; the 401-refresh path carries the mark. A read
+    that lands on the last request of a window becomes a slightly slower answer, not an error
+    card. A second 429 is shown as it is — this cannot become a loop. POST/PUT/DELETE never
+    retry (a payment could be charged twice). client/src/lib/apiRateLimitRetry.test.js pins
+    all of that. Client 224/224.
+No limit was raised. No cache was added — none was needed: the request volume was never the
+problem, the key was.
+
+--- Live after deploy (665eedd on API and client) --------------------------------------------
+GET /health → proxy: { ip: "116.90.124.28", hops: 2, trustProxyHops: 2, ok: true }
+  — `ip` is now MY address, i.e. the caller's. Three requests to /api/stats: remaining 119 → 118
+  → 117, exactly one per request — nobody else is in this bucket any more.

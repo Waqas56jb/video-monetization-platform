@@ -1687,3 +1687,58 @@ measured every third of a second for 24 seconds), and the same on a fast connect
 now starts loading the moment the page knows about it, alone; the film loads underneath only once
 the advert is playing. The full read-only device regression (48 checks across 7 browser profiles)
 and the WhatsApp link flow were re-run afterwards: all passing.
+
+## Sep 18 — "Too many requests — slow down a moment" across the whole site
+
+**What you saw.** The rate-limit message on videos, Trending and the payment sheet at the same
+time, while every other website on your connection was fine. You asked for the root cause, not a
+higher limit, and for a list of what fires the requests. Both are below.
+
+**The cause — found in one request, before anything was changed.**
+The API protects itself with a limit of 120 requests per minute *per visitor*. To know who the
+visitor is, it has to count how many of the hosting provider's own proxies sit in front of it.
+That number was set to **1**. Railway — the API's host — now puts **2** proxies in front of the
+app (a new edge server in Singapore, which we confirmed by its address). With the count one short,
+the API mistook that edge server for the visitor — for *every* visitor. So instead of 120 requests
+per minute per person, the whole site had **one shared allowance of 120 requests per minute**.
+
+On Sep 17 the automated test pipeline ran the full device matrix against the live site on every
+code push (about 500 requests each time, ten times that day), on top of the mobile and player
+probes. All of that came out of the same shared allowance as your browser. The limiter did its
+job — on the wrong key.
+
+**Your browser was measured and is not the problem.** A normal signed-out session on the live site
+— Home, Trending, Explore, a filter, a paid preview, back, a Free + Ads video through its advert,
+another video, the login page — fires **24 requests in 2.1 minutes, about 11 a minute**: Home is 3
+requests, Explore is 1, a video page is 5–6. No page fetches anything twice, nothing retries in a
+loop, nothing polls except the notification bell (once a minute, dashboard only) and the payment
+sheet (every 2 seconds, only while a payment is open). The exact per-page counts are in the
+evidence file `scripts/e2e/evidence/rate-limit-2026-09-18-before.txt`.
+
+**What changed.**
+1. The API now counts the two proxies Railway actually uses, so every visitor is back in their
+   own 120-per-minute allowance. This is a deployment setting (`TRUST_PROXY_HOPS`) and can be
+   changed without a code release if the host changes again.
+2. If the host changes again, the API now writes one unmistakable line in its logs on the first
+   request ("every caller shares one rate-limit bucket — set TRUST_PROXY_HOPS=2"), and the
+   `/health` page reports `proxy.ok: false`. Last time this was a comment in the code that nobody
+   re-read; now it is a check.
+3. A test that boots the API and sends Railway's real two-proxy chain proves the visitor's own
+   address comes out the other end — and that the old setting produced the shared bucket.
+4. On the site, a read request that gets a rate-limit answer now waits the number of seconds the
+   server asks for and tries **once** more — reads only, never a payment, never a loop. A momentary
+   "slow down" on the edge of the window becomes a slightly slower page instead of an error card.
+
+No limit was raised. No caching was added — the request volume was never the issue.
+
+**Why this one looked like "another regression".** It was not a change in the site's code: it was
+the hosting provider adding a proxy layer — a failure the API's own code comment had described
+when the API moved to Railway, and which nothing was watching for. It surfaced now because Sep 17 was the heaviest day of
+automated testing against the live site, and all of it landed in the one shared allowance. The
+check in item 2 exists so the next infrastructure change is caught by a log line, not by you.
+
+**Verified live after deployment.** `/health` now shows the API seeing my real address
+(`ip: 116.90.124.28, hops: 2, trustProxyHops: 2, ok: true`), and the allowance counts down by
+exactly one per request from one client — nobody else is in it.
+
+**The 20-minute session you asked for.** *(appended below once the run completes)*
