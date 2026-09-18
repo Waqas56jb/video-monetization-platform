@@ -1741,4 +1741,53 @@ check in item 2 exists so the next infrastructure change is caught by a log line
 (`ip: 116.90.124.28, hops: 2, trustProxyHops: 2, ok: true`), and the allowance counts down by
 exactly one per request from one client — nobody else is in it.
 
-**The 20-minute session you asked for.** *(appended below once the run completes)*
+**The 20-minute session you asked for — and the second thing it found.**
+
+The first full walk (Home → Trending → Explore → three videos → paid preview → back → a Free + Ads
+video through its advert → log in → Library → a bought film → creator dashboard → a real sandbox
+purchase) ran 13 minutes, made 137 requests at 10 a minute, peaked at 56 in any one minute against
+the 120 allowance, and saw **zero** rate-limit errors. The purchase was then reversed through the
+admin refund route so no test money stays in the books.
+
+The second walk hit two rate-limit errors in its fourth minute — and the numbers show exactly why.
+In the first three minutes this machine's allowance fell by precisely the walk's own requests
+(120 → 117 → 113 → 110), so the fix is working: nobody else was in that allowance. In the fourth
+minute the walk made 14 requests, yet the allowance emptied — so about 106 requests came from
+**other activity on this same connection** (this laptop's own browser and test tools at that
+moment). That is not the fault you reported — that one was the shared edge address, and it is gone
+— but it is the same wall an office would hit: **an allowance per address is shared by everyone
+behind one router.** Your own testers, sitting on one Wi-Fi with dashboards open, would exhaust
+120 a minute between them.
+
+**Second change, deployed and verified.** A signed-in person is now rate-limited *as themselves*:
+each account has its own 120 a minute wherever it connects from, and the per-address allowance is
+left for anonymous visitors. Only a token that passes the same signature check the login system
+uses earns a personal allowance — a forged or expired one is billed to the address it came from, so
+nobody can manufacture allowances. Proven on the live site from one machine: three separate
+counters (anonymous, a viewer account, a creator account) each falling by exactly one per request,
+and a forged token landing in the address counter. The number 120 has not been changed.
+
+For completeness: the second walk's *other* failures — a payment click that "timed out", a "fetch
+failed", a run that reported six hours — were this laptop entering standby mid-run (Windows power
+log: 05:01Z sleep, 05:38Z wake, 10:36Z wake, each matching a failure to the second). No purchase was
+made in that run. A third, clean 20-minute walk on the final build is recorded below.
+
+**Third walk — the acceptance run, on the final build.** 19.8 minutes, exactly the route you
+listed: Home → Trending → Explore with a filter → three videos → a paid preview → back → a Free + Ads
+video through its advert → log in → My Library and Purchases → a bought film (no Unlock shown) →
+log in on the Create side and walk six dashboard tabs → buy the one video the test account does not
+own (sandbox: the sheet settled, the film unlocked, the API confirms ownership) → that purchase
+reversed through the admin refund route so nothing stays in the books. **143 requests, 7 a minute,
+peak 57 in any one minute against the 120 allowance — and not one "Too many requests".** Every
+step's request count and the server's own allowance header are in
+`scripts/e2e/evidence/rate-limit-2026-09-18-session-3-final.txt`.
+
+**In one paragraph, for the record.** Two causes, both in how the API *identified* a visitor, neither
+in how many requests the site makes. First, the host had added a proxy layer the API was not told
+about, so it took that proxy's address as everyone's — one shared allowance for the whole site.
+Second, once addresses were right, an allowance per address is still shared by everyone behind one
+router, which your own testers are. Now each signed-in person has their own allowance, anonymous
+visitors share their address's, a forged token cannot invent one, and if the host ever changes its
+proxies again the API says so in its logs and on `/health` instead of waiting for you to notice.
+The limit is still 120 a minute. Please test from your side — several people at once on the same
+Wi-Fi is now the interesting case, and it should hold.

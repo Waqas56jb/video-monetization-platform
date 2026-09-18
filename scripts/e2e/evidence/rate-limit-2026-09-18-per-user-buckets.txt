@@ -1,0 +1,27 @@
+Rate-limit buckets after the second fix (9c9a042) — production, 2026-09-18 ~12:4xZ, one public address
+
+Design: a request that carries a token which VERIFIES is keyed user:<id>; anything else is keyed ip:<address>.
+Proof: nine interleaved GET /api/stats from this one machine — anonymous, the E2E viewer's token, the demo
+creator's token — and each RateLimit header falls on its OWN counter. Then a forged token (valid-looking JWT,
+bad signature) is billed to the address bucket, not a fresh one.
+
+=== /health proxy ===
+{"ip": "223.123.14.235", "hops": 2, "trustProxyHops": 2, "ok": true, "host": "railway"}
+viewer token: 840 chars · creator token: 823 chars
+=== three buckets from ONE address — interleaved: anon, viewer, creator, anon, viewer, creator, anon, viewer, creator ===
+anon    limit=120,remaining=117,reset=57
+viewer  limit=120,remaining=119,reset=60
+creator limit=120,remaining=119,reset=60
+anon    limit=120,remaining=116,reset=53
+viewer  limit=120,remaining=118,reset=57
+creator limit=120,remaining=118,reset=57
+anon    limit=120,remaining=115,reset=49
+viewer  limit=120,remaining=117,reset=54
+creator limit=120,remaining=117,reset=54
+=== a forged token is billed to the address (anon bucket keeps falling) ===
+forged  limit=120,remaining=114,reset=46
+anon    limit=120,remaining=113,reset=45
+
+
+Reading: anon 117→116→115 (its two login calls had already cost it), viewer 119→118→117, creator 119→118→117,
+forged → anon 114, then anon 113. Three people behind one router each have their own 120 a minute.

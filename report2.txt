@@ -1829,3 +1829,47 @@ purchase was reversed by hand through the same admin refund route two minutes la
 0c999b9e-248d-4981-97c3-c6ce5362d167, 500 TZS sandbox → refunded; entitlement owned:false;
 playback requiresPayment:true). Both faults fixed in scripts/e2e/normal-session.mjs; session #2
 runs a true 20 minutes and refunds itself — result below.
+Run 90 (47bcac1, the hardened check on the runner): 48 pass · 0 fail; journey 4 saw the player
+shell within 524–786 ms on all seven profiles (786 ms on Fast 3G) — measured, not sampled.
+
+--- Session #2 (04:44Z) — invalid as a 20-minute run, and it found a SECOND cause -------------------
+Evidence: scripts/e2e/evidence/rate-limit-2026-09-18-session-2-invalid.txt.
+What the script reported: 352.6 min · 128 requests · 2 × 429 · the payment click "timed out" · the
+refund step "fetch failed". What the Windows power log says: Modern Standby entered 05:01:14Z (the
+click timeout is t+1025s = 05:01:05Z), exited 05:38:00Z (the refund step ran at 05:38:05Z into a
+network not yet up), entered again, exited 10:36:34Z (the script's "end" at 352.6 min). The laptop
+slept; the site did not fail. Money: no purchase was made (0 payments for the viewer × video since
+04:44Z; entitlement owned:false) — nothing to reverse.
+
+The real finding is leg 4 (04:44:30–04:51:18Z): 2 × 429 with RateLimit remaining=0. Legs 1–3 had
+already shown the fix working — this IP's bucket fell by exactly the session's own counts
+(120→117→113→110), so nobody else's traffic was in it. Leg 4 itself made 14 requests; the bucket
+still emptied, so ~106 requests inside one 60-second window came from ELSEWHERE ON THIS SAME PUBLIC
+IP — the operator's own browser and/or my test tooling at that moment (I cannot attribute it exactly
+without the Railway request log; a live probe at 12:18–12:21Z, 24 requests at 5s intervals, showed
+remaining falling by exactly one per request, i.e. the bucket is otherwise mine alone). Not the
+client's fault mode — that was the shared edge address — but the same wall an office of testers
+behind one router would hit: a per-ADDRESS bucket is shared by everyone on that address.
+
+Second fix (9c9a042): a signed-in person is rate-limited as themselves. The limiter's key is
+`user:<id>` when the request carries a token that VERIFIES (the same local ES256/HS256 signature
+check the auth middleware does — lib/accessToken.js), and `ip:<address>` otherwise. A forged or
+expired token is billed to whichever address presents it right now, so it can neither mint buckets
+nor funnel addresses together; the verdict is memoised per token for a minute (one verification a
+minute per token, valid or not) and the memo is capped at 5000 entries so junk cannot grow it. The
+limit number is unchanged at 120/min — the client asked for the cause, not a bigger number, and the
+cause both times was the KEY. middleware/rateLimitKey.js + rateLimitKey.test.js (6 tests; one of
+them caught a flaw before it shipped — the first draft memoised the fallback ADDRESS for an invalid
+token, pinning it to the first address that presented it). Server 195/195.
+Live proof of the second fix (scripts/e2e/evidence/rate-limit-2026-09-18-per-user-buckets.txt): nine
+interleaved GET /api/stats from ONE address — anonymous 117→116→115, the E2E viewer 119→118→117, the
+demo creator 119→118→117, each on its own counter; a forged token → the address bucket (114), not a
+new one. CI run 91 (9c9a042): 48 pass · 0 fail.
+
+--- Session #3 — the acceptance walk, on the final build (9c9a042) ----------------------------------
+12:35Z–12:55Z, laptop held awake for the run (scripts/e2e/evidence/rate-limit-2026-09-18-session-3-final.txt):
+  19.8 min · 143 API requests · 7.2 req/min · peak 57 in any 60s (limit 120) · 0 × 429 · ALL CHECKS PASSED.
+  Home → Trending → Explore + filter → 3 videos → paid preview → back → Free+Ads through the advert → Watch-side
+  login → Library + Purchases → a bought film shows no Unlock → Create-side login + 6 dashboard tabs → sandbox
+  purchase of the one unowned video settled and unlocked it (API owned:true) → reversed through the admin refund
+  route (payment 004fe6b1…, SBX-A648F8E0EE, 500 TZS → 200; owned:false after). Not one "Too many requests".
