@@ -63,7 +63,44 @@ const BUILD = (
  * `/health` reports what actually arrived, so this can be checked rather than
  * assumed after a move.
  */
-app.set('trust proxy', Number.parseInt(process.env.TRUST_PROXY_HOPS, 10) || 1)
+/**
+ * TWO hops, measured — not one. On 2026-09-18 the client reported "Too many
+ * requests" on videos, Trending and the payment sheet at once. `/health` on
+ * production answered `hops: 2, trustProxyHops: 1, ip: 152.233.15.121` — a
+ * Datapacket edge address in Singapore in front of Railway, not the caller.
+ * Every visitor was therefore `req.ip = <that edge>`, and the whole site
+ * shared ONE 120-per-minute bucket: the CI matrix, the Sep 17 probes and
+ * every real viewer all drawing from it. The environment variable still
+ * wins; this is the value the host actually needs today, and the check
+ * below shouts the next time it changes instead of leaving it to be found
+ * from a customer's error message.
+ */
+const TRUST_PROXY_HOPS = Number.parseInt(process.env.TRUST_PROXY_HOPS, 10) || 2
+app.set('trust proxy', TRUST_PROXY_HOPS)
+
+/** How many proxies actually wrote themselves into this request's chain. */
+const forwardedHops = (req) => String(req.headers['x-forwarded-for'] || '').split(',').filter(Boolean).length
+
+/**
+ * Loud, once per process, the first time the chain is longer than trusted.
+ * A longer chain means `req.ip` is a proxy and the rate limiter has quietly
+ * collapsed to one shared bucket — the failure this file was already warning
+ * about in a comment nobody re-reads. A log line is read.
+ */
+let proxyMismatchLogged = false
+app.use((req, _res, next) => {
+  if (!proxyMismatchLogged) {
+    const hops = forwardedHops(req)
+    if (hops > TRUST_PROXY_HOPS) {
+      proxyMismatchLogged = true
+      log.error(
+        `trust proxy is ${TRUST_PROXY_HOPS} but X-Forwarded-For carries ${hops} hops — req.ip is a proxy address ` +
+          `(${req.ip}); every caller shares one rate-limit bucket. Set TRUST_PROXY_HOPS=${hops}.`
+      )
+    }
+  }
+  next()
+})
 app.use((req, res, next) => {
   res.setHeader('X-Build', BUILD)
   next()
@@ -212,8 +249,10 @@ app.get('/health', async (req, res) => {
      */
     proxy: {
       ip: req.ip,
-      hops: String(req.headers['x-forwarded-for'] || '').split(',').filter(Boolean).length,
+      hops: forwardedHops(req),
       trustProxyHops: app.get('trust proxy'),
+      /* false = the limiter is bucketing everyone together right now. */
+      ok: forwardedHops(req) <= app.get('trust proxy'),
       host: process.env.RAILWAY_ENVIRONMENT ? 'railway' : process.env.VERCEL ? 'vercel' : 'other',
     },
 

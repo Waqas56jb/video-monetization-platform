@@ -1,0 +1,77 @@
+"Too many requests" site-wide — production evidence BEFORE the fix · 2026-09-18 04:15Z (build 845570b)
+
+1. /health proxy block — the cause
+   {"ip":"152.233.15.121","hops":2,"trustProxyHops":1,"host":"railway"}
+   my public IP: 116.90.124.28 · 152.233.15.121 = AS60068 Datacamp/Datapacket, Singapore (Railway edge)
+   → X-Forwarded-For carries 2 hops, the app trusts 1, so req.ip = the edge for EVERY caller
+   → express-rate-limit keys on req.ip → one 120/min bucket shared by the whole site
+
+2. RateLimit headers on 3 consecutive requests from one client:
+   limit=120, remaining=119 · remaining=119 · remaining=118 (bucket nearly empty at 04:15Z; the outage was under Sep 17 daytime load: CI matrix runs + probes + real viewers)
+
+3. Request volume of a normal signed-out session (scripts/e2e/count-requests.mjs, chromium desktop):
+
+## Home  (+13s)  3 requests, 0 × 429, bucket after: limit=120, remaining=119, reset=60
+    1×  GET /api/videos
+    1×  GET /api/stats/top-creators
+    1×  GET /api/stats
+
+## Home scroll to Trending + hover 3 cards  (+28s)  3 requests, 0 × 429, bucket after: limit=120, remaining=114, reset=46
+    1×  GET /api/playback/how-to-cook-pilau-properly/playback
+    1×  GET /api/playback/live-at-arusha-full-set/playback
+    1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+
+## Explore  (+34s)  1 requests, 0 × 429, bucket after: limit=120, remaining=113, reset=38
+    1×  GET /api/videos
+
+## Explore: filter chip + clear  (+44s)  2 requests, 0 × 429, bucket after: limit=120, remaining=111, reset=29
+    2×  GET /api/videos
+
+## Watch: paid preview (Arusha)  (+60s)  5 requests, 0 × 429, bucket after: limit=120, remaining=106, reset=16
+    1×  GET /api/videos/live-at-arusha-full-set
+    1×  GET /api/videos/live-at-arusha-full-set/related
+    1×  GET /api/ads/breaks/live-at-arusha-full-set
+    1×  GET /api/playback/live-at-arusha-full-set/playback
+    1×  POST /api/videos/:id/view
+
+## Back to Home (history)  (+66s)  1 requests, 0 × 429, bucket after: limit=120, remaining=105, reset=6
+    1×  GET /api/videos
+
+## Watch: Free+Ads (ugali) — sit 40s through the ad  (+107s)  6 requests, 0 × 429, bucket after: limit=120, remaining=114, reset=41
+    1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+    1×  GET /api/videos/ugali-samaki-sunday-cooking
+    1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking
+    1×  GET /api/videos/ugali-samaki-sunday-cooking/related
+    1×  POST /api/videos/:id/view
+    1×  POST /api/ads/impression
+
+## Watch: another (fishermen)  (+120s)  3 requests, 0 × 429, bucket after: limit=120, remaining=111, reset=20
+    1×  GET /api/videos/the-fishermen-of-kilwa
+    1×  GET /api/playback/the-fishermen-of-kilwa/playback
+    1×  GET /api/ads/breaks/the-fishermen-of-kilwa
+
+## Login page  (+126s)  0 requests, 0 × 429, bucket after: ?
+
+=== TOTAL: 24 API requests in 2.1 min = 11.4 req/min · 429s: 0
+=== by endpoint, whole session ===
+     5×  GET /api/videos
+     2×  GET /api/playback/live-at-arusha-full-set/playback
+     2×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+     2×  POST /api/videos/:id/view
+     1×  GET /api/stats/top-creators
+     1×  GET /api/stats
+     1×  GET /api/playback/how-to-cook-pilau-properly/playback
+     1×  GET /api/videos/live-at-arusha-full-set
+     1×  GET /api/videos/live-at-arusha-full-set/related
+     1×  GET /api/ads/breaks/live-at-arusha-full-set
+     1×  GET /api/videos/ugali-samaki-sunday-cooking
+     1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking
+     1×  GET /api/videos/ugali-samaki-sunday-cooking/related
+     1×  POST /api/ads/impression
+     1×  GET /api/videos/the-fishermen-of-kilwa
+     1×  GET /api/playback/the-fishermen-of-kilwa/playback
+     1×  GET /api/ads/breaks/the-fishermen-of-kilwa
+
+
+   → 11.4 req/min, no duplicate fetches, no retry loops, 0 × 429. The client-side volume was never the problem.
+   → 'bucket after' dropping by 5 for 3 of my requests (Home → hover) = other callers sharing the same bucket, live.

@@ -156,7 +156,33 @@ async function refreshAccessToken() {
   return refreshing
 }
 
-async function request(path, { method = 'GET', body, auth = true, retry = true, signal } = {}) {
+/**
+ * One patient retry on a 429, for GETs only.
+ *
+ * The limiter answers 429 with `Retry-After` (seconds). A read that lands on
+ * the last request of a window is not wrong, only early — waiting out the
+ * header and asking once more turns a transient refusal into a slightly
+ * slower answer rather than an error card. Bounded on every axis: idempotent
+ * reads only (a POST could charge twice), one retry, and only when the wait
+ * is short enough to be worth it. It is a courtesy for the edge of the
+ * window, not a loop that would pile onto a genuinely overloaded API — a
+ * second 429 is shown as it is.
+ */
+export const RATE_LIMIT_RETRY_MAX_WAIT_MS = 5_000
+
+function retryAfterMs(res) {
+  const raw = res.headers.get('Retry-After')
+  const seconds = Number.parseFloat(raw)
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000
+  /* draft-7: "limit=120, remaining=0, reset=12" */
+  const reset = /reset=(\d+)/.exec(res.headers.get('RateLimit') || '')
+  if (reset) return Number(reset[1]) * 1000
+  return null
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function request(path, { method = 'GET', body, auth = true, retry = true, signal, rateLimited = false } = {}) {
   const token = auth ? getAccessToken() : null
 
   let res
@@ -186,11 +212,11 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
 
   if (res.status === 401 && auth && retry) {
     if (!tokenStillCurrent) {
-      return request(path, { method, body, auth, retry: false, signal })
+      return request(path, { method, body, auth, retry: false, signal, rateLimited })
     }
     if (getRefreshToken()) {
       const fresh = await refreshAccessToken()
-      if (fresh) return request(path, { method, body, auth, retry: false, signal })
+      if (fresh) return request(path, { method, body, auth, retry: false, signal, rateLimited })
     }
   }
 
@@ -206,7 +232,15 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
    */
   if (token && retry && res.headers.get('X-Auth-Status') === 'expired' && getRefreshToken()) {
     const fresh = await refreshAccessToken()
-    if (fresh) return request(path, { method, body, auth, retry: false, signal })
+    if (fresh) return request(path, { method, body, auth, retry: false, signal, rateLimited })
+  }
+
+  if (res.status === 429 && method === 'GET' && !rateLimited) {
+    const wait = retryAfterMs(res)
+    if (wait != null && wait <= RATE_LIMIT_RETRY_MAX_WAIT_MS) {
+      await sleep(wait + 100)
+      return request(path, { method, body, auth, retry, signal, rateLimited: true })
+    }
   }
 
   if (res.status === 204) return null

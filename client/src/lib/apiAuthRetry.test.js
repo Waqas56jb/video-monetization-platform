@@ -27,5 +27,5 @@ test('an X-Auth-Status: expired response triggers one refresh and retry', () => 
   // Guarded on having sent a token, so an anonymous caller cannot loop.
   assert.match(src, /if \(token && retry && res\.headers\.get\('X-Auth-Status'\)/)
   // retry: false on the second attempt — one retry, never a loop.
-  assert.match(src, /const fresh = await refreshAccessToken\(\)\s*\n\s*if \(fresh\) return request\(path, \{ method, body, auth, retry: false, signal \}\)/)
+  assert.match(src, /const fresh = await refreshAccessToken\(\)\s*\n\s*if \(fresh\) return request\(path, \{ method, body, auth, retry: false, signal, rateLimited \}\)/)
 })
