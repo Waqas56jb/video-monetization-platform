@@ -1,0 +1,44 @@
+Retry-payment sequence — production, final builds (client 493c6e7, API 0fc1420) · 2026-09-19 15:47Z · scripts/e2e/probe-payment-retry.mjs
+Signed in as the E2E viewer on /watch/nyerere-day-rehearsals-awaiting-review (paid premiere it does not own): Unlock → Test declined →
+Try again → Test cancelled → Try again → close → /watch/the-fishermen-of-kilwa for 30s. No entitlement is created by these outcomes.
+
+  ok    signed in
+
+### retry-payment sequence on /watch/nyerere-day-rehearsals-awaiting-review
+  ok    the paywall offers Unlock
+  ok    the sandbox test outcomes are shown (Test declined / Test cancelled)
+  ok    "test declined" is available
+  ok    the failure screen appears after test declined
+  ok    it is the payment's own message, not a rate limit ("Payment not completed Insufficient balance in the mobile money account Nothing w")
+     · requests for this attempt: 7 (payment status polls: 2)
+  ok    Try again is offered
+  ok    "test cancelled" is available
+  ok    the failure screen appears after test cancelled
+  ok    it is the payment's own message, not a rate limit ("Payment cancelled The customer cancelled the payment on their phone Nothing was ")
+     · requests for this attempt: 3 (payment status polls: 2)
+  ok    Try again is offered
+  ok    the sheet closes
+
+### then another video: /watch/the-fishermen-of-kilwa for 30s
+  ok    "Too many requests" is not on screen
+
+=== 24 API requests · 0 × 429 · last bucket remaining: 97
+     4×  GET /api/payments/:id
+     3×  PUT /api/playback/:id/progress
+     2×  GET /api/auth/me
+     2×  GET /api/library/saved
+     2×  GET /api/creators/following
+     2×  POST /api/payments/initiate
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     1×  GET /api/stats
+     1×  POST /api/videos/:id/view
+     1×  GET /api/ads/breaks/the-fishermen-of-kilwa
+     1×  GET /api/videos/the-fishermen-of-kilwa
+     1×  GET /api/playback/the-fishermen-of-kilwa/playback
+
+ALL CHECKS PASSED
+exit=0
+

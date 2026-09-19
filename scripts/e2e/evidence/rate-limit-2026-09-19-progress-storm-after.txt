@@ -1,0 +1,81 @@
+THE 429 STORM — same probe on the FIX (client build 493c6e7), 2026-09-19 ~15:12Z · scripts/e2e/probe-watch-requests.mjs
+Page: /watch/nyerere-day-rehearsals-awaiting-review, 120 seconds each (before: 90s).
+Anonymous: 5 requests, 0 x 429 (unchanged). Signed in as the viewer who does NOT own it: 17 requests, 3 x PUT progress, 0 x 429
+(before: 926 requests, 918 x PUT, 690 x 429). The viewer's saved position was already at the 30s cut-off, so the player sat
+parked at the boundary for ~100s — the exact state that used to storm — and sent nothing further.
+The ERR_ABORTED entries are the Cloudflare player's own segment requests inside its iframe being cancelled while parked;
+they never reach this API and count against nothing.
+
+bundle /assets/index-DPV1Ri_E.js carries the coalescer: 0 (minified names may hide it; the probe is the proof)
+######## RE-PROBE on the fix ########
+
+### anonymous · /watch/nyerere-day-rehearsals-awaiting-review · 120s
+document: 200 x-doc=shell x-build=493c6e7
+title: "Nyerere Day — Rehearsals (awaiting review) — MTONYO+" · "Too many requests" on screen: no
+
+  5 API requests in 120s · 0 × 429 · by status {"200":4,"202":1}
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     1×  POST /api/videos/:id/view
+  timeline (first 60):
+    15869ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review  remaining=119
+    15874ms 200 GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review  remaining=118
+    15952ms 200 GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback  remaining=117
+    16615ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review/related  remaining=116
+    20932ms 202 POST /api/videos/:id/view  remaining=115
+
+### signed-in viewer · /watch/nyerere-day-rehearsals-awaiting-review · 120s
+login: ok (1 requests during login, not counted below)
+document: 200 x-doc=shell x-build=493c6e7
+title: "Nyerere Day — Rehearsals (awaiting review) — MTONYO+" · "Too many requests" on screen: no
+
+  17 API requests in 120s · 0 × 429 · by status {"200":11,"202":4,"302":2}
+     3×  PUT /api/playback/:id/progress
+     2×  GET /api/library/saved
+     2×  GET /api/creators/following
+     2×  GET /api/playback/:id/thumbnail
+     1×  GET /api/inbox
+     1×  GET /api/library
+     1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/auth/me
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     1×  POST /api/videos/:id/view
+  timeline (first 60):
+     1592ms 200 GET /api/library/saved  remaining=119
+     2311ms 200 GET /api/creators/following  remaining=116
+     2321ms 200 GET /api/inbox  remaining=118
+     2360ms 200 GET /api/library  remaining=117
+     4985ms 302 GET /api/playback/:id/thumbnail  remaining=118
+     4987ms 302 GET /api/playback/:id/thumbnail  remaining=117
+     6381ms 200 GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback  remaining=115
+     6406ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review  remaining=113
+     6471ms 200 GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review  remaining=114
+     6546ms 200 GET /api/auth/me  remaining=112
+     7554ms 200 GET /api/creators/following  remaining=109
+     7555ms 200 GET /api/library/saved  remaining=110
+     7622ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review/related  remaining=111
+    10487ms 202 PUT /api/playback/:id/progress  remaining=108
+    11362ms 202 POST /api/videos/:id/view  remaining=107
+    13477ms 202 PUT /api/playback/:id/progress  remaining=106
+    14112ms 202 PUT /api/playback/:id/progress  remaining=105
+  failed requests (22):
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_1.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_1.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/video/240/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+   GET https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/71c74766c2d80cfcdef55e3e592e323e/audio/130/seg_7.mp4?p=eyJ0eXBlIj — net::ERR_ABORTED
+

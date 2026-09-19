@@ -1791,3 +1791,80 @@ visitors share their address's, a forged token cannot invent one, and if the hos
 proxies again the API says so in its logs and on `/health` instead of waiting for you to notice.
 The limit is still 120 a minute. Please test from your side — several people at once on the same
 Wi-Fi is now the interesting case, and it should hold.
+
+## Sep 19 — "still getting Too many requests" — the actual cause, found and fixed
+
+**What you saw.** The rate-limit message in normal, signed-in use: Trending, video pages, the
+payment sheet, again after retrying a payment, and one video page failing outright. Nyerere Day was
+where it kept happening, but not only there.
+
+**You were right, and I was wrong about one thing.** The two fixes from Sep 18 were real and are
+still right — but I had said your browser was not the problem. It was clean on every path I had
+walked. It was not clean on the one path *you* were walking.
+
+**The cause, reproduced on the live site.** Sign in, open a paid video you have not bought, and let
+the free preview run to its end. At that exact second the page begins sending its "where am I"
+progress update **dozens of times a second — 918 requests in 90 seconds on Nyerere Day, 690 of
+them refused** — and keeps doing so for as long as the tab is open. One tab empties your own
+allowance of 120 requests a minute in about a second. Everything you do for the next minutes —
+Trending, another video, Unlock, the payment, the retry — is refused, because it is all *your*
+requests. The video page that failed outright was the same tab drowning its own connection. Before
+Sep 18 this one storm emptied the allowance for the **whole site** — which is what you saw on the
+17th and 18th. After Sep 18 it emptied *yours* — which is what you saw yesterday.
+
+Nyerere Day is not a bad video. It is a paid premiere with a 30-second preview, and you let the
+preview finish. Any paid video does the same if the preview reaches its end while you are signed in
+and have not bought it. That is why "the same error is appearing across the platform": one tab,
+left on a finished preview, poisons every other page for that account.
+
+**Exactly why it looped.** When the preview reaches its cut-off, the player is parked at that second.
+Five times a second the page re-parked it; every re-park counted as a "seek"; every seek wrote a
+progress update; the parked player's clock jittered (29.9 → 30.0) and re-triggered the stop; and
+the page's stop, seek and pause handlers each wrote an update flagged "urgent", which skipped the
+only throttle there was. My earlier walks never reached that second while signed in.
+
+**What changed (and is live).**
+1. The page now writes each progress second **once**, and keeps **one** progress request in flight
+   per video; anything that arrives while one is out is remembered and sent once afterwards. This
+   holds whatever the player does, so no future player quirk can turn into a request storm.
+2. The player is parked at the cut-off **once** per crossing, and re-arms only if you genuinely
+   go back a second or more — not on clock jitter.
+3. The preview-end write fires once.
+4. Every request the API refuses is now **written down** — which account or address, which page,
+   what it was asking, and the raw routing chain it came with — and Super Admin can read it. Next
+   time anyone sees this message, the answer is a table, not a three-day investigation.
+
+**What did not change.** The limit is still 120 a minute. Nothing was cached to hide volume.
+
+**Verified on the deployed site.**
+- *The storm page, re-probed on the fix:* same Nyerere Day page, same signed-in viewer who does not
+  own it, 120 seconds parked at the preview's end — **17 requests, 3 progress writes, 0 refusals**
+  (before: 926 requests, 918 progress writes, 690 refusals in 90 seconds).
+- *Your 20–30-minute walk, on the final builds:* **27.4 minutes, 163 requests, 6 a minute, peak 59 in
+  any one minute against 120, not one "Too many requests".** Home → Trending → Explore with a filter →
+  three videos → paid preview → back → Free + Ads through its advert → log in → Library and Purchases →
+  a bought film → creator dashboard (6 tabs) → sandbox purchase (settled, unlocked, then reversed
+  through the admin refund route) → **your sequence: Nyerere Day preview played from the start across
+  its 30-second cut-off to the paywall — 3 progress writes, 0 refusals, at the exact moment that used to
+  produce 918** → another video.
+- *Retry payment:* Unlock → Test declined (the payment's own "Insufficient balance" message, not a rate
+  limit) → Try again → Test cancelled ("The customer cancelled") → Try again → close → another video —
+  **24 requests, 0 refusals**. A payment attempt costs two status checks; the 2-second poll stops the
+  moment the payment settles.
+- *CI:* both fix commits green on the automated 7-browser matrix (48/48).
+
+**Your four questions, answered.** (1) *Endpoint:* `PUT /api/playback/:id/progress` — 918 of the 926
+requests in the storm; its refusals then spilled onto everything else you touched (videos, playback,
+`payments/initiate`, `payments/:id`, stats) because they all draw on your account's allowance.
+(2) *Root cause:* a progress-report storm at the end of a paid preview — the player re-parked at the
+cut-off five times a second, every re-park counted as a seek, and every seek/pause/stop/boundary
+handler wrote progress flagged "urgent", skipping the only throttle. (3) *Changed:* progress writes are
+coalesced at the source (one in flight, never the same second twice), the player parks once per
+crossing, the boundary write fires once; plus the two Sep 18 fixes (correct proxy count; each
+signed-in person their own allowance) and a record of every refusal readable in Super Admin. The
+limit is still 120 a minute; nothing was cached. (4) *Tested on the live site for 27 minutes with your
+exact sequence: zero.*
+
+Please test again from your side — including leaving a paid preview to run out while signed in, then
+paying, retrying, and opening another video. If you ever see the message again, Super Admin now holds
+the exact record of which account, which page and which request, and I will read it back the same day.

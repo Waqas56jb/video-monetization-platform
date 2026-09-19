@@ -1,0 +1,199 @@
+Normal-user session #4 — production, FINAL builds (client 493c6e7, API 0fc1420) · 2026-09-19 15:19Z–15:46Z · the client's 20–30-minute acceptance walk
+scripts/e2e/normal-session.mjs MINUTES=25, chromium desktop, laptop held awake.
+
+Result: 27.4 min · 163 API requests · 5.9 req/min average · peak 59 in any 60s (limit 120) · 429s: 0
+Includes the client's own leg: signed in, saved position forgotten (200), Nyerere Day preview run from 0 to its 30s cut-off,
+paywall shown → 11 requests, 3 × PUT progress, 0 × 429 (before the fix this exact moment produced 918 PUTs and 690 × 429).
+Then another video (Fishermen), then the sandbox purchase of the one unowned video settled + unlocked (API owned:true) and
+was reversed through the admin refund route (payment 51745163-…, SBX-DC49E09607, 500 TZS → 200; owned:false after).
+
+One FAILED CHECK, in the script not the product: the retry-payment sub-leg looked for sandbox test links matching /declin/i
+and found none, so 'Unlock → declined → Try again → cancelled' did NOT execute in this run. It is run separately
+(rate-limit-2026-09-19-payment-retry.txt) rather than claimed here.
+
+-------------------------------------------------------------------------------------------------
+Normal session · https://video-monetization-platform-chi.vercel.app · target 25 min · 2026-09-19T15:18:41.675Z
+
+## Home  (t+0s)
+   3 requests · 0 × 429 · bucket remaining after: 117
+      1×  GET /api/stats
+      1×  GET /api/stats/top-creators
+      1×  GET /api/videos
+
+## Trending — scroll down, hover four cards  (t+22s)
+      ok    8 cards on the homepage
+   4 requests · 0 × 429 · bucket remaining after: 113
+      1×  GET /api/playback/how-to-cook-pilau-properly/playback
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+      1×  GET /api/playback/studio-session-track-4/playback
+
+## Explore, then a category filter and back  (t+40s)
+   3 requests · 0 × 429 · bucket remaining after: 110
+      3×  GET /api/videos
+
+## Open three videos from Explore, watching each for a while  (t+51s)
+     · /watch/ugali-samaki-sunday-cooking-promo-2 (watching 220s)
+     · /watch/nyerere-day-rehearsals-awaiting-review (watching 220s)
+     · /watch/rpreplay-final1589783013-2 (watching 220s)
+      ok    3 videos opened
+   18 requests · 0 × 429 · bucket remaining after: 114
+      3×  GET /api/videos
+      3×  POST /api/videos/:id/view
+      1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking-promo-2
+      1×  GET /api/playback/ugali-samaki-sunday-cooking-promo-2/playback
+      1×  GET /api/videos/ugali-samaki-sunday-cooking-promo-2
+      1×  GET /api/videos/ugali-samaki-sunday-cooking-promo-2/related
+      1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+      1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+
+## Paid preview (Live at Arusha) — let the preview run  (t+725s)
+      ok    the free-preview flag is on screen
+   5 requests · 0 × 429 · bucket remaining after: 115
+      1×  GET /api/videos/live-at-arusha-full-set
+      1×  GET /api/ads/breaks/live-at-arusha-full-set
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/videos/live-at-arusha-full-set/related
+      1×  POST /api/videos/:id/view
+
+## Back (browser history) to Explore  (t+948s)
+   4 requests · 0 × 429 · bucket remaining after: 116
+      1×  GET /api/videos/rpreplay-final1589783013-2
+      1×  GET /api/playback/rpreplay-final1589783013-2/playback
+      1×  GET /api/ads/breaks/rpreplay-final1589783013-2
+      1×  GET /api/videos/rpreplay-final1589783013-2/related
+
+## Open another (Free + Ads, Ugali) and sit through the advert  (t+954s)
+   6 requests · 0 × 429 · bucket remaining after: 110
+      1×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+      1×  GET /api/videos/ugali-samaki-sunday-cooking
+      1×  GET /api/ads/breaks/ugali-samaki-sunday-cooking
+      1×  GET /api/videos/ugali-samaki-sunday-cooking/related
+      1×  POST /api/videos/:id/view
+      1×  POST /api/ads/impression
+
+## Log in on the Watch side  (t+1174s)
+      ok    signed in and left /login
+   5 requests · 0 × 429 · bucket remaining after: 116
+      1×  POST /api/auth/login
+      1×  GET /api/creators/following
+      1×  GET /api/library
+      1×  GET /api/inbox
+      1×  GET /api/library/saved
+
+## My Library — all four rows, then Purchases  (t+1184s)
+      ok    the library lists videos
+   11 requests · 0 × 429 · bucket remaining after: 107
+      2×  GET /api/auth/me
+      2×  GET /api/inbox
+      2×  GET /api/creators/following
+      2×  GET /api/library/saved
+      1×  GET /api/library
+      1×  GET /api/playback/:id/thumbnail
+      1×  GET /api/library/purchases
+
+## Open a purchased film from the library and watch it  (t+1197s)
+      ok    a film this account bought shows no Unlock button
+   27 requests · 0 × 429 · bucket remaining after: 117
+     19×  PUT /api/playback/:id/progress
+      1×  GET /api/videos/live-at-arusha-full-set
+      1×  GET /api/auth/me
+      1×  GET /api/playback/live-at-arusha-full-set/playback
+      1×  GET /api/ads/breaks/live-at-arusha-full-set
+      1×  GET /api/creators/following
+      1×  GET /api/videos/live-at-arusha-full-set/related
+      1×  GET /api/library/saved
+
+## Log in on the Create side and walk the creator dashboard  (t+1425s)
+      ok    creator signed in
+   39 requests · 0 × 429 · bucket remaining after: 76
+      6×  GET /api/auth/me
+      6×  GET /api/inbox
+      6×  GET /api/videos/mine
+      6×  GET /api/creators/following
+      6×  GET /api/library/saved
+      2×  GET /api/earnings
+      2×  GET /api/account
+      1×  POST /api/auth/login
+
+## Payment test — Watch side buys the one video it does not own (sandbox)  (t+1464s)
+      ok    viewer signed in again
+      ok    the paywall offers Unlock
+      ok    the payment sheet closed itself (sandbox settled)
+      ok    the film is unlocked after paying
+      ok    the API says the viewer now owns it ({"videoId":"607d4719-1905-4f1a-9c55-993647a543d0","owned":true,"free":false,"purchasedAt":"2026-09-1)
+   20 requests · 0 × 429 · bucket remaining after: 102
+      5×  PUT /api/playback/:id/progress
+      2×  GET /api/playback/rpreplay-final1589783013-2/playback
+      2×  GET /api/videos/rpreplay-final1589783013-2
+      2×  GET /api/payments/:id
+      1×  POST /api/auth/login
+      1×  GET /api/ads/breaks/rpreplay-final1589783013-2
+      1×  GET /api/auth/me
+      1×  GET /api/creators/following
+
+## Client leg — Nyerere Day (paid premiere, 30s preview): signed in, let the preview reach the paywall  (t+1490s)
+     · forgot saved position for nyerere-day-rehearsals-awaiting-review: 200
+      ok    the free-preview flag is on screen
+      ok    the paywall offers Unlock after the preview ended
+   11 requests · 0 × 429 · bucket remaining after: 88
+      3×  PUT /api/playback/:id/progress
+      1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+      1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+      1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+      1×  GET /api/auth/me
+      1×  GET /api/creators/following
+      1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+      1×  GET /api/library/saved
+
+## Retry payment — Unlock → declined → Try again → cancelled  (t+1569s)
+      FAIL  the sandbox offers a "declin" test outcome
+   1 requests · 0 × 429 · bucket remaining after: 119
+      1×  GET /api/stats
+
+## Open another video after the retry (Fishermen) and watch  (t+1572s)
+   6 requests · 0 × 429 · bucket remaining after: 115
+      1×  GET /api/videos/the-fishermen-of-kilwa
+      1×  GET /api/playback/the-fishermen-of-kilwa/playback
+      1×  GET /api/auth/me
+      1×  GET /api/ads/breaks/the-fishermen-of-kilwa
+      1×  GET /api/creators/following
+      1×  GET /api/library/saved
+
+## Reverse the test purchase through the admin refund path  (t+1633s)
+      ok    refund 51745163-4055-4bd8-8a6a-18580e219f8a (SBX-DC49E09607, 500 TZS) → 200
+      ok    entitlement withdrawn after refund ({"videoId":"607d4719-1905-4f1a-9c55-993647a543d0","owned":false,"free":false,"purchasedAt":null})
+   0 requests · 0 × 429 · bucket remaining after: ?
+
+=== SESSION: 27.4 min · 163 API requests · average 5.9 req/min · peak 59 in any 60s (limit 120) · 429s: 0
+=== by endpoint ===
+    27×  PUT /api/playback/:id/progress
+    13×  GET /api/creators/following
+    13×  GET /api/library/saved
+    12×  GET /api/auth/me
+     9×  GET /api/inbox
+     8×  POST /api/videos/:id/view
+     7×  GET /api/videos
+     6×  GET /api/videos/mine
+     4×  GET /api/videos/rpreplay-final1589783013-2
+     4×  GET /api/playback/rpreplay-final1589783013-2/playback
+     3×  GET /api/stats
+     3×  GET /api/playback/live-at-arusha-full-set/playback
+     3×  GET /api/videos/rpreplay-final1589783013-2/related
+     3×  GET /api/ads/breaks/rpreplay-final1589783013-2
+     3×  POST /api/auth/login
+     2×  GET /api/playback/ugali-samaki-sunday-cooking/playback
+     2×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     2×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     2×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     2×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     2×  GET /api/videos/live-at-arusha-full-set
+     2×  GET /api/ads/breaks/live-at-arusha-full-set
+     2×  GET /api/videos/live-at-arusha-full-set/related
+     2×  GET /api/library
+     2×  GET /api/earnings
+
+1 FAILED CHECK(S):
+  Retry payment — Unlock → declined → Try again → cancelled: the sandbox offers a "declin" test outcome
+exit=1
+

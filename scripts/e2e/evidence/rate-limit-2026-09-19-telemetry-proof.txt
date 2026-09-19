@@ -1,0 +1,15 @@
+rate_limit_hits telemetry — proven end-to-end on production (API 0fc1420), 2026-09-19 15:15Z
+
+Burst: 140 GET /api/stats from this machine, 20 in parallel, 9 seconds → 120 × 200 (avg 0.90s) + 20 × 429 (avg 0.71s).
+One refused response, in full:
+  HTTP/1.1 429 Too Many Requests · ratelimit: limit=120, remaining=0, reset=51 · retry-after: 51
+  {"error":{"message":"Too many requests — slow down a moment","code":"RATE_LIMIT"}}
+→ the limiter answers fast and exactly as before; refusals do not hang.
+
+GET /api/admin/rate-limit-hits?minutes=10 (Super Admin) a minute later:
+  buckets: [{"bucket":"ip:103.104.87.140","hits":4,"first_at":"15:15:40Z","last_at":"15:15:45Z","forwarded_for":"103.104.87.140, 152.233.68.97","hops":2}]
+  paths:   [{"GET","/api/stats",3},{"POST","/api/auth/login",1}]
+  recent:  … "retry_after_s":48 on the login row
+→ one row per bucket per second (20 refusals → 4 rows); the raw chain shows this machine's address + one Railway edge
+  (152.233.68.97 this time — the edge varies, the hop count does not). The first read had come back empty because the
+  burst had also refused my own admin login (the POST /api/auth/login row is exactly that).

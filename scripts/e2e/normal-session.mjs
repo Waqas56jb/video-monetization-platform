@@ -253,6 +253,13 @@ await step('Payment test — Watch side buys the one video it does not own (sand
  */
 const NYERERE = 'nyerere-day-rehearsals-awaiting-review'
 await step('Client leg — Nyerere Day (paid premiere, 30s preview): signed in, let the preview reach the paywall', async () => {
+  /* Start from zero so the preview genuinely CROSSES its cut-off — the storm's
+     original trigger — rather than opening already parked at it from a saved
+     position. The app's own "remove from history" route, not a DB write. */
+  const vt = await tokenFor(VIEWER, 'viewer')
+  const meta = await api('GET', `/api/playback/${NYERERE}/playback`, null, vt)
+  const forgot = meta.body?.videoId ? await api('DELETE', `/api/library/history/${meta.body.videoId}`, null, vt) : { status: 'skipped' }
+  console.log(`     · forgot saved position for ${NYERERE}: ${forgot.status}`)
   await page.goto(`${BASE}/watch/${NYERERE}`, { waitUntil: 'domcontentloaded', timeout: 90000 })
   const flag = await page.locator('.preview-flag').or(page.getByText(/Free preview/i)).first().waitFor({ state: 'visible', timeout: 40000 }).then(() => true).catch(() => false)
   check(flag, 'the free-preview flag is on screen')
@@ -264,9 +271,13 @@ await step('Retry payment — Unlock → declined → Try again → cancelled', 
   await page.locator('button', { hasText: /unlock/i }).first().click({ timeout: 15000 })
   await page.waitForSelector('.pay-modal', { timeout: 20000 })
   await page.locator('#pay-phone').fill('0712345678')
-  for (const outcome of [/declin/i, /cancel/i]) {
-    const link = page.locator('.pay-modal button', { hasText: outcome }).first()
-    const has = await link.isVisible({ timeout: 5000 }).catch(() => false)
+  /* The sandbox outcomes render once the sheet's own settings fetch resolves.
+     `isVisible()` does not wait — session #4 looked too early and missed them
+     — so wait for the block, then pick the button by its full label. */
+  await page.locator('.pay-modal .sandbox-outcomes button').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
+  for (const outcome of [/test declined/i, /test cancelled/i]) {
+    const link = page.locator('.pay-modal .sandbox-outcomes button', { hasText: outcome }).first()
+    const has = await link.isVisible().catch(() => false)
     if (!check(has, `the sandbox offers a "${outcome.source}" test outcome`)) break
     await link.click()
     const failed = await page.locator('.pay-failed').first().waitFor({ state: 'visible', timeout: 30000 }).then(() => true).catch(() => false)

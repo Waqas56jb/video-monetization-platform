@@ -1873,3 +1873,112 @@ new one. CI run 91 (9c9a042): 48 pass · 0 fail.
   login → Library + Purchases → a bought film shows no Unlock → Create-side login + 6 dashboard tabs → sandbox
   purchase of the one unowned video settled and unlocked it (API owned:true) → reversed through the admin refund
   route (payment 004fe6b1…, SBX-A648F8E0EE, 500 TZS → 200; owned:false after). Not one "Too many requests".
+
+================================================================================
+## SEP 19 — "still getting Too many requests" — THE ACTUAL ROOT CAUSE, reproduced
+================================================================================
+
+Client, 2026-09-19: 429s in normal signed-in use on Trending, watch pages, the payment sheet, after
+a payment retry; one video page gave ERR_FAILED; the Nyerere Day video "keeps happening" but not
+only there. Both earlier fixes were real and are proven live — and neither was the cause of THIS.
+I had said the client's browser was clean. It was clean in every path I had walked; it was not
+clean in the one path the client was walking.
+
+--- Reproduced (scripts/e2e/probe-watch-requests.mjs; evidence rate-limit-2026-09-19-progress-storm-before.txt) ---
+/watch/nyerere-day-rehearsals-awaiting-review — a published paid premiere (1,200 TZS, 30s free
+preview, demo.juma), nothing unusual about the row. 90 seconds each:
+  anonymous:            5 API requests, 0 × 429.
+  signed-in viewer who does NOT own it: 926 API requests — 918 × PUT /api/playback/:id/progress —
+                        690 × 429. Every 10s until 36s (correct), then at ~36.9s, the moment the
+                        30-second preview reaches its cut-off, dozens per second, for as long as
+                        the tab stays open. `remaining` 108 → 0 in about a second.
+That is the whole client report in one page: the viewer's OWN per-user bucket is emptied in
+seconds by one background tab, so every request that person makes for the next minutes — Trending
+(signed in → user bucket), the next video, Unlock, the payment POST, the 2s payment poll, the
+retry — is refused. ERR_FAILED on a document is the same tab's connection pool under a flood,
+handed to the service worker's navigation fallback (which answers Response.error() when nothing is
+cached — Chrome renders that as ERR_FAILED). Before Sep 18's fixes this storm drained the
+SITE-WIDE bucket, which is the Sep 17–18 outage; after them it drains the person's — which is
+exactly what the client described.
+
+Why my sessions never hit it: the storm needs signed-in + a paid video the account does not own +
+the preview reaching its end. The E2E fixture owns Arusha (no boundary), the other previews were
+walked anonymous (progress is not reported anonymous), and the purchase leg tapped Unlock before
+the 20s preview ended. Wrong coverage, not wrong measurement.
+
+--- Mechanism (client/src/components/watch/StreamPlayer.jsx + client/src/pages/Watch.jsx) ---
+  1. StreamPlayer's 200ms halt poll (`haltIfDue`) ran `player.pause(); player.currentTime = limit`
+     on EVERY tick while the player sat at the cut-off — the once-only guard sat AFTER the seek.
+  2. Every seek fires `seeked`; Watch's onSeeked calls reportProgress(…, { force: true }).
+  3. A player parked at 30.0 reports 29.9 jitter; `stopped = false` re-armed on `at < limit - 0.15`,
+     so the halt (and onStopReached → another forced report) re-fired several times a second.
+  4. Watch's onTimeUpdate boundary branch (`current >= previewSeconds - 0.4`) forced a report on
+     every timeupdate at the boundary, with no once-guard.
+  5. `force: true` bypassed the ten-second throttle — the only throttle there was — so nothing
+     stood between those handlers and the network. PaymentModal, useApi, dedupedGet and the
+     NotificationBell were all checked and are sane; the storm was here.
+
+--- Fix (493c6e7) — Watch.progressStorm.test.js pins each rule ---
+  reportProgress: never sends the same second twice, forced or not; ONE request in flight per
+    video with latest-value-wins coalescing (a value arriving mid-flight is remembered and sent once
+    afterwards). `force` still means "do not wait ten seconds" for pause/seek/paywall/pagehide;
+    it no longer means "send now whatever is already going".
+  haltIfDue: parks the player once per crossing (guard BEFORE pause+seek); re-arms only when the
+    viewer genuinely goes back a second or more (`at < limit - 1`), not on jitter.
+  onTimeUpdate boundary write: fires once (`!previewRanOut.current`).
+  Client 227/227.
+
+--- So the client's own hits can be READ next time, not inferred (0fc1420) ---
+  rate_limit_hits (migration 041, applied to production 15:10Z): every refusal with bucket
+  (user:<id> | ip:<addr>), raw X-Forwarded-For + hop count, method, path, user, agent,
+  Retry-After; fire-and-forget, one row per bucket per second. GET /api/admin/rate-limit-hits
+  ?minutes=N → by bucket (WHO — a proxy-hop drift shows as one ip bucket with hops > trusted), by
+  path (WHAT — a storm shows as one path), and raw. Server 200/200.
+
+--- After (appended below as the runs complete) ---
+Re-probe on the fix (client 493c6e7; scripts/e2e/evidence/rate-limit-2026-09-19-progress-storm-after.txt):
+  same page, same signed-in viewer, 120s: 17 API requests · 3 × PUT progress · 0 × 429
+  (before: 926 · 918 · 690). The viewer's saved position was already the cut-off, so the player sat
+  parked at the boundary for ~100s — the state that used to storm — and sent nothing more. Anonymous
+  unchanged: 5 requests, 0 × 429.
+Telemetry proven live (scripts/e2e/evidence/rate-limit-2026-09-19-telemetry-proof.txt): a 140-request burst →
+  120 × 200 + 20 × 429 in 9s, refusals answered in 0.7s with the same JSON and Retry-After; Super Admin then
+  reads 4 rows for bucket ip:103.104.87.140, hops 2, chain "103.104.87.140, 152.233.68.97", paths /api/stats ×3
+  and my own refused admin login. WHO and WHAT, from the client's traffic, readable next time.
+CI: run 93 (493c6e7, the storm fix) 48 pass · 0 fail; run 94 (0fc1420, telemetry) 48 pass · 0 fail.
+
+--- Session #4 — the client's 20–30-minute acceptance walk, on the final builds --------------------
+15:19Z–15:46Z, client 493c6e7 + API 0fc1420, laptop held awake (evidence rate-limit-2026-09-19-session-4-final.txt):
+  27.4 min · 163 API requests · 5.9 req/min · peak 59 in any 60s (limit 120) · 0 × 429.
+  Home → Trending → Explore + filter → 3 videos → paid preview → back → Free+Ads through the advert →
+  Watch-side login → Library + Purchases → a bought film (19 progress PUTs over ~3.5 min, one per ~10s) →
+  Create-side login + 6 dashboard tabs → sandbox purchase settled + unlocked (owned:true) → THE CLIENT'S LEG:
+  saved position forgotten (200), Nyerere Day preview played from 0 across its 30s cut-off to the paywall →
+  11 requests, 3 × PUT progress, 0 × 429 (this exact moment used to produce 918 PUTs and 690 × 429) →
+  another video (Fishermen) → purchase reversed through the admin refund route (51745163…, SBX-DC49E09607,
+  500 TZS → 200; owned:false).
+  One check FAILED in the script, not the product: the retry-payment sub-leg looked for the sandbox test
+  links with isVisible(), which does not wait, and missed them — so "Unlock → declined → Try again →
+  cancelled" did not execute in that run. Fixed in the script (wait for .sandbox-outcomes, full labels) and
+  run on its own, below.
+Retry payment, run on its own (scripts/e2e/probe-payment-retry.mjs; evidence rate-limit-2026-09-19-payment-retry.txt):
+  signed in on Nyerere Day → Unlock → Test declined (7 requests, 2 status polls; failure screen "Payment not
+  completed — Insufficient balance…", i.e. the payment's own message) → Try again → Test cancelled (3 requests,
+  2 polls; "Payment cancelled — The customer cancelled…") → Try again → sheet closes → another video 30s:
+  24 API requests · 0 × 429 · bucket remaining 97 · ALL CHECKS PASSED. The payment poll is 2s while a payment
+  is open and stops the moment it settles; two full attempts cost 4 polls.
+
+--- Answers to the client's four questions ---------------------------------------------------------
+  1. Endpoint: PUT /api/playback/:id/progress — 918 of the 926 requests in the storm window; its 429s then
+     spilled onto every other endpoint that person touched (GET /api/videos, /api/playback/*, POST
+     /api/payments/initiate, GET /api/payments/:id, /api/stats) because they all share that person's bucket.
+  2. Root cause: a progress-report storm at the end of a paid preview — StreamPlayer's 200ms halt loop
+     re-seeking every tick × forced progress writes on seeked/paused/stop-reached/boundary with no throttle.
+     Two contributing causes fixed the day before: Railway's 2-hop chain vs trust=1 (one site-wide bucket), and
+     per-address keying shared behind one router (one bucket per office).
+  3. Changed: 665eedd (trust 2 hops, drift alarm, /health.proxy.ok, one bounded 429 retry for reads);
+     9c9a042 (per-verified-user buckets); 493c6e7 (the storm: coalesced progress writes, once-per-crossing
+     halt with hysteresis, once-only boundary write); 0fc1420 (every refusal recorded; Super Admin reads it).
+     The limit is still 120/min. Nothing cached.
+  4. Tested on the deployed site: 27.4-minute walk incl. the client's exact sequence → 0 × 429; the storm
+     page re-probed → 3 progress writes in 120s (was 918 in 90s); retry payment → 0 × 429; CI 93/94 green.
