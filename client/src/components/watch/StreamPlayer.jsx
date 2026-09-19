@@ -390,10 +390,28 @@ export default function StreamPlayer({
              — and that is the exact moment the page needs the number. */
           if (positionRefProp && at > 0) positionRefProp.current = at
           if (!(limit > 0) || at < limit - 0.15) {
-            if (limit > 0 && at < limit - 0.15) stopped = false
+            /**
+             * Re-arm only when the viewer has GENUINELY gone back — a second
+             * or more below the cut-off — not on the jitter of a player that
+             * reports 29.9 after being parked at 30.0. That jitter used to
+             * flip `stopped` off and back on five times a second, and each
+             * time the halt below re-fired.
+             */
+            if (limit > 0 && at < limit - 1) stopped = false
             if (!(limit > 0 && at >= limit - 0.15)) onTimeUpdateRef.current?.(at, player.duration)
             return
           }
+          /**
+           * Park the player at the cut-off ONCE per crossing.
+           *
+           * This pause+seek used to run on every 200ms tick for as long as the
+           * player sat at the boundary. Every seek fires `seeked`, the page
+           * reports progress on `seeked` — and a paid preview that had ended
+           * became a request storm (918 PUTs in 90s, measured on production,
+           * 2026-09-19) that emptied its owner's rate-limit allowance and made
+           * the whole site answer "Too many requests" to that person.
+           */
+          if (stopped) return
           try {
             player.pause?.()
             player.currentTime = limit

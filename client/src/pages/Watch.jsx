@@ -338,6 +338,35 @@ export default function Watch() {
    * a request per frame for no extra accuracy. Ten seconds is close enough to
    * resume from and cheap enough to ignore.
    */
+  /**
+   * THE STORM, and why this function is now the one place that stops it.
+   *
+   * Reproduced on production, 2026-09-19 (scripts/e2e/evidence/
+   * rate-limit-2026-09-19-progress-storm-before.txt): signed in, on a paid
+   * video you do not own, the moment the free preview reaches its end this
+   * page sent 918 progress PUTs in 90 seconds — dozens a second — 690 of
+   * them refused with 429. The halt loop in StreamPlayer re-seeks to the
+   * cut-off every 200ms, each seek fires `seeked`, the paused player fires
+   * `timeupdate` at the boundary, and every one of those handlers called
+   * this with `force: true`, which skipped the ten-second throttle. One tab
+   * emptied its owner's 120-a-minute allowance in seconds and kept going for
+   * as long as it stayed open, so Trending, the next video, Unlock, the
+   * payment sheet and its retry were all refused — "Too many requests"
+   * everywhere, from one page. Before the limiter was keyed per person, the
+   * same storm emptied the bucket for the whole site.
+   *
+   * Two rules, kept here so no caller can get round them:
+   *   - the same second is never sent twice, forced or not;
+   *   - one request in flight per video, latest value wins — anything that
+   *     arrives while one is out is remembered and sent once, afterwards.
+   * `force` still means "do not wait ten seconds": a pause, a seek, the
+   * paywall and pagehide are deliberate moments worth a write. It no longer
+   * means "send now, whatever is already going".
+   */
+  const progressInFlight = useRef(false)
+  const progressPending = useRef(null)
+  const lastSent = useRef(-1)
+
   const reportProgress = useCallback(
     (seconds, { force = false } = {}) => {
       const s = Math.floor(seconds || 0)
@@ -354,10 +383,29 @@ export default function Watch() {
        */
       rememberProgress(videoId, s)
       if (!signedIn || !v?.id) return
+      if (s === lastSent.current) return
 
-      api.saveProgress(v.id, s).catch(() => {
-        /* A lost resume point is not worth interrupting playback over. */
-      })
+      const send = (value) => {
+        progressInFlight.current = true
+        lastSent.current = value
+        api
+          .saveProgress(v.id, value)
+          .catch(() => {
+            /* A lost resume point is not worth interrupting playback over. */
+          })
+          .finally(() => {
+            progressInFlight.current = false
+            const next = progressPending.current
+            progressPending.current = null
+            if (next != null && next !== lastSent.current) send(next)
+          })
+      }
+
+      if (progressInFlight.current) {
+        progressPending.current = s
+        return
+      }
+      send(s)
     },
     [signedIn, v?.id, videoId]
   )
@@ -1116,7 +1164,10 @@ export default function Watch() {
                   }
                   reportProgress(watchedTo.current)
 
-                  if (needsPayment && previewSeconds && current >= previewSeconds - 0.4) {
+                  /* Once. The paused player keeps reporting the boundary second, and
+                     this used to force a progress write on every one of those
+                     reports — part of the 2026-09-19 storm (see reportProgress). */
+                  if (needsPayment && previewSeconds && current >= previewSeconds - 0.4 && !previewRanOut.current) {
                     watchedTo.current = Math.max(watchedTo.current, previewSeconds)
                     previewRanOut.current = true
                     setPreviewOver(true)

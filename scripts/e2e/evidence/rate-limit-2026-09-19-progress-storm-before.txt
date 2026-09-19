@@ -1,0 +1,120 @@
+THE 429 STORM — reproduced on production (build 21d6bf3), 2026-09-19 ~15:00Z · scripts/e2e/probe-watch-requests.mjs
+Page: /watch/nyerere-day-rehearsals-awaiting-review (paid premiere, 1,200 TZS, 30s free preview), 90 seconds each.
+Anonymous: 5 requests, 0 x 429. Signed in as a viewer who does NOT own it: 926 requests, 918 x PUT /api/playback/:id/progress,
+690 x 429 — the storm starts at ~36.9s, the moment the free preview reaches its end, and runs for as long as the tab is open.
+The per-user bucket (120/min) is emptied in seconds; every other request that person makes for the next minutes is refused:
+Trending, another video page, Unlock, the payment sheet, the retry. Before the per-address/per-user fixes this same storm
+emptied the SITE-WIDE bucket, which is the Sep 17-18 outage.
+
+
+### anonymous · /watch/nyerere-day-rehearsals-awaiting-review · 90s
+document: 200 x-doc=shell x-build=21d6bf3
+title: "Nyerere Day — Rehearsals (awaiting review) — MTONYO+" · "Too many requests" on screen: no
+
+  5 API requests in 90s · 0 × 429 · by status {"200":4,"202":1}
+     1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     1×  POST /api/videos/:id/view
+  timeline (first 60):
+    16721ms 200 GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review  remaining=119
+    17445ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review  remaining=118
+    17770ms 200 GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback  remaining=117
+    18401ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review/related  remaining=116
+    22734ms 202 POST /api/videos/:id/view  remaining=115
+
+### signed-in viewer · /watch/nyerere-day-rehearsals-awaiting-review · 90s
+login: ok (1 requests during login, not counted below)
+document: 200 x-doc=shell x-build=21d6bf3
+title: "Nyerere Day — Rehearsals (awaiting review) — MTONYO+" · "Too many requests" on screen: no
+
+  926 API requests in 90s · 690 × 429 · by status {"200":7,"202":229,"429":690}
+   918×  PUT /api/playback/:id/progress
+     1×  GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback
+     1×  GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review
+     1×  GET /api/auth/me
+     1×  GET /api/creators/following
+     1×  GET /api/library/saved
+     1×  GET /api/videos/nyerere-day-rehearsals-awaiting-review/related
+     1×  POST /api/videos/:id/view
+  timeline (first 60):
+     1943ms 200 GET /api/playback/nyerere-day-rehearsals-awaiting-review/playback  remaining=115
+     2586ms 200 GET /api/ads/breaks/nyerere-day-rehearsals-awaiting-review  remaining=114
+     2600ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review  remaining=112
+     2752ms 200 GET /api/auth/me  remaining=113
+     3196ms 200 GET /api/creators/following  remaining=111
+     3339ms 200 GET /api/library/saved  remaining=110
+     3646ms 200 GET /api/videos/nyerere-day-rehearsals-awaiting-review/related  remaining=109
+     7505ms 202 POST /api/videos/:id/view  remaining=108
+    16336ms 202 PUT /api/playback/:id/progress  remaining=107
+    26533ms 202 PUT /api/playback/:id/progress  remaining=106
+    36145ms 202 PUT /api/playback/:id/progress  remaining=105
+    36901ms 202 PUT /api/playback/:id/progress  remaining=93
+    37152ms 202 PUT /api/playback/:id/progress  remaining=92
+    37231ms 202 PUT /api/playback/:id/progress  remaining=90
+    37266ms 202 PUT /api/playback/:id/progress  remaining=104
+    37301ms 202 PUT /api/playback/:id/progress  remaining=103
+    37309ms 202 PUT /api/playback/:id/progress  remaining=102
+    37336ms 202 PUT /api/playback/:id/progress  remaining=101
+    37348ms 202 PUT /api/playback/:id/progress  remaining=89
+    37358ms 202 PUT /api/playback/:id/progress  remaining=100
+    37374ms 202 PUT /api/playback/:id/progress  remaining=99
+    37393ms 202 PUT /api/playback/:id/progress  remaining=88
+    37395ms 202 PUT /api/playback/:id/progress  remaining=91
+    37455ms 202 PUT /api/playback/:id/progress  remaining=96
+    37457ms 202 PUT /api/playback/:id/progress  remaining=95
+    37478ms 202 PUT /api/playback/:id/progress  remaining=98
+    37481ms 202 PUT /api/playback/:id/progress  remaining=97
+    37495ms 202 PUT /api/playback/:id/progress  remaining=94
+    37526ms 202 PUT /api/playback/:id/progress  remaining=85
+    37560ms 202 PUT /api/playback/:id/progress  remaining=83
+    37571ms 202 PUT /api/playback/:id/progress  remaining=86
+    37573ms 202 PUT /api/playback/:id/progress  remaining=87
+    37595ms 202 PUT /api/playback/:id/progress  remaining=82
+    37603ms 202 PUT /api/playback/:id/progress  remaining=80
+    37604ms 202 PUT /api/playback/:id/progress  remaining=81
+    37630ms 202 PUT /api/playback/:id/progress  remaining=78
+    37631ms 202 PUT /api/playback/:id/progress  remaining=79
+    37646ms 202 PUT /api/playback/:id/progress  remaining=77
+    37681ms 202 PUT /api/playback/:id/progress  remaining=84
+    37703ms 202 PUT /api/playback/:id/progress  remaining=76
+    37707ms 202 PUT /api/playback/:id/progress  remaining=75
+    37752ms 202 PUT /api/playback/:id/progress  remaining=74
+    37759ms 202 PUT /api/playback/:id/progress  remaining=73
+    37772ms 202 PUT /api/playback/:id/progress  remaining=72
+    37789ms 202 PUT /api/playback/:id/progress  remaining=71
+    37820ms 202 PUT /api/playback/:id/progress  remaining=70
+    37844ms 202 PUT /api/playback/:id/progress  remaining=69
+    37890ms 202 PUT /api/playback/:id/progress  remaining=68
+    37899ms 202 PUT /api/playback/:id/progress  remaining=66
+    37907ms 202 PUT /api/playback/:id/progress  remaining=67
+    37915ms 202 PUT /api/playback/:id/progress  remaining=65
+    37953ms 202 PUT /api/playback/:id/progress  remaining=64
+    38006ms 202 PUT /api/playback/:id/progress  remaining=63
+    38062ms 202 PUT /api/playback/:id/progress  remaining=62
+    38114ms 202 PUT /api/playback/:id/progress  remaining=61
+    38211ms 202 PUT /api/playback/:id/progress  remaining=60
+    38324ms 202 PUT /api/playback/:id/progress  remaining=59
+    38377ms 202 PUT /api/playback/:id/progress  remaining=58
+    38402ms 202 PUT /api/playback/:id/progress  remaining=57
+    38410ms 202 PUT /api/playback/:id/progress  remaining=56
+  console/page errors (690):
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+   Failed to load resource: the server responded with a status of 429 ()
+exit=0
+
