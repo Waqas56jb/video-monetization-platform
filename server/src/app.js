@@ -20,6 +20,7 @@ import routes from './routes/index.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { getSettings } from './services/settings.js'
 import { rateLimitKey } from './middleware/rateLimitKey.js'
+import { rateLimitExceeded } from './lib/rateLimitLog.js'
 
 const app = express()
 
@@ -197,6 +198,10 @@ app.use(
     /* A signed-in person is their own bucket; an address is shared by everyone
        behind one router. See middleware/rateLimitKey.js for the measurement. */
     keyGenerator: rateLimitKey,
+    /* Every refusal is written down with its bucket, raw forwarding chain and
+       path (rate_limit_hits, read via /api/admin/rate-limit-hits), then answered
+       exactly as before. See lib/rateLimitLog.js. */
+    handler: rateLimitExceeded,
     message: { error: { message: 'Too many requests — slow down a moment', code: 'RATE_LIMIT' } },
   })
 )

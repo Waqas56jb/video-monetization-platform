@@ -244,6 +244,46 @@ await step('Payment test — Watch side buys the one video it does not own (sand
   check(ent.body?.owned === true, `the API says the viewer now owns it (${JSON.stringify(ent.body).slice(0, 100)})`)
 }, 4000)
 
+/* ------------------------------------------------ the client's own leg */
+/**
+ * The exact thing the client did when it broke (2026-09-19): signed in, on a
+ * paid video they do not own, let the free preview run to the paywall, then
+ * paid — and got "Too many requests" on the sheet, on the retry, and on the
+ * next video. The preview's end is where the progress storm used to start.
+ */
+const NYERERE = 'nyerere-day-rehearsals-awaiting-review'
+await step('Client leg — Nyerere Day (paid premiere, 30s preview): signed in, let the preview reach the paywall', async () => {
+  await page.goto(`${BASE}/watch/${NYERERE}`, { waitUntil: 'domcontentloaded', timeout: 90000 })
+  const flag = await page.locator('.preview-flag').or(page.getByText(/Free preview/i)).first().waitFor({ state: 'visible', timeout: 40000 }).then(() => true).catch(() => false)
+  check(flag, 'the free-preview flag is on screen')
+  await page.waitForTimeout(75_000)
+  const unlock = await page.locator('button', { hasText: /unlock/i }).first().isVisible({ timeout: 5000 }).catch(() => false)
+  check(unlock, 'the paywall offers Unlock after the preview ended')
+})
+await step('Retry payment — Unlock → declined → Try again → cancelled', async () => {
+  await page.locator('button', { hasText: /unlock/i }).first().click({ timeout: 15000 })
+  await page.waitForSelector('.pay-modal', { timeout: 20000 })
+  await page.locator('#pay-phone').fill('0712345678')
+  for (const outcome of [/declin/i, /cancel/i]) {
+    const link = page.locator('.pay-modal button', { hasText: outcome }).first()
+    const has = await link.isVisible({ timeout: 5000 }).catch(() => false)
+    if (!check(has, `the sandbox offers a "${outcome.source}" test outcome`)) break
+    await link.click()
+    const failed = await page.locator('.pay-failed').first().waitFor({ state: 'visible', timeout: 30000 }).then(() => true).catch(() => false)
+    check(failed, `the failure screen appears (${outcome.source})`)
+    const text = await page.locator('.pay-failed').first().innerText().catch(() => '')
+    check(!/Too many requests/i.test(text), `it is the payment's own message, not a rate limit ("${text.trim().replace(/\s+/g, ' ').slice(0, 70)}")`)
+    const again = page.locator('.pay-failed button', { hasText: /try again/i }).first()
+    if (await again.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await again.click()
+      await page.waitForSelector('#pay-phone', { timeout: 15000 }).catch(() => {})
+      await page.locator('#pay-phone').fill('0712345678').catch(() => {})
+    }
+  }
+  await page.keyboard.press('Escape').catch(() => {})
+}, 3000)
+await step('Open another video after the retry (Fishermen) and watch', () => page.goto(`${BASE}/watch/the-fishermen-of-kilwa`, { waitUntil: 'domcontentloaded', timeout: 90000 }), 60_000)
+
 /* ---------------------------------------------------------- reversal */
 await step('Reverse the test purchase through the admin refund path', async () => {
   const at = await tokenFor(ADMIN, 'viewer')

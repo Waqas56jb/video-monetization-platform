@@ -1224,6 +1224,48 @@ router.get(
 
 router.get('/settings', asyncHandler(async (_req, res) => res.json({ settings: await getSettings({ fresh: true }) })))
 
+/**
+ * GET /api/admin/rate-limit-hits?minutes=60 — what the limiter refused, and why.
+ *
+ * Three views of the same rows (lib/rateLimitLog.js): by bucket (WHO was
+ * refused — a person, or an address — with the raw forwarding chain, which
+ * is how a proxy-hop drift shows up), by path (WHAT was being asked for —
+ * which is how a request storm shows up), and the most recent rows raw.
+ * Added 2026-09-19 after the client saw "Too many requests" for two days
+ * while every fix was proven from this side only.
+ */
+router.get(
+  '/rate-limit-hits',
+  requireAdmin(),
+  asyncHandler(async (req, res) => {
+    const minutes = Math.min(1440, Math.max(1, Number.parseInt(req.query.minutes, 10) || 60))
+    const since = `${minutes} minutes`
+    const [buckets, paths, recent] = await Promise.all([
+      many(
+        `select bucket, count(*)::int as hits, min(at) as first_at, max(at) as last_at,
+                max(forwarded_for) as forwarded_for, max(hops)::int as hops
+           from rate_limit_hits where at > now() - $1::interval
+          group by bucket order by hits desc limit 50`,
+        [since]
+      ),
+      many(
+        `select method, path, count(*)::int as hits
+           from rate_limit_hits where at > now() - $1::interval
+          group by method, path order by hits desc limit 50`,
+        [since]
+      ),
+      many(
+        `select at, bucket, ip::text as ip, forwarded_for, hops, method, path, user_id,
+                left(user_agent, 120) as user_agent, retry_after_s
+           from rate_limit_hits where at > now() - $1::interval
+          order by at desc limit 100`,
+        [since]
+      ),
+    ])
+    res.json({ minutes, buckets, paths, recent })
+  })
+)
+
 /* ----------------------------------------------------------- email health */
 /**
  * Does outbound email actually work?
