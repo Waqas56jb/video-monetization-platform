@@ -55,13 +55,43 @@ const SUPABASE =
   process.env.VITE_SUPABASE_URL ||
   'https://azkytxxvmcvsqmnbtfkh.supabase.co'
 
-function sendJpeg(res, buf, extra = {}) {
+/**
+ * `long` is true only for a card we KNOW is the finished, correct one for
+ * this exact `?v=` — the bucket hit (uploaded once the real build lands) and
+ * the API's own `built` card. Anything else — the API's own placeholder
+ * while a build is still queued, or hasn't started — gets a short cache.
+ *
+ * THE BUG THIS REPLACES (found 2026-09-20, client report: one published
+ * video's share preview was blank/generic while another's was fine, and
+ * stayed that way on every retry). Every branch here used to call this with
+ * the same day-long, week-of-stale-while-revalidate Cache-Control — success
+ * or placeholder, no distinction. A video whose card build had not finished
+ * the FIRST time anything hit `/og/card/{slug}.jpg?v={sourceKey}` (a crawler,
+ * an early share, a test) got the generic MTONYO+ placeholder cached at
+ * Vercel's edge under that exact URL for up to a week — and the URL never
+ * changes unless the poster, title or creator name does, so the real card
+ * finishing moments later changed nothing a viewer could see. Different edge
+ * regions cache independently, which is exactly "inconsistent depending on
+ * who's asking" rather than a flat pass/fail.
+ */
+function sendJpeg(res, buf, extra = {}, { long = true } = {}) {
   res.setHeader('Content-Type', 'image/jpeg')
   res.setHeader('Content-Length', String(buf.length))
-  res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800')
+  res.setHeader(
+    'Cache-Control',
+    long
+      ? 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
+      : 'public, max-age=60, s-maxage=60, stale-while-revalidate=300'
+  )
   res.setHeader('X-Content-Type-Options', 'nosniff')
   for (const [k, v] of Object.entries(extra)) if (v) res.setHeader(k, v)
   res.status(200).end(buf)
+}
+
+/** Never cached — a transient failure must not outlive the failure. */
+function sendNoStore(res, status) {
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(status).end()
 }
 
 async function fetchJpeg(url, ms) {
@@ -101,7 +131,7 @@ export default async function handler(req, res) {
 
   if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
     const pending = report('bad-slug', 404)
-    res.status(404).end()
+    sendNoStore(res, 404)
     await settleReport(pending)
     return
   }
@@ -154,14 +184,14 @@ export default async function handler(req, res) {
     })
     if (!upstream.ok) {
       const pending = report('api', upstream.status, bucketState)
-      res.status(upstream.status).end()
+      sendNoStore(res, upstream.status)
       await settleReport(pending)
       return
     }
     const buf = Buffer.from(await upstream.arrayBuffer())
     if (buf.length < 1000) {
       const pending = report('api', 502, bucketState)
-      res.status(502).end()
+      sendNoStore(res, 502)
       await settleReport(pending)
       return
     }
@@ -170,11 +200,15 @@ export default async function handler(req, res) {
        breaker is open, which is how you tell "no key yet" from "key landed but
        this slug is not uploaded". */
     const pending = report('api', 200, bucketState)
-    sendJpeg(res, buf, { 'X-Share-Card': tag || 'api', 'X-Bucket': bucketState })
+    /* THE FIX: only a genuinely built card earns the week-long cache. The
+       API's own placeholder ('fallback' — a build is queued or still running)
+       gets a short one, so the moment the real build lands, the next request
+       — not the next deploy, not a manual purge — picks it up. */
+    sendJpeg(res, buf, { 'X-Share-Card': tag || 'api', 'X-Bucket': bucketState }, { long: tag === 'built' })
     await settleReport(pending)
   } catch {
     const pending = report('api', 502, 'error')
-    res.status(502).end()
+    sendNoStore(res, 502)
     await settleReport(pending)
   }
 }
