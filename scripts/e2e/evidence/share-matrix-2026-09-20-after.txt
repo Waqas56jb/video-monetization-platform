@@ -1,0 +1,320 @@
+
+### chromium desktop
+
+  behind-the-fame-a-coast-documentary
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2857KB)
+      ok    "More Like This" (related videos) loads (851ms)
+
+  ugali-samaki-sunday-cooking
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (689ms)
+
+  live-at-arusha-full-set
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (652ms)
+
+  how-to-cook-pilau-properly
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (686ms)
+
+  nyerere-day-rehearsals-awaiting-review
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (643ms)
+
+  studio-session-track-4
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (718ms)
+
+  rpreplay-final1589783013-2
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (https://www.instagram.com/)
+      ok    TikTok has a real handoff href (https://www.tiktok.com/)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (3188KB)
+      ok    "More Like This" (related videos) loads (619ms)
+
+### Pixel 7
+
+  behind-the-fame-a-coast-documentary
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2857KB)
+      ok    "More Like This" (related videos) loads (607ms)
+
+  ugali-samaki-sunday-cooking
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (607ms)
+
+  live-at-arusha-full-set
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (590ms)
+
+  how-to-cook-pilau-properly
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (588ms)
+
+  nyerere-day-rehearsals-awaiting-review
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (643ms)
+
+  studio-session-track-4
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (650ms)
+
+  rpreplay-final1589783013-2
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (intent://instagram.com/#Intent;scheme=ht)
+      ok    TikTok has a real handoff href (intent://www.tiktok.com/#Intent;scheme=h)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (3188KB)
+      ok    "More Like This" (related videos) loads (623ms)
+
+### iPhone 14 Safari
+
+  behind-the-fame-a-coast-documentary
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2857KB)
+      ok    "More Like This" (related videos) loads (600ms)
+
+  ugali-samaki-sunday-cooking
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (817ms)
+
+  live-at-arusha-full-set
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (781ms)
+
+  how-to-cook-pilau-properly
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (598ms)
+
+  nyerere-day-rehearsals-awaiting-review
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (656ms)
+
+  studio-session-track-4
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (967ms)
+
+  rpreplay-final1589783013-2
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (whatsapp://send?text=https%3A%2F%2Fvideo…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (3188KB)
+      ok    "More Like This" (related videos) loads (645ms)
+
+### iPad Pro 11 Safari
+
+  behind-the-fame-a-coast-documentary
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2857KB)
+      ok    "More Like This" (related videos) loads (628ms)
+
+  ugali-samaki-sunday-cooking
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (631ms)
+
+  live-at-arusha-full-set
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (937ms)
+
+  how-to-cook-pilau-properly
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2852KB)
+      ok    "More Like This" (related videos) loads (603ms)
+
+  nyerere-day-rehearsals-awaiting-review
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (606ms)
+
+  studio-session-track-4
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (2504KB)
+      ok    "More Like This" (related videos) loads (603ms)
+
+  rpreplay-final1589783013-2
+      ok    the share card image actually decoded (not broken/blank)
+      ok    the "Card ready" pill appears (not stuck on "Loading card…")
+      ok    WhatsApp hands off correctly (https://web.whatsapp.com/send?text=https…)
+      ok    Instagram has a real handoff href (instagram://app)
+      ok    TikTok has a real handoff href (tiktok://)
+      ok    Facebook opens the sharer with this link
+      ok    Copy link put the real watch URL on the clipboard (yes)
+      ok    the 60s promo clip actually downloads (3188KB)
+      ok    "More Like This" (related videos) loads (594ms)
+
+ALL 252 CHECKS PASSED
+
+[exited with code 0]

@@ -60,6 +60,20 @@ for (const profile of PROFILES) {
     console.log(`\n  ${slug}`)
     const ctx = await browser.newContext({ ...profile.opts })
     const page = await ctx.newPage()
+    /* Spy on the clipboard write instead of reading it back — Safari refuses
+       navigator.clipboard.readText() outside a user gesture even when the
+       write itself succeeded, which made "Copy link" look broken on both
+       WebKit profiles when it was the check, not the button. */
+    await page.addInitScript(() => {
+      window.__copied = []
+      const real = navigator.clipboard?.writeText?.bind(navigator.clipboard)
+      if (real) {
+        navigator.clipboard.writeText = (text) => {
+          window.__copied.push(text)
+          return real(text)
+        }
+      }
+    })
     try {
       await page.goto(`${BASE}/watch/${slug}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
       const shareBtn = page.locator('button:has-text("Share")').first()
@@ -67,14 +81,20 @@ for (const profile of PROFILES) {
       await page.waitForSelector('.share-modal', { timeout: 20000 })
 
       /* 1. The card — and specifically WHICH card, not just "an image loaded".
-         .is-composed means the real server-built poster (title/poster baked
-         in) is showing; without it the sheet falls back to CSS-drawn chrome
-         over the still frame, which is also correct — but a bare generic
-         placeholder with no title, no poster, would show neither of these
-         AND the pill would say "Loading card…" indefinitely. */
+         Waited for, not sampled once: a ~40KB JPEG over a real network round
+         trip does not finish before the modal itself is visible, and reading
+         `.complete` synchronously right after open is checking a fetch that
+         has not landed yet — a false failure, not a real one. */
       const img = page.locator('.share-og-stage img').first()
-      const imgOk = await img
-        .evaluate((el) => el.complete && el.naturalWidth > 0, { timeout: 15000 })
+      const imgOk = await page
+        .waitForFunction(
+          () => {
+            const el = document.querySelector('.share-og-stage img')
+            return el && el.complete && el.naturalWidth > 0
+          },
+          { timeout: 15000 }
+        )
+        .then(() => true)
         .catch(() => false)
       check(imgOk, 'the share card image actually decoded (not broken/blank)')
       const pillReady = await page
@@ -86,10 +106,13 @@ for (const profile of PROFILES) {
         .catch(() => false)
       check(pillReady, 'the "Card ready" pill appears (not stuck on "Loading card…")')
 
-      /* 2. WhatsApp — the anchor's own href, exact link, nothing sent as a file. */
+      /* 2. WhatsApp — the anchor's own href. web.whatsapp.com is the correct,
+         deliberate choice on iPad (whatsappShare.js) — there is no desktop
+         WhatsApp app on iPadOS to hand off to — so it counts as a pass there,
+         not just the app-scheme / wa.me forms phones and laptops use. */
       const waHref = await page.locator('a.share-wa').first().getAttribute('href').catch(() => null)
       check(
-        Boolean(waHref) && /^(whatsapp:\/\/send|https:\/\/(api\.whatsapp\.com|wa\.me)\/)/.test(waHref),
+        Boolean(waHref) && /^(whatsapp:\/\/send|https:\/\/(api\.whatsapp\.com|wa\.me|web\.whatsapp\.com)\/)/.test(waHref),
         `WhatsApp hands off correctly (${waHref ? waHref.slice(0, 40) : 'no href'}…)`
       )
 
@@ -103,10 +126,13 @@ for (const profile of PROFILES) {
       const fbHref = await page.locator('a.share-target.is-fb').first().getAttribute('href').catch(() => null)
       check(Boolean(fbHref) && fbHref.includes('facebook.com'), 'Facebook opens the sharer with this link')
 
-      /* 6. Copy Link — the clipboard actually receives the watch URL. */
+      /* 6. Copy Link — that the button actually CALLED writeText with the
+         real watch URL (via the init-script spy), not that this script can
+         read the OS clipboard back — WebKit refuses that read outside a
+         genuine user gesture regardless of whether the write worked. */
       await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE }).catch(() => {})
       await page.locator('button.share-target.is-copy').first().click()
-      const copied = await page.evaluate(() => navigator.clipboard.readText().catch(() => '')).catch(() => '')
+      const copied = await page.evaluate(() => window.__copied?.at(-1) || '').catch(() => '')
       check(Boolean(copied) && copied.includes('/watch/'), `Copy link put the real watch URL on the clipboard (${copied ? 'yes' : 'no'})`)
 
       /* 7. The 60s promo clip — the actual bytes, not just a 200. Mirrors

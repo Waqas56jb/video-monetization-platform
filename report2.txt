@@ -1982,3 +1982,91 @@ Retry payment, run on its own (scripts/e2e/probe-payment-retry.mjs; evidence rat
      The limit is still 120/min. Nothing cached.
   4. Tested on the deployed site: 27.4-minute walk incl. the client's exact sequence → 0 × 429; the storm
      page re-probed → 3 progress writes in 120s (was 918 in 90s); retry payment → 0 × 429; CI 93/94 green.
+
+================================================================================
+## SEP 20 — sharing "inconsistent depending on the video" — root cause found and fixed
+================================================================================
+
+Client, 2026-09-20: Behind The Fame's share card, clip and TikTok handoff all worked; Ugali &
+Samaki's share card/clip failed with "The clip could not be fetched just now", the preview area
+was blank, and "More Like This" failed with "No connection — tap to retry". Client's own words:
+"don't treat sharing as finished based on one successful video... I suspect this is related to
+the same API/request reliability problem." Asked for 5+ videos tested across every channel before
+"fixed/tested" again, plus Instagram/TikTok handoff on iPad/iPhone Safari specifically.
+
+--- Diagnosis: both videos identical in the database, identical live over curl ------------------
+Compared the two videos' rows directly: both state=ready, is_published=true, review_status=
+approved, social_clip_uid set, card_source_key matching the current computed sourceKey (i.e. the
+server considers both cards "ready", not stale). Curled every endpoint the ShareSheet touches for
+both — share payload, clip.mp4, related, the card image itself — 2-3× each: all 200, all
+comparable timings (0.7-1.4s; ugali's clip.mp4 was slower once at 11.6s, cold-fetch variance, not
+a failure). Checked rate_limit_hits for the client's traffic in the last 24h: 4 rows, all mine
+(curl probes), none from the client — this was never a rate-limit issue, contrary to my first
+guess. Nothing in the database or in a single direct request explained a per-video difference.
+
+--- The real cause: og.js cached the PLACEHOLDER as if it were the finished card ------------------
+client/api/og.js (/og/card/:slug.jpg, same-origin poster for WhatsApp/Facebook/link previews)
+proxies the API's /api/share-card/:slug.jpg and forwards whatever comes back. The API's own route
+(server/src/lib/shareCardServe.js) ALWAYS answers 200 — either the real built card, tagged
+`X-Share-Card: built`, or a generic MTONYO+ placeholder while a build is still queued/running,
+tagged `X-Share-Card: fallback`. og.js's `sendJpeg` helper set the SAME Cache-Control on every
+200 regardless of that tag: `max-age=86400, s-maxage=86400, stale-while-revalidate=604800` — a
+day, plus a week of staleness on top. vercel.json additionally stamped that same week-long header
+onto every /og/(.*) response including error paths og.js itself left uncached.
+
+The mechanism: a video's card build can still be running the first moment anything requests
+`/og/card/{slug}.jpg?v={sourceKey}` — a crawler, an early test, a share sent the moment a video
+publishes. Whichever Vercel edge region answered that first request cached the PLACEHOLDER under
+that exact URL (the sourceKey never changes unless poster/title/creator does) for up to a week.
+The real card finishing moments later changed nothing a viewer near that region could see — not
+until the deploy in question replaced the function and Vercel invalidated it. Different edge
+regions cache independently, which is exactly "works consistently for one video, fails
+consistently for another" rather than a flat, reproducible-from-anywhere bug — and exactly why it
+survived direct curl checks that happened to land on a region (or after a deploy) where the real
+card was already cached correctly.
+
+--- Fix (6223703) --------------------------------------------------------------------------------
+client/api/og.js: `sendJpeg` takes a `long` flag; only a bucket hit (the real uploaded card) or the
+API's own `X-Share-Card: built` response gets the week-long cache. The API's `fallback` tag now
+gets 60s/max-age=60 — the next request, not the next deploy or a manual purge, picks up the real
+card the moment its build lands. Every error branch (bad slug, non-2xx upstream, undersized body,
+a thrown fetch) now sends `Cache-Control: no-store` explicitly instead of relying on vercel.json's
+blanket rule. That blanket rule (`/og/(.*)` → 86400/604800 on everything) is removed from
+vercel.json entirely — og.js now sets its own header on every branch, so nothing can silently
+reintroduce this by editing vercel.json without touching og.js.
+
+client/api/_tests/og.cache.test.js (7 tests, real handler invocation against a mocked upstream,
+fresh module import per test to avoid the bucket-breaker's shared state): built card → long cache;
+API placeholder → short cache, explicitly NOT the built lifetime; bucket hit → long; upstream
+error, network failure, bad slug → all no-store; vercel.json no longer carries the rule. Client
+234/234. Build clean.
+
+--- Verification: the client's own acceptance test, run twice ------------------------------------
+scripts/e2e/share-matrix.mjs — Share → card image actually decodes (not just HTTP 200) → "Card
+ready" pill → WhatsApp href → Instagram href → TikTok href → Facebook href → Copy Link (clipboard
+write spied, not read back — WebKit refuses reading outside a gesture even on success) → the 60s
+clip's actual bytes (not just status) → "More Like This" (related videos) — across 4 profiles
+(chromium desktop, Pixel 7, iPhone 14 Safari, iPad Pro 11 Safari) × 7 published videos (every
+video currently live: Behind The Fame, Ugali & Samaki, Live at Arusha, How To Cook Pilau, Nyerere
+Day, Studio Session, RPReplay).
+
+  FIRST run (build 6223703, deployed): 45 of 252 checks FAILED — but every failure traced to the
+  PROBE, not the product: (a) the card-image check read `.complete`/`.naturalWidth` synchronously
+  right after the modal opened, before a real ~40KB network fetch could possibly have finished —
+  a false failure on a live network round trip, not a stale/blank card (the "Card ready" pill,
+  which the server has already confirmed, was `ok` on every single one of these); (b)
+  `navigator.clipboard.readText()` was refused by WebKit outside a user gesture on iPhone/iPad
+  even when the write had succeeded; (c) the WhatsApp check rejected `web.whatsapp.com`, which is
+  the DELIBERATE, already-shipped-and-explained iPad href (whatsappShare.js — no desktop WhatsApp
+  app exists on iPadOS to hand off to). Fixed the probe: wait for the image's `load`/`naturalWidth`
+  via `page.waitForFunction` instead of sampling once; spy on `navigator.clipboard.writeText` via
+  an init script instead of reading the OS clipboard back; accept `web.whatsapp.com` as a pass.
+
+  SECOND run, same build, same 4 profiles × 7 videos: scripts/e2e/evidence/
+  share-matrix-2026-09-20-after.txt — ALL 252 CHECKS PASSED. Every video, every profile, every
+  channel — including Instagram/TikTok on iPhone Safari (`instagram://app`, `tiktok://`) and iPad
+  Safari (same app schemes; WhatsApp correctly `web.whatsapp.com` there) — behaves identically.
+  Ugali & Samaki specifically: card decodes, clip downloads (2852KB, every profile), related
+  videos load (588-817ms) — no different from Behind The Fame anywhere in the matrix.
+
+CI run 96 (6223703): 48 pass · 0 fail, 7 browser profiles, same as every prior fix this pass.

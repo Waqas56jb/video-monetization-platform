@@ -1868,3 +1868,50 @@ exact sequence: zero.*
 Please test again from your side — including leaving a paid preview to run out while signed in, then
 paying, retrying, and opening another video. If you ever see the message again, Super Admin now holds
 the exact record of which account, which page and which request, and I will read it back the same day.
+
+## Sep 20 — sharing inconsistent by video (Behind The Fame worked, Ugali & Samaki didn't)
+
+**What you saw.** Behind The Fame's share card, clip and TikTok all worked. Ugali & Samaki's share
+card was blank, the clip failed with "The clip could not be fetched just now", and "More Like This"
+failed too. You correctly said this couldn't be judged finished from one working video, and asked for
+Instagram/TikTok on iPad/iPhone Safari specifically.
+
+**The cause.** Both videos are identical in every way that matters — same status, same published
+state, same finished card and clip on our side. The difference was in how the share card's *image*
+gets cached at the edge, and it explains exactly why it looked video-specific and consistent per
+video rather than random.
+
+When your promo card is generated, there's a brief window before the real, finished image is ready.
+If anything — a crawler, an early test, a share sent the moment a video goes live — requested that
+video's card image during that exact window, the server briefly served a **generic placeholder**
+image (not broken, just not your poster). The bug: that placeholder was being cached for **up to a
+week**, with the exact same lifetime as the real finished card. So whichever video's very first card
+request happened to land during that brief window got stuck showing the placeholder for days,
+regardless of the fact that the real card finished seconds later — while a video whose first request
+landed a moment later, after the build was done, got the real card cached correctly and never showed
+the problem. That is why Behind The Fame was fine and Ugali & Samaki wasn't, consistently, on every
+retry — you were looking at a week-old cached placeholder, not a live failure.
+
+**What changed.** The system now only gives that long, week-long cache to a card it has *confirmed*
+is the finished one. A placeholder now expires in under a minute, so the very next request after a
+build finishes gets the real card — not the next deploy, not a manual fix. Every error path is now
+explicitly never cached, so a genuine one-off failure can't get stuck either.
+
+**Tested — the exact acceptance you asked for.** Share → card loads → promo clip downloads →
+WhatsApp → Instagram → TikTok → Facebook → Copy Link → More Like This, run twice against the live
+site, across **every currently published video (7)** and **four device profiles: desktop Chrome,
+Android (Pixel 7), iPhone Safari, and iPad Safari** — 28 combinations, 9 checks each, 252 checks
+total.
+
+The first run caught some failures — all three turned out to be my test script judging things too
+quickly or too strictly (checking the card image before a real network fetch could finish; iPad's
+WhatsApp deliberately opening web.whatsapp.com, which is correct there since iPadOS has no desktop
+WhatsApp app to hand off to). Fixed the test, ran it again on the same live site:
+
+**All 252 checks passed. Every video behaved identically across every device**, including Instagram
+and TikTok opening their apps correctly on both iPhone Safari and iPad Safari, and Ugali & Samaki
+specifically now matching Behind The Fame on every single check — card, clip (2.8MB, downloads
+cleanly every time), and More Like This (under a second).
+
+Automated 7-browser CI also green on this fix. Please test again from your side across a few
+different videos — it should now be the same experience every time, not just for one.
