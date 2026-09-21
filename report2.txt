@@ -2070,3 +2070,110 @@ Day, Studio Session, RPReplay).
   videos load (588-817ms) — no different from Behind The Fame anywhere in the matrix.
 
 CI run 96 (6223703): 48 pass · 0 fail, 7 browser profiles, same as every prior fix this pass.
+
+================================================================================
+## SEP 21 — Milestone 2 close-out list #4 (evidence-first on each item)
+================================================================================
+
+Client, 2026-09-21, after a full pass across Super Admin/creator/viewer/public: still not ready to
+accept. Six items, in the order raised; 2-3 working days agreed against a 9-day Fiverr extension.
+
+--- 1. Internal migration text visible to admin -----------------------------------------------
+"Please remove the creator-facing text 'Creator account created before applications existed.' That
+is internal/migration language and should never appear to users." Found: migration 020 (2026-08,
+the pre-application backfill) wrote this exact string into creator_applications.description for
+every creator who predates the review system - 9 rows in production, all status='approved'. It
+surfaces in Super Admin -> Creator Applications -> filter: approved, rendered under "What they will
+publish" as if it were the creator's own words (admin/src/components/tabs/CreatorApplicationsTab.jsx
+line 230, the raw a.description field).
+Fixed at the data (migration 042, applied to production), not pattern-matched in the UI: every row
+carrying the exact old string now reads "No application on file - this creator account was granted
+access before MTONYO+ had a review process." - an honest audit note, not a claim in the creator's
+voice. Verified live: 0 rows with the old text, 9 with the new. Server 202/202 incl. a dedicated
+migration test. category ('Not stated') was left alone - it never read as the creator's own claim.
+
+--- 2. "Show demo accounts in public stats" ----------------------------------------------------
+Client: "I can see 'Show demo accounts in public stats' is currently ON." Flipped to false via the
+existing admin settings route (server/src/services/settings.js allow-list, migration-free - this
+setting has existed since the Sep 17 pass). Verified live: /api/admin/settings ->
+show_demo_content_in_stats:false; /api/stats.creatorsEarning dropped from 19 (demo included) to 3
+(real creators only). The full test-data purge (server/scripts/production-reset.mjs, dry-run
+verified Sep 17-18) was NOT run this pass - the client's message asked for exclusion from public
+stats specifically; the irreversible account-deletion side of that script still needs an explicit
+go-ahead before --apply, per standing rule.
+
+--- 3. Intermittent "Could not load this / No connection - tap to retry" on Trending -----------
+Reproduced: could not, despite trying. Measured every endpoint Home loads (GET /api/videos?
+sort=trending, /api/stats, /api/stats/top-creators) directly against production: 40 sequential
+requests per endpoint (p50 445-655ms, p90 476-655ms, max 2072ms, 0 errors) and 5 rounds of 15
+concurrent mixed requests (max 1763ms, 0 errors) - nothing within 5x of the client's 10s ceiling.
+EXPLAIN ANALYZE'd the trending sort's per-row correlated subqueries (video_views/purchases, 14-day
+windows) directly against production data: 8.4ms execution time at the current catalogue size (8
+published videos, 4604 views, 59 purchases) - not the bottleneck today, though the pattern is an
+O(rows) per-request cost worth revisiting as the catalogue grows. Checked rate_limit_hits for the
+client's own traffic in the reported window: none - ruled out as a rate-limit recurrence.
+Conclusion, stated honestly: the specific incident could not be reproduced server-side, which is
+itself evidence for a one-off cause (a mobile network blip, or landing during one of this week's
+several deploys, each of which briefly restarts the Railway container) rather than a standing fault.
+Made the resilience match the ask regardless of cause: every useApi read (Trending, Hero's stats,
+Explore, every dashboard tab - this hook is never used for writes) now retries ONCE, after a 1.2s
+pause, before ever surfacing the error - the same bounded-retry discipline already applied to the
+rate limiter's 429 on Sep 18. client/src/hooks/useApi.retry.test.js pins the count (exactly 2 calls,
+never a 3rd), the bound, the delay and the wiring. Client 239/239 at the time, 246 after later items.
+
+--- 4. Video startup speed ("Play -> video starting to feel much faster") ----------------------
+Measured end to end on production with the app's own ?perf=1 instrumentation (console.info
+'[mtonyo] boot-to-first-frame: Nms'), Pixel 7 + CPU x4 + 150ms/1.6Mbps (a real mid-tier phone, not
+a worst case): an OWNED paid video with no ad took 11.8s from navigation to first frame. Breakdown:
+own API calls (video/playback/ads/related, already parallel) done by 2.8s; sdk.latest.js (already
+preloaded) by <1s; then a ~4.3s gap (2.9s -> 7.1s) for sdk-iframe-integration.fla9.latest.js (with
+what looked like a 301) and two dependency chunks the player only requests once it is already
+running inside the iframe; first media segment at 8.1s; first frame at 11.8s. A Free+Ads video is
+worse (~20s) because content does not even mount until the pre-roll is confirmed airing (by design,
+Sep 19) - the ad pays this same ~7s boot cost FIRST.
+Tried the obvious fix: preload the three customer-subdomain scripts from page load (266ff4d).
+MEASURED IT - before shipping the "done" - and it did nothing: performance.getEntriesByType
+('resource') showed each preload abandoned in ~220ms with transferSize:0 (the browser discarding
+the request, not caching it), and the real fetch started at the same wall-clock offset with or
+without the hint (before: 2909/7100ms; after: 3407/7739ms - noise, not improvement). Likely cause:
+the bootstrap script 301-redirects when the SDK requests it (a preloaded cross-origin script that
+redirects is a known way for Chrome to discard rather than reuse the preload), and the other two
+were very likely deprioritised/cancelled under the CPU throttling.
+REVERTED (7e1d469) rather than shipped claiming a speed-up that measurement disproved - the same
+"measure before AND after, say so honestly" standard the client is holding this whole pass to.
+Honest conclusion: the ~7s Cloudflare Stream player bootstrap (its own SDK + iframe-integration +
+chunks) is fixed cost for this embed architecture and not something client-side hints can shorten;
+shrinking it further would need a different integration approach (e.g. Cloudflare's HLS.js-based
+player instead of the hosted iframe), which is a bigger change than this pass's 2-3 day window and
+is not attempted here without the client's sign-off given the size of that change.
+
+--- 5. Creator Capital info page - "feels like a Word/terms page" ------------------------------
+Client: "The homepage Creator Capital section looks much better, but the actual Creator Capital
+page still becomes long plain text... make it visual and premium: cards/steps/icons/status
+examples/clear sections. Do not change the business logic, just improve the presentation."
+Rebuilt (0b56b28) on the homepage section's own already-approved visual language (cc-steps,
+cc-status-card, .notice, .pill) instead of the Terms/Privacy .legal/.legal-body prose shell.
+Every fact preserved word for word - verified by a dedicated test matching the old paragraphs'
+exact sentences against the new markup - reorganised into: 4 numbered steps with icons ("How it
+works"), a highlighted callout ("Who decides" - MTONYO+ is not the lender), a 5-item status legend
+using the dashboard's own real state labels (Building/Under Review/Offer Ready/Active/Repaid), and
+an illustrative example-offer card ("If you are approved"). No new eligibility number - still reads
+capitalMonthsRequired; sep17Review.test.js's "no literal 6 months" check still passes. Screenshot-
+checked at 1280px and 390px widths before shipping (evidence: cc-info-desktop.png, cc-info-mobile.png,
+cc-info-card-fixed.png). Client 246/246. Verified live: 4 steps, 5 journey items, the example card,
+zero .legal-body elements on the deployed page.
+
+--- 6. Creator-side dashboard changes ("previously discussed... still appears essentially unchanged")
+NOT ACTIONED - no specification exists in this repository's history, in report2.txt/CLIENT-REPORT.md,
+or in any prior session, of what the "previously discussed" creator-side items are. Asked the
+operator for the source chat; not yet supplied at the time of this section. Flagged explicitly
+rather than guessed at.
+
+--- Status at handover -----------------------------------------------------------------------
+Fixed, deployed, verified live: items 1, 2, 3 (resilience only - no reproducible server cause
+found), 5. Investigated thoroughly and reported honestly, no working fix found within scope: item 4
+(root cause identified as Cloudflare's own player architecture; a targeted attempt was tried,
+measured, and reverted on evidence rather than shipped unverified). Blocked on missing
+specification: item 6. CI: runs 96-99 (6223703, 0e7f6c8, b885679, 266ff4d) all green 48/48; runs 100
+(0b56b28) and 101 (7e1d469, the honest revert) in progress at the time of writing - outcome appended
+below once they report.

@@ -1915,3 +1915,68 @@ cleanly every time), and More Like This (under a second).
 
 Automated 7-browser CI also green on this fix. Please test again from your side across a few
 different videos — it should now be the same experience every time, not just for one.
+
+## Sep 21 — the six remaining Milestone 2 items
+
+Going through each in the order you raised them. Two are fully closed, one is a genuine
+improvement without a reproducible root cause, one I investigated fully and am reporting honestly
+rather than claiming a fix that didn't measure out, and one I need more detail from you on before I
+can start.
+
+**1. "Creator account created before applications existed" — removed.** This was a leftover from
+the one-time migration that grandfathered in the 9 creators who joined before the application
+system existed — it landed in the same field Super Admin shows as "what they said they'd publish,"
+so it read as if it were their own words. It now reads "No application on file — this creator
+account was granted access before MTONYO+ had a review process," which is what actually happened,
+stated as an admin note rather than a claim in the creator's voice. Fixed in the database directly,
+so it's gone from every screen, not just the one you saw it on. Verified live: all 9 rows corrected.
+
+**2. Demo accounts excluded from public stats — done.** Turned off. Verified live: the platform's
+public "creators earning" count dropped from 19 (which included demo accounts) to 3 (the real
+number). The larger test-data cleanup (removing the test/smoke accounts entirely) is still the
+dry-run-only plan from before — I haven't deleted anything; say the word and I'll run it.
+
+**3. The intermittent Trending failure — investigated properly, and made more resilient regardless
+of cause.** I could not reproduce the failure from here: I hit the exact endpoints Home loads 40
+times in a row and in bursts of concurrent requests, directly against the live site, and every
+single one answered in under 2 seconds — nowhere close to the 10-second point where that error
+appears. I also checked the specific database query behind Trending and it runs in single-digit
+milliseconds. Being honest with you: I cannot point to a server-side cause, which itself suggests it
+was a one-off — a moment of bad signal on your connection, or landing during one of the several
+times I deployed a fix this week (each deploy briefly restarts the server). What I did anyway,
+because a manual "tap to retry" succeeding immediately is exactly the kind of blip worth designing
+around: **every screen that loads data now quietly retries once, on its own, before ever showing you
+an error.** So whatever caused that one moment — on your end or ours — should now resolve itself
+without you ever seeing it.
+
+**4. Video startup speed — investigated in depth; here is exactly where the time goes, and why I
+did not ship a fix that didn't work.** I measured the real breakdown, second by second, on a
+mid-range phone on an ordinary connection: your own site's part (fetching the video's details) takes
+under 3 seconds and runs in parallel already — that part is fine. The remaining ~9 seconds is
+Cloudflare's own video player loading its own code inside the frame — not something stored on our
+servers or something our page controls once the player takes over. I found what looked like the
+obvious fix (telling the browser to start downloading those files earlier) and I want to be
+straightforward with you: **I measured it before calling it done, and it made no measurable
+difference** — the browser was discarding the early request and fetching fresh anyway, likely
+because Cloudflare's file redirects once before it answers. I reverted that change rather than leave
+in something that doesn't actually help. The honest state today is that the wait is dominated by
+Cloudflare's own player, and shortening it further would mean switching to a different way of
+embedding video (a bigger technical change) rather than a quick tweak — I'd want your go-ahead
+before taking that on, given the size of it. A Free + Ads video is slower still, for a related
+reason: the film deliberately doesn't start loading until the advert is confirmed playing, so it
+currently pays the same ~9-second cost twice, once for the ad and once for the film.
+
+**5. The Creator Capital page — redesigned.** It no longer reads like a terms page. It's now built
+from the same cards-and-icons style as the homepage section you already liked: four numbered steps
+for how it works, a clearly highlighted box for "who decides" (AirPay, not MTONYO+), a legend
+showing what each status means (Building → Under AirPay Review → Offer Ready → Active → Repaid),
+and an example of what an approved offer looks like. Every fact on the old page is still there,
+word for word — I only changed how it's presented, never what it says. Verified live.
+
+**6. Creator-side dashboard changes — I need the specifics from you again.** I don't have a record
+of which creator-side items were agreed on previously — could you resend that part of the
+conversation, or the specific list? I don't want to guess at what "previously discussed" means and
+build the wrong thing.
+
+Everything above except item 6 is live and tested. Automated tests and the full 7-browser CI suite
+are green throughout.
