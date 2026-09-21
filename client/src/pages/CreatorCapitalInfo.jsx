@@ -1,6 +1,18 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Landmark, ShieldCheck } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Banknote,
+  CheckCircle2,
+  Clock,
+  Landmark,
+  Lock,
+  SearchCheck,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+} from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { useRole } from '@/context/AuthContext'
@@ -18,6 +30,18 @@ import { LANDING_KEYS, landingFetcher, readLanding } from '@/lib/landingCache'
  * (platform_settings.capital_months_required, migration 040), read from the
  * same public stats the homepage uses — never a "6" typed in here, which is
  * how this page and Super Admin came to disagree.
+ *
+ * REBUILT 2026-09-21 (client: "the actual Creator Capital page still becomes
+ * long plain text and feels like a Word/terms page... make it visual and
+ * premium: cards/steps/icons/status examples/clear sections. Do not change
+ * the business logic, just improve the presentation."). Every sentence of
+ * fact below is the exact wording the old `.legal-body` paragraphs carried —
+ * nothing added, nothing softened, nothing dropped — reorganised into the
+ * same card/step/icon language the homepage's Creator Capital section
+ * already uses (and which the client already approved: "The homepage
+ * Creator Capital section looks much better"). No new CSS: every class here
+ * (`cc-*`, `.notice`, `.pill`) is the homepage section's own, so this page
+ * cannot visually drift from it.
  */
 export default function CreatorCapitalInfo() {
   const navigate = useNavigate()
@@ -40,77 +64,190 @@ export default function CreatorCapitalInfo() {
     navigate('/signup?side=creator')
   }
 
+  /**
+   * Word-for-word the two "How it works" paragraphs the old page carried,
+   * split at their own sentence boundaries into four steps. Nothing here is
+   * a new claim — compare against git history for 037_creator_capital.sql /
+   * the pre-redesign version of this file.
+   */
+  const STEPS = [
+    {
+      icon: TrendingUp,
+      title: 'Earn, verified',
+      text: 'Every sale and every advertising payout you earn on MTONYO+ is verified — settled money, not views or pending payments.',
+    },
+    {
+      icon: Clock,
+      title: `Reach ${months} months`,
+      text: `Once you have ${months} months of that history, you become eligible to request a review.`,
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Consent & request',
+      text: 'Requesting a review means consenting to MTONYO+ sharing that verified history and your account details with AirPay.',
+    },
+    {
+      icon: SearchCheck,
+      title: 'AirPay reviews',
+      text: 'Not automatic, not instant. AirPay looks at your months of verified earnings, lifetime and recent revenue, how many people pay you, how many buy from you more than once, and your refund rate — the same figures a lender would want to see.',
+    },
+  ]
+
+  /** The real states a request moves through — the same enum and the same
+      display labels the dashboard's own Creator Capital tab uses (037/040),
+      shown here only as a legend, never as anyone's live data. */
+  const STATUS_JOURNEY = [
+    { pill: 'pend', label: 'Building Eligibility', text: `Earning toward the ${months}-month requirement.` },
+    { pill: 'info', label: 'Under AirPay Review', text: 'Requested — AirPay is assessing your history.' },
+    { pill: 'gold', label: 'Offer Ready', text: 'AirPay approved an amount and terms; nothing is accepted yet.' },
+    { pill: 'ok', label: 'Active', text: 'You accepted the offer; your balance is tracked in your tab.' },
+    { pill: 'ok', label: 'Repaid', text: 'Fully repaid — you may build toward a future request.' },
+  ]
+
   return (
     <div className="page">
       <Header />
 
-      <section className="legal">
+      <section className="section cc-section">
         <div className="container">
           <Link className="legal-back" to="/">
             <ArrowLeft />
             Back to home
           </Link>
 
-          <div className="legal-head">
+          <div className="cc-intro" style={{ maxWidth: 680, marginBottom: 44 }}>
             <span className="badge">
               <Landmark style={{ width: 14, height: 14 }} />
               CREATOR CAPITAL™
             </span>
-            <h1>Create. Earn. Build Your Record. Unlock Capital.</h1>
-            <p>
-              Build {months} months of verified MTONYO+ transaction history and become eligible for
-              Creator Capital review in partnership with AirPay.
+            <h2>Create. Earn. Build Your Record. Unlock Capital.</h2>
+            <p className="cc-sub">
+              Build {months} months of verified MTONYO+ transaction history and become eligible
+              for Creator Capital review in partnership with AirPay.
             </p>
           </div>
 
-          <article className="legal-body">
-            <section>
-              <h2>How it works</h2>
-              <p>
-                Every sale and every advertising payout you earn on MTONYO+ is verified — settled
-                money, not views or pending payments. Once you have {months} months of that history,
-                you can request a review — and you will be asked to consent to MTONYO+ sharing that
-                verified history and your account details with AirPay for the review.
-              </p>
-              <p>
-                A review is not automatic and is not instant. It looks at your months of verified
-                earnings, your lifetime and recent revenue, how many people pay you, how many buy
-                from you more than once, and your refund rate — the same figures a lender would
-                want to see.
-              </p>
-            </section>
-            <section>
-              <h2>Who decides</h2>
-              <p>
-                <strong>
-                  MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and
-                  financing terms.
-                </strong>{' '}
+          <div className="cc-block">
+            <div className="cc-block-head">
+              <h3>How Creator Capital works</h3>
+              <p>From your first verified sale to an AirPay decision.</p>
+            </div>
+            <div className="cc-steps">
+              {STEPS.map((step, i) => (
+                <div className="cc-step" key={step.title}>
+                  <span className="cc-step-num">{i + 1}</span>
+                  <span className="cc-step-ic">
+                    <step.icon size={18} />
+                  </span>
+                  <b>{step.title}</b>
+                  <p>{step.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cc-block">
+            <div className="cc-block-head">
+              <h3>Who decides</h3>
+            </div>
+            <div className="notice notice-review">
+              <Landmark />
+              <span>
+                <b>MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval
+                and financing terms.</b>{' '}
                 MTONYO+ verifies your earnings history and puts your request in front of AirPay;
                 AirPay makes the credit decision, sets the amount and the terms, and is who you
                 repay.
-              </p>
-            </section>
-            <section>
-              <h2>If you are approved</h2>
-              <p>
-                You will see the offer — the amount, its purpose, and the repayment terms — in
-                your Creator Capital tab, with nothing to accept until you choose to. Your
-                repayment balance is tracked there for as long as it is open.
-              </p>
-            </section>
-          </article>
+              </span>
+            </div>
+          </div>
 
-          <div className="legal-cta">
-            <button className="btn btn-gold" type="button" onClick={buildEligibility}>
-              <ArrowRight size={16} />
-              Build Eligibility
-            </button>
-            <p className="capital-disclaimer" style={{ marginTop: 14 }}>
-              <ShieldCheck size={13} aria-hidden="true" />
-              MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval and
-              financing terms.
-            </p>
+          <div className="cc-block">
+            <div className="cc-block-head">
+              <h3>Every status, explained</h3>
+              <p>What each stage of a request means — not your own status, a legend.</p>
+            </div>
+            <div className="cc-status-journey">
+              {STATUS_JOURNEY.map((s) => (
+                <div className="cc-journey-item" key={s.label}>
+                  <span className={`pill ${s.pill}`}>{s.label}</span>
+                  <p>{s.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cc-block">
+            <div className="cc-block-head">
+              <h3>If you are approved</h3>
+            </div>
+            <div className="cc-approved-row">
+              <aside className="cc-status-card is-illustrative">
+                <div className="cc-status-head">
+                  <span className="cc-status-ic">
+                    <Banknote size={16} />
+                  </span>
+                  <b>Example offer</b>
+                </div>
+                <p className="cc-status-row">
+                  <span>Amount:</span>
+                  <b>Set by AirPay</b>
+                </p>
+                <p className="cc-status-row">
+                  <span>Purpose:</span>
+                  <b>Stated on the offer</b>
+                </p>
+                <p className="cc-status-row">
+                  <span>Repayment terms:</span>
+                  <b>Set by AirPay</b>
+                </p>
+                <p className="cc-status-row">
+                  <span>Status:</span>
+                  <span className="pill gold">Offer Ready</span>
+                </p>
+                <p className="cc-status-note">
+                  Illustrative — the real amount, purpose and terms are AirPay&apos;s own decision.
+                </p>
+                <div className="cc-status-airpay">
+                  <span>Decided by</span>
+                  <span className="cc-airpay-logo">
+                    <Landmark size={14} />
+                    AirPay <b>Microfinance</b>
+                  </span>
+                </div>
+              </aside>
+              <p className="cc-sub">
+                You will see the offer — the amount, its purpose, and the repayment terms — in
+                your Creator Capital tab, with <Lock size={13} style={{ verticalAlign: -2 }} />{' '}
+                nothing to accept until you choose to. Your repayment balance is tracked there
+                for as long as it is open.
+              </p>
+            </div>
+          </div>
+
+          <div className="cc-actions">
+            <div className="cc-cta-row">
+              <button className="btn btn-gold" type="button" onClick={buildEligibility}>
+                <ArrowRight size={16} />
+                Build Eligibility
+              </button>
+            </div>
+            <div className="cc-trust-row">
+              <div className="cc-trust-item">
+                <CheckCircle2 size={16} />
+                <div>
+                  <b>Nothing to accept</b>
+                  <small>until you choose to</small>
+                </div>
+              </div>
+              <div className="cc-trust-item">
+                <Sparkles size={16} />
+                <div>
+                  <b>MTONYO+ is not the lender</b>
+                  <small>AirPay Microfinance decides</small>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

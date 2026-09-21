@@ -2775,15 +2775,27 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
 .cc-trust-item b{display:block;font-size:12.5px}
 .cc-trust-item small{display:block;font-size:11px;color:var(--muted2)}
 
+/* The info page's own two additions (CreatorCapitalInfo.jsx) — a legend of
+   the real request states, and the illustrative offer beside its own
+   explanation. Same border/radius/background language as .cc-step/.cc-tile
+   above so nothing here reads as a different design system. */
+.cc-status-journey{display:flex;flex-wrap:wrap;gap:14px}
+.cc-journey-item{flex:1 1 190px;padding:16px 18px;border-radius:14px;border:1px solid var(--border2);background:rgba(255,255,255,.025)}
+.cc-journey-item p{margin:10px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55}
+.cc-approved-row{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:28px;align-items:start}
+.cc-approved-row .cc-sub{padding-top:6px}
+
 @media (max-width:960px){
   .cc-top{grid-template-columns:1fr;gap:28px}
   .cc-steps,.cc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cc-approved-row{grid-template-columns:1fr}
 }
 @media (max-width:560px){
   .cc-steps,.cc-tiles{grid-template-columns:1fr}
   .cc-actions{flex-direction:column;align-items:stretch}
   .cc-cta-row{flex-direction:column}
   .cc-cta-row .btn{width:100%}
+  .cc-journey-item{flex:1 1 100%}
 }
 
 /* Reserves roughly the real section's own rendered height while its chunk
