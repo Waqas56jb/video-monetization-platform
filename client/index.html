@@ -90,6 +90,28 @@
 <link rel="preconnect" href="https://videodelivery.net" crossorigin>
 <link rel="dns-prefetch" href="https://videodelivery.net">
 <link rel="preload" as="script" href="https://embed.cloudflarestream.com/embed/sdk.latest.js">
+<!-- "Video starting" measured end to end on production (2026-09-21, a
+     throttled Pixel 7 profile — a real mid-tier phone on a so-so connection,
+     not a worst case): 11.8s from navigation to the first playable frame on
+     a video the viewer already owns, no ad involved. `sdk.latest.js` above
+     answered in well under a second; the next ~4.3s were three MORE scripts
+     the player only discovers it needs once it is already running inside
+     the iframe, on the customer subdomain preconnected above — so the
+     connection is warm but the browser does not start fetching the actual
+     bytes until the SDK asks for them, seconds into the boot:
+
+       sdk-iframe-integration.fla9.latest.js  (the player's own bootstrap)
+       925.684065c0.chunk.js, 10.8bc27614.chunk.js  (its dependency chunks)
+
+     All three are the same file, at the same path, on every video and every
+     session measured this week and in every investigation before it — the
+     player's own build, not per-video content — so preloading them here
+     costs nothing when they change (a redeploy of Cloudflare's player is
+     exactly when the old hint would go unused, not when it would be wrong)
+     and starts the fetch from page load instead of from mid-boot. -->
+<link rel="preload" as="script" crossorigin href="https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js">
+<link rel="preload" as="script" crossorigin href="https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js">
+<link rel="preload" as="script" crossorigin href="https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js">
 <script src="https://embed.cloudflarestream.com/embed/sdk.latest.js" async data-cf-stream-sdk="1"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet">
 <style>
