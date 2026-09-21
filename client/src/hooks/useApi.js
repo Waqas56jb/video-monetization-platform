@@ -31,6 +31,35 @@ export function withTimeout(promise, ms = FETCH_TIMEOUT_MS) {
 }
 
 /**
+ * One silent retry before a read ever shows "Could not load this".
+ *
+ * The client's report (2026-09-21): a normal homepage session, Trending
+ * failed once with this exact message, then loaded fine on a manual retry —
+ * proof the data was always there, just not answered inside the 10s window
+ * that one attempt. Every `useApi` read is idempotent (this hook is for
+ * fetching, not for writes — those go through `api.*` directly with their
+ * own handling), so retrying it costs nothing but a moment and a second
+ * request, and turns a blip nobody controls — a slow mobile network, a
+ * dropped connection, a server hiccup — into something the viewer never
+ * sees, the same way the one bounded 429 retry in api.js already does for
+ * the rate limiter. Bounded on purpose: exactly one retry, after a pause
+ * long enough that hammering an already-struggling server is not the
+ * retry's own contribution to the problem. A second failure still ends in
+ * the same "tap to retry" it always did — this narrows the window, it does
+ * not promise the window is zero.
+ */
+export const RETRY_DELAY_MS = 1200
+
+export async function withRetry(fn, ms) {
+  try {
+    return await withTimeout(fn(), ms)
+  } catch (err) {
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+    return withTimeout(fn(), ms)
+  }
+}
+
+/**
  * Fetch from the API and keep the three states that always come with it:
  * loading, error, and the data.
  */
@@ -56,7 +85,7 @@ export default function useApi(
       if (!quiet && !hasPrevious) setLoading(true)
       if (hasPrevious) setIsRefetching(true)
       try {
-        const res = await withTimeout(ref.current(), timeoutMs)
+        const res = await withRetry(() => ref.current(), timeoutMs)
         setData(res)
         setError(null)
         return res
@@ -90,7 +119,7 @@ export default function useApi(
     if (!hasPrevious) setLoading(true)
     else setIsRefetching(true)
 
-    withTimeout(ref.current(), timeoutMs)
+    withRetry(() => ref.current(), timeoutMs)
       .then((res) => {
         if (!alive) return
         setData(res)
