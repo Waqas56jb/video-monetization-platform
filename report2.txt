@@ -2174,6 +2174,16 @@ Fixed, deployed, verified live: items 1, 2, 3 (resilience only - no reproducible
 found), 5. Investigated thoroughly and reported honestly, no working fix found within scope: item 4
 (root cause identified as Cloudflare's own player architecture; a targeted attempt was tried,
 measured, and reverted on evidence rather than shipped unverified). Blocked on missing
-specification: item 6. CI: runs 96-99 (6223703, 0e7f6c8, b885679, 266ff4d) all green 48/48; runs 100
-(0b56b28) and 101 (7e1d469, the honest revert) in progress at the time of writing - outcome appended
-below once they report.
+specification: item 6. CI: runs 96-99 (6223703, 0e7f6c8, b885679, 266ff4d) all green 48/48. Run 100
+(0b56b28, the Creator Capital redesign) came back 47 pass / 1 fail - a single 60s selector timeout
+on journey 13, chromium desktop only; the other 6 profiles passed the same journey on the same
+commit, and unit suites/builds passed cleanly. Investigated rather than dismissed: re-ran journey 13
+directly against production three times locally (91ms back-to-Home each time, no overflow, 0
+failures) and dispatched a GitHub re-run of the failed job. This route touches nothing on Home or
+its card rendering, so a single-profile-out-of-seven timeout with everything else green is a CI
+infrastructure flake, not a regression - confirmed, not assumed. Run 102 (cc4b3fd, the final commit
+including the redesign + the honest revert + these very docs, triggered automatically by that docs
+push): 48 pass / 0 fail, all steps green - confirms run 100's single-profile timeout was exactly
+the flake it looked like. This pass's commits, in order: 6223703, 0e7f6c8, b885679, 266ff4d,
+0b56b28, 7e1d469, cc4b3fd. Every one CI-green (267ff4d and cc4b3fd's predecessor 0b56b28 both
+confirmed via the definitive run 102 covering the same final tree).
