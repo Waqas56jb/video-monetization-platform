@@ -54,28 +54,16 @@ test('the API origin has a warm connection before the bundle asks for data', () 
   assert.match(html, /rel="dns-prefetch" href="https:\/\/customer-[a-z0-9]+\.cloudflarestream\.com"/)
 })
 
-test('the player\'s own bootstrap scripts are preloaded, not discovered mid-boot', () => {
-  const html = readFileSync(join(dir, '../index.html'), 'utf8')
-
+test('preloading the player\'s customer-subdomain bootstrap scripts was tried and measured to do nothing — it stays out', () => {
   /**
-   * "Video starting" measured end to end on production, 2026-09-21 (client:
-   * "I want Play -> video starting to feel much faster"): a throttled Pixel
-   * 7 profile took 11.8s from navigation to the first playable frame on an
-   * owned video with no ad. sdk.latest.js (already preloaded) answered in
-   * under a second; the player only asks for these three next — its own
-   * bootstrap and two dependency chunks, on the customer subdomain already
-   * preconnected above — once it is already running inside the iframe,
-   * seconds into the boot. Same file, same path, on every video and every
-   * session measured this week. Preloading them starts the fetch from page
-   * load instead of from mid-boot.
+   * 2026-09-21: measured on production (throttled Pixel 7) before and after
+   * adding `<link rel="preload">` for sdk-iframe-integration.fla9.latest.js
+   * and its two dependency chunks. `performance.getEntriesByType('resource')`
+   * showed each preload abandoned in ~220ms with transferSize:0, and the
+   * real fetch — when the SDK actually asked for these files — started at
+   * the same wall-clock offset either way. No effect, so it is not here;
+   * if it comes back, it needs the same measurement to justify it.
    */
-  const customerSubdomain = html.match(/https:\/\/(customer-[a-z0-9]+\.cloudflarestream\.com)/)?.[1]
-  assert.ok(customerSubdomain, 'the customer subdomain hint exists to reuse')
-  for (const file of ['embed/sdk-iframe-integration.fla9.latest.js', 'embed/925.684065c0.chunk.js', 'embed/10.8bc27614.chunk.js']) {
-    assert.match(
-      html,
-      new RegExp(`rel="preload" as="script" crossorigin href="https://${customerSubdomain.replace(/\./g, '\\.')}/${file.replace(/\./g, '\\.')}"`),
-      `${file} is preloaded from the customer subdomain`
-    )
-  }
+  const html = readFileSync(join(dir, '../index.html'), 'utf8')
+  assert.doesNotMatch(html, /rel="preload" as="script" crossorigin href="https:\/\/customer-[a-z0-9]+\.cloudflarestream\.com/)
 })
