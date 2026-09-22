@@ -481,7 +481,8 @@ router.get(
     // The signed URL changes every hour, so the redirect itself must not be
     // cached for longer than the token it points at.
     res.set('Cache-Control', 'private, max-age=1800')
-    res.redirect(302, cf.playbackUrls(token).thumbnail)
+    const posterAt = cf.posterAtFor(video.duration_seconds)
+    res.redirect(302, cf.playbackUrls(token, { posterAt }).thumbnail)
   })
 )
 

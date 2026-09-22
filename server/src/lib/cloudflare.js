@@ -276,6 +276,20 @@ export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable =
  */
 const POSTER_AT = '15s'
 
+/**
+ * A clip shorter than 15s has no 15-second mark, and Cloudflare answers 400
+ * to a `time` past the end of the video rather than clamping it — every
+ * poster for that clip breaks. Found on production 2026-09-23: three short
+ * test uploads (1-13s) 400ing in the admin Studio's Videos and Review tabs.
+ * Halfway into the clip is always in range and still past the black opening
+ * frame the fixed default was chosen to avoid.
+ */
+export function posterAtFor(durationSeconds) {
+  const d = Number(durationSeconds)
+  if (!d || d <= 0 || d >= 15) return POSTER_AT
+  return `${Math.max(1, Math.floor(d / 2))}s`
+}
+
 export function playbackUrls(uidOrToken, { posterAt = POSTER_AT, thumbnailHeight = 720 } = {}) {
   return {
     hls: `https://videodelivery.net/${uidOrToken}/manifest/video.m3u8`,
