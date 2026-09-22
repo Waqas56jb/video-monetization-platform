@@ -1,0 +1,49 @@
+Video startup timeline — production, 2026-09-23 (build b0b9bb4)
+scripts/e2e/probe-video-startup.mjs — Pixel 7, CPU x4, 150ms/1.6Mbps. Owned paid video (live-at-arusha-full-set), no ad.
+This is the SAME breakdown found and reported on 2026-09-21 (report2.txt SEP 21 item 4) — re-measured fresh for the
+Sep 23 client-requested full explanation, to confirm it is a stable, repeatable pattern and not a one-off.
+
+### live-at-arusha-full-set (OWNED, no ad) · Pixel 7 · CPU x4 · 150ms/1.6Mbps · waited 30000ms
+     698ms  200  https://embed.cloudflarestream.com/embed/sdk.latest.js
+    2112ms  200  https://video-monetization-platform-production.up.railway.app/api/playback/live-at-arusha-full-set/playback
+    2144ms  200  https://video-monetization-platform-production.up.railway.app/api/ads/breaks/live-at-arusha-full-set
+    2153ms  200  https://video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set
+    2945ms  200  https://videodelivery.net/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiOiI3MTJjMTRjYjQ1M2UyNjhjYmViNz
+    2984ms  200  https://iframe.videodelivery.net/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiOiI3MTJjMTRjYjQ1M2UyNjh
+    3224ms  301  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+    3449ms  200  https://video-monetization-platform-production.up.railway.app/api/videos/live-at-arusha-full-set/related
+    5341ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/sdk-iframe-integration.fla9.latest.js
+    7364ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiO
+    7463ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/925.684065c0.chunk.js
+    7486ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/embed/10.8bc27614.chunk.js
+    8318ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiO
+    8328ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiO
+    8566ms  202  https://video-monetization-platform-production.up.railway.app/api/videos/85bd6939-5fa5-4cad-b5ec-9c5f251cdf0a/view
+    8782ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/eyJhbGciOiJSUzI1NiIsImtpZCI6IjI0YzZjZjdlZGRlNzNhMTZiZDQyMzBmNzBjMGUxNTM3In0.eyJzdWIiO
+   10335ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/init.mp4
+   10347ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/init.mp4
+   11039ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_1.mp4
+   11392ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_1.mp4
+   12697ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_2.mp4
+   13111ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_2.mp4
+   13863ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_3.mp4
+   14328ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_3.mp4
+   14830ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_4.mp4
+   14929ms  PERF  [mtonyo] boot-to-first-frame: 12096ms
+   15262ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_4.mp4
+   16019ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_5.mp4
+   16183ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_5.mp4
+   17225ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_6.mp4
+   17290ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_6.mp4
+   18411ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_7.mp4
+   18427ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_7.mp4
+   19959ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_8.mp4
+   20757ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_8.mp4
+   22821ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_9.mp4
+   23147ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_9.mp4
+   24963ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_10.mp4
+   25383ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_10.mp4
+   27156ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_11.mp4
+   27678ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_11.mp4
+   29713ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/video/240/seg_12.mp4
+   30132ms  200  https://customer-cc4ktuo0mu0ig5dj.cloudflarestream.com/712c14cb453e268cbeb77c3958aa3177/audio/130/seg_12.mp4
