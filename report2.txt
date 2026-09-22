@@ -2187,3 +2187,99 @@ push): 48 pass / 0 fail, all steps green - confirms run 100's single-profile tim
 the flake it looked like. This pass's commits, in order: 6223703, 0e7f6c8, b885679, 266ff4d,
 0b56b28, 7e1d469, cc4b3fd. Every one CI-green (267ff4d and cc4b3fd's predecessor 0b56b28 both
 confirmed via the definitive run 102 covering the same final tree).
+
+================================================================================
+## SEP 23 — full acceptance pass: video-startup re-measurement, full-surface regression, one real bug found and fixed
+================================================================================
+
+Client, 2026-09-23: "Please send me the full explanation about the Cloudflare video startup
+delay... including what you tested, what you measured, and what can realistically still be
+improved. Also, before you submit final delivery, please do one complete end-to-end test yourself
+across: creator side, viewer side, Super Admin, uploads, playback, payment, preview-to-paid
+continuation, library, Continue Watching, Trending, Creator Capital, withdrawals, and sharing.
+Please also confirm the remaining creator-side changes we discussed are completed."
+
+--- 1. Video startup delay - fresh measurement, same root cause as Sep 21 -----------------------
+Re-ran scripts/e2e/probe-video-startup.mjs against current production (Pixel 7, CPU x4, 150ms/
+1.6Mbps, an owned paid film with no ad) rather than re-reporting the Sep 21 numbers from memory.
+Result: boot-to-first-frame 12096ms (evidence: scripts/e2e/evidence/video-startup-2026-09-23.txt),
+the same shape as every prior run: ~0-2.1s our own API calls (already parallel), ~2.1-3.2s
+Cloudflare's generic SDK, then a ~4.3-5.5s gap (3.2s-8.8s) spent entirely on Cloudflare's own
+player bootstrap chain (sdk-iframe-integration.fla9.latest.js, 301-redirected, plus two dependency
+chunks) before any media segment is requested, then ~8.8-10.3s to fetch the first media file and
+~10.3-12.1s to decode+paint. This is a stable, repeatable pattern across four separate measurement
+runs spanning two dates, not a one-off. The full breakdown, in plain language, plus the honest
+account of the Sep 21 preload attempt (tried, measured with performance.getEntriesByType, found to
+do nothing, reverted) and what would genuinely still help (a custom player, replacing Cloudflare's
+hosted iframe - a real architecture change, not attempted without the client's go-ahead) is written
+up in CLIENT-REPORT.md's "Sep 23" section for the client directly.
+
+--- 2. Full end-to-end regression across every named surface -----------------------------------
+scripts/e2e/full-regression-2026-09-23.mjs (new) drives production with real accounts across every
+surface the client named, in one script, so the whole pass is one piece of evidence: signed-out
+Home/Trending, viewer sign-in, Continue Watching, Explore + category filter, Free+Ads playback, an
+owned paid film continuing from its stop point (no Unlock button), Library (4 rows) and Purchases,
+the Share sheet (WhatsApp + Instagram/TikTok/Facebook), the Creator Capital public page, then a
+real sandbox payment on the one video the E2E fixture does not own (paywall -> Unlock -> pay ->
+sheet closes -> plays immediately, i.e. preview-to-paid continuation), creator sign-in and all 8
+dashboard tabs (overview/videos/upload/analytics/earnings/capital/profile/settings, each checked
+for real content and no error text), a real withdrawal request, Super Admin sign-in and all 11
+sidebar routes, then two cleanup steps through admin paths only: reject the test withdrawal, refund
+the test purchase. Never a raw DB write.
+
+First run: 33/34 checks passed, one real failure - "no Reject button found for the pending
+withdrawal." Investigated rather than waved off (per the client's own standing bar): queried the
+withdrawals table directly and found only one withdrawal existed system-wide, already paid out in
+August - meaning the creator's withdrawal request never actually reached the server. Traced it to
+two bugs in the script itself, not the product: the "Request withdrawal" control is an inline form
+(Amount + Send-to are real required fields), not a modal, and the script clicked submit without
+filling either field, so it silently no-opped client-side; separately, the admin reject flow's
+confirm dialog accepts via a button reading "Yes, Confirm", not a second "Reject", so even a
+successful request would not have been closed out. Fixed both in the script and re-verified
+directly against production, outside the full harness: created a real pending withdrawal (Amount
+1000, phone 0712345678), confirmed it landed server-side as status=pending, rejected it through the
+actual admin UI, confirmed status flipped to rejected with decided_by/decided_at set, and confirmed
+the creator's available balance was restored to its pre-request figure (15,350 TZS). The withdrawal
+and reject paths are both proven working end-to-end; nothing was left pending on production.
+
+--- 3. One real bug found by the regression, fixed and verified live ---------------------------
+The same run surfaced two console 400s: admin Studio's Videos and Review tabs, on the thumbnail for
+any video under 15 seconds. Root cause: server/src/lib/cloudflare.js always requests a video's
+poster frame at the 15-second mark (POSTER_AT = '15s', chosen deliberately - Cloudflare's own first
+frame is usually a black gap - see the comment above it), and Cloudflare answers 400 rather than
+clamping a timestamp past a clip's own length. Confirmed via the admin videos list: exactly three
+videos are affected (13s, 1s, 1s), all unpublished internal test uploads - no published/client-
+facing video is short enough to hit this. Fixed (b83f387): a new posterAtFor(durationSeconds)
+helper halves the timestamp for anything under 15s (still past the black opening frame, always in
+range), wired into the one route that actually serves the Studio's thumbnail
+(/api/playback/:id/thumbnail). New test: server/src/lib/cloudflare.posterAt.test.js (4 cases).
+Server suite 206/206 (was 202 - 4 new), client suite 246/246, both builds clean. Re-ran the same
+reproduction script against production after deploy (X-Build: b83f387): both original 400s gone.
+
+A second, unrelated 404 surfaced in the same pass on /review, on a different video. Traced, not a
+bug: that video is "Smoke Premiere ln0c04", state=processing, duration=null - one of 17 leftover
+rows from old, interrupted runs of src/cli/smoke.js (its own comment: "cleanup near the end of this
+file never gets to run" if an earlier assertion throws). A 404 for a thumbnail that was never
+encoded is Cloudflare telling the truth, not a defect. Ran server/scripts/production-reset.mjs
+--scope smoke (dry run, the project's established admin-path-only cleanup tool): 32 orphaned
+creator.*/viewer.*@mtonyo.test accounts, 16 unpublished test videos to soft-delete, 10 refunds
+(9,500 TZS test money) - all synthetic fixtures, "need a human: 0". NOT applied - a batch account-
+deletion is exactly the kind of shared-state change this pass holds for a go-ahead rather than
+taking unilaterally; flagged to the operator instead of run.
+
+--- 4. Creator-side dashboard changes ("please confirm the remaining creator-side changes we discussed") ---
+Still cannot be confirmed - unchanged from Sep 21's item 6. No specification for these changes
+exists anywhere in this repository's history, in report2.txt/CLIENT-REPORT.md, or in any prior
+session. Reported honestly again rather than assumed done; needs the client to resend the original
+list.
+
+--- Status at handover -----------------------------------------------------------------------
+Video startup: re-measured, same root cause confirmed stable across 4 runs on 2 dates, full
+explanation written for the client in CLIENT-REPORT.md. Full regression: 33/34 on the first pass,
+both causes (script bugs, not product bugs) found and fixed, re-verified clean directly against
+production. One real product bug found and fixed: b83f387 (short-clip thumbnail 400), deployed,
+tested green (206 server / 246 client), reproduced-then-confirmed-fixed live. One cleanup opportunity
+found and dry-run verified safe but not applied without sign-off: 32 orphaned smoke-test accounts
+via production-reset.mjs --scope smoke. Item 6 (creator-side dashboard changes): still blocked on a
+missing specification, reported plainly rather than glossed over. This pass's commits, in order:
+b83f387, 6049302.

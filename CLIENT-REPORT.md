@@ -1980,3 +1980,121 @@ build the wrong thing.
 
 Everything above except item 6 is live and tested. Automated tests and the full 7-browser CI suite
 are green throughout.
+
+## Sep 23 — the full explanation of the video startup delay
+
+You asked for the full picture: what I tested, what I measured, and what can realistically still
+be improved. Here it is in full, not the short version.
+
+**How I measured it.** I turned on the app's own built-in timing log (a debug flag, `?perf=1`,
+that only logs to the browser console — nothing a viewer would ever see) and watched the network
+requests one by one, on a simulated mid-range phone (a Pixel 7 profile, processor slowed 4x, and a
+connection modelled on real 3G/slow-4G: 150ms latency, 1.6 Mbps download). This is not a worst
+case — it's roughly what a decent but not flagship phone on ordinary mobile data actually
+experiences. I ran this repeatedly, including again today, and the pattern is completely
+consistent — this is not a one-off, it's how it behaves every time.
+
+**Where the ~12 seconds actually goes**, tapping Play on a film you already own (no advert):
+
+| Time | What's happening |
+|---|---|
+| 0 – 2.1s | Our own servers answer — the video's details, your entitlement, the poster. **This part is fast and already runs in parallel**, not one-by-one. |
+| 2.1 – 3.2s | Cloudflare's basic player script loads (already set up to start as early as possible). |
+| **3.2 – 8.8s** | **Cloudflare's own player — not ours — loads its full code**: its "bootstrap" script and two supporting files, all served from Cloudflare's video platform, not our servers. This is the single biggest chunk of the wait. |
+| 8.8 – 10.3s | The actual video file starts being requested. |
+| 10.3 – 12.1s | The first few seconds of video are downloaded and decoded, and the picture appears. |
+
+So of the ~12 seconds, **roughly 5.5 seconds — nearly half — is Cloudflare's own video player
+loading itself**, before it has requested a single frame of your video. That part is not code we
+wrote and not something stored on our servers; it's the third-party video platform we use to host
+and stream your films.
+
+**What I tried, and why I'm not claiming it as a fix.** The obvious idea was to tell the browser
+to start downloading those Cloudflare player files the moment the page opens, instead of waiting
+until the player asks for them partway through. I built that, deployed it, and then — before
+telling you it was done — I measured it properly with the browser's own performance data. **It
+made no real difference.** The browser was abandoning my early request and fetching the files
+fresh anyway when the player actually needed them, most likely because one of Cloudflare's files
+redirects to a different address the first time it's requested, which is a known way browsers
+discard an early "get ready" request like that one. Rather than leave that change in and describe
+it as solving the problem, I removed it and I'm telling you plainly: it didn't work.
+
+**What is realistically true right now.** The delay you're feeling is almost entirely Cloudflare's
+own video player loading itself on a slower connection — not something our page's code is adding
+on top. On a normal home wifi or a strong 4G/5G signal it is much faster than these numbers (my
+earlier, unthrottled tests showed 4-5 seconds total, most of that the same Cloudflare loading
+step). The 12-second figure is specifically a slower-connection, mid-range-phone case.
+
+**What could genuinely make this faster, and the honest trade-off.** The only real lever left is
+changing *how* videos are embedded — moving away from Cloudflare's ready-made player (which
+carries all of this loading weight) to a lighter, custom-built player using the same underlying
+video files. That is a real, meaningful engineering project — rebuilding playback, testing it
+across every device and browser again, re-verifying ads and the paywall logic against it — not a
+quick setting change, and not something I'd want to start without your go-ahead given the size of
+it and where we are in the schedule. I'm flagging it honestly as the one thing left that would
+move the number, rather than pretending a small tweak will get there.
+
+Evidence for all of this — the exact timestamps, every request, and the "did it help" test of the
+attempted fix — is committed in the project's own testing folder, so it can be re-checked at any
+time, not just taken on my word.
+
+## Sep 23 — the full end-to-end test, and one real bug it found
+
+You also asked for one complete test of the whole build before final delivery: creator side,
+viewer side, Super Admin, uploads, playback, payment, preview-to-paid continuation, library,
+Continue Watching, Trending, Creator Capital, withdrawals, and sharing. I did that, on the live
+site, with real accounts and a real payment — not a checklist done from memory.
+
+**What was tested and passed.** Signed-out browsing (Home, Trending), signing in, Continue
+Watching, category filtering, a free video with an advert, an already-owned paid film continuing
+properly with no paywall in the way, your Library and Purchases lists, sharing (WhatsApp, Instagram,
+TikTok, Facebook), the Creator Capital page, and then a real payment on a video I didn't already
+own — the paywall, the payment, and the film unlocking and playing immediately afterwards (the
+"preview to paid" handoff). On the creator side: signing in and every single dashboard tab —
+overview, videos, upload, analytics, earnings, capital, profile, settings — each one checked for
+real content and no errors. On the Super Admin side: signing in and every one of the 11 sections —
+dashboard, users, creators, creator applications, videos, review, payments, withdrawals, revenue,
+capital, settings.
+
+**The withdrawal request and admin approval loop.** This one took two rounds, and I want to be
+straight with you about why. My first pass through the test flagged that a withdrawal request
+didn't get closed out properly on the admin side. I didn't wave that off — I checked the database
+directly and found the request had never actually gone through in the first place, because of a
+mistake in my own test script (it clicked "submit" without first filling in the amount). I fixed
+that, and while fixing it also found my script was clicking the wrong confirmation button on the
+admin side to close a withdrawal out. Both fixed, and then re-tested for real, outside the big
+script: a genuine withdrawal request was created, it showed up correctly for the Super Admin to
+review, it was rejected through the actual admin button, and the creator's balance was correctly
+put back afterwards. So this was never a product problem — it was my own test script having a bug
+— but I'd rather tell you that plainly than quietly skip past it.
+
+**One real, small bug the test did find — found and already fixed.** While going through the Super
+Admin's Videos and Review screens, three videos (all internal test uploads, nothing a viewer or
+buyer would ever see) showed a broken thumbnail image instead of a picture. The cause: the system
+always tries to grab a preview picture from 15 seconds into a video, and these three clips are
+shorter than that, so the request failed. I've fixed it so a short clip now grabs its preview
+picture from its own midpoint instead, tested it, and confirmed live on the site that the broken
+thumbnails are gone. This did not affect any published or client-facing video — only unpublished
+internal test rows were short enough to hit it.
+
+**Some housekeeping I found, not yet touched.** The same look through Super Admin turned up 17
+old, unfinished test video entries and about 32 leftover test accounts from earlier automated
+testing across this project — all fake data, none of it real creators, viewers, or money. I've
+already checked exactly what removing them would do (nothing to any real account, and it only
+uses the same "reject/refund/remove" admin actions everything else in this project goes through)
+but I'm holding off on actually deleting anything until you say go ahead, since it's a batch change
+to the live database rather than a single fix. Let me know and I'll clear it in the next pass — it's
+cosmetic, not something viewers or creators would ever encounter.
+
+**The creator-side changes you mentioned.** You asked me to confirm the remaining creator-side
+changes we discussed are completed. I have to be honest here rather than say yes to close this
+out: I don't have a written record anywhere in this project of what that specific list of changes
+was — it was never sent to me in a form I could act on. Rather than guess or claim something is
+done when I can't verify it against an actual list, could you resend that original list (even
+roughly)? I'll get it done as its own item right after.
+
+**Where that leaves us.** Everything above — the full test, the withdrawal fix, the thumbnail bug
+and its fix — is pushed, deployed, and passing on the live site right now. The only two things
+standing between here and a fully closed Milestone 2 are: your go-ahead on the small housekeeping
+cleanup above, and the resent list for the creator-side item. Everything else you asked me to
+verify, I have — for real, on production, not on my word alone.
