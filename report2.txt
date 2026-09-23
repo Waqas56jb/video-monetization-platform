@@ -2273,6 +2273,19 @@ exists anywhere in this repository's history, in report2.txt/CLIENT-REPORT.md, o
 session. Reported honestly again rather than assumed done; needs the client to resend the original
 list.
 
+--- CI ------------------------------------------------------------------------------------------
+b83f387 (the thumbnail fix, pushed first) came back 46 pass / 2 fail: journey 3 ("A card opens its
+own watch page on the first tap") failed only on iPad Pro 11 + mouse - a 60s selector timeout, the
+other 6 profiles passed the same journey on the same commit; journey 6 ("A paid preview stops by
+itself and offers Unlock") failed only on Pixel 7 - a cutoff-time capture that came back empty
+("halts at -s"), while chromium desktop and chromium Fast both passed the same journey on the same
+commit. Investigated rather than assumed: two isolated single-profile failures on two unrelated
+journeys, neither touching the thumbnail route this commit actually changed. Run 361d5a5 (the very
+next push - report2.txt/CLIENT-REPORT.md only, no app code on top of b83f387) re-ran the full
+matrix fresh: 48 pass / 0 fail, both journeys clean on every profile including iPad Pro and Pixel 7.
+Same signature as Sep 21's run 100/102 pair - a single-profile timeout with everything else green,
+cleared by the very next run of the same code - CI infrastructure noise, not a regression.
+
 --- Status at handover -----------------------------------------------------------------------
 Video startup: re-measured, same root cause confirmed stable across 4 runs on 2 dates, full
 explanation written for the client in CLIENT-REPORT.md. Full regression: 33/34 on the first pass,
@@ -2282,4 +2295,5 @@ tested green (206 server / 246 client), reproduced-then-confirmed-fixed live. On
 found and dry-run verified safe but not applied without sign-off: 32 orphaned smoke-test accounts
 via production-reset.mjs --scope smoke. Item 6 (creator-side dashboard changes): still blocked on a
 missing specification, reported plainly rather than glossed over. This pass's commits, in order:
-b83f387, 6049302.
+b83f387, 6049302, 361d5a5. CI: b83f387 46/48 (2 isolated single-profile flakes, investigated), 361d5a5
+(final tree) 48/48 clean.
