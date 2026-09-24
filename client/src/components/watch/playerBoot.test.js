@@ -63,3 +63,14 @@ test('the pre-roll renders during the hold, and the film waits for its airtime (
   assert.match(watch, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 6000\)/)
   assert.doesNotMatch(watch, /setPreRollHeadStartDone\(true\), 1500\)/)
 })
+
+test('a film held under an advert stays held — autoplay in the URL cannot start it underneath', () => {
+  // The URL always asks for autoplay, and Stream acts on it after the SDK attaches.
+  assert.match(player, /url\.searchParams\.set\('autoplay', 'true'\)/)
+  // So the hold is re-applied every time the player starts, not once at attach.
+  assert.match(player, /const holdIfPaused = \(\) => \{\s*if \(!pausedRef\.current\) return/)
+  assert.match(player, /player\.addEventListener\('play', holdIfPaused\)/)
+  assert.match(player, /player\.addEventListener\('playing', holdIfPaused\)/)
+  // And the page really does hold the film while any advert is on.
+  assert.match(watch, /paused=\{Boolean\(activeAd\)\}/)
+})

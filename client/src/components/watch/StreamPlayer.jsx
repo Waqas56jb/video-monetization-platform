@@ -372,13 +372,26 @@ export default function StreamPlayer({
       try {
         player = Stream(frame.current)
         playerRef.current = player
-        if (pausedRef.current) {
+        /**
+         * Hold the film for as long as `paused` says so, not just once.
+         *
+         * The iframe URL always asks for autoplay, and Stream acts on it when
+         * its media is ready — after this line has run. A single pause() here
+         * was a no-op, and the film played muted under the pre-roll from ~1s
+         * into the advert, so the viewer came out of the advert 7-8s into the
+         * film (traced on production 2026-09-25, FINAL-AUDIT.md A7).
+         */
+        const holdIfPaused = () => {
+          if (!pausedRef.current) return
           try {
-            player.pause?.()
+            player?.pause?.()
           } catch {
-            /* held under a pre-roll */
+            /* held under the advert by the layer above */
           }
         }
+        holdIfPaused()
+        player.addEventListener('play', holdIfPaused)
+        player.addEventListener('playing', holdIfPaused)
         player.addEventListener('ended', () => onEndedRef.current?.())
         let stopped = false
         const haltIfDue = () => {
