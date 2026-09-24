@@ -240,6 +240,7 @@ test('every document this route can return is readable cross-origin', async (t) 
   const crawler = await call({ 'user-agent': 'WhatsApp/2.24.15.78 N' })
   assert.equal(crawler.headers['x-doc'], 'crawler')
   assert.equal(crawler.headers['access-control-allow-origin'], '*')
+  assert.match(crawler.headers['access-control-allow-methods'] || '', /GET/, 'the GET states its methods too, not only the preflight')
 
   const shell = await call({
     'user-agent': SAFARI,

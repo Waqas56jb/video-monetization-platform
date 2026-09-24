@@ -108,6 +108,9 @@ export const CORS_METHODS = 'GET, HEAD, OPTIONS'
 
 export function setPublicCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
+  /* Only a preflight is required to carry this; on the GET it is inert, but it
+     makes the full CORS answer readable from any single response. */
+  res.setHeader('Access-Control-Allow-Methods', CORS_METHODS)
   /* So a caller can read X-Doc / X-Crawler when diagnosing from a browser. */
   res.setHeader('Access-Control-Expose-Headers', '*')
 }
