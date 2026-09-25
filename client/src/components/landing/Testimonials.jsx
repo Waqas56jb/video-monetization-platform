@@ -110,7 +110,7 @@ export default function Testimonials() {
                       </p>
                       <div className="spot-amount">
                         <b>{tzs(lead.earnedTzs)}</b>
-                        <small>paid out to them so far</small>
+                        <small>earned on MTONYO+ so far</small>
                       </div>
                     </div>
                   </article>

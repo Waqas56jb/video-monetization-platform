@@ -97,3 +97,10 @@ test('a Watch-side dashboard heading never uses creator language (category, sale
   assert.match(DASH_TITLES.profile('Asha', '', 'creator')[1], /category/)
   assert.match(DASH_TITLES.analytics('Asha', '', 'creator')[1], /sales/)
 })
+
+test('final audit H1: the homepage never calls lifetime earnings "paid out"', () => {
+  const t = readFileSync(join(src, 'components/landing/Testimonials.jsx'), 'utf8')
+  // earnedTzs is sum(earnings.creator_tzs) — credited, not withdrawn.
+  assert.match(t, /\{tzs\(lead\.earnedTzs\)\}<\/b>\s*<small>earned on MTONYO\+ so far<\/small>/)
+  assert.doesNotMatch(t, /paid out to them/)
+})
