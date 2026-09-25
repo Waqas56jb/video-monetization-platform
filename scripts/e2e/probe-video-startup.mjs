@@ -35,7 +35,7 @@ await cdp.send('Network.enable')
 await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 })
 
 await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' })
-await page.evaluate((sess) => { try { localStorage.setItem('mtonyo.session', JSON.stringify(sess)) } catch {}; try { localStorage.setItem('mtonyo:session', JSON.stringify(sess)) } catch {} }, s.session)
+await page.evaluate((sess) => { try { localStorage.setItem('mtonyo.access', sess.accessToken); if (sess.refreshToken) localStorage.setItem('mtonyo.refresh', sess.refreshToken) } catch {} }, s.session)
 
 const events = []
 const t0v = { t: 0 }
