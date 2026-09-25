@@ -36,8 +36,11 @@ test('all four "How Creator Capital Works" steps and four funding-use tiles are 
   for (const step of ['Build earnings history', 'Unlock eligibility', 'AirPay reviews', 'Get funded']) {
     assert.match(src, new RegExp(step.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
+  // The funding list is shared with /creator-capital, so it lives in data/fundingUses.js.
+  const uses = readFileSync(new URL('../../data/fundingUses.js', import.meta.url), 'utf8')
+  assert.match(src, /import \{ FUNDING_USES \} from '@\/data\/fundingUses'/)
   for (const use of ['Production Funding', 'Equipment', 'Filming & Editing', 'Marketing & Promotion']) {
-    assert.match(src, new RegExp(use.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    assert.match(uses, new RegExp(use.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
 })
 

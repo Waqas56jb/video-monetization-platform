@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import { FUNDING_USES } from '@/data/fundingUses'
 import { useRole } from '@/context/AuthContext'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
@@ -141,6 +142,23 @@ export default function CreatorCapitalInfo() {
                   </span>
                   <b>{step.title}</b>
                   <p>{step.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="cc-block">
+            <div className="cc-block-head">
+              <h3>Use your funding for</h3>
+            </div>
+            <div className="cc-tiles">
+              {FUNDING_USES.map((use) => (
+                <div className="cc-tile" key={use.title}>
+                  <span className="cc-tile-ic">
+                    <use.icon size={18} />
+                  </span>
+                  <b>{use.title}</b>
+                  <p>{use.text}</p>
                 </div>
               ))}
             </div>

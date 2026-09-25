@@ -80,3 +80,11 @@ test('final audit F9: the disclaimer is complete in both places on this page, in
   const hits = flat.match(/MTONYO\+ is not the lender — AirPay Microfinance decides eligibility, approval and financing terms\./g) || []
   assert.equal(hits.length, 2, 'the "Who decides" callout and the trust tile')
 })
+
+test('final audit F10: the info page has a "Use your funding for" section, from the same list as the homepage', () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'CreatorCapitalInfo.jsx'), 'utf8')
+  assert.match(src, /<h3>Use your funding for<\/h3>/)
+  assert.match(src, /import \{ FUNDING_USES \} from '@\/data\/fundingUses'/)
+  assert.doesNotMatch(src, /from '@\/components\/landing\/CreatorCapital'/, 'importing the homepage section would pull its lazy chunk into the main bundle')
+  assert.match(src, /FUNDING_USES\.map\(/)
+})

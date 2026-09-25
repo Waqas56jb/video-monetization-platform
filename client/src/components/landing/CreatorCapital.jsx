@@ -2,23 +2,21 @@ import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   Camera,
-  Clapperboard,
   Gem,
   Heart,
   Landmark,
-  Megaphone,
   SearchCheck,
   ShieldCheck,
   Sparkles,
   TrendingUp,
   Unlock,
   Wallet,
-  Wrench,
 } from 'lucide-react'
 import { useRole } from '@/context/AuthContext'
 import useApi from '@/hooks/useApi'
 import api from '@/lib/api'
 import { LANDING_KEYS, readLanding } from '@/lib/landingCache'
+import { FUNDING_USES } from '@/data/fundingUses'
 
 /**
  * Creator Capital™ — AirPay reviews and decides, no lending engine here.
@@ -55,12 +53,6 @@ const STEPS = [
   },
 ]
 
-const FUNDING_USES = [
-  { icon: Camera, title: 'Production Funding', text: 'Turn ideas into bigger projects.' },
-  { icon: Wrench, title: 'Equipment', text: 'Cameras, audio, lights and more.' },
-  { icon: Clapperboard, title: 'Filming & Editing', text: 'Better tools. Higher quality.' },
-  { icon: Megaphone, title: 'Marketing & Promotion', text: 'Reach more viewers in Tanzania and beyond.' },
-]
 
 const TRUST = [
   { icon: ShieldCheck, title: 'Performance-based', text: 'Your success drives opportunity.' },
