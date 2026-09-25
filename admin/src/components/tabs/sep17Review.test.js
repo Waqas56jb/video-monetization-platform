@@ -71,3 +71,9 @@ test('final audit D8: the Users counters come from the server, not from a list c
   }
   assert.match(src, /overview\.reload\(\{ quiet: true \}\)/, 'and a block/unblock refreshes the counts')
 })
+
+test('final audit F7: the moderation panel makes no absolute "never disappears" promise either', () => {
+  const src = read('ModerationTab.jsx')
+  assert.doesNotMatch(src, /NEVER DISAPPEARS|never disappears/i)
+  assert.match(src, /EXCEPT LEGAL, RIGHTS OR SAFETY/)
+})

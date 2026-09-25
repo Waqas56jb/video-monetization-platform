@@ -157,9 +157,12 @@ export default function ModerationTab() {
       <Panel
         title={`Removal Requests${requests.length ? ` · ${requests.length}` : ''}`}
         action={
-          <span className="badge">
+          <span
+            className="badge"
+            title="Removing a video hides it from the catalogue; people who bought it keep access, unless it has to be withdrawn for a legal, rights or safety reason."
+          >
             <ShieldCheck style={{ width: 14, height: 14 }} />
-            PURCHASED CONTENT NEVER DISAPPEARS
+            BUYERS KEEP ACCESS · EXCEPT LEGAL, RIGHTS OR SAFETY
           </span>
         }
       >
