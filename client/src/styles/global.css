@@ -3450,3 +3450,13 @@ html.is-touch .btn:active{transform:scale(.97)}
 #trending, #how, #features, #creators, #stories {
   scroll-margin-top: calc(16px - clamp(30px, 2.8vw, 46px));
 }
+/* The header renders 80 px from 601–900 px wide but the scroll offset assumes
+   --header-h (76) + 12 = 88, and on phones 70 + 12 = 82 against 80 — measured
+   on production. Taking the difference off here gives the same ~16 px of air
+   on tablets and phones as on desktop. */
+@media (min-width: 601px) and (max-width: 900px) {
+  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(8px - clamp(30px, 2.8vw, 46px)); }
+}
+@media (max-width: 600px) {
+  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(14px - clamp(30px, 2.8vw, 46px)); }
+}
