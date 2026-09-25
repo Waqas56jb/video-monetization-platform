@@ -216,3 +216,18 @@ Tests after the last change: client **255/255**, server **209/209**, admin **13/
 ## Summary for the client (plain language)
 
 Everything was re-tested from scratch on the live site in this pass: over 60 checks across playback, payments, sharing, the revenue split, account separation, stability, Creator Capital, release models, money figures, Super Admin, retention features and a full end-to-end journey on brand-new accounts, on desktop and phone. Most of it was already working and is now proven again with fresh evidence: payments unlock only the video bought and resume exactly where the preview stopped, the split changes everywhere at once and history is untouched, a 22-minute real session produced zero "Too many requests", and sharing works on every published video across four device types. The audit also found and fixed real problems that had not been reported: the film playing silently underneath the pre-roll advert, pages breaking for anyone who had the site open during an update, demo money inflating the public "Earned by creators" figure, a homepage caption calling earnings "paid out", and old system text showing as six creators' bios. All of these are fixed and confirmed live. What this computer cannot prove is video playback in Safari on a real iPhone, the moment WhatsApp draws a card before you press Send, and the jump into the Instagram/TikTok apps; those need a quick check on your own devices. Before launch we also recommend changing the admin password and approving removal of the listed test data.
+
+---
+
+## Follow-up, same day — decisions carried out (operator's go-ahead)
+
+| Action | Result |
+|---|---|
+| **Admin password rotated** (`admin@mtonyo.tz`) | Set to a new random password with the server's own `admin.js password` tool. It is not written to any tracked file. Fresh login test: **old password → 401**, **new password → 200 (role=admin)**. CI workflows never used it. |
+| **Test videos unpublished** (admin path, reversible) | "222222222222" and "Nyerere Day — Rehearsals (awaiting review)" → `is_published=false`. Public catalogue now **6** videos. |
+| **Test-data cleanup** (`production-reset.mjs --apply`) | **10 old smoke purchases refunded** (TZS 9,500) through the admin refund path; **16 smoke videos soft-deleted**; the **"test" announcement deleted** (27 inbox rows with it); the dangling creator profile on a sub-admin removed; **27 test accounts deleted**. The documented E2E fixture was kept. |
+| **Orphaned logins** | Account deletion cascades into the database's own protections (a video with purchase history cannot be hard-deleted), so Supabase refused many auth deletions and left the logins behind. That is how the original 58 orphans came about. All **81** orphaned test logins (55 `e2e+`, 17 smoke, 9 demo; each had no profile and matched a test pattern) were deleted with Supabase's admin API: **81/81, 0 orphaned logins left on the platform**. |
+| **What remains, on purpose** | **18 smoke creator accounts** could not be deleted: their videos carry purchase history, which the database protects from hard deletion (the audit trail for money). All 18 are flagged demo, have **0 live videos** and **0 active purchases**, and are excluded from every public number. |
+| After | 63 profiles · 20 live videos (6 published) · public `/api/stats`: Earned by creators **TZS 52,220**, 16 creators, 3 earning. |
+
+Still open for the client: **Creator Capital after a decline**: may a declined creator request again, and after how long (e.g. 60–90 days), or never?

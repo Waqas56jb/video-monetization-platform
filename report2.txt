@@ -2335,3 +2335,6 @@ window (exact), every sandbox purchase refunded, test withdrawals rejected, test
 request removed. Held for a go-ahead: removing the 45 listed test accounts, 10 old smoke
 purchases, 16 smoke videos, a test announcement and 58 orphaned logins. The admin password
 should be changed (it is in git history).
+
+--- Sep 25, later: operator go-ahead carried out ---
+Admin password rotated (old -> 401, new -> 200); two test videos unpublished (catalogue 6); production-reset --apply: 10 smoke refunds, 16 smoke videos soft-deleted, "test" announcement deleted, 27 accounts deleted; 81 orphaned test logins deleted via the Supabase admin API (0 left). 18 smoke creators remain by design (purchase history protected), all demo-flagged with 0 live videos / 0 active purchases. Details in FINAL-AUDIT.md.
