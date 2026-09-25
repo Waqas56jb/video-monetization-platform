@@ -55,7 +55,7 @@ test('navigations are network-first and are not all filed under "/"', () => {
 test('only successful responses are ever cached', () => {
   // The /assets/ branch is cache-first and never revalidates, so a 404 or 502
   // body stored there is served as JS for the life of the build version.
-  const guards = sw.match(/if \(res && res\.ok\)/g) || []
+  const guards = sw.match(/if \(res && res\.ok[ )]/g) || []
   assert.ok(
     guards.length >= 2,
     `both the navigate and asset branches must check res.ok, found ${guards.length}`

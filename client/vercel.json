@@ -9,7 +9,9 @@
       "memory": 1024,
       "includeFiles": "dist/index.html"
     },
-    "api/og.js": { "maxDuration": 10 }
+    "api/og.js": {
+      "maxDuration": 10
+    }
   },
   "rewrites": [
     {
@@ -25,7 +27,7 @@
       "destination": "/api/watch?slug=:slug&share=1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
   ],

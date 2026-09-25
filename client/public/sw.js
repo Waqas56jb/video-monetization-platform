@@ -121,7 +121,9 @@ self.addEventListener('fetch', (event) => {
              * and a reload cannot clear it because the cache is the first thing
              * consulted.
              */
-            if (res && res.ok) {
+            /* A missing chunk used to come back as the SPA's index.html with a
+               200 — `ok`, but not JavaScript. Never store HTML as an asset. */
+            if (res && res.ok && !/text\/html/i.test(res.headers.get('content-type') || '')) {
               const copy = res.clone()
               caches.open(ASSET_CACHE).then((c) => c.put(request, copy)).catch(() => {})
             }

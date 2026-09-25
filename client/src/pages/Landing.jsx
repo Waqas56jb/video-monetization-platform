@@ -13,6 +13,7 @@ import Features from '@/components/landing/Features'
 import ForCreators from '@/components/landing/ForCreators'
 import Testimonials from '@/components/landing/Testimonials'
 import CallToAction from '@/components/landing/CallToAction'
+import { withChunkReload } from '@/lib/chunkReload'
 
 /**
  * Its own chunk, loaded after the page's critical content, not before it.
@@ -28,7 +29,7 @@ import CallToAction from '@/components/landing/CallToAction'
  * block a Suspense boundary's siblings on that boundary resolving, so
  * Trending renders on the first pass regardless of when this chunk arrives.
  */
-const CreatorCapital = lazy(() => import('@/components/landing/CreatorCapital'))
+const CreatorCapital = lazy(withChunkReload(() => import('@/components/landing/CreatorCapital')))
 
 /**
  * Marketing homepage.

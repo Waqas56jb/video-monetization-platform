@@ -3,8 +3,14 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import ErrorBoundary from './components/layout/ErrorBoundary.jsx'
+import { reloadOnceForNewBuild } from './lib/chunkReload.js'
 import './styles/global.css'
 import './styles/realdata.css'
+
+/* Vite reports a failed chunk preload here before the import itself rejects. */
+window.addEventListener('vite:preloadError', (event) => {
+  if (reloadOnceForNewBuild()) event.preventDefault()
+})
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

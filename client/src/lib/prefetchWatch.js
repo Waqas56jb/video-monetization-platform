@@ -1,17 +1,14 @@
 import api, { getAccessToken } from '@/lib/api'
 import { warmEntryUsable } from '@/lib/warmEntry'
 import { createWarmQueue } from '@/lib/warmQueue'
+import { withChunkReload } from '@/lib/chunkReload'
 
 export const STREAM_SDK = 'https://embed.cloudflarestream.com/embed/sdk.latest.js'
 
 /** Same dynamic import App.jsx uses for React.lazy — one Vite chunk. */
-export function loadWatchPage() {
-  return import('../pages/Watch.jsx')
-}
+export const loadWatchPage = withChunkReload(() => import('../pages/Watch.jsx'))
 
-export function loadLandingPage() {
-  return import('../pages/Landing.jsx')
-}
+export const loadLandingPage = withChunkReload(() => import('../pages/Landing.jsx'))
 
 let chunkDone = false
 let sdkPromise = null
