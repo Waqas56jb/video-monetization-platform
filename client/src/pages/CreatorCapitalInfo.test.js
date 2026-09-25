@@ -73,3 +73,10 @@ test('the CSS this page depends on exists and matches the homepage section\'s ow
   assert.match(css, /\.cc-journey-item\{/)
   assert.match(css, /\.cc-approved-row\{/)
 })
+
+test('final audit F9: the disclaimer is complete in both places on this page, including the trust tile', () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'CreatorCapitalInfo.jsx'), 'utf8')
+  const flat = src.replace(/<\/?(b|small)>/g, ' ').replace(/\s+/g, ' ')
+  const hits = flat.match(/MTONYO\+ is not the lender — AirPay Microfinance decides eligibility, approval and financing terms\./g) || []
+  assert.equal(hits.length, 2, 'the "Who decides" callout and the trust tile')
+})

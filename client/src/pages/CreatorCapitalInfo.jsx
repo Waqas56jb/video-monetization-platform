@@ -243,8 +243,8 @@ export default function CreatorCapitalInfo() {
               <div className="cc-trust-item">
                 <Sparkles size={16} />
                 <div>
-                  <b>MTONYO+ is not the lender</b>
-                  <small>AirPay Microfinance decides</small>
+                  <b>MTONYO+ is not the lender —</b>
+                  <small>AirPay Microfinance decides eligibility, approval and financing terms.</small>
                 </div>
               </div>
             </div>
