@@ -58,10 +58,11 @@ export default function RevenueTab() {
   }
 
   const editOverride = (o) => {
-    const current = o.revenue_split_percent ?? data?.defaultSplitPercent ?? 70
+    if (data?.defaultSplitPercent == null) return
+    const current = o.revenue_split_percent ?? data.defaultSplitPercent
     const answer = window.prompt(
       `What share should ${o.name} keep, as a percentage?\n\n` +
-        `The platform default is ${data?.defaultSplitPercent ?? 70}%. Leave blank to put them back on it.`,
+        `The platform default is ${data.defaultSplitPercent}%. Leave blank to put them back on it.`,
       String(current)
     )
     if (answer === null) return

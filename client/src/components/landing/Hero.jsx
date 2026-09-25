@@ -116,7 +116,7 @@ export default function Hero() {
         { icon: 'clapperboard', count: s.publishedVideos, prefix: '', suffix: '', label: 'Exclusive releases' },
       ]
     : [
-        { icon: 'wallet', count: s?.creatorSplitPercent ?? 70, prefix: '', suffix: '%', label: 'Of every sale is yours' },
+        { icon: 'wallet', count: s?.creatorSplitPercent ?? null, prefix: '', suffix: '%', label: 'Of every sale is yours' },
         { icon: 'users', count: 3, prefix: '', suffix: '', label: 'Ways to get paid' },
         { icon: 'clapperboard', count: 24, prefix: '', suffix: 'h', label: 'Withdrawal turnaround' },
       ]
@@ -258,9 +258,15 @@ export default function Hero() {
                 </span>
                 <div className="hstat-text">
                   <b>
-                    {st.prefix}
-                    <CountUp to={st.count} />
-                    {st.suffix}
+                    {st.count == null ? (
+                      '—'
+                    ) : (
+                      <>
+                        {st.prefix}
+                        <CountUp to={st.count} />
+                        {st.suffix}
+                      </>
+                    )}
                   </b>
                   <span>{st.label}</span>
                 </div>

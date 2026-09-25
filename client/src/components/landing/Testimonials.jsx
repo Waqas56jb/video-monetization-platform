@@ -29,7 +29,7 @@ export default function Testimonials() {
   })
 
   const creators = top.data?.creators || []
-  const split = stats.data?.creatorSplitPercent ?? 70
+  const split = stats.data?.creatorSplitPercent ?? null
 
   const PROMISES = [
     {
@@ -39,7 +39,7 @@ export default function Testimonials() {
     },
     {
       icon: Wallet,
-      title: `You keep ${split}% of every sale`,
+      title: split != null ? `You keep ${split}% of every sale` : 'You keep your share of every sale',
       text: 'Tracked to the shilling in your dashboard, paid out to M-Pesa or Airtel Money. Every transaction is listed with your share of it, so nothing has to be taken on trust.',
     },
     {

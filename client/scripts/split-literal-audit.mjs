@@ -72,6 +72,11 @@ for (const root of ROOTS) {
         if (!CONTEXT_WORD.test(context)) continue
         offenders.push({ file, line: i + 1, text: line.trim().slice(0, 100) })
       }
+      // A number standing in for the split while it loads is still a painted
+      // split: a first-time visitor sees it even after an admin changed it.
+      if (/split_?percent|creatorShare|creator_split/i.test(line) && /(\?\?|\|\|)\s*[1-9]\d{0,2}\b/.test(line)) {
+        offenders.push({ file, line: i + 1, text: line.trim().slice(0, 100) })
+      }
     })
   }
 }

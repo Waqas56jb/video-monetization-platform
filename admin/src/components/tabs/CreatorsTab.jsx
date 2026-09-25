@@ -34,7 +34,7 @@ export default function CreatorsTab() {
    * the changed value.
    */
   const settings = useApi(() => api.admin.settings(), [], { refetchOnFocus: true })
-  const defaultSplit = settings.data?.settings?.creator_split_percent ?? 70
+  const defaultSplit = settings.data?.settings?.creator_split_percent ?? null
 
   const all = data?.creators || []
 
@@ -88,6 +88,7 @@ export default function CreatorsTab() {
   }
 
   const editSplit = (c) => {
+    if (defaultSplit == null && c.revenue_split_percent == null) return
     const current = c.revenue_split_percent ?? defaultSplit
     const answer = window.prompt(
       `What share should ${c.display_name || c.full_name} keep, as a percentage?\n\n` +
@@ -201,7 +202,8 @@ export default function CreatorsTab() {
                     <td>{compact(c.followers)}</td>
                     <td className="money">{tzs(c.lifetime_tzs)}</td>
                     <td>
-                      {(c.revenue_split_percent ?? defaultSplit)}%
+                      {c.revenue_split_percent ?? defaultSplit ?? '—'}
+                      {(c.revenue_split_percent ?? defaultSplit) != null && '%'}
                       {custom && (
                         <span className="pill info" style={{ marginLeft: 4 }}>
                           custom

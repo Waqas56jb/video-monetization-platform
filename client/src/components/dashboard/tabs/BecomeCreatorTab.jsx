@@ -28,7 +28,7 @@ export default function BecomeCreatorTab() {
   const terms = status.data?.terms || ''
   // See landing/Hero.jsx — same setting, same stale-tab mechanism, same fix.
   const stats = useApi(() => api.stats.platform(), [], { refetchOnFocus: true })
-  const creatorShare = stats.data?.creatorSplitPercent ?? 70
+  const creatorShare = stats.data?.creatorSplitPercent ?? null
 
   const PERKS = [
     {
@@ -43,7 +43,7 @@ export default function BecomeCreatorTab() {
     },
     {
       icon: 'hand-coins',
-      title: `Keep ${creatorShare}% of every sale`,
+      title: creatorShare != null ? `Keep ${creatorShare}% of every sale` : 'Keep your share of every sale',
       text: 'Paid out to your M-Pesa or Airtel Money — withdraw whenever you like.',
     },
     {

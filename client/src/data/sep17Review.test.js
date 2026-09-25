@@ -62,9 +62,10 @@ test('item 1/2: the public Creator Capital pages carry no literal "6 months" —
 
 /**
  * "Please confirm 70/30 is controlled by the global Super Admin split and
- * not hardcoded in multiple pages." Every rendered split reads a live value;
- * `?? 70` is a not-yet-loaded fallback, not a display literal. This walks
- * every source file in client/src and fails on any rendered "70/30".
+ * not hardcoded in multiple pages." Every rendered split reads a live value,
+ * and nothing stands in a number for it while it loads (split-literal-audit
+ * enforces that). This walks every source file in client/src and fails on any
+ * rendered "70/30".
  */
 function walk(d, out = []) {
   for (const name of readdirSync(d)) {

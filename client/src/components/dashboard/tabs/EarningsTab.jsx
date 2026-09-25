@@ -157,7 +157,7 @@ export default function EarningsTab() {
               ))}
             </div>
             <p className="field-note">
-              You keep {summary.data?.splitPercent ?? 70}% of both. An impression is counted when
+              You keep {summary.data?.splitPercent != null ? `${summary.data.splitPercent}%` : 'your share'} of both. An impression is counted when
               the advert is shown. Money is credited when it finishes — skipping it still counts
               the view, but does not pay.
             </p>

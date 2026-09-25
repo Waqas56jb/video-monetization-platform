@@ -17,7 +17,8 @@ export default function ForCreators() {
     // See Hero.jsx — same setting, same stale-tab mechanism, same fix.
     refetchOnFocus: true,
   })
-  const creatorShare = data?.creatorSplitPercent ?? 70
+  const creatorShare = data?.creatorSplitPercent ?? null
+  const known = creatorShare != null
 
   return (
     <section
@@ -78,7 +79,15 @@ export default function ForCreators() {
            * administrator changes it, this changes with it rather than quietly
            * becoming untrue.
            */}
-          <div className="flow" role="img" aria-label={`A viewer's payment splits ${creatorShare}% to the creator and ${100 - creatorShare}% to the platform`}>
+          <div
+            className="flow"
+            role="img"
+            aria-label={
+              known
+                ? `A viewer's payment splits ${creatorShare}% to the creator and ${100 - creatorShare}% to the platform`
+                : "A viewer's payment splits between the creator and the platform"
+            }
+          >
             <div className="flow-step">
               <Smartphone size={15} />
               <b>A viewer pays</b>
@@ -88,12 +97,12 @@ export default function ForCreators() {
             <span className="flow-arrow" aria-hidden="true" />
 
             <div className="flow-split">
-              <div className="flow-share is-creator" style={{ flexGrow: creatorShare }}>
-                <b>{creatorShare}%</b>
+              <div className="flow-share is-creator" style={{ flexGrow: known ? creatorShare : 1 }}>
+                <b>{known ? `${creatorShare}%` : '—'}</b>
                 <small>You</small>
               </div>
-              <div className="flow-share is-platform" style={{ flexGrow: 100 - creatorShare }}>
-                <b>{100 - creatorShare}%</b>
+              <div className="flow-share is-platform" style={{ flexGrow: known ? 100 - creatorShare : 1 }}>
+                <b>{known ? `${100 - creatorShare}%` : '—'}</b>
                 <small>Platform</small>
               </div>
             </div>
