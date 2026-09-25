@@ -1,0 +1,23 @@
+
+### ugali-samaki-sunday-cooking (desktop)
+     150ms  NOBOX | - | playing=false  t=—
+    1928ms  PICTURE | poster=1.0 frame=- ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    2696ms  PICTURE | poster=1.0 frame=0.0 ad=loading adposter=1.0 adframe=0.0 skel=- note=Advert loading… | playing=false  t=0.0
+    3355ms  BLACK(97%) | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=false  t=0.0
+    5120ms  BLACK(98%) | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=true  t=0.5
+    6391ms  PICTURE | poster=0.0 frame=1.0 ad=playing adposter=0.0 adframe=1.0 skel=- note=- | playing=true  t=1.7
+   10626ms  PICTURE | poster=0.0 frame=1.0 ad=skippable adposter=0.0 adframe=1.0 skel=- note=- | playing=true  t=6.0
+   14956ms  BLACK(100%) | poster=0.0 frame=1.0 ad=skippable adposter=0.0 adframe=1.0 skel=- note=- | playing=false  t=0.1
+   15752ms  BLACK(98%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=0.9
+   16541ms  FLAT(m=31) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=1.6
+   17326ms  PICTURE | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=2.4
+
+### live-at-arusha-full-set (desktop)
+     196ms  NOBOX | - | playing=false  t=—
+    1906ms  PICTURE | poster=1.0 frame=0.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    2539ms  BLACK(99%) | poster=1.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=0.0
+    3135ms  BLACK(99%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=0.0
+    5708ms  BLACK(99%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=0.5
+    6410ms  FLAT(m=19) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=1.2
+    7193ms  FLAT(m=44) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=2.0
+    8109ms  PICTURE | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=2.9

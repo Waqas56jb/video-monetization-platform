@@ -1,0 +1,16 @@
+
+### live-at-arusha-full-set (desktop)
+     165ms  NOBOX | - | playing=false  t=—
+    1356ms  PICTURE | poster=1.0 frame=0.0 ad=- adposter=- adframe=- skel=- loader=ON | playing=false  t=—
+    3162ms  PICTURE | poster=0.5 frame=1.0 ad=- adposter=- adframe=- skel=- loader=ON | playing=false  t=0.0
+    3964ms  PICTURE | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- loader=ON | playing=false  t=0.0
+    4582ms  BLACK(99%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- loader=ON | playing=true  t=0.4
+
+### ugali-samaki-sunday-cooking (desktop)
+     192ms  NOBOX | - | playing=false  t=—
+    1700ms  PICTURE | poster=1.0 frame=- ad=- adposter=- adframe=- skel=- loader=ON | playing=false  t=—
+    2543ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=1.0 adframe=1.0 skel=- loader=ON | playing=false  t=0.0
+    3289ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- loader=ON | playing=false  t=0.0
+    4278ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- loader=ON | playing=true  t=0.5
+    5834ms  PICTURE | poster=0.4 frame=1.0 ad=playing adposter=0.0 adframe=1.0 skel=- loader=- | playing=true  t=2.1
+    6885ms  PICTURE | poster=0.0 frame=1.0 ad=playing adposter=0.0 adframe=1.0 skel=- loader=- | playing=true  t=3.1

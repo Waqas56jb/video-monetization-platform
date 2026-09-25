@@ -1,0 +1,36 @@
+
+### desktop 1440
+  Trending      from /        → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  Trending      from /explore → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  How it Works  from /        → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  How it Works  from /explore → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  Features      from /        → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  Features      from /explore → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  For Creators  from /        → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  For Creators  from /explore → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+  Stories       from /        → header bottom 89px, section top 88px, first content 129px → EMPTY GAP 40px (section padding-top 40.32px)
+  Stories       from /explore → header bottom 89px, section top 88px, first content 128px → EMPTY GAP 39px (section padding-top 40.32px)
+
+### tablet 834
+  Trending      from /        → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  Trending      from /explore → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  How it Works  from /        → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  How it Works  from /explore → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  Features      from /        → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  Features      from /explore → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  For Creators  from /        → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  For Creators  from /explore → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  Stories       from /        → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+  Stories       from /explore → header bottom 81px, section top 88px, first content 118px → EMPTY GAP 37px (section padding-top 30px)
+
+### mobile 390
+  Trending      from /        → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  Trending      from /explore → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  How it Works  from /        → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  How it Works  from /explore → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  Features      from /        → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  Features      from /explore → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  For Creators  from /        → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  For Creators  from /explore → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  Stories       from /        → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)
+  Stories       from /explore → header bottom 81px, section top 82px, first content 112px → EMPTY GAP 31px (section padding-top 30px)

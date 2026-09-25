@@ -1,0 +1,19 @@
+
+### behind-the-fame-a-coast-documentary (pixel)
+     383ms  NOBOX | - | playing=false  t=—
+    2655ms  BLACK(97%) | poster=1.0 frame=0.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    3253ms  PICTURE | poster=1.0 frame=0.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    5301ms  FLAT(m=11) | poster=1.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=0.0
+    5960ms  FLAT(m=11) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=0.0
+
+### ugali-samaki-sunday-cooking (pixel)
+     380ms  NOBOX | - | playing=false  t=—
+    2161ms  PICTURE | poster=1.0 frame=- ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    2857ms  BLACK(98%) | poster=1.0 frame=0.0 ad=loading adposter=1.0 adframe=0.0 skel=- note=Advert loading… | playing=false  t=—
+    3688ms  PICTURE | poster=1.0 frame=0.0 ad=loading adposter=1.0 adframe=0.0 skel=- note=Advert loading… | playing=false  t=—
+    6034ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=0.7 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+    6653ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+    9258ms  PICTURE | poster=1.0 frame=0.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+   10087ms  PICTURE | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+   10836ms  PICTURE | poster=0.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+   12908ms  BLACK(87%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=false  t=0.0

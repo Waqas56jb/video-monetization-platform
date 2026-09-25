@@ -1,0 +1,109 @@
+
+==================== chromium desktop
+  account: e2e+L329925242@mtonyo.test
+  PASS  registered and signed in (landed /dashboard)
+  PASS  Home renders, with Trending
+  FAIL  Explore renders the catalogue
+  PASS  Save to My List from the card is stored
+  PASS  the card opens the exact video
+  PASS  before paying: kind=preview, cut-off 217s
+  PASS  the preview autoplays muted (t=0.5, muted=true)
+  PASS  the preview stops by itself at the cut-off (216.9s of 217s)
+  PASS  the sandbox payment completes and the sheet closes itself
+  PASS  after paying: kind=full
+  PASS  the film continues from the stop point by itself (217.0s vs 216.9s), no extra button
+  PASS  no paywall left on the page
+  PASS  creator earnings credited at the live split: +3000 TZS on a TZS 5000 sale (60% = 3000)
+  PASS  and the creator's own Earnings screen shows the new lifetime figure (TZS 148,998)
+  PASS  Follow from the watch page is stored (1 creator followed)
+  PASS  the Free + Ads video shows the advert first
+  PASS  with a countdown once it airs ("Skip in 5")
+  PASS  Library: Purchased and My List hold it
+  PASS  Continue Watching holds it after browsing away
+  FAIL  Recently Watched lists both films opened
+  PASS  Share → WhatsApp carries the exact watch link
+  PASS  and WhatsApp gets a rich card for it (title + 200 image/jpeg)
+  PASS  logs back in on one attempt (autofill-style)
+  PASS  Library state survived logout/login (Purchased + My List rows, the film listed)
+  PASS  a cold shared link lands on the exact video
+  PASS  and its preview autoplays muted (t=0.7)
+  PASS  the creator's public page lists their videos with Watch (14) and Share (7)
+
+==================== Pixel 7
+  account: e2e+L330017973@mtonyo.test
+  PASS  registered and signed in (landed /dashboard)
+  PASS  Home renders, with Trending
+  FAIL  Explore renders the catalogue
+  PASS  Save to My List from the card is stored
+  PASS  the card opens the exact video
+  PASS  before paying: kind=preview, cut-off 217s
+  PASS  the preview autoplays muted (t=0.4, muted=true)
+  PASS  the preview stops by itself at the cut-off (216.9s of 217s)
+  PASS  the sandbox payment completes and the sheet closes itself
+  PASS  after paying: kind=full
+  PASS  the film continues from the stop point by itself (217.0s vs 216.9s), no extra button
+  PASS  no paywall left on the page
+  PASS  creator earnings credited at the live split: +3000 TZS on a TZS 5000 sale (60% = 3000)
+  PASS  and the creator's own Earnings screen shows the new lifetime figure (TZS 151,998)
+  PASS  Follow from the watch page is stored (1 creator followed)
+  PASS  the Free + Ads video shows the advert first
+  PASS  with a countdown once it airs ("Skip in 5")
+  PASS  Library: Purchased and My List hold it
+  PASS  Continue Watching holds it after browsing away
+  FAIL  Recently Watched lists both films opened
+  PASS  Share → WhatsApp carries the exact watch link
+  PASS  and WhatsApp gets a rich card for it (title + 200 image/jpeg)
+  PASS  logs back in on one attempt (autofill-style)
+  PASS  Library state survived logout/login (Purchased + My List rows, the film listed)
+  PASS  a cold shared link lands on the exact video
+  PASS  and its preview autoplays muted (t=0.6)
+  PASS  the creator's public page lists their videos with Watch (14) and Share (7)
+
+==================== iPhone 14 (WebKit — layout, taps and login only; it cannot decode video)
+  account: e2e+L330107751@mtonyo.test
+  PASS  registered and signed in (landed /dashboard)
+  PASS  Home renders, with Trending
+  FAIL  Explore renders the catalogue
+  PASS  Save to My List from the card is stored
+  PASS  the card opens the exact video
+  PASS  before paying: kind=preview, cut-off 217s
+  PASS  the sandbox payment completes and the sheet closes itself
+  PASS  after paying: kind=full
+  PASS  no paywall left on the page
+  PASS  creator earnings credited at the live split: +3000 TZS on a TZS 5000 sale (60% = 3000)
+  PASS  Follow from the watch page is stored (1 creator followed)
+  PASS  the Free + Ads video shows the advert first
+  PASS  Library: Purchased and My List hold it
+  FAIL  Recently Watched lists both films opened
+  PASS  Share → WhatsApp carries the exact watch link
+  PASS  and WhatsApp gets a rich card for it (title + 200 image/jpeg)
+  PASS  logs back in on one attempt (autofill-style)
+  PASS  Library state survived logout/login (Purchased + My List rows, the film listed)
+  PASS  a cold shared link lands on the exact video
+  PASS  the creator's public page lists their videos with Watch (14) and Share (7)
+
+==================== creator side (demo.asha)
+  PASS  creator overview tab renders its content
+  PASS  creator earnings tab renders its content
+  PASS  creator capital tab renders its content
+  PASS  Creator Capital: Request AirPay Review is present and locked until eligible
+
+==================== Super Admin
+  PASS  dashboard numbers match the server (users 66, creators 37)
+  PASS  revenue split live change reaches the public stats (65)
+  PASS  and is restored (60)
+  PASS  ad control change applies to a real video (pre-roll target 12)
+  PASS  and is restored (10)
+  PASS  Creator Capital admin loads with the lender disclaimer
+  PASS  logo opens the public site in a new tab
+  PASS  and the admin session is still there
+  accounts to reverse: e2e+L329925242@mtonyo.test, e2e+L330017973@mtonyo.test, e2e+L330107751@mtonyo.test
+
+6 FAILED
+  - browse: Explore renders the catalogue
+  - continue watching + share: Recently Watched lists both films opened
+  - browse: Explore renders the catalogue
+  - continue watching + share: Recently Watched lists both films opened
+  - browse: Explore renders the catalogue
+  - continue watching + share: Recently Watched lists both films opened
+exit=0

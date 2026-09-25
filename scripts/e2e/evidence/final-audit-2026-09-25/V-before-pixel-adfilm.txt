@@ -1,0 +1,16 @@
+
+### ugali-samaki-sunday-cooking (pixel)
+     143ms  NOBOX | - | playing=false  t=—
+    1209ms  PICTURE | poster=1.0 frame=- ad=- adposter=- adframe=- skel=- note=- | playing=false  t=—
+    2017ms  PICTURE | poster=1.0 frame=0.0 ad=loading adposter=1.0 adframe=0.0 skel=- note=Advert loading… | playing=false  t=—
+    4267ms  BLACK(96%) | poster=1.0 frame=1.0 ad=loading adposter=0.6 adframe=1.0 skel=- note=Advert loading… | playing=false  t=0.0
+    4810ms  BLACK(96%) | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=false  t=0.0
+    7432ms  BLACK(96%) | poster=1.0 frame=0.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=false  t=0.0
+    8800ms  BLACK(96%) | poster=1.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=false  t=0.0
+    9677ms  PICTURE | poster=0.0 frame=1.0 ad=loading adposter=0.0 adframe=1.0 skel=- note=Advert starting… | playing=true  t=0.7
+   10952ms  PICTURE | poster=0.0 frame=1.0 ad=playing adposter=0.0 adframe=1.0 skel=- note=- | playing=true  t=2.0
+   14816ms  PICTURE | poster=0.0 frame=1.0 ad=skippable adposter=0.0 adframe=1.0 skel=- note=- | playing=true  t=5.8
+   19538ms  BLACK(100%) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=0.3
+   20513ms  FLAT(m=20) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=1.3
+   21260ms  FLAT(m=45) | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=2.0
+   22220ms  PICTURE | poster=0.0 frame=1.0 ad=- adposter=- adframe=- skel=- note=- | playing=true  t=3.0
