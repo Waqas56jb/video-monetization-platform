@@ -12,6 +12,20 @@
       }
     } catch (e) {}
   })()
+  /* A load that lands mid-deploy can ask for a script or stylesheet the new
+     build no longer has (now a 404). The app cannot recover from that itself —
+     it never started — so reload once. Same guard key as src/lib/chunkReload.js. */
+  window.addEventListener('error', function (e) {
+    var t = e.target
+    if (!t || (t.tagName !== 'SCRIPT' && t.tagName !== 'LINK')) return
+    if ((t.src || t.href || '').indexOf('/assets/') < 0) return
+    try {
+      var k = 'mtonyo.chunkReloadAt', last = Number(sessionStorage.getItem(k) || 0)
+      if (Date.now() - last < 30000) return
+      sessionStorage.setItem(k, String(Date.now()))
+    } catch (x) {}
+    location.reload()
+  }, true)
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">

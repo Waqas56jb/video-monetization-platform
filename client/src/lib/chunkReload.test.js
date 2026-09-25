@@ -30,3 +30,14 @@ test('every lazy chunk goes through the reload guard, and a missing asset is a r
   assert.equal(catchAll.source, '/((?!assets/).*)', 'the SPA fallback must not answer for /assets/*')
   assert.ok(read('../../public/sw.js').includes('!/text\\/html/i.test('), 'the worker never caches HTML as an asset')
 })
+
+test('a fresh load that misses its own entry script or stylesheet reloads once too', () => {
+  const html = read('../../index.html')
+  const head = html.slice(0, html.indexOf('</script>'))
+  assert.match(head, /window\.addEventListener\('error', function \(e\) \{/)
+  assert.match(head, /t\.tagName !== 'SCRIPT' && t\.tagName !== 'LINK'/)
+  assert.match(head, /indexOf\('\/assets\/'\) < 0/)
+  assert.match(head, /'mtonyo\.chunkReloadAt'/, 'shares the guard with chunkReload.js — never two reloads')
+  assert.match(head, /Date\.now\(\) - last < 30000\) return/)
+  assert.match(head, /\}, true\)/, 'capture phase — resource errors do not bubble')
+})
