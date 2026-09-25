@@ -38,17 +38,21 @@ export default function UsersTab() {
   )
 
   const rows = data?.users || []
+  /* Counted by the server, not from the list below: the list is capped at 100
+     rows, so counting it would stop at 100 and disagree with the dashboard. */
+  const overview = useApi(() => api.admin.overview(), [])
+  const u = overview.data?.users
   const stats = [
-    { icon: 'users', label: 'Total Accounts', value: compact(rows.length) },
-    { icon: 'user-check', label: 'Active', value: compact(rows.filter((u) => u.status === 'active').length) },
-    { icon: 'video', label: 'Creators', value: compact(rows.filter((u) => u.role === 'creator').length) },
+    { icon: 'users', label: 'Total Accounts', value: compact(u?.total) },
+    { icon: 'user-check', label: 'Active', value: compact(u?.active) },
+    { icon: 'video', label: 'Creators', value: compact(u?.creators) },
     /* Both non-active states, so this card plus "Active" always adds up to
        "Total Accounts". Counting only `blocked` read 77 / 76 / 0 while one
        account sat suspended (client's Sep 17 review). */
     {
       icon: 'ban',
       label: 'Suspended or blocked',
-      value: compact(rows.filter((u) => u.status !== 'active').length),
+      value: compact(u ? u.blocked + u.suspended : undefined),
     },
   ]
 
@@ -57,6 +61,7 @@ export default function UsersTab() {
       await api.admin.setUserStatus(user.id, { status: next })
       showToast(message)
       reload({ quiet: true })
+      overview.reload({ quiet: true })
     } catch (err) {
       showToast(err.message)
     }

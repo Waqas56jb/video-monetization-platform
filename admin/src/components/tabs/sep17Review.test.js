@@ -57,6 +57,17 @@ test('item 6: the review queue calls the rights checkbox what it is — a declar
 test('cleanup: Users counters reconcile — suspended and blocked are both counted, not just blocked', () => {
   const src = read('UsersTab.jsx')
   assert.match(src, /label: 'Suspended or blocked'/)
-  assert.match(src, /rows\.filter\(\(u\) => u\.status !== 'active'\)\.length/)
+  assert.match(src, /u\.blocked \+ u\.suspended/)
   assert.doesNotMatch(src, /label: 'Blocked', value: compact\(rows\.filter\(\(u\) => u\.status === 'blocked'\)/)
+})
+
+test('final audit D8: the Users counters come from the server, not from a list capped at 100 rows', () => {
+  const src = read('UsersTab.jsx')
+  assert.match(src, /limit: 100/, 'the list is still capped — which is exactly why it cannot be the count')
+  assert.match(src, /api\.admin\.overview\(\)/)
+  for (const label of ['Total Accounts', 'Active', 'Creators', 'Suspended or blocked']) {
+    const line = src.split('\n').find((l) => l.includes(`label: '${label}'`)) || ''
+    assert.doesNotMatch(line, /rows\./, `${label} must not count the capped list`)
+  }
+  assert.match(src, /overview\.reload\(\{ quiet: true \}\)/, 'and a block/unblock refreshes the counts')
 })
