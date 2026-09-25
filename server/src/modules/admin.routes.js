@@ -73,6 +73,14 @@ router.use('/capital', requirePermission('capital'))
 /** The database guard reads this, and it must be the caller's real role. */
 const asAdmin = (req) => ({ actorRole: req.user.role, actorId: req.user.id })
 
+/* Written by migrations 020 / 042 for creators who predate applications. It is
+   the system describing an account, never the creator describing themselves,
+   so it must not be copied into a public bio on approval (final audit I2). */
+export const SYSTEM_APPLICATION_TEXT = [
+  'Creator account created before applications existed.',
+  'No application on file — this creator account was granted access before MTONYO+ had a review process.'
+]
+
 /** How this person should be named in a log line a human will read. */
 const who = (req) => req.user.full_name || req.user.email
 
@@ -1954,7 +1962,7 @@ router.post(
               app.user_id,
               app.stage_name,
               app.phone,
-              app.bio || app.description || null,
+              app.bio || (SYSTEM_APPLICATION_TEXT.includes(app.description) ? null : app.description) || null,
               app.location || null,
               app.category && app.category !== 'Not stated' ? app.category : null,
               JSON.stringify(app.socials || []),
