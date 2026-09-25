@@ -23,17 +23,29 @@ router.get(
     const settings = await getSettings()
 
     const [people, videos, money, earning] = await Promise.all([
-      one(`select count(*) filter (where role = 'creator')::int as creators,
-                  count(*) filter (where role = 'viewer')::int   as viewers
-             from profiles where status = 'active'`),
+      /* People and money obey the demo-content switch, like creatorsEarning
+         below: with it off, "Earned by creators" was 223,124 of which the
+         real creators had earned 52,920 — the rest was demo and smoke-test
+         ledger (final audit I3). Published videos are not filtered: that
+         figure counts the catalogue people can actually see. */
+      one(
+        `select count(*) filter (where role = 'creator')::int as creators,
+                count(*) filter (where role = 'viewer')::int   as viewers
+           from profiles where status = 'active' and ($1::boolean or not is_demo)`,
+        [Boolean(settings.show_demo_content_in_stats)]
+      ),
       one(`select count(*)::int as published,
                   coalesce(sum(views),0)::int as views,
                   coalesce(sum(paid_unlocks),0)::int as unlocks
              from videos
             where is_published and review_status = 'approved' and deleted_at is null`),
-      one(`select coalesce(sum(creator_tzs),0)::int as to_creators,
-                  coalesce(sum(gross_tzs),0)::int   as gross
-             from earnings`),
+      one(
+        `select coalesce(sum(e.creator_tzs),0)::int as to_creators,
+                coalesce(sum(e.gross_tzs),0)::int   as gross
+           from earnings e join profiles p on p.id = e.creator_id
+          where ($1::boolean or not p.is_demo)`,
+        [Boolean(settings.show_demo_content_in_stats)]
+      ),
       /**
        * Creators who have actually earned something, as distinct from
        * creators who exist. The homepage used to caption the second number
