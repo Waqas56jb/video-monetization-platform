@@ -179,6 +179,32 @@ export default function Watch() {
     return () => timers.forEach(clearTimeout)
   }, [videoId, previewAttempt])
 
+  /**
+   * One loading screen, tap to first frame: the thumbnail with one MTONYO+
+   * indicator over the whole player box, until real frames are moving —
+   * the advert's or the film's, whichever airs first.
+   *
+   * Underneath it the players still boot exactly as before; the viewer just
+   * never sees their in-between states. Measured before this (Pixel 7,
+   * throttled, 2026-09-25): poster → ~6 s of Cloudflare's black box and
+   * spinner → video, and on Free + Ads a black stage, a dark advert frame and
+   * "Advert loading… / starting…" in turn. It lifts on the first frame, when
+   * autoplay is refused (the viewer needs the player's own Play), on a failed
+   * player, when the boot sequence reaches "Still not starting", and after
+   * 20 s at the latest — it can never hide a player that needs a person.
+   */
+  const [firstFrame, setFirstFrame] = useState(false)
+  const [loaderReleased, setLoaderReleased] = useState(false)
+  useEffect(() => {
+    setFirstFrame(false)
+    setLoaderReleased(false)
+  }, [videoId])
+  useEffect(() => {
+    if (firstFrame || loaderReleased) return
+    const t = setTimeout(() => setLoaderReleased(true), 20000)
+    return () => clearTimeout(t)
+  }, [videoId, firstFrame, loaderReleased])
+
   /* Drop the top progress bar once this page has painted a shell. */
   useEffect(() => {
     stopProgress()
@@ -675,6 +701,7 @@ export default function Watch() {
           playId={playId}
           onFinished={adFinished}
           onAirtime={() => {
+            setFirstFrame(true)
             if (activeAd.placement === 'pre_roll') setPreRollHeadStartDone(true)
           }}
         />
@@ -1122,6 +1149,9 @@ export default function Watch() {
                   if (activeAd) return
                   setContinueReady(true)
                 }}
+                onFirstFrame={() => setFirstFrame(true)}
+                onAutoplayBlocked={() => setLoaderReleased(true)}
+                onFailed={() => setLoaderReleased(true)}
                 onRetry={() => playback.reload()}
                 onEnded={() => {
                   if (needsPayment) {
@@ -1210,6 +1240,25 @@ export default function Watch() {
               </button>
             </div>
           )}
+
+          {!firstFrame &&
+            !loaderReleased &&
+            !showLockGate &&
+            !previewOver &&
+            !(justPaid && !continueReady) &&
+            !p?.unavailable &&
+            !p?.previewPending &&
+            !(waitingForPlayback && bootStage >= 3) &&
+            (waitingForPlayback || Boolean(p?.playback?.iframe)) && (
+              <div className="player-loading" role="status" aria-label="Loading video">
+                {v?.thumbnailUrl ? (
+                  <img className="player-loading-poster" src={mediaUrl(v.thumbnailUrl)} alt="" draggable={false} />
+                ) : (
+                  <div className="player-loading-poster stream-poster-fallback" aria-hidden="true" />
+                )}
+                <span className="mt-loader" aria-hidden="true" />
+              </div>
+            )}
 
           {justPaid && !continueReady && (
             <div className="continue-veil" aria-live="polite">

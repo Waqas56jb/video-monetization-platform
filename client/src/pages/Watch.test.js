@@ -146,7 +146,7 @@ test('a fresh pre-roll gets a bandwidth head start over the content iframe it si
   // branch) and then booted them side by side anyway. 6s is only a ceiling.
   assert.match(src, /preRollHeadStartDone/)
   assert.match(src, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 6000\)/)
-  assert.match(src, /onAirtime=\{\(\) => \{\s*if \(activeAd\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)/)
+  assert.match(src, /onAirtime=\{\(\) => \{\s*setFirstFrame\(true\)\s*if \(activeAd\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)/)
 
   // Keyed off the ads DATA (adAt('pre_roll')), not off `activeAd` — activeAd
   // is only set by a later effect, one render after content has already

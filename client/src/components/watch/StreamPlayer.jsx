@@ -89,6 +89,12 @@ export default function StreamPlayer({
   onRetry,
   onPlaying,
   onReady,
+  /** Frames are genuinely advancing (not merely ready) — the first time only. */
+  onFirstFrame,
+  /** Autoplay was refused for good; the viewer has to press play themselves. */
+  onAutoplayBlocked,
+  /** The player failed outright. */
+  onFailed,
   /**
    * Pixel size of the file, when the API did not already know it.
    * Watch uses this so a portrait film is not stuck in a 16:9 box.
@@ -161,6 +167,12 @@ export default function StreamPlayer({
   const frame = useRef(null)
   const onPlayingRef = useRef(onPlaying)
   onPlayingRef.current = onPlaying
+  const onFirstFrameRef = useRef(onFirstFrame)
+  onFirstFrameRef.current = onFirstFrame
+  const onAutoplayBlockedRef = useRef(onAutoplayBlocked)
+  onAutoplayBlockedRef.current = onAutoplayBlocked
+  const onFailedRef = useRef(onFailed)
+  onFailedRef.current = onFailed
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
   const onMediaSizeRef = useRef(onMediaSize)
@@ -188,6 +200,9 @@ export default function StreamPlayer({
    * The only thing worth saying is that it broke.
    */
   const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (failed) onFailedRef.current?.()
+  }, [failed])
   /**
    * The embed document has painted. NOT a loading state — a white one.
    *
@@ -478,6 +493,7 @@ export default function StreamPlayer({
           aired = true
           measurePerf('playerBoot', 'boot-to-first-frame')
           onPlayingRef.current?.()
+          onFirstFrameRef.current?.()
           if (watchdog) {
             clearInterval(watchdog)
             watchdog = null
@@ -644,6 +660,7 @@ export default function StreamPlayer({
             }
             if (Date.now() - lastProgressAt < 2000) return
             if (attempts >= 8) {
+              onAutoplayBlockedRef.current?.()
               clearInterval(watchdog)
               watchdog = null
               return

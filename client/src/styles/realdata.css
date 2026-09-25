@@ -1419,3 +1419,51 @@
     justify-content: center;
   }
 }
+
+/* ---------- one loading screen, tap → first frame ------------------------
+   The thumbnail and one MTONYO+ indicator over the whole player box until
+   real frames move (Watch.jsx `firstFrame`). Everything the players do while
+   booting — Cloudflare's black box and spinner, the advert stage, the embed
+   document's own white — happens underneath it. Above the film and advert
+   layers (4), below the back button (6); the paywall and the "Unlocked" veil
+   replace it rather than sit on it. */
+.player-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: #000;
+  overflow: hidden;
+}
+.player-loading-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.player-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, .42) 0, rgba(0, 0, 0, .18) 38%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+}
+.mt-loader {
+  position: relative;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .16);
+  border-top-color: var(--gold, #ffc100);
+  border-right-color: var(--purple2, #a78bfa);
+  box-shadow: 0 0 0 6px rgba(0, 0, 0, .28);
+  animation: mt-spin .9s linear infinite;
+}
+@keyframes mt-spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) {
+  .mt-loader { animation-duration: 2.4s }
+}

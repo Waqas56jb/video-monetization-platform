@@ -58,7 +58,7 @@ test('the pre-roll renders during the hold, and the film waits for its airtime (
   assert.equal((watch.match(/\{renderAdLayer\(\)\}/g) || []).length, 2, 'both the hold branch and the live branch render the advert')
   assert.doesNotMatch(watch, /\{activeAd && \(\s*<div className="player-ad-layer">/)
   // Airtime releases the hold; so does the pre-roll ending; a timer is only a ceiling.
-  assert.match(watch, /onAirtime=\{\(\) => \{\s*if \(activeAd\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)/)
+  assert.match(watch, /onAirtime=\{\(\) => \{\s*setFirstFrame\(true\)\s*if \(activeAd\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)/)
   assert.match(watch, /if \(activeAd\?\.placement === 'pre_roll'\) setPreRollHeadStartDone\(true\)\s*\n\s*setActiveAd\(null\)/)
   assert.match(watch, /setTimeout\(\(\) => setPreRollHeadStartDone\(true\), 6000\)/)
   assert.doesNotMatch(watch, /setPreRollHeadStartDone\(true\), 1500\)/)
@@ -73,4 +73,23 @@ test('a film held under an advert stays held — autoplay in the URL cannot star
   assert.match(player, /player\.addEventListener\('playing', holdIfPaused\)/)
   // And the page really does hold the film while any advert is on.
   assert.match(watch, /paused=\{Boolean\(activeAd\)\}/)
+})
+
+test('one loading screen: poster + one MTONYO+ indicator until real frames move, with every way out', () => {
+  // Real airtime only — not canplay/loadedmetadata, which fire seconds before a frame moves.
+  assert.match(player, /measurePerf\('playerBoot', 'boot-to-first-frame'\)\s*onPlayingRef\.current\?\.\(\)\s*onFirstFrameRef\.current\?\.\(\)/)
+  const ready = player.slice(player.indexOf('const announceReady = () => {'), player.indexOf("player.addEventListener('loadedmetadata', announceReady)"))
+  assert.doesNotMatch(ready, /onFirstFrame/, 'ready is not a first frame')
+  // The overlay, over the whole box, lifted by either first frame — film or advert.
+  assert.match(watch, /className="player-loading"/)
+  assert.match(watch, /onFirstFrame=\{\(\) => setFirstFrame\(true\)\}/)
+  assert.match(watch, /onAirtime=\{\(\) => \{\s*setFirstFrame\(true\)/)
+  // It can never hide a player that needs a person.
+  assert.match(watch, /onAutoplayBlocked=\{\(\) => setLoaderReleased\(true\)\}/)
+  assert.match(watch, /onFailed=\{\(\) => setLoaderReleased\(true\)\}/)
+  assert.match(watch, /setTimeout\(\(\) => setLoaderReleased\(true\), 20000\)/)
+  assert.match(watch, /!\(waitingForPlayback && bootStage >= 3\)/)
+  assert.match(watch, /!showLockGate &&/)
+  const css = readFileSync(join(dir, '../../styles/realdata.css'), 'utf8')
+  assert.match(css, /\.player-loading \{[^}]*z-index: 5;/)
 })
