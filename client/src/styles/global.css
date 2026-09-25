@@ -3438,3 +3438,15 @@ html.is-touch .btn:active{transform:scale(.97)}
 .stream-boot .btn{pointer-events:auto}
 .stream-boot-msg{margin:0;font-size:13.5px;font-weight:600;color:var(--text);letter-spacing:.2px}
 .stream-boot-sub{margin:0;font-size:12px;color:var(--muted);text-align:center;max-width:38ch}
+
+/* --- nav-linked sections land flush under the header ---------------------
+   Client (Milestone 2 close-out): clicking Trending / How It Works / Features /
+   For Creators / Stories left an empty band above the section's first line —
+   measured 39 px desktop, 37 px tablet, 31 px mobile, which is the section's
+   own top padding. A negative scroll margin lets that padding tuck under the
+   header only when the section is scrolled to, leaving the same ~16 px of air
+   everywhere; the page itself keeps its spacing. It works WITH the single
+   scroll-padding-top above (useSectionLink's resting check reads both). */
+#trending, #how, #features, #creators, #stories {
+  scroll-margin-top: calc(16px - clamp(30px, 2.8vw, 46px));
+}

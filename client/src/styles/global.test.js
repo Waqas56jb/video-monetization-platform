@@ -157,3 +157,13 @@ test('nothing decorative over the poster can take a tap', () => {
     assert.doesNotMatch(rule, /pointer-events:none/, `${control} has to stay pressable`)
   }
 })
+
+test('nav-linked homepage sections land flush under the header, the same on every width', () => {
+  const css = readFileSync(new URL('./global.css', import.meta.url), 'utf8')
+  // The gap was the section's own top padding (clamp(30px, 2.8vw, 46px)); the margin cancels it bar 16px.
+  assert.match(css, /\.section\{padding:clamp\(30px,2\.8vw,46px\) 0;/)
+  assert.match(css, /#trending, #how, #features, #creators, #stories \{\s*scroll-margin-top: calc\(16px - clamp\(30px, 2\.8vw, 46px\)\);/)
+  const hook = readFileSync(new URL('../hooks/useSectionLink.js', import.meta.url), 'utf8')
+  assert.match(hook, /getComputedStyle\(el\)\.scrollMarginTop/, 'the landing check must count the margin, or it re-scrolls forever')
+  assert.match(hook, /el\.getBoundingClientRect\(\)\.top - restingTop\(el\)/)
+})

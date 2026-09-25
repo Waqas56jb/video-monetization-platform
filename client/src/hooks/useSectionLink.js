@@ -43,10 +43,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
  * would have turned every successful scroll into a re-scroll loop. Reading the
  * computed value keeps the check honest whatever the header does.
  */
-function restingTop() {
+function restingTop(el) {
   const raw = getComputedStyle(document.documentElement).scrollPaddingTop
   const n = Number.parseFloat(raw)
-  return Number.isFinite(n) ? n : 0
+  /* The browser aligns (target top − scroll-margin-top) with the scroll padding,
+     and the landing sections carry a negative margin (global.css) — include it. */
+  const m = el ? Number.parseFloat(getComputedStyle(el).scrollMarginTop) : 0
+  return (Number.isFinite(n) ? n : 0) + (Number.isFinite(m) ? m : 0)
 }
 
 function scrollWhenReady(id, { attempts = 60, gap = 100 } = {}) {
@@ -56,7 +59,7 @@ function scrollWhenReady(id, { attempts = 60, gap = 100 } = {}) {
     el.scrollIntoView({ behavior: round === 0 ? 'smooth' : 'auto', block: 'start' })
     if (round >= 3) return
     setTimeout(() => {
-      const drift = el.getBoundingClientRect().top - restingTop()
+      const drift = el.getBoundingClientRect().top - restingTop(el)
       // Anything more than a heading's worth of drift means the layout moved
       // underneath us — lazy images above the target finishing, usually.
       if (Math.abs(drift) > 24) settle(el, round + 1)
