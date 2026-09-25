@@ -86,3 +86,14 @@ test('no page renders a literal "70/30" — the split is the Super Admin setting
   }
   assert.deepEqual(offenders, [], `rendered 70/30 literal in: ${offenders.join(', ')}`)
 })
+
+test('a Watch-side dashboard heading never uses creator language (category, sales, payouts)', async () => {
+  const { DASH_TITLES } = await import('./copy.js')
+  for (const tab of ['library', 'purchases', 'analytics', 'profile', 'settings', 'inbox']) {
+    const [title, subtitle] = DASH_TITLES[tab]('Asha', '', 'viewer')
+    assert.doesNotMatch(`${title} ${subtitle}`, /category|sales|payout|earn|approv|reject/i, `viewer ${tab}: "${title} — ${subtitle}"`)
+  }
+  // The Create side keeps its own wording.
+  assert.match(DASH_TITLES.profile('Asha', '', 'creator')[1], /category/)
+  assert.match(DASH_TITLES.analytics('Asha', '', 'creator')[1], /sales/)
+})

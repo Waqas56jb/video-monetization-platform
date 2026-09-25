@@ -397,7 +397,13 @@ export const DASH_TITLES = {
     'Tell us about your work. Creator tools open only after the team approves you.',
   ],
   inbox: () => ['Notifications', 'Announcements and news about your account.'],
-  analytics: () => ['Analytics', 'Views, sales and what is actually working.'],
-  profile: () => ['Profile settings', 'Your photo, name, bio, category and how people find you.'],
+  analytics: (_name, _filter, role) =>
+    role === 'viewer'
+      ? ['My Activity', 'What you have watched, bought and saved.']
+      : ['Analytics', 'Views, sales and what is actually working.'],
+  profile: (_name, _filter, role) =>
+    role === 'viewer'
+      ? ['Profile settings', 'Your photo, your name and how to reach you.']
+      : ['Profile settings', 'Your photo, name, bio, category and how people find you.'],
   settings: () => ['Settings', 'Your password, your email preferences, and your account.'],
 }

@@ -100,7 +100,7 @@ export default function Dashboard() {
   // Greet the person who is actually signed in, not a name from a data file.
   const firstName = (user?.fullName || '').split(' ')[0]
   const contentFilter = params.get('filter') || ''
-  const [title, subtitle] = (DASH_TITLES[tab] || DASH_TITLES.library)(firstName, contentFilter)
+  const [title, subtitle] = (DASH_TITLES[tab] || DASH_TITLES.library)(firstName, contentFilter, safeRole)
 
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
