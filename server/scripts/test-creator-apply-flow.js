@@ -124,7 +124,7 @@ const run = async () => {
   console.log(`id   ${app.id}`)
 
   const adminEmail = process.env.UI_ADMIN_EMAIL || 'admin@mtonyo.tz'
-  const adminPassword = process.env.UI_ADMIN_PASSWORD || 'Mtonyo!Admin2026'
+  const adminPassword = process.env.UI_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ''
   const adminLogin = await req('POST', '/api/auth/login', {
     body: { email: adminEmail, password: adminPassword, side: 'viewer' },
   })

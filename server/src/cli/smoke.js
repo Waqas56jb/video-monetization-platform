@@ -24,6 +24,10 @@
 import 'dotenv/config'
 import { query } from '../db/pool.js'
 
+/* Never a literal: this file is committed and the account is a live administrator. */
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@mtonyo.tz'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''
+
 const API = (process.env.API_URL || 'https://video-monetization-platform-production.up.railway.app').replace(/\/$/, '')
 
 let passed = 0
@@ -110,7 +114,7 @@ async function run() {
   let adminToken = null
   const adminLogin = await api('/api/auth/login', {
     method: 'POST',
-    body: { email: 'admin@mtonyo.tz', password: 'Mtonyo!Admin2026' },
+    body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   })
   if (adminLogin.status === 200 && adminLogin.json.user.role === 'admin') {
     adminToken = adminLogin.json.session.accessToken
@@ -120,7 +124,7 @@ async function run() {
     // a reminder to run admin:create. That mismatch was the actual bug the
     // last review found: this exact fixture (admin@mtonyo.tz) simply didn't
     // exist on production, so this check always failed there.
-    bad('admin signs in', "fixture admin not found — run: npm run admin:create -- admin@mtonyo.tz 'Mtonyo!Admin2026'")
+    bad('admin signs in', ADMIN_PASSWORD ? `${ADMIN_EMAIL} did not sign in as an admin` : 'set ADMIN_EMAIL and ADMIN_PASSWORD (see E2E-ACCOUNTS.md)')
   }
 
   /* ------------------------------------------------------------- video */
@@ -366,6 +370,17 @@ async function run() {
         : bad('this run\'s own video unpublished', `${unpub.status} ${unpub.json?.error?.message}`)
     } else {
       ok('no published video to unpublish')
+    }
+
+    /* Unpublished was not enough: every run left a video stuck in
+       "processing" in Super Admin's Videos and Review lists (16 of them by
+       2026-09-25). The admin soft delete takes it out of those lists and
+       keeps the row for audit. */
+    if (videoId) {
+      const del = await api(`/api/admin/videos/${videoId}`, { method: 'DELETE', token: adminToken })
+      del.status === 200
+        ? ok('this run\'s own video removed from the admin lists (soft delete)')
+        : bad('this run\'s own video soft-deleted', `${del.status} ${del.json?.error?.message}`)
     }
   } else {
     console.log('  \x1b[90m· no admin token — refund/unpublish skipped (the is_demo flag above still holds)\x1b[0m')
