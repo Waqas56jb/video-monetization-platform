@@ -82,6 +82,9 @@ test('the under_review state is labelled "Under AirPay Review", naming AirPay', 
 
 test('the tab badge names AirPay, not "manual"', () => {
   const badge = src.slice(src.indexOf('action={'), src.indexOf("status === 'building'"))
-  assert.match(badge, /AIRPAY REVIEW/)
+  assert.match(badge, /AIRPAY MICROFINANCE/)
   assert.doesNotMatch(badge, /MANUAL/i)
+  // The panel label sits beside every state, so it must not read as one: "AirPay review"
+  // next to "Request declined" showed two statuses at once (final audit F2).
+  assert.doesNotMatch(badge, /REVIEW|APPROV|DECLIN|ACTIVE|ELIGIB/i)
 })

@@ -72,7 +72,7 @@ export default function CreatorCapitalTab() {
         action={
           <span className="badge">
             <Landmark style={{ width: 14, height: 14 }} />
-            AIRPAY REVIEW
+            AIRPAY MICROFINANCE
           </span>
         }
       >
