@@ -1,0 +1,5 @@
+User Management cards, no filter:       ["TOTAL ACCOUNTS 82","ACTIVE 81","CREATORS 37","SUSPENDED OR BLOCKED 1"]
+User Management cards, filtered Creator: ["TOTAL ACCOUNTS 82","ACTIVE 81","CREATORS 37","SUSPENDED OR BLOCKED 1"]  rows shown: 37
+Dashboard cards:                         ["TOTAL USERS 82","CREATORS 37","VIDEOS 36","TOTAL REVENUE TZS 325,350"]
+viewer profile heading: "Profile settings — Your photo, your name and how to reach you."
+viewer analytics heading: "My Activity — What you have watched, bought and saved."

@@ -1,0 +1,25 @@
+=== run 1
+   6  pass  A paid preview stops by itself and offers Unlock
+        · preview halts at 216.9s (cut-off 217s)
+        · the paywall offers Unlock
+  6       pass           
+=== run 2
+   6  pass  A paid preview stops by itself and offers Unlock
+        · preview halts at 216.9s (cut-off 217s)
+        · the paywall offers Unlock
+  6       pass           
+=== run 3
+   6  pass  A paid preview stops by itself and offers Unlock
+        · preview halts at 216.9s (cut-off 217s)
+        · the paywall offers Unlock
+  6       pass           
+=== run 4
+   6  pass  A paid preview stops by itself and offers Unlock
+        · preview halts at 216.9s (cut-off 217s)
+        · the paywall offers Unlock
+  6       pass           
+=== run 5
+   6  pass  A paid preview stops by itself and offers Unlock
+        · preview halts at 216.9s (cut-off 217s)
+        · the paywall offers Unlock
+  6       pass           

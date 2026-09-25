@@ -1,0 +1,5 @@
+live       creator Earnings tab: "You keep 70% of both"  (url /dashboard?tab=earnings)
+PATCH -> 65
+flipped    creator Earnings tab: "You keep 65% of both"  (url /dashboard?tab=earnings)
+PATCH -> 70 (restore)
+restored   creator Earnings tab: "You keep 70% of both"  (url /dashboard?tab=earnings)

@@ -1,0 +1,2 @@
+chromium desktop: fallback visible 12 ms after the click
+webkit desktop: fallback visible 26 ms after the click

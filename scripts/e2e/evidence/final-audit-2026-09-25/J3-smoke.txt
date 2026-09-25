@@ -1,0 +1,78 @@
+
+  MTONYO+  API smoke test → https://video-monetization-platform-production.up.railway.app
+
+
+health
+  ✓ API is up connected
+
+accounts
+  ✓ creator registers creator
+  ✓ viewer registers viewer
+2026-09-25 01:19:33 info  postgres pool: max=3 (serverless sizing)
+  ✓ creator and viewer accounts flagged is_demo
+  ✓ token identifies the caller
+  ✓ admin signs in
+
+video + per-video premiere duration
+  ✓ creator creates a video fc7150fc
+  ✓ creator sets price, preview and a 60-day premiere
+
+publication is admin-only (enforced in the database)
+  ✓ creator cannot call the approve endpoint 403
+  ✓ submit blocked until Cloudflare finishes processing expected — no real file uploaded here
+
+admin review
+  ✓ review queue loads 5 pending
+  ✓ approval leaves the creator's own premiere window untouched
+  ✓ approval publishes the video
+
+payments — all four outcomes
+  ✓ failed payment leaves the video locked
+  ✓ cancelled payment leaves the video locked
+  ✓ expired payment leaves the video locked
+  ✓ payment initiates pending
+  ✓ successful payment unlocks the video
+
+entitlement
+  ✓ entitlement recorded against the account
+  ✓ purchase survives logout and a fresh login
+  ✓ video appears in My Library
+  ✓ cannot buy the same video twice 409
+
+revenue split
+  ✓ split recorded for the sale 350/150 @ 70%
+
+paywall
+  ✓ playback endpoint resolves access server-side locked
+
+premiere expiry
+  ✓ premiere expiry job runs checked 0, switched 0
+
+admin surfaces
+  ✓ admin overview
+  ✓ admin users
+  ✓ admin creators
+  ✓ admin videos
+  ✓ admin withdrawals
+  ✓ admin revenue
+  ✓ admin settings
+  ✓ admin audit
+  ✓ admin ads
+  ✓ admin deletion requests
+
+share + deep links
+  ✓ deep link points at the watch page https://video-monetization-platform-chi.vercel.app/watch/smoke-premiere-b9xfwk
+  ✓ WhatsApp share target present
+  ✓ Open Graph payload present
+
+creator earnings
+  ✓ earnings summary available TZS 350
+  ✓ withdrawal below the minimum is refused
+
+cleanup — leave nothing visible behind
+  ✓ sandbox purchase refunded
+  ✓ this run's own video unpublished
+
+────────────────────────────────────────────────────
+  42 passed   0 failed
+

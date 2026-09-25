@@ -1,0 +1,53 @@
+live split before the test: 70
+
+### AT LIVE VALUE (70)
+  API /api/stats creatorSplitPercent                         70
+  API /api/admin/settings                                    70
+  API /api/admin/revenue defaultSplitPercent                 70
+  API /api/earnings splitPercent (creator)                   70
+  Home hero stat "Of every sale is yours"                    70
+  Home testimonials "You keep X% of every sale"              —
+  Home For Creators flow (aria-label)                        70
+  Viewer "Apply to become a Creator" tab                     70
+  Creator dashboard Earnings "You keep X% of both"           —
+  Super Admin dashboard "Current Global Split"               70
+  Creator Management — split column (default-split rows)     70%
+  Revenue & Splits — slider/input value                      70
+  Revenue & Splits — text                                    30
+  Settings #set-split                                        70
+
+PATCH creator_split_percent -> 65
+
+### FLIPPED TO 65
+  API /api/stats creatorSplitPercent                         65
+  API /api/admin/settings                                    65
+  API /api/admin/revenue defaultSplitPercent                 65
+  API /api/earnings splitPercent (creator)                   65
+  Home hero stat "Of every sale is yours"                    65
+  Home testimonials "You keep X% of every sale"              —
+  Home For Creators flow (aria-label)                        65
+  Viewer "Apply to become a Creator" tab                     65
+  Creator dashboard Earnings "You keep X% of both"           —
+  Super Admin dashboard "Current Global Split"               65
+  Creator Management — split column (default-split rows)     65%
+  Revenue & Splits — slider/input value                      65
+  Revenue & Splits — text                                    35
+  Settings #set-split                                        65
+
+PATCH creator_split_percent -> 70 (restore)
+
+### RESTORED (70)
+  API /api/stats creatorSplitPercent                         70
+  API /api/admin/settings                                    70
+  API /api/admin/revenue defaultSplitPercent                 70
+  API /api/earnings splitPercent (creator)                   70
+  Home hero stat "Of every sale is yours"                    70
+  Home testimonials "You keep X% of every sale"              —
+  Home For Creators flow (aria-label)                        70
+  Viewer "Apply to become a Creator" tab                     70
+  Creator dashboard Earnings "You keep X% of both"           —
+  Super Admin dashboard "Current Global Split"               70
+  Creator Management — split column (default-split rows)     70%
+  Revenue & Splits — slider/input value                      70
+  Revenue & Splits — text                                    30
+  Settings #set-split                                        70

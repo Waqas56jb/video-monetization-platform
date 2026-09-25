@@ -1,0 +1,57 @@
+
+### chromium desktop
+  PASS  the poster's centre resolves to the card link (hit <a>, link "vid-open")
+  PASS  one press on the poster → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the title → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the price row → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the creator's name → /creator/91d0a676-8784-4549-9432-32aac6679e85
+  PASS  signed out, Save goes to sign in carrying the page (/login?next=%2Fexplore)
+  PASS  the Save pin toggles on one press at 36x36 px (false → true)
+  PASS  and does not open the video
+  PASS  the top progress bar is not left running after a Save press (elements found: 0)
+
+### webkit desktop
+  PASS  the poster's centre resolves to the card link (hit <a>, link "vid-open")
+  PASS  one press on the poster → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the title → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the price row → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the creator's name → /creator/91d0a676-8784-4549-9432-32aac6679e85
+  PASS  signed out, Save goes to sign in carrying the page (/login?next=%2Fexplore)
+  PASS  the Save pin toggles on one press at 36x36 px (false → true)
+  PASS  and does not open the video
+  PASS  the top progress bar is not left running after a Save press (elements found: 0)
+
+### iPhone 14 · webkit
+  PASS  the poster's centre resolves to the card link (hit <a>, link "vid-open")
+  PASS  one press on the poster → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the title → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the price row → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the creator's name → /creator/91d0a676-8784-4549-9432-32aac6679e85
+  PASS  signed out, Save goes to sign in carrying the page (/login?next=%2Fexplore)
+  PASS  the Save pin toggles on one press at 36x36 px (false → true)
+  PASS  and does not open the video
+  PASS  the top progress bar is not left running after a Save press (elements found: 0)
+
+### iPad Pro 11 + mouse
+  PASS  the poster's centre resolves to the card link (hit <a>, link "vid-open")
+  PASS  one press on the poster → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the title → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the price row → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the creator's name → /creator/91d0a676-8784-4549-9432-32aac6679e85
+  PASS  signed out, Save goes to sign in carrying the page (/login?next=%2Fexplore)
+  PASS  the Save pin toggles on one press at 36x36 px (false → true)
+  PASS  and does not open the video
+  PASS  the top progress bar is not left running after a Save press (elements found: 0)
+
+### Pixel 7
+  PASS  the poster's centre resolves to the card link (hit <a>, link "vid-open")
+  PASS  one press on the poster → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the title → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the price row → /watch/ugali-samaki-sunday-cooking-promo-2
+  PASS  one press on the creator's name → /creator/91d0a676-8784-4549-9432-32aac6679e85
+  PASS  signed out, Save goes to sign in carrying the page (/login?next=%2Fexplore)
+  PASS  the Save pin toggles on one press at 36x36 px (false → true)
+  PASS  and does not open the video
+  PASS  the top progress bar is not left running after a Save press (elements found: 0)
+
+ALL PASS

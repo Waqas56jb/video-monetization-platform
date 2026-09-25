@@ -1,0 +1,18 @@
+
+### iPad Pro 11 + mouse (webkit)
+  PASS  logo: one tap → / (/)
+  PASS  Log in: one tap opens sign-in (/login)
+  PASS  Unlock: one tap opens the payment sheet
+  PASS  Share: one tap opens the share sheet
+  PASS  Follow: one tap toggles (Follow → Following)
+     restored: Follow
+
+### Pixel 7 (chromium)
+  PASS  logo: one tap → / (/)
+  PASS  Log in: one tap opens sign-in (/login)
+  PASS  Unlock: one tap opens the payment sheet
+  PASS  Share: one tap opens the share sheet
+  PASS  Follow: one tap toggles (Follow → )
+     restored: 
+
+ALL PASS

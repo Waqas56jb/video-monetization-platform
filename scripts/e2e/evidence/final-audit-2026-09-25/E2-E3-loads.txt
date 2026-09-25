@@ -1,0 +1,4 @@
+Home + Trending: 20/20 clean loads · ready median 1823 ms, max 2964 ms
+Trending (explore sort): 5/5 clean loads · ready median 1625 ms, max 1871 ms
+Watch: Nyerere Day (the video reported with ERR_FAILED / 429): 10/10 clean loads · ready median 1906 ms, max 2597 ms
+Watch: Ugali & Samaki (free+ads): 10/10 clean loads · ready median 2455 ms, max 3298 ms

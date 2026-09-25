@@ -1,0 +1,19 @@
+### E4 cold Home, Pixel 7, CPU x4, 150ms / 1.6 Mbps
+  run 1: DOMContentLoaded 1915 ms · first card with its picture 61926 ms · LCP 2496 ms · JS chunks: index-D86aC0mK.js, CreatorCapital-CCNoviX3.js, Watch-DJXn6pKE.js
+  run 2: DOMContentLoaded 1816 ms · first card with its picture 61824 ms · LCP 2304 ms · JS chunks: index-D86aC0mK.js, CreatorCapital-CCNoviX3.js, Watch-DJXn6pKE.js
+  run 3: DOMContentLoaded 2899 ms · first card with its picture 62903 ms · LCP 3396 ms · JS chunks: index-D86aC0mK.js, CreatorCapital-CCNoviX3.js, Watch-DJXn6pKE.js
+  run 4: DOMContentLoaded 1500 ms · first card with its picture 61505 ms · LCP 2036 ms · JS chunks: index-D86aC0mK.js, CreatorCapital-CCNoviX3.js, Watch-DJXn6pKE.js
+  run 5: DOMContentLoaded 1513 ms · first card with its picture 61524 ms · LCP 2016 ms · JS chunks: index-D86aC0mK.js, CreatorCapital-CCNoviX3.js, Watch-DJXn6pKE.js
+  MEDIAN: DOMContentLoaded 1816 ms · first card 61824 ms · LCP 2304 ms
+
+### E5 scroll + navigate on the same phone profile
+  Home               while scrolling: long tasks 1 (0 over 100 ms, longest 59 ms) · layout shift 0.0000 · sideways overflow false
+  Explore            while scrolling: long tasks 0 (0 over 100 ms, longest 0 ms) · layout shift 0.0000 · sideways overflow false
+  Watch              while scrolling: long tasks 0 (0 over 100 ms, longest 0 ms) · layout shift 0.0000 · sideways overflow false
+  Dashboard library  while scrolling: long tasks 0 (0 over 100 ms, longest 0 ms) · layout shift 0.0000 · sideways overflow false
+run 1: 4 real video cards in the DOM 3376 ms · first video thumbnail decoded 3848 ms
+run 2: 4 real video cards in the DOM 3058 ms · first video thumbnail decoded 3215 ms
+run 3: 4 real video cards in the DOM 2904 ms · first video thumbnail decoded 3008 ms
+run 4: 4 real video cards in the DOM 2915 ms · first video thumbnail decoded 3025 ms
+run 5: 4 real video cards in the DOM 2962 ms · first video thumbnail decoded 3059 ms
+MEDIAN: cards 2962 ms · first thumbnail 3059 ms

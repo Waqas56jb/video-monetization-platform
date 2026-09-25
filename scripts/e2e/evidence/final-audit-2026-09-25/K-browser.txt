@@ -1,0 +1,151 @@
+===== follow-ui
+
+### webkit desktop
+  PASS  the watch page offers Follow on the creator row
+  PASS  the label flips while the request is still in flight ("Follow" → "Following")
+  PASS  and it stays followed once the server answers ("Following5")
+  PASS  still Following after a reload ("Following")
+  PASS  cards carry Follow (8 of 8 cards)
+  PASS  and the creator's name is a link (8 of 8 cards)
+  PASS  tapping a card's picture still opens the video on tap #1 (/watch/ugali-samaki-sunday-cooking-promo-2)
+  PASS  the creator's name goes to their page, not the video (/creator/11eed15f-b230-4d32-9845-a5b61bb4c992)
+  PASS  the follow survives logout → login ("Following")
+
+### chromium desktop
+  PASS  the watch page offers Follow on the creator row
+  PASS  the label flips while the request is still in flight ("Follow" → "Following")
+  PASS  and it stays followed once the server answers ("Following5")
+  PASS  still Following after a reload ("Following")
+  PASS  cards carry Follow (8 of 8 cards)
+  PASS  and the creator's name is a link (8 of 8 cards)
+  PASS  tapping a card's picture still opens the video on tap #1 (/watch/ugali-samaki-sunday-cooking-promo-2)
+  PASS  the creator's name goes to their page, not the video (/creator/91d0a676-8784-4549-9432-32aac6679e85)
+  PASS  the follow survives logout → login ("Following")
+
+### iPhone 14 · webkit
+  PASS  the watch page offers Follow on the creator row
+  PASS  the label flips while the request is still in flight ("Follow" → "Following")
+  PASS  and it stays followed once the server answers ("Following5")
+  PASS  still Following after a reload ("Following")
+  PASS  cards carry Follow (9 of 9 cards)
+  PASS  and the creator's name is a link (9 of 9 cards)
+  PASS  tapping a card's picture still opens the video on tap #1 (/watch/smoke-premiere-le24qj)
+  PASS  the creator's name goes to their page, not the video (/creator/6ba0f27d-aabd-48db-9adb-9ff786498b02)
+  PASS  the follow survives logout → login ("Following")
+
+ALL PASS
+exit=0
+===== library-ui
+  rows, in order: Continue Watching · Purchased · My List · Recently Watched
+  PASS  My List is drawn, holding the video just saved
+  PASS  the rows are in the order the client asked for (Continue Watching · Purchased · My List · Recently Watched)
+  C6 — 6 API requests to open My Library (bar: 8)
+     /auth/me×1  /inbox×1  /library×1  /library/saved×1  /creators/following×1  /playback/a324d192-26aa-4f6b-ad2b-375dc57aefdc/thumbnail×1
+  PASS  6 of 8 allowed
+  PASS  the four rows cost one batched /api/library, not four calls
+  PASS  Remove from history is offered (11 controls)
+  PASS  the tile goes at once, without a refetch (6 → 5)
+  PASS  and it is still gone after a reload (5)
+
+### iPhone 14 · webkit
+  PASS  cards carry a Save control (8)
+  PASS  Save flips immediately when pressed, without waiting for the round trip
+  rows, in order: Continue Watching · Purchased · My List · Recently Watched
+  PASS  My List is drawn, holding the video just saved
+  PASS  the rows are in the order the client asked for (Continue Watching · Purchased · My List · Recently Watched)
+  C6 — 5 API requests to open My Library (bar: 8)
+     /auth/me×1  /inbox×1  /library×1  /library/saved×1  /creators/following×1
+  PASS  5 of 8 allowed
+  PASS  the four rows cost one batched /api/library, not four calls
+  PASS  Remove from history is offered (9 controls)
+  PASS  the tile goes at once, without a refetch (5 → 4)
+  PASS  and it is still gone after a reload (4)
+
+### chromium desktop
+  PASS  cards carry a Save control (8)
+  PASS  Save flips immediately when pressed, without waiting for the round trip
+  rows, in order: Continue Watching · Purchased · My List · Recently Watched
+  PASS  My List is drawn, holding the video just saved
+  PASS  the rows are in the order the client asked for (Continue Watching · Purchased · My List · Recently Watched)
+  C6 — 6 API requests to open My Library (bar: 8)
+     /auth/me×1  /inbox×1  /library×1  /library/saved×1  /creators/following×1  /playback/a324d192-26aa-4f6b-ad2b-375dc57aefdc/thumbnail×1
+  PASS  6 of 8 allowed
+  PASS  the four rows cost one batched /api/library, not four calls
+  PASS  Remove from history is offered (7 controls)
+  PASS  the tile goes at once, without a refetch (4 → 3)
+  PASS  and it is still gone after a reload (3)
+
+ALL PASS
+exit=0
+===== creator-page
+
+creator page under test: /creator/b9e30da9-bffd-4270-a8b6-95095d03d972
+
+### webkit desktop
+  PASS  the page lists releases (6)
+  PASS  every release has a Watch button (7)
+  PASS  every release has a Share button (7)
+  PASS  no horizontal overflow (scrollWidth - innerWidth = -10)
+  PASS  Watch opens the video (/watch/how-to-cook-pilau-properly)
+  PASS  Share opens the share sheet
+        sheet says: SHARE THIS VIDEO WhatsApp and Facebook show this poster card. The film itself plays on MTONYO+ after they tap through — it is not 
+  PASS  and it is the real sheet — WhatsApp is in it, not a cut-down copy
+
+### iPhone 14 · webkit
+  PASS  the page lists releases (6)
+  PASS  every release has a Watch button (7)
+  PASS  every release has a Share button (7)
+  PASS  no horizontal overflow (scrollWidth - innerWidth = 0)
+  PASS  Watch opens the video (/watch/how-to-cook-pilau-properly)
+  PASS  Share opens the share sheet
+        sheet says: SHARE THIS VIDEO WhatsApp and Facebook show this poster card. The film itself plays on MTONYO+ after they tap through — it is not 
+  PASS  and it is the real sheet — WhatsApp is in it, not a cut-down copy
+
+### chromium desktop
+  PASS  the page lists releases (6)
+  PASS  every release has a Watch button (7)
+  PASS  every release has a Share button (7)
+  PASS  no horizontal overflow (scrollWidth - innerWidth = 0)
+  PASS  Watch opens the video (/watch/how-to-cook-pilau-properly)
+  PASS  Share opens the share sheet
+        sheet says: SHARE THIS VIDEO WhatsApp and Facebook show this poster card. The film itself plays on MTONYO+ after they tap through — it is not 
+  PASS  and it is the real sheet — WhatsApp is in it, not a cut-down copy
+
+ALL PASS
+exit=0
+===== progress-write-path
+
+video: live-at-arusha-full-set → 85bd6939-5fa5-4cad-b5ec-9c5f251cdf0a
+
+### chromium desktop
+  PASS  played to 0:42
+  server row after the tab was killed: 42s (target 42 ± 3)
+  PASS  the server has 42s — within 3s of where the viewer actually was
+  server row after a pause at 0:62: 62s
+  PASS  pausing writes the position immediately, without waiting for the ten-second timer (62s)
+
+### Pixel 7
+  PASS  played to 0:42
+  server row after the tab was killed: 42s (target 42 ± 3)
+  PASS  the server has 42s — within 3s of where the viewer actually was
+  server row after a pause at 0:62: 62s
+  PASS  pausing writes the position immediately, without waiting for the ten-second timer (62s)
+
+### webkit desktop
+  sendBeacon: true   fetch keepalive: true
+  PASS  this engine has navigator.sendBeacon
+  beacon queued: {"sent":true,"tokenLen":840}
+  PASS  the browser accepted the beacon
+  server row after a beacon from a killed webkit desktop tab: 49s (sent 49)
+  PASS  the server stored what the beacon carried (49s)
+
+### iPhone 14 · webkit
+  sendBeacon: true   fetch keepalive: true
+  PASS  this engine has navigator.sendBeacon
+  beacon queued: {"sent":true,"tokenLen":840}
+  PASS  the browser accepted the beacon
+  server row after a beacon from a killed iPhone 14 · webkit tab: 49s (sent 49)
+  PASS  the server stored what the beacon carried (49s)
+
+ALL PASS
+exit=0

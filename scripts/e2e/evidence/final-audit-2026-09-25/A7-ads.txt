@@ -1,0 +1,24 @@
+A7 desktop: 63 samples @150ms · first ad airtime at 6385 ms · first "Skip in" at 6858 ms · samples with countdown before airtime: 0 · samples with nothing on screen: 0
+       1361ms  [state, skip, note, poster, painted, shown]=[null,null,null,false,false,true]  adTime=—
+       2811ms  [state, skip, note, poster, painted, shown]=[null,null,null,true,false,true]  adTime=—
+       2981ms  [state, skip, note, poster, painted, shown]=["loading",null,"Advert loading…",true,false,true]  adTime=—
+       3625ms  [state, skip, note, poster, painted, shown]=["loading",null,"Advert loading…",true,true,true]  adTime=0.00
+       4450ms  [state, skip, note, poster, painted, shown]=["loading",null,"Advert starting…",true,true,true]  adTime=0.00
+       6858ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 5",null,true,true,true]  adTime=0.54
+       7361ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 4",null,false,true,true]  adTime=1.04
+       8464ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 3",null,false,true,true]  adTime=2.14
+       9588ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 2",null,false,true,true]  adTime=3.27
+      10557ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 1",null,false,true,true]  adTime=4.24
+      11366ms  [state, skip, note, poster, painted, shown]=["skippable","Skip ad",null,false,true,true]  adTime=5.05
+A7 pixel: 75 samples @150ms · first ad airtime at 10435 ms · first "Skip in" at 11006 ms · samples with countdown before airtime: 0 · samples with nothing on screen: 0
+       1875ms  [state, skip, note, poster, painted, shown]=[null,null,null,false,false,true]  adTime=—
+       3327ms  [state, skip, note, poster, painted, shown]=[null,null,null,true,false,true]  adTime=—
+       3502ms  [state, skip, note, poster, painted, shown]=["loading",null,"Advert loading…",true,false,true]  adTime=—
+       6826ms  [state, skip, note, poster, painted, shown]=["loading",null,"Advert starting…",true,true,true]  adTime=0.00
+      11006ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 5",null,true,true,true]  adTime=0.62
+      11195ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 5",null,false,true,true]  adTime=0.88
+      11526ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 4",null,false,true,true]  adTime=1.21
+      12554ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 3",null,false,true,true]  adTime=2.23
+      13622ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 2",null,false,true,true]  adTime=3.31
+      14488ms  [state, skip, note, poster, painted, shown]=["playing","Skip in 1",null,false,true,true]  adTime=4.17
+      15491ms  [state, skip, note, poster, painted, shown]=["skippable","Skip ad",null,false,true,true]  adTime=5.18

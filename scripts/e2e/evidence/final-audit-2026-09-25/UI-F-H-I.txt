@@ -1,0 +1,36 @@
+### F2 one status at a time
+  PASS  homepage example card shows exactly one status: ["Building Eligibility"] — "Creator Capital Status Verified earnings history: 4 of 6 months Status: Building Eligibility 67% complete Use your funding for: Camera, Edit"
+     creator tab status pills: ["Building Eligibility"]; status words present: ["Building Eligibility"]
+  PASS  a real account (demo.asha) shows one live status pill: ["Building Eligibility"]
+
+### F10 /creator-capital visual, F11 navigation
+  PASS  F11 desktop: Creator Capital is in the main navigation
+  PASS  F11 desktop: it goes straight to the info page (/creator-capital)
+     desktop: {"steps":4,"journey":5,"uses":true,"who":true,"card":true,"cta":5,"legalShell":0,"disclaimers":2,"overflow":false}
+  PASS  F10 desktop: hero + 4-step flow + status journey + "Who decides" card + approved-offer card, no Word-page shell, no sideways scroll
+  PASS  F10 desktop: a "Use your funding for" section exists
+  FAIL  F11 mobile: Creator Capital is in the main navigation
+  PASS  F11 mobile: it goes straight to the info page (/creator-capital)
+     mobile: {"steps":4,"journey":5,"uses":true,"who":true,"card":true,"cta":5,"legalShell":0,"disclaimers":2,"overflow":false}
+  PASS  F10 mobile: hero + 4-step flow + status journey + "Who decides" card + approved-offer card, no Word-page shell, no sideways scroll
+  PASS  F10 mobile: a "Use your funding for" section exists
+
+### H3 the payment sheet
+  PASS  no Visa/Mastercard on the sheet (images: [])
+  PASS  M-Pesa and Airtel Money are the methods offered
+     sheet text: "Unlock “RPReplay Final1589783013” One payment of TZS 500. It stays in your library, on every device you log into. M-Pesa Vodacom Airtel Money Airtel Mobile money number Pay TZS 500 You'll get a prompt on your phone. Appr"
+
+### I4 Library badges not covered
+     desktop: 0 access badges — []
+  FAIL  I4 desktop: every access badge is on top and nothing overlaps it
+     mobile: 0 access badges — []
+  FAIL  I4 mobile: every access badge is on top and nothing overlaps it
+
+### I1 admin logo -> public homepage, admin session kept
+  PASS  logo opens the public homepage in a new tab (href=https://video-monetization-platform-chi.vercel.app, target=_blank, opened=https://video-monetization-platform-chi.vercel.app/)
+  PASS  admin session survives going to the public site and back (/dashboard)
+
+3 FAILED
+  - F11 mobile: Creator Capital is in the main navigation
+  - I4 desktop: every access badge is on top and nothing overlaps it
+  - I4 mobile: every access badge is on top and nothing overlaps it

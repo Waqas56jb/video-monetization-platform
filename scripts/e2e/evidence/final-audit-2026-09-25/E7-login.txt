@@ -1,0 +1,7 @@
+  PASS  chromium viewer  one click → signed in, at /dashboard in 1938 ms · login requests sent: 1
+  PASS  chromium creator one click → signed in, at /dashboard (side=creator) in 1701 ms · login requests sent: 1
+  PASS  chromium admin   one click → signed in, at /dashboard in 1586 ms · login requests sent: 1
+  PASS  webkit   viewer  one click → signed in, at /dashboard in 2863 ms · login requests sent: 1
+  PASS  webkit   creator one click → signed in, at /dashboard (side=creator) in 2868 ms · login requests sent: 1
+  PASS  webkit   admin   one click → signed in, at /dashboard in 2227 ms · login requests sent: 1
+ALL PASS

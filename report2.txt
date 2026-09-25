@@ -2297,3 +2297,41 @@ via production-reset.mjs --scope smoke. Item 6 (creator-side dashboard changes):
 missing specification, reported plainly rather than glossed over. This pass's commits, in order:
 b83f387, 6049302, 361d5a5. CI: b83f387 46/48 (2 isolated single-profile flakes, investigated), 361d5a5
 (final tree) 48/48 clean.
+
+================================================================================
+## SEP 25 — full A–Z re-verification against production (FINAL-AUDIT.md)
+================================================================================
+
+Every item ever reported (sections A–L of the operator's brief) re-checked from scratch on
+production, with fresh evidence only: curl, DB queries and Playwright runs. The full table with
+per-item evidence is in FINAL-AUDIT.md; raw outputs are in
+scripts/e2e/evidence/final-audit-2026-09-25/; probes are in scripts/e2e/final-audit/.
+
+Found broken and fixed (each deployed and re-checked live): film playing muted under the
+pre-roll (aa974c1); deploy skew breaking open pages, which was also the cause of the recurring
+single-profile CI "flakes" #104/#108/#109/#113 (2ce128f, 85d9903); "Earned by creators" counting
+demo money with the switch off (221c8e3); lifetime earnings captioned "paid out" (0f0a49c);
+migration text in six public creator bios, migration 043 applied (12e8b57); literal-70 split
+fallbacks (d97cf00); Watch-side headings in creator wording (2a0f682); Users counters
+capped at 100 (9f871ff); "never disappears" badge in Moderation (48c9d8f); Capital label
+reading as a second status (ff3b69c); shortened lender disclaimer (7c36198); missing "Use
+your funding for" section (468cee2); Allow-Methods on GETs (d94510b); live admin password in
+committed smoke.js, plus smoke leaving a stuck video per run (a62ca13); probe using the
+wrong session keys (ec6d91d).
+
+Verified working with fresh evidence: purchase isolation and exact resume (2 new accounts +
+curl + DB), preview cap, portrait, progress bar, ad countdown, ad settings round trip,
+converted-premiere ad parity (simulated), desktop and mobile WhatsApp card across 9 request
+shapes, share on all 8 videos x 4 profiles (288/288), split flip on 15 surfaces with history
+byte-identical, per-creator override, viewer/creator separation on fresh dual accounts,
+switch clicked, sub-admin scope, count reconciliation, a 22-min session with 0 x 429, 45 clean
+loads, auto-retry, one-tap controls, one-attempt login x3 roles x2 engines, Creator Capital
+consent/duplicate/validation live loop, release models + expiry guard + buyer access live,
+H2 pending withdrawal, retention features, and the full journey on fresh accounts
+(Chromium + Pixel 7 all legs; WebKit layout/taps/login only).
+
+Restored after testing: split 70, capital months 6, ad settings, Behind The Fame's premiere
+window (exact), every sandbox purchase refunded, test withdrawals rejected, test capital
+request removed. Held for a go-ahead: removing the 45 listed test accounts, 10 old smoke
+purchases, 16 smoke videos, a test announcement and 58 orphaned logins. The admin password
+should be changed (it is in git history).

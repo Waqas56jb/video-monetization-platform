@@ -1,0 +1,33 @@
+
+signed in as e2e+8238822854@mtonyo.test → ae185cef-3556-4248-8a62-a14b9d8cb3b4
+2026-09-25 01:18:38 info  postgres pool: max=3 (serverless sizing)
+target creator: Smoke Creator (2285d4e4-063d-46dc-bad5-2417a2912be6) status=active
+
+### follow, twice
+  POST  → 200 {"isFollowing":true,"followers":1}
+  POST  → 200 {"isFollowing":true,"followers":1}   (same call again)
+  PASS  the first follow takes
+  PASS  the second does not count twice
+  PASS  the count matches the graph (1 rows)
+  PASS  and creator_profiles.followers matches too — the trigger, not the route
+
+### the one request a page of cards makes
+  GET /api/creators/following → 200 {"creatorIds":["2285d4e4-063d-46dc-bad5-2417a2912be6"]}
+  PASS  it returns ids
+  PASS  including the creator just followed
+
+### a blocked creator — the case that used to trap followers for ever
+  Smoke Creator is now status=blocked
+  POST   .../follow → 404   (following a blocked creator should still be refused)
+  PASS  you cannot start following a blocked creator
+  DELETE .../follow → 200 {"isFollowing":false,"followers":0}
+  PASS  but an existing follower CAN get out (this was 404 before)
+  PASS  and is no longer following
+  PASS  the count still agrees with the graph
+  restored → status=active
+
+### drift across every creator on the site
+  38 creators, 0 disagreeing with the follows table
+  PASS  zero drift
+
+ALL PASS

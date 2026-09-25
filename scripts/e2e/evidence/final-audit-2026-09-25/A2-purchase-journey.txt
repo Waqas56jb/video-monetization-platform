@@ -1,0 +1,84 @@
+video under test:   rpreplay-final1589783013-2 -> 607d4719-1905-4f1a-9c55-993647a543d0
+second paid title:  live-at-arusha-full-set → 85bd6939-5fa5-4cad-b5ec-9c5f251cdf0a
+
+==================================================================
+### chromium desktop
+==================================================================
+  --- a viewer who has never paid for anything
+  e2e+buy0292008633@mtonyo.test   landed on /dashboard
+  PASS  the new account can sign in through the API
+  PASS  before paying the server grants kind=preview, canWatchFull=false, cut-off 20s of 83s
+  PASS  the preview stops by itself at 19.9s (cut-off 20s)
+  PASS  the paywall offers Unlock
+  PASS  the payment sheet opens
+  PASS  the number field is in the sheet
+  PASS  the Pay button is on screen (619–666 of 900)
+  PASS  the sheet closes itself after 8064 ms
+  PASS  /api/playback/rpreplay-final1589783013-2 now returns kind=full
+  PASS  the film continues from the stop point (20.0s vs 19.9s) within 5 s of the sheet closing
+  PASS  and it is playing, with no second Play button
+  PASS  My Library lists it (3 links)
+  PASS  signs back in with one submit
+  PASS  after logout→login it is still kind=full
+  PASS  a second paid title stays locked (kind=preview)
+  PASS  and it still shows its own Unlock button
+  PASS  "Test declined" reaches a failure screen
+  PASS  and says what happened + offers Try again — "Payment not completedInsufficient balance in the mobile money accountNothing was charged. You can tr"
+  PASS  the video is still locked after a declined payment (kind=preview)
+  PASS  Try again returns to the form
+  PASS  "Test cancelled" reaches a failure screen
+  PASS  and says what happened + offers Try again — "Payment cancelledThe customer cancelled the payment on their phoneNothing was charged. You can try a"
+  PASS  the video is still locked after a cancelled payment (kind=preview)
+  PASS  Try again returns to the form
+
+  B3 — 49 API requests over 79s; busiest 60 s window: 49 of 120
+     /library/saved×5  /creators/following×5  /playback/607d4719-1905-4f1a-9c55-993647a543d0/progress×4  /inbox×3  /library×3  /auth/me×3  /payments/initiate×3  /auth/login×2
+  PASS  the whole journey fits inside the limiter with 71 to spare
+  PASS  nothing was rate limited (0 × 429)
+
+==================================================================
+### Pixel 7
+==================================================================
+  --- a viewer who has never paid for anything
+  e2e+buy0292087647@mtonyo.test   landed on /dashboard
+  PASS  the new account can sign in through the API
+  PASS  before paying the server grants kind=preview, canWatchFull=false, cut-off 20s of 83s
+  PASS  the preview stops by itself at 19.9s (cut-off 20s)
+  PASS  the paywall offers Unlock
+  PASS  the payment sheet opens
+  PASS  the number field is in the sheet
+  PASS  the Pay button is on screen (586–633 of 839)
+  PASS  the sheet closes itself after 7362 ms
+  PASS  /api/playback/rpreplay-final1589783013-2 now returns kind=full
+  PASS  the film continues from the stop point (20.0s vs 19.9s) within 5 s of the sheet closing
+  PASS  and it is playing, with no second Play button
+  PASS  My Library lists it (3 links)
+  PASS  signs back in with one submit
+  PASS  after logout→login it is still kind=full
+  PASS  a second paid title stays locked (kind=preview)
+  PASS  and it still shows its own Unlock button
+  PASS  "Test declined" reaches a failure screen
+  PASS  and says what happened + offers Try again — "Payment not completedInsufficient balance in the mobile money accountNothing was charged. You can tr"
+  PASS  the video is still locked after a declined payment (kind=preview)
+  PASS  Try again returns to the form
+  PASS  "Test cancelled" reaches a failure screen
+  PASS  and says what happened + offers Try again — "Payment cancelledThe customer cancelled the payment on their phoneNothing was charged. You can try a"
+  PASS  the video is still locked after a cancelled payment (kind=preview)
+  PASS  Try again returns to the form
+
+  B3 — 49 API requests over 78s; busiest 60 s window: 49 of 120
+     /library/saved×5  /creators/following×5  /playback/607d4719-1905-4f1a-9c55-993647a543d0/progress×4  /inbox×3  /library×3  /auth/me×3  /payments/initiate×3  /auth/login×2
+  PASS  the whole journey fits inside the limiter with 71 to spare
+  PASS  nothing was rate limited (0 × 429)
+
+==================================================================
+### summary
+  chromium desktop      sheet closed  8064 ms  kind=full  resumed 20.0s (stop 19.9s)  49 req, peak 49/min
+  Pixel 7               sheet closed  7362 ms  kind=full  resumed 20.0s (stop 19.9s)  49 req, peak 49/min
+
+accounts created by this run (reverse with server/scripts/cleanup-e2e.mjs):
+  chromium desktop   e2e+buy0292008633@mtonyo.test  <redacted>
+  Pixel 7            e2e+buy0292087647@mtonyo.test  <redacted>
+
+ALL PASS
+exit=0

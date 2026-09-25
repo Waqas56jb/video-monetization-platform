@@ -1,0 +1,53 @@
+accounts created by this run: e2e+aud-v294739873@mtonyo.test, e2e+aud-d294739873@mtonyo.test (password <redacted>)
+  PASS  viewer-only account created (201)
+  PASS  dual account: Create side 201, Watch side added 200 (sides={"creator":true,"viewer":true})
+  (filled the Create profile with category/bio/payout/socials: PATCH /api/account -> 200)
+
+### D1 viewer-only — API
+  PASS  POST /api/auth/login: no creator-only fields (creator: "null")
+  PASS  GET /api/auth/me: no creator-only fields (creator: "null")
+  PASS  GET /api/account: no creator-only fields (creator: "null")
+  PASS  GET /api/account/analytics: no creator-only fields (creator: "null")
+  PASS  analytics on the Watch side carries no creator block (keys: role,viewer,creator)
+
+### D2 dual-role, WATCH side — API
+  PASS  POST /api/auth/login: no creator-only fields (creator: ["exists","displayName"])
+  PASS  GET /api/auth/me: no creator-only fields (creator: ["exists","displayName"])
+  FAIL  GET /api/account: no creator-only fields — LEAK user.bio="creator bio text" (creator: ["exists","displayName"])
+  PASS  GET /api/account/analytics: no creator-only fields (creator: "null")
+  PASS  analytics on the Watch side carries no creator block (keys: role,viewer,creator)
+
+### D1 viewer-only — every Watch tab
+  PASS  tab library: no creator wording
+  PASS  tab purchases: no creator wording
+  PASS  tab analytics: no creator wording
+  FAIL  tab profile: no creator wording — found "category" in "…Profile settings Your photo, name, bio, category and how people find you. AP Aud…"
+  PASS  tab settings: no creator wording
+  sidebar: My Library | Explore Videos | My Purchases | My Activity | Apply to become a Creator | Profile settings | Settings | Add a Creator account | Log out
+  PASS  no creator tools in the Watch sidebar
+
+### D2 dual-role on WATCH side — every Watch tab
+  PASS  tab library: no creator wording
+  PASS  tab purchases: no creator wording
+  PASS  tab analytics: no creator wording
+  FAIL  tab profile: no creator wording — found "category" in "…Profile settings Your photo, name, bio, category and how people find you. 1 AP A…"
+  PASS  tab settings: no creator wording
+  sidebar: My Library | Explore Videos | My Purchases | My Activity | Profile settings | Settings | Open Creator side | Log out
+  PASS  no creator tools in the Watch sidebar
+
+### D3 dual-role, CREATE side — Analytics
+  PASS  Create-side analytics shows no viewer metrics
+  FAIL  and shows creator metrics (Views, Unlock, Conversion, Earn, Published) — missing Conversion
+  text: Analytics Views, sales and what is actually working. 1 AP Audit Probe Creator Account TOTAL VIEWS 0 PAID UNLOCKS 0 VIEWERS WHO PAID — PUBLISHED VIDEOS 0 Earnings over the last 30 days Not enough activity to plot yet This chart fills in as sales come through — …
+
+### D5 the Viewer↔Creator switch, clicked
+  PASS  switch control present on a real (non-staff) dual account: "Open Viewer side"
+  PASS  click 1: Create → Watch (side=viewer, url=/dashboard?tab=library, sidebar now: My Library|Explore Videos|My Purchases|My Activity|Profile settings|Settings|Open Creator )
+  PASS  click 2: Watch → Create (side=creator, url=/dashboard?tab=overview)
+  PASS  a viewer-only account is not offered a switch (it has no Create side)
+
+4 FAILED
+  - GET /api/account: no creator-only fields — LEAK user.bio="creator bio text" (creator: ["exists","displayName"])
+  - tab profile: no creator wording — found "category" in "…Profile settings Your photo, name, bio, category and how people find you. AP Aud…"
+  - tab profile: no creator wording — found "category" in "…Profile settings Your photo, name, bio, category and how people find you. 1 AP A…"
+  - and shows creator metrics (Views, Unlock, Conversion, Earn, Published) — missing Conversion

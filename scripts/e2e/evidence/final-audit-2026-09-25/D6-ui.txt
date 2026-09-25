@@ -1,0 +1,10 @@
+sidebar: Dashboard | Analytics | Notifications
+1 | Videos | Content Review
+5 | Moderation
+  /users       -> /users       "User Management View, block or restore any account 1 RM Rehema Mushi SUB ADMIN Administrators only Sub-admins "
+  /revenue     -> /revenue     "Revenue & Splits What the platform keeps, and what creators earn 1 RM Rehema Mushi SUB ADMIN Administrators on"
+  /capital     -> /capital     "Dashboard Platform overview · live data 1 RM Rehema Mushi SUB ADMIN You cannot open this You do not have the ""
+  /settings    -> /settings    "Settings Your account, the platform, and the team 1 RM Rehema Mushi SUB ADMIN You cannot open this You do not "
+  /review      -> /review      "Content Review Nothing goes live until it passes through here 1 RM Rehema Mushi SUB ADMIN Pending Review · 5 N"
+  /videos      -> /videos      "Video Library Every video on the platform 1 RM Rehema Mushi SUB ADMIN VIDEOS 36 TOTAL VIEWS 4.8K PAID UNLOCKS "
+  /moderation  -> /moderation  "Moderation Reports and removal requests 1 RM Rehema Mushi SUB ADMIN Reported Content FROM VIEWERS Nothing repo"

@@ -1,0 +1,19 @@
+--- click
+     216ms adStage=none skip=- layer=false | 
+     632ms NET 200 /api/videos/ugali-samaki-sunday-cooking
+     687ms NET 200 /api/playback/ugali-samaki-sunday-cooking/playback
+    1063ms NET 200 /api/ads/breaks/ugali-samaki-sunday-cooking
+    1136ms adStage=loading skip=- layer=true | AD[Color=000000]=novideo
+    1247ms NET 200 /api/videos/ugali-samaki-sunday-cooking/related
+    1423ms adStage=loading skip=- layer=true | AD[Color=000000]=0.0▶
+    3222ms adStage=playing skip=Skip in 5 layer=true | FILM[Color=000000]=novideo AD[Color=000000]=0.3▶
+    3479ms adStage=playing skip=Skip in 5 layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=0.6▶
+    4054ms adStage=playing skip=Skip in 4 layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=1.1▶
+    5202ms adStage=playing skip=Skip in 3 layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=2.3▶
+    5529ms NET 202 /api/videos/97ef24d6-16e1-4d30-b3ec-f102c5308ab3/view
+    6182ms adStage=playing skip=Skip in 2 layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=3.3▶
+    7084ms adStage=playing skip=Skip in 1 layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=4.2▶
+    8090ms adStage=skippable skip=Skip ad layer=true | FILM[Color=000000]=0.0p AD[Color=000000]=5.2▶
+   13156ms adStage=none skip=- layer=false | FILM[Color=000000]=0.1▶
+   14831ms NET 202 /api/ads/impression
+  final: adStage=none skip=- layer=false | FILM[Color=000000]=6.9▶

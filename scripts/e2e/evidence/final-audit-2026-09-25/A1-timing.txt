@@ -1,0 +1,36 @@
+  desktop live-at-arusha-full-set                run 1: poster 667 ms, playing 1663 ms
+  desktop live-at-arusha-full-set                run 2: poster 669 ms, playing 2802 ms
+  desktop live-at-arusha-full-set                run 3: poster 910 ms, playing 2891 ms
+  desktop live-at-arusha-full-set                run 4: poster 800 ms, playing 1780 ms
+  desktop live-at-arusha-full-set                run 5: poster 746 ms, playing 3016 ms
+MEDIAN desktop owned paid film (signed in)                      poster 746 ms · playing 2802 ms · (5/5 reached playing)
+  desktop behind-the-fame-a-coast-documentary    run 1: poster 733 ms, playing 5968 ms
+  desktop behind-the-fame-a-coast-documentary    run 2: poster 753 ms, playing 1845 ms
+  desktop behind-the-fame-a-coast-documentary    run 3: poster 667 ms, playing 2678 ms
+  desktop behind-the-fame-a-coast-documentary    run 4: poster 768 ms, playing 2710 ms
+  desktop behind-the-fame-a-coast-documentary    run 5: poster 751 ms, playing 1964 ms
+MEDIAN desktop paid preview (signed out)                        poster 751 ms · playing 2678 ms · (5/5 reached playing)
+  desktop ugali-samaki-sunday-cooking            run 1: poster 710 ms, playing 1733 ms
+  desktop ugali-samaki-sunday-cooking            run 2: poster 566 ms, playing 1443 ms
+  desktop ugali-samaki-sunday-cooking            run 3: poster 741 ms, playing 1752 ms
+  desktop ugali-samaki-sunday-cooking            run 4: poster 746 ms, playing 1659 ms
+  desktop ugali-samaki-sunday-cooking            run 5: poster 676 ms, playing 1464 ms
+MEDIAN desktop free+ads, first frame = the advert (signed out)  poster 710 ms · playing 1659 ms · (5/5 reached playing)
+  pixel   live-at-arusha-full-set                run 1: poster 683 ms, playing 7866 ms
+  pixel   live-at-arusha-full-set                run 2: poster 867 ms, playing 7828 ms
+  pixel   live-at-arusha-full-set                run 3: poster 834 ms, playing 7817 ms
+  pixel   live-at-arusha-full-set                run 4: poster 883 ms, playing 7756 ms
+  pixel   live-at-arusha-full-set                run 5: poster 669 ms, playing 7890 ms
+MEDIAN pixel   owned paid film (signed in)                      poster 834 ms · playing 7828 ms · (5/5 reached playing)
+  pixel   behind-the-fame-a-coast-documentary    run 1: poster 5314 ms, playing 12325 ms
+  pixel   behind-the-fame-a-coast-documentary    run 2: poster 857 ms, playing 7695 ms
+  pixel   behind-the-fame-a-coast-documentary    run 3: poster 696 ms, playing 7828 ms
+  pixel   behind-the-fame-a-coast-documentary    run 4: poster 619 ms, playing 7557 ms
+  pixel   behind-the-fame-a-coast-documentary    run 5: poster 834 ms, playing 8832 ms
+MEDIAN pixel   paid preview (signed out)                        poster 834 ms · playing 7828 ms · (5/5 reached playing)
+  pixel   ugali-samaki-sunday-cooking            run 1: poster 622 ms, playing 6310 ms
+  pixel   ugali-samaki-sunday-cooking            run 2: poster 726 ms, playing 5471 ms
+  pixel   ugali-samaki-sunday-cooking            run 3: poster 710 ms, playing 5849 ms
+  pixel   ugali-samaki-sunday-cooking            run 4: poster 673 ms, playing 5282 ms
+  pixel   ugali-samaki-sunday-cooking            run 5: poster 619 ms, playing 5250 ms
+MEDIAN pixel   free+ads, first frame = the advert (signed out)  poster 673 ms · playing 5471 ms · (5/5 reached playing)

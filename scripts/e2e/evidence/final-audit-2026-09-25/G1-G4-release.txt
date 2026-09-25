@@ -1,0 +1,39 @@
+original: {"access_type":"paid_premiere","release_model":"premiere_to_free","is_original":false,"price_tzs":2500,"premiere_days":60,"premiere_ends_at":"2026-10-04T12:03:14.096Z","ads_enabled":false,"is_published":true,"featured":false,"free_preview_seconds":217,"preview_uid":"08745d0cdbf7c3641a408c52eda10553"}
+
+### baseline (premiere_to_free)
+  [baseline] release=premiere_to_free access=paid_premiere price=2500 original=false published=true | anon 200 kind=preview | buyer 200 kind=full | job would convert if expired: true
+  PASS  buyer gets full, anonymous gets the preview
+  PASS  a premiere_to_free video IS converted by the job once its window ends
+
+### G2 MTONYO+ Original flag
+  PASS  the video's own creator cannot set Original or Exclusive (PATCH -> 400; DB still original=false, release=premiere_to_free)
+  [Original on] release=premiere_to_free access=paid_premiere price=2500 original=true published=true | anon 200 kind=preview | buyer 200 kind=full | job would convert if expired: true
+  PASS  an admin can set it
+  PASS  setting Original changes nothing about release, access, price or the premiere clock — it forces no conversion
+
+### G1/G3 Exclusive — paid
+  [exclusive, still paid] release=exclusive access=paid_premiere price=2500 original=false published=true | anon 200 kind=preview | buyer 200 kind=full | job would convert if expired: false
+  PASS  admin sets Exclusive
+  PASS  G3: the premiere job would NOT convert an Exclusive video even with its window over (isDue=false)
+  PASS  G3: and the job's own selection (with the clock pushed 100 years ahead) picks it up 0 times
+  PASS  Exclusive paid: buyer full, others preview
+
+### G1 Exclusive — free
+  [exclusive, free] release=exclusive access=free_with_ads price=0 original=false published=true | anon 200 kind=full | buyer 200 kind=full | job would convert if expired: false
+  PASS  an access change keeps it Exclusive (not silently re-derived)
+  PASS  Exclusive free: everyone gets the full film
+
+### G1 Exclusive — unavailable (unpublished) / G4 buyer keeps access
+  [exclusive, unpublished] release=exclusive access=ppv_forever price=2500 original=false published=false | anon 404 kind=— | buyer 200 kind=full | job would convert if expired: false
+  PASS  admin makes it unavailable (unpublish)
+  PASS  anonymous can no longer watch it (404, kind=—)
+  PASS  G4: the buyer still gets the FULL film after release-model + publish-status changes
+
+### restore
+  publish -> 200, PATCH -> 200
+  DIFF premiere_ends_at: was "2026-10-04T12:03:14.096Z" now "2026-11-24T00:38:00.100Z"
+  FAIL  every column is back to its original value
+  [restored] release=premiere_to_free access=paid_premiere price=2500 original=false published=true | anon 200 kind=preview | buyer 200 kind=full | job would convert if expired: true
+
+1 FAILED
+  - every column is back to its original value

@@ -1,0 +1,9 @@
+page opened on build 0f0a49c (entry index-D86aC0mK.js) — its Watch chunk is held back
+deploy went live: 0f0a49c -> 2ce128f
+after tapping a card: watch page rendered=false, error screen=true, main-frame navigations=1, url=/watch/live-at-arusha-full-set
+Watch chunk responses: []
+build entry index-rtyYRNI6.js: first Watch chunk answered 404 → watch page rendered=false, error screen=true, page loads after the tap=1, url=/watch/live-at-arusha-full-set
+opened on Explore, then a card is tapped: first Watch chunk request answered 404 → full page loads 2, watch page rendered=true, error screen=false
+a shared link opened straight onto a watch page: first Watch chunk request answered 404 → full page loads 2, watch page rendered=true, error screen=false
+chromium: entry script answered 404 on the first load → page loads 1, app rendered=true
+webkit: entry script answered 404 on the first load → page loads 1, app rendered=true

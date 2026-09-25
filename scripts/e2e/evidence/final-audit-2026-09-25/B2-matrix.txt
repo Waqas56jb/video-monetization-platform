@@ -1,0 +1,1409 @@
+Desktop share matrix · https://video-monetization-platform-chi.vercel.app · 2026-09-24T23:25:30.755Z
+
+=== nyerere-day-rehearsals-awaiting-review
+    expected title:   "Nyerere Day — Rehearsals (awaiting review)"
+    expected creator: "Juma Kileo Live"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292331465-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 707ms, 2400 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::v5bdp-1790292333798-6b40b97419e0
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  311  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  393  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  714  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  485  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   63  "Nyerere Day — Rehearsals (awaiting review) - MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 714)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292332173-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 651ms, 2400 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::7w86s-1790292334484-b819a15d3116
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  311  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  393  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  714  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  485  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   63  "Nyerere Day — Rehearsals (awaiting review) - MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 714)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292332825-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 672ms, 2400 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::5qblm-1790292335150-b8e3f0e9ca1d
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  311  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  393  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  714  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  485  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   63  "Nyerere Day — Rehearsals (awaiting review) - MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 714)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292333498-ii
+    OPTIONS -> 204 in 535ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 631ms, 2400 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::rpqnx-1790292336317-30cb17cc95b4
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  311  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  393  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  714  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  485  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   63  "Nyerere Day — Rehearsals (awaiting review) - MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 714)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292334665-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 549ms, 5132 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::gn8gw-1790292336953-d72af6998f7c
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  439  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  521  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  613  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  308  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   40  "Nyerere Day — Rehearsals (awaiting review) — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 613)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292335215-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 629ms, 2400 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::7qj22-1790292337507-fb3d50b6b4e0
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  311  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  393  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  714  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  485  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   63  "Nyerere Day — Rehearsals (awaiting review) - MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 714)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292335845-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 556ms, 5132 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::v5bdp-1790292338131-c70bf442103f
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  439  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  521  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  613  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  308  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   40  "Nyerere Day — Rehearsals (awaiting review) — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 613)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292336401-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 549ms, 5132 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::qn68j-1790292338688-a335981a8cbd
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  439  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  521  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  613  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  308  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   40  "Nyerere Day — Rehearsals (awaiting review) — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 613)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review?v=1790292336951-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 539ms, 5132 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::s4zqb-1790292339243-411ba0d440d2
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  439  "Nyerere Day — Rehearsals (awaiting review)"
+      description  @  521  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  613  "https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526"
+      url          @  308  "https://video-monetization-platform-chi.vercel.app/watch/nyerere-day-rehearsals-awaiting-review"
+      htmlTitle    @   40  "Nyerere Day — Rehearsals (awaiting review) — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Nyerere Day — Rehearsals (awaiting review)")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/nyerere-day-rehearsals-awaiting-review
+      ok    all og tags inside the first 10KB (last at byte 613)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 2791ms, 53623 bytes
+      content-type: image/jpeg
+      content-length: 53623
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::d496l-1790292339779-549482e43b72
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 53623 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      FAIL  served in 2791ms (< 1000ms) [edge: MISS]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526
+    OPTIONS -> 204 in 552ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 408ms, 53623 bytes
+      content-type: image/jpeg
+      content-length: 53623
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::qg4qz-1790292343123-c46d44923925
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 53623 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 408ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/nyerere-day-rehearsals-awaiting-review.jpg?v=36aa097526
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 431ms, 53623 bytes
+      content-type: image/jpeg
+      content-length: 53623
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::gn8gw-1790292343537-b7e02337876e
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 53623 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 431ms (< 1000ms) [edge: HIT]
+
+=== studio-session-track-4
+    expected title:   "Studio Session — Track 4"
+    expected creator: "Juma Kileo Live"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292342351-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 925ms, 2182 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::c297p-1790292344647-564b1ca6f6ef
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  293  "Studio Session — Track 4"
+      description  @  357  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  662  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  449  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   63  "Studio Session — Track 4 - MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 662)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292343277-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 646ms, 2182 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::pr49m-1790292345565-549ad8bcdd24
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  293  "Studio Session — Track 4"
+      description  @  357  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  662  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  449  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   63  "Studio Session — Track 4 - MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 662)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292343923-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 879ms, 2182 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::7qj22-1790292346230-7a2feb65375a
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  293  "Studio Session — Track 4"
+      description  @  357  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  662  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  449  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   63  "Studio Session — Track 4 - MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 662)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292344803-ii
+    OPTIONS -> 204 in 536ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 636ms, 2182 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::wd2m5-1790292347626-24877b8a27bc
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  293  "Studio Session — Track 4"
+      description  @  357  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  662  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  449  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   63  "Studio Session — Track 4 - MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 662)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292345975-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 554ms, 4914 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::tqnpr-1790292348267-ce1c034012d1
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  405  "Studio Session — Track 4"
+      description  @  469  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  561  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  290  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   40  "Studio Session — Track 4 — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 561)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292346530-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 615ms, 2182 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::t8v99-1790292348814-36eba0b07cd7
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  293  "Studio Session — Track 4"
+      description  @  357  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  662  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  449  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   63  "Studio Session — Track 4 - MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 662)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292347146-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 553ms, 4914 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::4qjx5-1790292349431-04448d2b0e6f
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  405  "Studio Session — Track 4"
+      description  @  469  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  561  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  290  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   40  "Studio Session — Track 4 — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 561)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292347699-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 551ms, 4914 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::cvn4x-1790292349989-69ac379a93e0
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  405  "Studio Session — Track 4"
+      description  @  469  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  561  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  290  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   40  "Studio Session — Track 4 — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 561)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4?v=1790292348250-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 553ms, 4914 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::b95lg-1790292350538-dc876072eeb7
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  405  "Studio Session — Track 4"
+      description  @  469  "WATCH FREE PREVIEW · Juma Kileo Live · MTONYO+"
+      image        @  561  "https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072"
+      url          @  290  "https://video-monetization-platform-chi.vercel.app/watch/studio-session-track-4"
+      htmlTitle    @   40  "Studio Session — Track 4 — Juma Kileo Live | MTONYO+"
+      ok    og:title is the real DB title ("Studio Session — Track 4")
+      ok    og:description names the creator ("Juma Kileo Live")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/studio-session-track-4
+      ok    all og tags inside the first 10KB (last at byte 561)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 2152ms, 47954 bytes
+      content-type: image/jpeg
+      content-length: 47954
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::q65h5-1790292351091-38b747e79385
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 47954 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      FAIL  served in 2152ms (< 1000ms) [edge: MISS]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072
+    OPTIONS -> 204 in 635ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 428ms, 47954 bytes
+      content-type: image/jpeg
+      content-length: 47954
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::d8gr2-1790292353887-9a0a0750d68d
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 47954 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 428ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/studio-session-track-4.jpg?v=b33b0a6072
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 445ms, 47954 bytes
+      content-type: image/jpeg
+      content-length: 47954
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::d496l-1790292354348-12720a2b9b29
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 47954 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 445ms (< 1000ms) [edge: HIT]
+
+=== rpreplay-final1589783013-2
+    expected title:   "RPReplay Final1589783013"
+    expected creator: "Tiger"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292353111-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 924ms, 2164 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::52kvw-1790292355414-eb6580b07344
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  281  "RPReplay Final1589783013"
+      description  @  343  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  642  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  425  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   63  "RPReplay Final1589783013 - MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 642)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292354036-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 632ms, 2164 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::qd5j5-1790292356329-585e5d7ea79c
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  281  "RPReplay Final1589783013"
+      description  @  343  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  642  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  425  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   63  "RPReplay Final1589783013 - MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 642)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292354669-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 615ms, 2164 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::txrvr-1790292356954-d2d43e42aa76
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  281  "RPReplay Final1589783013"
+      description  @  343  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  642  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  425  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   63  "RPReplay Final1589783013 - MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 642)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292355284-ii
+    OPTIONS -> 204 in 549ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 628ms, 2164 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::b95lg-1790292358120-2b56b4828cf8
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  281  "RPReplay Final1589783013"
+      description  @  343  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  642  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  425  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   63  "RPReplay Final1589783013 - MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 642)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292356462-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 545ms, 4876 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::swbpq-1790292358748-f92ff8e0aab8
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  387  "RPReplay Final1589783013"
+      description  @  449  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  531  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  268  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   40  "RPReplay Final1589783013 — Tiger | MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 531)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292357008-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 641ms, 2164 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::4xzsr-1790292359297-c9d93b121425
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  281  "RPReplay Final1589783013"
+      description  @  343  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  642  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  425  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   63  "RPReplay Final1589783013 - MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 642)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292357649-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 557ms, 4876 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::99gkz-1790292359936-9e84934d9dab
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  387  "RPReplay Final1589783013"
+      description  @  449  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  531  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  268  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   40  "RPReplay Final1589783013 — Tiger | MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 531)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292358207-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 552ms, 4876 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::bcsnl-1790292360499-8b8a22eee290
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  387  "RPReplay Final1589783013"
+      description  @  449  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  531  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  268  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   40  "RPReplay Final1589783013 — Tiger | MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 531)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2?v=1790292358759-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 551ms, 4876 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::29ldb-1790292361050-216faee9dd65
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  387  "RPReplay Final1589783013"
+      description  @  449  "WATCH FREE PREVIEW · Tiger · MTONYO+"
+      image        @  531  "https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3"
+      url          @  268  "https://video-monetization-platform-chi.vercel.app/watch/rpreplay-final1589783013-2"
+      htmlTitle    @   40  "RPReplay Final1589783013 — Tiger | MTONYO+"
+      ok    og:title is the real DB title ("RPReplay Final1589783013")
+      ok    og:description names the creator ("Tiger")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/rpreplay-final1589783013-2
+      ok    all og tags inside the first 10KB (last at byte 531)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 2343ms, 41266 bytes
+      content-type: image/jpeg
+      content-length: 41266
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::d496l-1790292361906-e1f49f5dc099
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41266 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      FAIL  served in 2343ms (< 1000ms) [edge: MISS]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3
+    OPTIONS -> 204 in 560ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 619ms, 41266 bytes
+      content-type: image/jpeg
+      content-length: 41266
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::gjhqw-1790292364510-b9b3d61b2808
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41266 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 619ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/rpreplay-final1589783013-2.jpg?v=389d4e26c3
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 407ms, 41266 bytes
+      content-type: image/jpeg
+      content-length: 41266
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::hhs96-1790292365125-4372eb55695d
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 41266 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 407ms (< 1000ms) [edge: HIT]
+
+=== ugali-samaki-sunday-cooking-promo-2
+    expected title:   "222222222222"
+    expected creator: "Waqas Naveed"
+
+  [i-a] WhatsApp crawler UA, Web/Desktop (N)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292363907-i-a
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 903ms, 2204 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::wf8j7-1790292366196-f7fb2ec53b0b
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  276  "222222222222"
+      description  @  326  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  641  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  415  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   63  "222222222222 - MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 641)
+
+  [i-b] WhatsApp crawler UA, Android (A)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292364810-i-b
+    sent: {"user-agent":"WhatsApp/2.24.15.78 A","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 645ms, 2204 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-android
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::wn672-1790292367104-955c83d3d418
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  276  "222222222222"
+      description  @  326  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  641  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  415  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   63  "222222222222 - MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 641)
+
+  [i-c] WhatsApp crawler UA, iOS (I)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292365455-i-c
+    sent: {"user-agent":"WhatsApp/2.24.15.78 I","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 701ms, 2204 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-ios
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::d8gr2-1790292367752-ecddc72d752f
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  276  "222222222222"
+      description  @  326  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  641  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  415  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   63  "222222222222 - MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 641)
+
+  [ii] browser-side fetch from web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292366156-ii
+    OPTIONS -> 204 in 699ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","referer":"https://web.whatsapp.com/","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 626ms, 2204 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::22njr-1790292369150-b2671dae0c5d
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  276  "222222222222"
+      description  @  326  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  641  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  415  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   63  "222222222222 - MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 641)
+
+  [iii-a] Electron / WhatsApp Desktop UA (Mac), no Sec-Fetch at all
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292367482-iii-a
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 552ms, 4930 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::j2kld-1790292369767-979d367a83ef
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  398  "222222222222"
+      description  @  448  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  537  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  270  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   40  "222222222222 — Waqas Naveed | MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 537)
+
+  [iii-b] Electron / WhatsApp Desktop UA (Windows), fetch-shaped Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292368034-iii-b
+    sent: {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","accept":"*/*","sec-fetch-dest":"empty","sec-fetch-mode":"no-cors","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 628ms, 2204 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: crawler
+      x-crawler: whatsapp-web
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::52kvw-1790292370320-fc476931744b
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the crawler document
+      title        @  276  "222222222222"
+      description  @  326  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  641  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  415  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   63  "222222222222 - MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 641)
+
+  [iv-a] bare GET, curl-like UA, no Sec-Fetch, no Accept
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292368662-iv-a
+    sent: {"user-agent":"curl/8.4.0","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 555ms, 4930 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::hmmqk-1790292370950-f2fa8062eaf6
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  398  "222222222222"
+      description  @  448  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  537  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  270  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   40  "222222222222 — Waqas Naveed | MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 537)
+
+  [iv-b] bare GET, ordinary Chrome UA, no Sec-Fetch (Accept */*)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292369218-iv-b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"*/*","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 554ms, 4930 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::cj45c-1790292371504-b8113bbb9393
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document (either is acceptable if the tags below hold)
+      ok    the shell still boots the app (<div id="root">)
+      title        @  398  "222222222222"
+      description  @  448  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  537  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  270  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   40  "222222222222 — Waqas Naveed | MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 537)
+
+  [nav] a real browser navigation (the SPA shell path)
+    GET https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2?v=1790292369772-nav
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","upgrade-insecure-requests":"1","sec-fetch-dest":"document","sec-fetch-mode":"navigate","sec-fetch-site":"none","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 549ms, 4930 bytes
+      content-type: text/html; charset=utf-8
+      x-doc: shell
+      x-crawler: human
+      x-build: 277ecb4
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::bhb69-1790292372057-459b14d6c641
+      cache-control: public
+      vary: Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site, User-Agent, Accept-Encoding
+      access-control-allow-origin: *
+      ok    status 200
+      ok    content-type text/html
+      ok    ACAO * on the document
+      ok    served the shell document
+      ok    the shell still boots the app (<div id="root">)
+      title        @  398  "222222222222"
+      description  @  448  "WATCH FREE PREVIEW · Waqas Naveed · MTONYO+"
+      image        @  537  "https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b"
+      url          @  270  "https://video-monetization-platform-chi.vercel.app/watch/ugali-samaki-sunday-cooking-promo-2"
+      htmlTitle    @   40  "222222222222 — Waqas Naveed | MTONYO+"
+      ok    og:title is the real DB title ("222222222222")
+      ok    og:description names the creator ("Waqas Naveed")
+      ok    og:image is absolute https
+      ok    og:url is the canonical /watch/ugali-samaki-sunday-cooking-promo-2
+      ok    all og tags inside the first 10KB (last at byte 537)
+
+  documents served: {"i-a":"crawler","i-b":"crawler","i-c":"crawler","ii":"crawler","iii-a":"shell","iii-b":"crawler","iv-a":"shell","iv-b":"shell","nav":"shell"}
+  distinct og:image urls: 1
+
+  [image/bot] no Origin (native crawler)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b
+    sent: {"user-agent":"WhatsApp/2.23.20.0 N","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 1651ms, 78734 bytes
+      content-type: image/jpeg
+      content-length: 78734
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: MISS
+      x-vercel-id: sin1::iad1::qsjjx-1790292372610-16a712968b58
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 78734 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      FAIL  served in 1651ms (< 1000ms) [edge: MISS]
+
+  [image/web] Origin: web.whatsapp.com (preflight + cors GET)
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b
+    OPTIONS -> 204 in 548ms
+      access-control-allow-origin: *
+      access-control-allow-methods: GET, HEAD, OPTIONS
+      access-control-allow-headers: content-type
+      access-control-max-age: 86400
+      ok    preflight status 204
+      ok    preflight ACAO *
+      ok    preflight allows GET
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36","origin":"https://web.whatsapp.com","sec-fetch-dest":"image","sec-fetch-mode":"cors","sec-fetch-site":"cross-site","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 405ms, 78734 bytes
+      content-type: image/jpeg
+      content-length: 78734
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::m9bkg-1790292374808-3ba767285a9a
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 78734 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 405ms (< 1000ms) [edge: HIT]
+
+  [image/electron] Electron UA, no Sec-Fetch
+    GET https://video-monetization-platform-chi.vercel.app/og/card/ugali-samaki-sunday-cooking-promo-2.jpg?v=54e54de53b
+    sent: {"user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) WhatsApp/2.2412.54 Chrome/124.0.6367.243 Electron/30.0.9 Safari/537.36","host":"video-monetization-platform-chi.vercel.app"}
+    -> 200 in 504ms, 78734 bytes
+      content-type: image/jpeg
+      content-length: 78734
+      x-share-card: cdn
+      x-bucket: hit
+      x-vercel-cache: HIT
+      x-vercel-id: sin1::iad1::n5zfw-1790292375214-d64beee741e7
+      cache-control: public, max-age=86400
+      access-control-allow-origin: *
+      ok    status 200 (no redirect)
+      ok    no Location header
+      ok    content-type image/jpeg
+      ok    size 78734 bytes (< 307200)
+      ok    bytes begin with a JPEG SOI marker
+      ok    ACAO *
+      ok    served in 504ms (< 1000ms) [edge: HIT]
+
+### timings (ms, with the edge cache status the response reported)
+  nyerere-day-rehearsals-awaiting-review doc i-a             707  MISS
+  nyerere-day-rehearsals-awaiting-review doc i-b             651  MISS
+  nyerere-day-rehearsals-awaiting-review doc i-c             672  MISS
+  nyerere-day-rehearsals-awaiting-review doc ii              631  MISS
+  nyerere-day-rehearsals-awaiting-review doc iii-a           549  MISS
+  nyerere-day-rehearsals-awaiting-review doc iii-b           629  MISS
+  nyerere-day-rehearsals-awaiting-review doc iv-a            556  MISS
+  nyerere-day-rehearsals-awaiting-review doc iv-b            549  MISS
+  nyerere-day-rehearsals-awaiting-review doc nav             539  MISS
+  nyerere-day-rehearsals-awaiting-review image bot          2791  MISS
+  nyerere-day-rehearsals-awaiting-review image web           408  HIT
+  nyerere-day-rehearsals-awaiting-review image electron      431  HIT
+  studio-session-track-4           doc i-a             925  MISS
+  studio-session-track-4           doc i-b             646  MISS
+  studio-session-track-4           doc i-c             879  MISS
+  studio-session-track-4           doc ii              636  MISS
+  studio-session-track-4           doc iii-a           554  MISS
+  studio-session-track-4           doc iii-b           615  MISS
+  studio-session-track-4           doc iv-a            553  MISS
+  studio-session-track-4           doc iv-b            551  MISS
+  studio-session-track-4           doc nav             553  MISS
+  studio-session-track-4           image bot          2152  MISS
+  studio-session-track-4           image web           428  HIT
+  studio-session-track-4           image electron      445  HIT
+  rpreplay-final1589783013-2       doc i-a             924  MISS
+  rpreplay-final1589783013-2       doc i-b             632  MISS
+  rpreplay-final1589783013-2       doc i-c             615  MISS
+  rpreplay-final1589783013-2       doc ii              628  MISS
+  rpreplay-final1589783013-2       doc iii-a           545  MISS
+  rpreplay-final1589783013-2       doc iii-b           641  MISS
+  rpreplay-final1589783013-2       doc iv-a            557  MISS
+  rpreplay-final1589783013-2       doc iv-b            552  MISS
+  rpreplay-final1589783013-2       doc nav             551  MISS
+  rpreplay-final1589783013-2       image bot          2343  MISS
+  rpreplay-final1589783013-2       image web           619  HIT
+  rpreplay-final1589783013-2       image electron      407  HIT
+  ugali-samaki-sunday-cooking-promo-2 doc i-a             903  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc i-b             645  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc i-c             701  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc ii              626  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc iii-a           552  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc iii-b           628  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc iv-a            555  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc iv-b            554  MISS
+  ugali-samaki-sunday-cooking-promo-2 doc nav             549  MISS
+  ugali-samaki-sunday-cooking-promo-2 image bot          1651  MISS
+  ugali-samaki-sunday-cooking-promo-2 image web           405  HIT
+  ugali-samaki-sunday-cooking-promo-2 image electron      504  HIT
+
+4 FAILED CHECK(S)

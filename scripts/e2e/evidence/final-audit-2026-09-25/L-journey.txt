@@ -1,0 +1,112 @@
+
+==================== chromium desktop
+  account: e2e+L299494123@mtonyo.test
+  PASS  registered and signed in (landed /dashboard)
+  PASS  Home renders, with Trending
+  PASS  Explore renders the catalogue
+  PASS  Save to My List from the card is stored
+  PASS  the card opens the exact video
+  PASS  before paying: kind=preview, cut-off 217s
+  PASS  the preview autoplays muted (t=0.6, muted=true)
+  PASS  the preview stops by itself at the cut-off (216.9s of 217s)
+  PASS  the sandbox payment completes and the sheet closes itself
+  PASS  after paying: kind=full
+  PASS  the film continues from the stop point by itself (217.0s vs 216.9s), no extra button
+  PASS  no paywall left on the page
+  PASS  Follow from the watch page is stored (1 creator followed)
+  FAIL  the Free + Ads video shows the advert first
+  PASS  with a countdown once it airs ("Skip in 5")
+  PASS  Library: Purchased and My List hold it
+  PASS  Continue Watching holds it after browsing away
+  PASS  Share → WhatsApp carries the exact watch link
+  PASS  and WhatsApp gets a rich card for it (title + 200 image/jpeg)
+  PASS  logs back in on one attempt (autofill-style)
+  PASS  Library state survived logout/login (Purchased + My List rows, the film listed)
+  PASS  a cold shared link lands on the exact video
+  PASS  and its preview autoplays muted (t=0.6)
+  PASS  the creator's public page lists their videos with Watch (20) and Share (10)
+
+==================== Pixel 7
+  account: e2e+L299567392@mtonyo.test
+  PASS  registered and signed in (landed /dashboard)
+  PASS  Home renders, with Trending
+  PASS  Explore renders the catalogue
+  PASS  Save to My List from the card is stored
+  PASS  the card opens the exact video
+  PASS  before paying: kind=preview, cut-off 217s
+  PASS  the preview autoplays muted (t=0.5, muted=true)
+  PASS  the preview stops by itself at the cut-off (216.9s of 217s)
+  PASS  the sandbox payment completes and the sheet closes itself
+  PASS  after paying: kind=full
+  PASS  the film continues from the stop point by itself (217.0s vs 216.9s), no extra button
+  PASS  no paywall left on the page
+  PASS  Follow from the watch page is stored (1 creator followed)
+  FAIL  the Free + Ads video shows the advert first
+  PASS  with a countdown once it airs ("Skip in 5")
+  PASS  Library: Purchased and My List hold it
+  PASS  Continue Watching holds it after browsing away
+  PASS  Share → WhatsApp carries the exact watch link
+  PASS  and WhatsApp gets a rich card for it (title + 200 image/jpeg)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('button').filter({ hasText: /log out/i }).first()
+    - locator resolved to <button class="side-link">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - element is outside of the viewport
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - element is outside of the viewport
+    - retrying click action
+      - waiting 100ms
+    57 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - element is outside of the viewport
+     - retrying click action
+       - waiting 500ms
+
+    at C:\Users\HP\AppData\Local\Temp\claude\d--fiverr-video-monetization-platform\4659fea6-934f-447d-a027-03364af2e35c\scratchpad\audit\secL.mjs:122:59 {
+  log: [
+    "  - waiting for locator('button').filter({ hasText: /log out/i }).first()",
+    '    - locator resolved to <button class="side-link">…</button>',
+    '  - attempting click action',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is visible, enabled and stable',
+    '      - scrolling into view if needed',
+    '      - done scrolling',
+    '      - element is outside of the viewport',
+    '    - retrying click action',
+    '    - waiting 20ms',
+    '    2 × waiting for element to be visible, enabled and stable',
+    '      - element is visible, enabled and stable',
+    '      - scrolling into view if needed',
+    '      - done scrolling',
+    '      - element is outside of the viewport',
+    '    - retrying click action',
+    '      - waiting 100ms',
+    '    57 × waiting for element to be visible, enabled and stable',
+    '       - element is visible, enabled and stable',
+    '       - scrolling into view if needed',
+    '       - done scrolling',
+    '       - element is outside of the viewport',
+    '     - retrying click action',
+    '       - waiting 500ms'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.19.0
+exit=1

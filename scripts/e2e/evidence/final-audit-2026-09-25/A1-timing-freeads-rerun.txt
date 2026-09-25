@@ -1,0 +1,12 @@
+  desktop ugali-samaki-sunday-cooking            run 1: poster 1577 ms, playing 3966 ms
+  desktop ugali-samaki-sunday-cooking            run 2: poster 730 ms, playing 3179 ms
+  desktop ugali-samaki-sunday-cooking            run 3: poster 736 ms, playing 3786 ms
+  desktop ugali-samaki-sunday-cooking            run 4: poster 736 ms, playing 3260 ms
+  desktop ugali-samaki-sunday-cooking            run 5: poster 749 ms, playing 3083 ms
+MEDIAN desktop free+ads, first frame = the advert (signed out)  poster 736 ms · playing 3260 ms · (5/5 reached playing)
+  pixel   ugali-samaki-sunday-cooking            run 1: poster 660 ms, playing 8089 ms
+  pixel   ugali-samaki-sunday-cooking            run 2: poster 572 ms, playing 8106 ms
+  pixel   ugali-samaki-sunday-cooking            run 3: poster 623 ms, playing 8103 ms
+  pixel   ugali-samaki-sunday-cooking            run 4: poster 609 ms, playing 8133 ms
+  pixel   ugali-samaki-sunday-cooking            run 5: poster 581 ms, playing 8284 ms
+MEDIAN pixel   free+ads, first frame = the advert (signed out)  poster 609 ms · playing 8106 ms · (5/5 reached playing)

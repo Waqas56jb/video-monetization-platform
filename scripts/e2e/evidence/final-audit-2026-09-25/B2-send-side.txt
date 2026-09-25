@@ -1,0 +1,66 @@
+
+### webkit desktop (the MacBook)
+  PASS  the share sheet opens
+  <a> target=_self href=whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.verce
+  PASS  the control is an anchor, not a button
+  PASS  it carries an href before anything is clicked
+  PASS  the laptop opens the WhatsApp APP
+  PASS  handing the scheme to the operating system, keeping this page
+  PASS  and the message is the watch URL
+  PASS  a press at its centre reaches the link itself (hit <small>)
+  PASS  the click opens no window itself (window.open called 0x)
+  PASS  no popup is created — the scheme goes straight to the OS
+  PASS  and the watch page is not navigated away
+  PASS  with no app to take the scheme, a fallback link appears within 4 s
+  fallback: "Opening WhatsApp… not installed? Open WhatsApp Web" -> https://web.whatsapp.com/send?text=https%3A%2F%2Fvideo-monet
+  PASS  pointing at WhatsApp Web
+  PASS  carrying the same watch URL
+  PASS  in a new tab
+  PASS  Copy link is still offered next to it
+
+### chromium desktop (Windows)
+  PASS  the share sheet opens
+  <a> target=_self href=whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.verce
+  PASS  the control is an anchor, not a button
+  PASS  it carries an href before anything is clicked
+  PASS  the laptop opens the WhatsApp APP
+  PASS  handing the scheme to the operating system, keeping this page
+  PASS  and the message is the watch URL
+  PASS  a press at its centre reaches the link itself (hit <b>)
+  PASS  the click opens no window itself (window.open called 0x)
+  PASS  no popup is created — the scheme goes straight to the OS
+  PASS  and the watch page is not navigated away
+  PASS  with no app to take the scheme, a fallback link appears within 4 s
+  fallback: "Opening WhatsApp… not installed? Open WhatsApp Web" -> https://web.whatsapp.com/send?text=https%3A%2F%2Fvideo-monet
+  PASS  pointing at WhatsApp Web
+  PASS  carrying the same watch URL
+  PASS  in a new tab
+  PASS  Copy link is still offered next to it
+
+### iPhone 14 · webkit
+  PASS  the share sheet opens
+  <a> target=_self href=whatsapp://send?text=https%3A%2F%2Fvideo-monetization-platform-chi.verce
+  PASS  the control is an anchor, not a button
+  PASS  it carries an href before anything is clicked
+  PASS  the phone opens the WhatsApp APP
+  PASS  handing the scheme to the operating system, keeping this page
+  PASS  and the message is the watch URL
+  PASS  a press at its centre reaches the link itself (hit <b>)
+  PASS  the phone redirected itself to WhatsApp Web, as before
+  PASS  and either way, without a popup
+
+### iPad Pro 11 · webkit
+  PASS  the share sheet opens
+  <a> target=_blank href=https://web.whatsapp.com/send?text=https%3A%2F%2Fvideo-monetization-plat
+  PASS  the control is an anchor, not a button
+  PASS  it carries an href before anything is clicked
+  PASS  the iPad keeps WhatsApp Web, unchanged
+  PASS  in a new tab
+  PASS  and the message is the watch URL
+  PASS  a press at its centre reaches the link itself (hit <b>)
+  PASS  the click opens no window itself (window.open called 0x)
+  PASS  the iPad still gets its tab
+  PASS  no desktop fallback link on an iPad
+  PASS  Copy link is still offered next to it
+
+ALL PASS

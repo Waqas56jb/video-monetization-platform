@@ -1,0 +1,42 @@
+
+signed in as e2e+8238822854@mtonyo.test → ae185cef-3556-4248-8a62-a14b9d8cb3b4
+working video: how-to-cook-pilau-properly → ddd0fdea-1198-4fce-a032-1010bf6f6a2c
+
+### My List — save, twice, then unsave
+  POST  → 200 {"videoId":"ddd0fdea-1198-4fce-a032-1010bf6f6a2c","saved":true}
+  POST  → 200 {"videoId":"ddd0fdea-1198-4fce-a032-1010bf6f6a2c","saved":true}   (same call again)
+  PASS  saving twice is one row, not an error
+2026-09-25 01:18:50 info  postgres pool: max=3 (serverless sizing)
+  PASS  and the database holds exactly one row (1)
+  PASS  GET /api/library/saved lists it
+  PASS  with a poster — the column list the blank-card bug came from
+
+### the four rows, in one request
+  GET /api/library → 200  keys: videos, purchased, continueWatching, myList, recentlyWatched, savedIds
+  PASS  purchased is present
+  PASS  continueWatching is present
+  PASS  myList is present
+  PASS  recentlyWatched is present
+  counts — purchased 3, continue 5, myList 1, recent 5
+  PASS  My List carries the video just saved
+  PASS  and the saved ids ride along, so cards cost no extra request
+  PASS  `videos` still means Purchased — the old shape is intact
+
+### Remove from history — hides the row, keeps the position
+  history row: 607d4719-1905-4f1a-9c55-993647a543d0 at 17s
+  PASS  it is in Recently Watched before hiding
+  DELETE /api/library/history/… → 200 {"videoId":"607d4719-1905-4f1a-9c55-993647a543d0","hidden":true}
+  PASS  it is gone from Recently Watched
+  PASS  and gone from Continue Watching — one table, both rows
+  database row: seconds=17, hidden_at=set
+  PASS  THE POSITION IS KEPT — the row was hidden, not deleted
+  PASS  and hidden_at is set
+  PASS  reopening the film still resumes (resumeFromSeconds=17)
+
+### watching more of a hidden video puts it back
+  PASS  hidden_at is cleared — no second control needed to undo the first
+  PASS  and it is back in Recently Watched
+
+  (account left as it was found)
+
+ALL PASS

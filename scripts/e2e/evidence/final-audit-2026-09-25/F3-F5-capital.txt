@@ -1,0 +1,25 @@
+capital_months_required = 6; demo.asha months with earnings = 2
+
+### at the real rule (6 months)
+  PASS  an ineligible creator is refused (400: You need 4 more month(s) of verified earnings before requesting a review)
+
+### temporarily 1 month, so a real request can exist -> 1
+  PASS  F5 no consent field -> 400: "You need to consent to MTONYO+ sharing your verified earnings and account data with AirPay Microfinance before requesting a review"
+  PASS  F5 consent:false -> 400
+  PASS  with consent, the request is accepted (200) — id f9df9e4d-2dbf-4e7d-89a6-294eb574a0fa
+  PASS  consent recorded at 2026-09-25T00:36:36.143Z, status under_review
+  PASS  F3 a second request while one is open -> 409: "You already have an open Creator Capital request"
+  PASS  and exactly ONE open request exists in the database (1)
+
+### F4 admin side
+  PASS  Record AirPay Approval with no amount and no terms -> 400: "AirPay's approved amount and repayment terms are both required to record an approval"
+  PASS  with an amount but no repayment terms -> 400
+  PASS  with terms but no amount -> 400
+  PASS  publishing an offer that was never approved -> 409: "Only an approved request can have its offer published"
+  PASS  none of those changed the request
+
+close it: Record AirPay Decline -> 200 (declined)
+restore capital_months_required -> 6
+  PASS  setting back to 6 in the database
+
+ALL PASS
