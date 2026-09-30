@@ -8,11 +8,19 @@ let appBooted = false
  * Short brand splash for non-landing routes.
  * Landing mounts immediately with its own brief overlay — never waits on assets.
  */
+/**
+ * A watch page already paints its own loading state in the first HTML — the
+ * player box with the film's poster and the MTONYO+ ring (api/watch.js). The
+ * splash covered that for ~1.2 s and then uncovered it again: poster → black
+ * splash → poster, on every shared link (measured 2026-09-30, all six films).
+ */
+const OWN_LOADER = /^\/(watch|s)(\/|$)/
+
 export default function Preloader() {
   const { pathname } = useLocation()
   const [hide, setHide] = useState(false)
-  const [gone, setGone] = useState(() => pathname === '/' || appBooted)
-  const skip = pathname === '/' || appBooted
+  const skip = pathname === '/' || appBooted || OWN_LOADER.test(pathname)
+  const [gone, setGone] = useState(() => skip)
 
   useEffect(() => {
     if (skip) {
