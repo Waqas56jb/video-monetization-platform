@@ -247,3 +247,32 @@ Still open for the client: **Creator Capital after a decline**: may a declined c
 | Cleanup after testing | Done | The 3 journey purchases were refunded through the admin path (the creator's lifetime earnings are back to their pre-test figure, TZS 145,998), the 3 test accounts were removed, and their leftover logins were deleted (0 orphaned logins). Split still **60** in the DB. |
 
 Still needs the client's own device: Safari/iPhone video playback (including whether any white frame remains there), an actual WhatsApp send, the Instagram/TikTok app hand-off.
+
+---
+
+## Startup polish — "one stable state" on every video (client's last player item, 2026-09-30)
+
+Measured with a frame-by-frame screen recording of the player area (CDP screencast, every painted frame classified WHITE / BLACK / BRAND-dark / PICTURE), all **6** published videos, entered from a card and from a cold shared link, on a Pixel 7 profile (CPU x4, Fast 3G) and on desktop.
+
+| Cause found | Fix | Commit |
+|---|---|---|
+| Cold link: blank page for 2–4.5 s while the app's scripts loaded, then the player box appeared | The first HTML now contains the player box at the film's shape, with its poster and the MTONYO+ ring (before any script) | `fdd1f9a`, `202cab5` |
+| Card tap: a skeleton with a different layout, then the player | The skeleton draws Watch's own player box with the same poster + ring | `fdd1f9a` |
+| 60–280 ms black while the poster decoded again: every page signed a different thumbnail URL | Thumbnail tokens are bucketed (6 h), so card, skeleton and player share one cached image | `c5e666a` |
+| Black stage under the loader; black again when it lifted onto the film's dark opening frames | Loader stage is the brand's dark gradient; it crossfades out; the film reports its first frame at 0.6 s of playback | `fdd1f9a` |
+| The 20 s ceiling fired before Cloudflare's first frame on a slow phone and uncovered a black iframe | Ceiling 45 s (autoplay-refused / failed / stalled exits unchanged) | `2d1757a` |
+| Cold link: the app's brand splash covered the poster box for ~1.2 s | Splash skips watch routes | `7d19070` |
+
+No player remounts were found (1 iframe load per player). The issue was not specific to older uploads: films with dark openings or slower loads showed it more.
+
+**Result on production (`7d19070`), 18 runs:**
+
+| Entry | White | Black before playback | Player box + loader | Poster | First frame |
+|---|---|---|---|---|---|
+| Pixel 7, card (6) | none | **none** (before: 6/6) | 0.2–1.1 s | same frame | 12–25 s |
+| Pixel 7, cold link (6) | only at t≈0, before the first byte (browser) | **none** (before: 6/6, 2–4 flashes each) | 1.8–3.3 s (before 4.2–7.9 s) | 1.8–3.3 s; 2 of 6 at 5.7 / 8.0 s on a first-ever open (share-meta miss; the brand ring shows meanwhile) | 19–28 s |
+| Desktop, card (6) | none | **none** | 0.8–1.5 s | same frame | 4.0–6.2 s |
+
+**Where the time to first frame goes** (network waterfall, Pixel 7, 15.3 s): our API 0.4–0.8 s; iframe requested 1.3 s; Cloudflare's 352 KB player script 2.0–4.5 s; its execution on the phone's CPU ~4.5–10.6 s; manifest 10.6 s; it then buffers 4 video + 4 audio segments (650 KB at 240p) before the first frame. Tried and not shipped: warming Cloudflare's player in a hidden iframe. A paired A/B gave 1–3 s, inconsistently, at ~400 KB of data per visitor. The large remaining lever is replacing the Cloudflare iframe with a native player (separate scope).
+
+Still needs the client's own device: iPhone Safari and WhatsApp's in-app browser (their own white before the first byte is outside any website's control).
