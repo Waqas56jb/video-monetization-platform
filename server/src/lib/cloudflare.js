@@ -231,7 +231,7 @@ export async function createSigningKey() {
  * URL shared with a friend stops working within minutes and never unlocks a
  * video the friend has not paid for.
  */
-export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable = false } = {}) {
+export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable = false, bucketSeconds = 0 } = {}) {
   if (!capabilities.signedPlayback) {
     throw serviceUnavailable(
       'Signed playback is not configured. Run "npm run cf:key" once and put the ' +
@@ -239,12 +239,17 @@ export function signPlaybackToken(uid, { expiresInSeconds = 3600, downloadable =
     )
   }
 
-  const now = Math.floor(Date.now() / 1000)
+  /* With a bucket, every token signed inside the same window is byte-identical
+     (RS256 here is deterministic), so the URL it makes is too — the browser and
+     the CDN can reuse one copy. Expiry is measured from the END of the window,
+     so a token is never handed out with less than `expiresInSeconds` left. */
+  const real = Math.floor(Date.now() / 1000)
+  const now = bucketSeconds > 0 ? real - (real % bucketSeconds) : real
   const header = { alg: 'RS256', kid: env.cloudflare.streamKeyId }
   const payload = {
     sub: uid,
     kid: env.cloudflare.streamKeyId,
-    exp: now + expiresInSeconds,
+    exp: now + (bucketSeconds > 0 ? bucketSeconds : 0) + expiresInSeconds,
     nbf: now - 30, // small skew allowance for phones with a drifting clock
     downloadable,
   }
@@ -314,8 +319,13 @@ export function cloudflareThumbnail(remote) {
  * the trade is the other way round — a day of validity costs nothing and means
  * a cached list response keeps working.
  */
+/* Six-hour windows: a card, its watch page and the page's first HTML all ask for
+   the same poster URL, so the one already downloaded is the one drawn — no
+   second fetch and no black gap while it decodes (client, 2026-09-30). */
+export const THUMBNAIL_TOKEN_BUCKET = 6 * 3600
+
 export function signedThumbnailUrl(uid, { height = 400, expiresInSeconds = 86_400 } = {}) {
-  const token = signPlaybackToken(uid, { expiresInSeconds })
+  const token = signPlaybackToken(uid, { expiresInSeconds, bucketSeconds: THUMBNAIL_TOKEN_BUCKET })
   return playbackUrls(token, { thumbnailHeight: height }).thumbnail
 }
 
