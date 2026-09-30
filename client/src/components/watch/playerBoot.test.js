@@ -91,7 +91,9 @@ test('one loading screen: poster + one MTONYO+ indicator until real frames move,
   // It can never hide a player that needs a person.
   assert.match(watch, /onAutoplayBlocked=\{\(\) => setLoaderReleased\(true\)\}/)
   assert.match(watch, /onFailed=\{\(\) => setLoaderReleased\(true\)\}/)
-  assert.match(watch, /setTimeout\(\(\) => setLoaderReleased\(true\), 20000\)/)
+  assert.match(watch, /setTimeout\(\(\) => setLoaderReleased\(true\), 45000\)/)
+  // 20 s fired before Cloudflare's first frame on a slow phone and uncovered a black iframe.
+  assert.doesNotMatch(watch, /setLoaderReleased\(true\), 20000\)/)
   assert.match(watch, /!\(waitingForPlayback && bootStage >= 3\)/)
   assert.match(watch, /!showLockGate &&/)
   const css = readFileSync(join(dir, '../../styles/realdata.css'), 'utf8')

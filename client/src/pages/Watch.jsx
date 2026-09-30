@@ -192,7 +192,13 @@ export default function Watch() {
    * "Advert loading… / starting…" in turn. It lifts on the first frame, when
    * autoplay is refused (the viewer needs the player's own Play), on a failed
    * player, when the boot sequence reaches "Still not starting", and after
-   * 20 s at the latest — it can never hide a player that needs a person.
+   * 45 s at the latest — it can never hide a player that needs a person.
+   *
+   * The ceiling was 20 s. On a slow phone (Pixel 7, CPU x4, Fast 3G —
+   * 2026-09-30) Cloudflare's own player routinely needs 15-26 s to its first
+   * frame, so the ceiling fired first and lifted the poster onto the still-black
+   * iframe: the one black flash left in the whole sequence. Every case that
+   * needs a person has its own exit above; this is only the last-resort net.
    */
   const [firstFrame, setFirstFrame] = useState(false)
   const [loaderReleased, setLoaderReleased] = useState(false)
@@ -202,7 +208,7 @@ export default function Watch() {
   }, [videoId])
   useEffect(() => {
     if (firstFrame || loaderReleased) return
-    const t = setTimeout(() => setLoaderReleased(true), 20000)
+    const t = setTimeout(() => setLoaderReleased(true), 45000)
     return () => clearTimeout(t)
   }, [videoId, firstFrame, loaderReleased])
 
