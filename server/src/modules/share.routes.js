@@ -121,9 +121,6 @@ router.get(
         creator: video.creator_name ? { name: video.creator_name } : null,
         thumbnailUrl: thumbnailFor(video),
         sourceKey,
-        /* So the page's first HTML can draw the player box at its real shape. */
-        width: video.width || null,
-        height: video.height || null,
       },
       cardUrl,
       sourceKey,

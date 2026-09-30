@@ -120,4 +120,7 @@ test('one loading state from tap to picture: same box, same poster, no bare blac
   assert.match(index, /<div id="root"><div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"><\/span><\/div><\/div>/)
   assert.ok(shell.includes(`const BOOT_MARKUP = '<div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"></span></div>'`))
   assert.match(shell, /html = html\.replace\(BOOT_MARKUP, bootPlayer\(shape, poster\)\)/)
+  // /api/public/videos/:slug/share-meta is flat — no `video` wrapper.
+  assert.match(shell, /bootShape\(meta\?\.width, meta\?\.height\)/)
+  assert.match(shell, /absoluteMedia\(meta\?\.thumbnailUrl\)/)
 })

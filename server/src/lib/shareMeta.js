@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { publicOgCardUrl, publicWatchUrl } from './publicWatchUrl.js'
 import { log } from './logger.js'
 import { SHARE_CARD_BUCKET, versionedCardPath } from './shareCardObjectPath.js'
+import { thumbnailFor } from '../services/entitlement.js'
 
 export const SLUG_RE = /^[a-z0-9-]+$/
 
@@ -152,6 +153,12 @@ export async function loadShareMeta(slug) {
     verified: Boolean(video.creator_verified),
     durationSeconds: video.duration_seconds,
     freePreviewSeconds: video.free_preview_seconds,
+    /* The page a shared link opens paints the player box — at this shape, with
+       this poster — in its first HTML, before any script has run
+       (client/api/watch.js). Same poster address the cards use. */
+    thumbnailUrl: thumbnailFor(video),
+    width: video.width || null,
+    height: video.height || null,
     sourceKey,
     cardUrl: shareCardUrl(video.slug, sourceKey, cardStatus),
     watchUrl,

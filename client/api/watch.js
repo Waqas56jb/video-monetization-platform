@@ -462,8 +462,8 @@ export default async function handler(req, res) {
   let html = stripHeadMeta(shell.replace(/<!--[\s\S]*?-->/g, ''))
   const metaBlock = buildMetaBlock({ canonical, title, creator, description, cardUrl })
   html = html.replace(/<head>/i, `<head>\n${metaBlock}`)
-  const shape = bootShape(meta?.video?.width, meta?.video?.height)
-  const poster = absoluteMedia(meta?.video?.thumbnailUrl)
+  const shape = bootShape(meta?.width, meta?.height)
+  const poster = absoluteMedia(meta?.thumbnailUrl)
   const inject = {
     slug,
     title,

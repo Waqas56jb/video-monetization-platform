@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const src = readFileSync(new URL('./cloudflare.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
-const share = readFileSync(new URL('../modules/share.routes.js', import.meta.url), 'utf8')
+const share = readFileSync(new URL('./shareMeta.js', import.meta.url), 'utf8')
 
 test('thumbnail tokens are stable inside a 6-hour window, so one poster URL is reused everywhere', () => {
   assert.match(src, /export const THUMBNAIL_TOKEN_BUCKET = 6 \* 3600/)
@@ -16,7 +16,8 @@ test('thumbnail tokens are stable inside a 6-hour window, so one poster URL is r
   assert.ok(playbackCalls.every((c) => !/bucketSeconds/.test(c) || /THUMBNAIL_TOKEN_BUCKET/.test(c)))
 })
 
-test('share-meta carries the video shape so the first HTML can draw the player box', () => {
+test('share-meta carries the poster and shape so the first HTML can draw the player box', () => {
+  assert.match(share, /thumbnailUrl: thumbnailFor\(video\),/)
   assert.match(share, /width: video\.width \|\| null,/)
   assert.match(share, /height: video\.height \|\| null,/)
 })
