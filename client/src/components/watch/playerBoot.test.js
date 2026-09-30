@@ -77,11 +77,15 @@ test('a film held under an advert stays held — autoplay in the URL cannot star
 
 test('one loading screen: poster + one MTONYO+ indicator until real frames move, with every way out', () => {
   // Real airtime only — not canplay/loadedmetadata, which fire seconds before a frame moves.
-  assert.match(player, /measurePerf\('playerBoot', 'boot-to-first-frame'\)\s*onPlayingRef\.current\?\.\(\)\s*onFirstFrameRef\.current\?\.\(\)/)
+  assert.match(player, /measurePerf\('playerBoot', 'boot-to-first-frame'\)\s*onPlayingRef\.current\?\.\(\)/)
+  // ...and only once the film is past its opening black (firstFrameAt), so the
+  // poster hands straight to picture instead of to a black stage.
+  assert.match(player, /if \(!revealed && t >= firstFrameAtRef\.current\) \{\s*revealed = true\s*onFirstFrameRef\.current\?\.\(\)/)
+  assert.match(watch, /firstFrameAt=\{0\.6\}/)
   const ready = player.slice(player.indexOf('const announceReady = () => {'), player.indexOf("player.addEventListener('loadedmetadata', announceReady)"))
   assert.doesNotMatch(ready, /onFirstFrame/, 'ready is not a first frame')
   // The overlay, over the whole box, lifted by either first frame — film or advert.
-  assert.match(watch, /className="player-loading"/)
+  assert.match(watch, /<PlayerLoading\s+poster=\{posterSrc\}\s+show=\{/)
   assert.match(watch, /onFirstFrame=\{\(\) => setFirstFrame\(true\)\}/)
   assert.match(watch, /onAirtime=\{\(\) => \{\s*setFirstFrame\(true\)/)
   // It can never hide a player that needs a person.
@@ -92,4 +96,28 @@ test('one loading screen: poster + one MTONYO+ indicator until real frames move,
   assert.match(watch, /!showLockGate &&/)
   const css = readFileSync(join(dir, '../../styles/realdata.css'), 'utf8')
   assert.match(css, /\.player-loading \{[^}]*z-index: 5;/)
+})
+
+test('one loading state from tap to picture: same box, same poster, no bare black, no cut', () => {
+  const skeleton = readFileSync(join(dir, 'WatchSkeleton.jsx'), 'utf8')
+  const loading = readFileSync(join(dir, 'PlayerLoading.jsx'), 'utf8')
+  const css = readFileSync(join(dir, '../../styles/realdata.css'), 'utf8')
+  const index = readFileSync(join(dir, '../../../index.html'), 'utf8')
+  const shell = readFileSync(join(dir, '../../../api/watch.js'), 'utf8')
+  // The skeleton draws Watch's own player box with the same loader in it.
+  assert.match(skeleton, /className=\{`player is-\$\{shape\.orientation\}`\}/)
+  assert.match(skeleton, /<PlayerLoading poster=\{thumb\} \/>/)
+  // A cold link's poster comes from the page itself, only for its own slug.
+  assert.match(skeleton, /m\.slug === videoId/)
+  // Every layer uses the card's poster address — one download, no re-decode.
+  assert.match(watch, /const posterSrc = routePreview\?\.thumb \|\|/)
+  assert.doesNotMatch(watch, /src=\{mediaUrl\(v\.thumbnailUrl\)\}/)
+  // Fades out rather than unmounting on the frame the film appears.
+  assert.match(loading, /is-leaving/)
+  assert.match(css, /\.player-loading\.is-leaving \{\s*opacity: 0;/)
+  assert.doesNotMatch(css.slice(css.indexOf('.player-loading {'), css.indexOf('.player-loading.is-leaving')), /background: #000;/)
+  // First HTML: the ring before any script; /watch swaps in the film's box + poster.
+  assert.match(index, /<div id="root"><div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"><\/span><\/div><\/div>/)
+  assert.ok(shell.includes(`const BOOT_MARKUP = '<div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"></span></div>'`))
+  assert.match(shell, /html = html\.replace\(BOOT_MARKUP, bootPlayer\(shape, poster\)\)/)
 })

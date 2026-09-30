@@ -40,6 +40,7 @@ import { takeWarmedVideo, takeWarmedPlayback, takeWarmedAds, dropWarmedWatch } f
 import { watchLockState } from '@/lib/watchLock'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
+import PlayerLoading from '@/components/watch/PlayerLoading'
 
 /**
  * Watching a video.
@@ -949,6 +950,10 @@ export default function Watch() {
   /** How much of the film is behind the paywall — the part worth paying for. */
   const lockedRemainder = Math.max(0, Number(v.durationSeconds || 0) - previewSeconds)
   const shape = videoShape(v.width || measured?.width, v.height || measured?.height)
+  /* One poster address for every layer — the card's, which the browser already
+     holds. A second address for the same picture is a second download and a
+     black frame while it decodes. */
+  const posterSrc = routePreview?.thumb || (v.thumbnailUrl ? mediaUrl(v.thumbnailUrl) : null)
   /** After preview: cinematic lock on the player — payment sheet only on tap. */
   const showLockGate =
     needsPayment &&
@@ -1003,7 +1008,7 @@ export default function Watch() {
               {v.thumbnailUrl ? (
                 <img
                   className="stream-poster"
-                  src={mediaUrl(v.thumbnailUrl)}
+                  src={posterSrc}
                   alt=""
                   draggable={false}
                 />
@@ -1055,7 +1060,7 @@ export default function Watch() {
               {v.thumbnailUrl ? (
                 <img
                   className="stream-poster"
-                  src={mediaUrl(v.thumbnailUrl)}
+                  src={posterSrc}
                   alt=""
                   draggable={false}
                 />
@@ -1086,10 +1091,10 @@ export default function Watch() {
                is the thumbnail until the ads answer comes back. */
             <>
               <div className="stream-shell is-booting" aria-hidden="true">
-                {v.thumbnailUrl ? (
+                {posterSrc ? (
                   <img
                     className="stream-poster"
-                    src={mediaUrl(v.thumbnailUrl)}
+                    src={posterSrc}
                     alt=""
                     draggable={false}
                   />
@@ -1109,7 +1114,7 @@ export default function Watch() {
                    boot block above — without it, the moment this component
                    mounts is a hard cut to the shell's plain black while the
                    iframe is still transparent. */
-                poster={v.thumbnailUrl ? mediaUrl(v.thumbnailUrl) : null}
+                poster={posterSrc}
                 /* The server's stored position is the authority; the local hint
                    only covers the moment straight after payment, before the
                    reloaded playback has come back. */
@@ -1149,6 +1154,9 @@ export default function Watch() {
                   if (activeAd) return
                   setContinueReady(true)
                 }}
+                /* Past the film's opening black, so the poster hands straight
+                   to picture. */
+                firstFrameAt={0.6}
                 onFirstFrame={() => setFirstFrame(true)}
                 onAutoplayBlocked={() => setLoaderReleased(true)}
                 onFailed={() => setLoaderReleased(true)}
@@ -1241,24 +1249,20 @@ export default function Watch() {
             </div>
           )}
 
-          {!firstFrame &&
-            !loaderReleased &&
-            !showLockGate &&
-            !previewOver &&
-            !(justPaid && !continueReady) &&
-            !p?.unavailable &&
-            !p?.previewPending &&
-            !(waitingForPlayback && bootStage >= 3) &&
-            (waitingForPlayback || Boolean(p?.playback?.iframe)) && (
-              <div className="player-loading" role="status" aria-label="Loading video">
-                {v?.thumbnailUrl ? (
-                  <img className="player-loading-poster" src={mediaUrl(v.thumbnailUrl)} alt="" draggable={false} />
-                ) : (
-                  <div className="player-loading-poster stream-poster-fallback" aria-hidden="true" />
-                )}
-                <span className="mt-loader" aria-hidden="true" />
-              </div>
-            )}
+          <PlayerLoading
+            poster={posterSrc}
+            show={
+              !firstFrame &&
+              !loaderReleased &&
+              !showLockGate &&
+              !previewOver &&
+              !(justPaid && !continueReady) &&
+              !p?.unavailable &&
+              !p?.previewPending &&
+              !(waitingForPlayback && bootStage >= 3) &&
+              (waitingForPlayback || Boolean(p?.playback?.iframe))
+            }
+          />
 
           {justPaid && !continueReady && (
             <div className="continue-veil" aria-live="polite">

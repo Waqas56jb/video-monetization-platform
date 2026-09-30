@@ -17,6 +17,9 @@ export function toCard(v, { owned = false } = {}) {
     id: v.id,
     slug: v.slug,
     thumb: mediaUrl(v.thumbnailUrl),
+    /* Watch draws its player box at the film's shape from the first paint. */
+    width: v.width || null,
+    height: v.height || null,
     time: v.durationSeconds ? duration(v.durationSeconds) : null,
     title: v.title,
     author: v.creator?.name || null,

@@ -91,6 +91,12 @@ export default function StreamPlayer({
   onReady,
   /** Frames are genuinely advancing (not merely ready) — the first time only. */
   onFirstFrame,
+  /**
+   * Seconds of playback before `onFirstFrame` fires. Most films open on a few
+   * hundred milliseconds of black; revealing the first frame by the clock
+   * showed the viewer a black stage between the poster and the picture.
+   */
+  firstFrameAt = 0,
   /** Autoplay was refused for good; the viewer has to press play themselves. */
   onAutoplayBlocked,
   /** The player failed outright. */
@@ -169,6 +175,8 @@ export default function StreamPlayer({
   onPlayingRef.current = onPlaying
   const onFirstFrameRef = useRef(onFirstFrame)
   onFirstFrameRef.current = onFirstFrame
+  const firstFrameAtRef = useRef(firstFrameAt)
+  firstFrameAtRef.current = firstFrameAt
   const onAutoplayBlockedRef = useRef(onAutoplayBlocked)
   onAutoplayBlockedRef.current = onAutoplayBlocked
   const onFailedRef = useRef(onFailed)
@@ -488,12 +496,12 @@ export default function StreamPlayer({
         player.addEventListener('seeked', announceSeek)
         stopPoll = setInterval(haltIfDue, 200)
         let aired = false
+        let revealed = false
         const shown = () => {
           if (aired) return
           aired = true
           measurePerf('playerBoot', 'boot-to-first-frame')
           onPlayingRef.current?.()
-          onFirstFrameRef.current?.()
           if (watchdog) {
             clearInterval(watchdog)
             watchdog = null
@@ -504,6 +512,10 @@ export default function StreamPlayer({
           if (t < floor) return
           const first = !aired
           shown()
+          if (!revealed && t >= firstFrameAtRef.current) {
+            revealed = true
+            onFirstFrameRef.current?.()
+          }
           if (!first || !alive) return
           /**
            * It is playing. Say whether it has sound — do not try to give it any.

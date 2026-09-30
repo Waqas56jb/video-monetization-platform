@@ -131,10 +131,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet">
 <style>
   html,body,#root{background:#06060a;color:#f4f4f8;margin:0;min-height:100%}
+  /* Painted by the first HTML, before any script, and replaced by React's first
+     render. .mt-loader / .player-loading come from the app's stylesheet, which
+     is render-blocking, so this is the same ring the app draws — not a second
+     design for a second and a half. */
+  .boot-loader{position:fixed;inset:0;display:grid;place-items:center}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"></span></div></div>
 <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

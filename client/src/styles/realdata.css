@@ -1427,14 +1427,26 @@
    document's own white — happens underneath it. Above the film and advert
    layers (4), below the back button (6); the paywall and the "Unlocked" veil
    replace it rather than sit on it. */
+/* Never a bare black or white stage: before the poster has arrived the box is
+   already the brand's own dark, with the ring turning in it. */
 .player-loading {
   position: absolute;
   inset: 0;
   z-index: 5;
   display: grid;
   place-items: center;
-  background: #000;
+  background:
+    radial-gradient(120% 90% at 50% 40%, rgba(124, 58, 237, .22) 0, rgba(124, 58, 237, 0) 62%),
+    #0b0914;
+  border-radius: inherit;
   overflow: hidden;
+  opacity: 1;
+  transition: opacity .38s ease;
+}
+/* The film replaces the poster by crossfade, not a cut. */
+.player-loading.is-leaving {
+  opacity: 0;
+  pointer-events: none;
 }
 .player-loading-poster {
   position: absolute;

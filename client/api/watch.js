@@ -117,6 +117,45 @@ const SHELL_CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=86400'
 
 let shellCache = null
 
+/** index.html's generic boot loader — swapped for the film's own poster below. */
+const BOOT_MARKUP = '<div class="boot-loader" id="mtonyo-boot"><span class="mt-loader"></span></div>'
+
+/** Thumbnails can come back relative to the API; the page lives on another origin. */
+function absoluteMedia(url) {
+  if (!url || typeof url !== 'string') return null
+  if (/^https:\/\//i.test(url)) return url
+  return url.startsWith('/') ? `${API}${url}` : null
+}
+
+/** Same rules as src/lib/videoShape.js, for a page that has no scripts yet. */
+function bootShape(w, h) {
+  const width = Number(w) || 0
+  const height = Number(h) || 0
+  if (!(width > 0 && height > 0)) return { width: null, height: null, aspect: '16 / 9', ratio: 16 / 9, orientation: 'landscape' }
+  const ratio = width / height
+  const orientation = ratio < 0.9 ? 'portrait' : ratio > 1.1 ? 'landscape' : 'square'
+  return { width: Math.round(width), height: Math.round(height), aspect: `${Math.round(width)} / ${Math.round(height)}`, ratio, orientation }
+}
+
+/**
+ * The first thing a person who opened a shared link sees — before any script
+ * has run — is the player box, at the film's shape, with its poster and the
+ * MTONYO+ ring: the same markup WatchSkeleton and Watch render, so React taking
+ * over changes nothing on screen. It used to be a blank dark page for the 2-4s
+ * the bundle takes on a phone, then the box appearing, then the poster.
+ */
+function bootPlayer(shape, poster) {
+  const img = poster
+    ? `<img class="player-loading-poster" src="${escapeAttr(poster)}" alt="" fetchpriority="high">`
+    : ''
+  return (
+    `<div class="page"><div class="watch-wrap watch-shell-early">` +
+    `<div class="player is-${shape.orientation}" style="--player-aspect:${shape.aspect};--player-ratio:${shape.ratio}">` +
+    `<div class="player-loading">${img}<span class="mt-loader"></span></div>` +
+    `</div></div></div>`
+  )
+}
+
 function loadShell() {
   if (shellCache) return shellCache
   const candidates = [
@@ -423,13 +462,20 @@ export default async function handler(req, res) {
   let html = stripHeadMeta(shell.replace(/<!--[\s\S]*?-->/g, ''))
   const metaBlock = buildMetaBlock({ canonical, title, creator, description, cardUrl })
   html = html.replace(/<head>/i, `<head>\n${metaBlock}`)
+  const shape = bootShape(meta?.video?.width, meta?.video?.height)
+  const poster = absoluteMedia(meta?.video?.thumbnailUrl)
   const inject = {
     slug,
     title,
     creator,
     sourceKey: meta?.sourceKey || null,
     cardUrl,
+    /* WatchSkeleton paints this poster at this shape before the API answers. */
+    thumbnailUrl: poster,
+    width: shape.width,
+    height: shape.height,
   }
+  html = html.replace(BOOT_MARKUP, bootPlayer(shape, poster))
   html = html.replace(
     '</head>',
     `<script>window.__MTONYO_SHARE_META__=${JSON.stringify(inject)}</script>\n</head>`
