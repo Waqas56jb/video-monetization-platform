@@ -14,6 +14,7 @@ import {
 } from './payments.service.js'
 import { env } from '../../config/env.js'
 import { log } from '../../lib/logger.js'
+import { normalizeTrafficSource } from '../../lib/trafficSource.js'
 
 const router = Router()
 
@@ -26,6 +27,15 @@ const initiateSchema = z.object({
     .regex(/^[0-9+\s-]{9,15}$/, 'Enter a valid mobile money number'),
   // Sandbox only — lets the client demo every outcome on the staging URL.
   simulate: z.enum(OUTCOMES).optional(),
+  // Where the viewer came from (WhatsApp, Facebook, a campaign link…).
+  // Reporting only — normalised server-side, never decides access.
+  source: z
+    .object({
+      source: z.string().max(40).nullish(),
+      campaign: z.string().max(120).nullish(),
+      referrer: z.string().max(300).nullish(),
+    })
+    .nullish(),
 })
 
 /* ------------------------------------------------------------- initiate */
@@ -35,6 +45,7 @@ router.post(
   validate(initiateSchema),
   asyncHandler(async (req, res) => {
     const { videoId, method, phone, simulate } = req.body
+    const traffic = normalizeTrafficSource(req.body.source)
 
     const video = await one(
       `select * from videos where id = $1 and deleted_at is null`,
@@ -73,9 +84,11 @@ router.post(
     const provider = paymentProvider()
 
     const payment = await one(
-      `insert into payments (user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id)
-       values ($1,$2,$3,$4,$5,$6,$7) returning *`,
-      [req.user.id, videoId, provider.name, video.price_tzs, method, phone, newMerchantOrderId()]
+      `insert into payments (user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id,
+                             traffic_source, traffic_campaign, traffic_referrer)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
+      [req.user.id, videoId, provider.name, video.price_tzs, method, phone, newMerchantOrderId(),
+        traffic.source, traffic.campaign, traffic.referrer]
     )
 
     let result

@@ -1042,6 +1042,29 @@ router.get(
 )
 
 /**
+ * Which channel sells: payment attempts and completed sales per traffic source.
+ * Refunded sales are counted as attempts, not as revenue.
+ */
+router.get(
+  '/payments/sources',
+  validateQuery(z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
+  asyncHandler(async (req, res) => {
+    const rows = await many(
+      `select coalesce(traffic_source, 'unknown') as source,
+              count(*)::int                                          as attempts,
+              count(*) filter (where status = 'success')::int        as paid,
+              coalesce(sum(amount_tzs) filter (where status = 'success'), 0)::int as revenue_tzs
+         from payments
+        where created_at > now() - make_interval(days => $1)
+        group by 1
+        order by revenue_tzs desc, attempts desc`,
+      [req.validatedQuery.days]
+    )
+    res.json({ days: req.validatedQuery.days, sources: rows })
+  })
+)
+
+/**
  * Refund a sale.
  *
  * The client asked for Refunded alongside the other four payment states, and it

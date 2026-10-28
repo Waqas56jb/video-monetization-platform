@@ -345,6 +345,7 @@ export const api = {
     setCreatorSplit: (id, splitPercent) => post(`/api/admin/creators/${id}/split`, { splitPercent }),
 
     payments: (params) => get(`/api/admin/payments${qs(params)}`),
+    paymentSources: (days = 30) => get(`/api/admin/payments/sources?days=${days}`),
     withdrawals: () => get('/api/admin/withdrawals'),
     decideWithdrawal: (id, body) => post(`/api/admin/withdrawals/${id}/decide`, body),
 

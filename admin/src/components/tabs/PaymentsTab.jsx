@@ -13,6 +13,10 @@ import { useAuth } from '@/context/AuthContext'
 const MONO = { fontFamily: 'monospace', color: 'var(--muted)' }
 const PILL = { success: 'ok', pending: 'pend', failed: 'bad', cancelled: '', expired: '', refunded: 'pend' }
 const METHOD = { mpesa: 'M-Pesa', airtel: 'Airtel Money', card: 'Card' }
+const SOURCE = {
+  whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', twitter: 'X / Twitter',
+  youtube: 'YouTube', telegram: 'Telegram', search: 'Search', other: 'Other site', direct: 'Direct', unknown: 'Not recorded',
+}
 
 /** Every transaction, as it happened. */
 export default function PaymentsTab() {
@@ -27,6 +31,7 @@ export default function PaymentsTab() {
     [status]
   )
 
+  const sources = useApi(() => api.admin.paymentSources(30), [], { refetchOnFocus: true })
   const all = data?.payments || []
 
   // Filtering by text happens here rather than on the server: the result set is
@@ -83,6 +88,28 @@ export default function PaymentsTab() {
     <div className="tab">
       <StatGrid stats={stats} />
 
+      <Panel title="Sales by traffic source" action={<span className="pill">Last 30 days</span>}>
+        <Async loading={sources.loading} error={sources.error} onRetry={sources.reload} empty={!sources.data?.sources?.length} rows={3}
+          emptyProps={{ icon: CreditCard, title: 'No payments in the last 30 days', hint: 'Each payment records where the viewer came from — WhatsApp, Facebook, Instagram, TikTok or a campaign link.' }}>
+          <TableWrap>
+            <thead>
+              <tr><th>Source</th><th>Payment attempts</th><th>Paid</th><th>Conversion</th><th>Revenue</th></tr>
+            </thead>
+            <tbody>
+              {(sources.data?.sources || []).map((s) => (
+                <tr key={s.source}>
+                  <td>{SOURCE[s.source] || s.source}</td>
+                  <td>{compact(s.attempts)}</td>
+                  <td>{compact(s.paid)}</td>
+                  <td>{s.attempts ? `${Math.round((s.paid / s.attempts) * 100)}%` : '—'}</td>
+                  <td className="money">{tzs(s.revenue_tzs)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrap>
+        </Async>
+      </Panel>
+
       <Panel
         title="All Transactions"
         action={
@@ -91,7 +118,7 @@ export default function PaymentsTab() {
             <FilterSelect
               value={status}
               onChange={setStatus}
-              options={['Success', 'Pending', 'Failed', 'Cancelled', 'Refunded']}
+              options={['Success', 'Pending', 'Failed', 'Cancelled', 'Expired', 'Refunded']}
               allLabel="All Status"
             />
           </FilterRow>
@@ -142,7 +169,17 @@ export default function PaymentsTab() {
                   </td>
                   <td>{p.user_name || '—'}</td>
                   <td>{p.video_title || '—'}</td>
-                  <td>{METHOD[p.method] || p.method}</td>
+                  <td>
+                    {METHOD[p.method] || p.method}
+                    {p.traffic_source && (
+                      <>
+                        <br />
+                        <small style={{ opacity: 0.7 }} title={[p.traffic_campaign, p.traffic_referrer].filter(Boolean).join(' · ') || undefined}>
+                          via {SOURCE[p.traffic_source] || p.traffic_source}
+                        </small>
+                      </>
+                    )}
+                  </td>
                   <td className="money">{tzs(p.amount_tzs)}</td>
                   <td>
                     {p.creator_amount_tzs != null

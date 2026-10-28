@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import useApi from '@/hooks/useApi'
 import { tzs } from '@/hooks/useApi'
 import useLockBodyScroll from '@/hooks/useLockBodyScroll'
+import { currentTrafficSource } from '@/lib/trafficSource'
 
 /**
  * Paying for a video with mobile money.
@@ -189,6 +190,8 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
         // force declined / cancelled so the failure screen can be demoed.
         // Real AirPay in Milestone 3 ignores `simulate`.
         ...(isSandbox ? { simulate: outcome } : {}),
+        // Which channel brought this viewer (reporting only).
+        source: currentTrafficSource(),
       })
       setPayment(res.payment)
       watch(res.payment.id)

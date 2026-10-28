@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import ErrorBoundary from './components/layout/ErrorBoundary.jsx'
 import { reloadOnceForNewBuild } from './lib/chunkReload.js'
+import { captureTrafficSource } from './lib/trafficSource.js'
 import './styles/global.css'
 import './styles/realdata.css'
 
@@ -11,6 +12,9 @@ import './styles/realdata.css'
 window.addEventListener('vite:preloadError', (event) => {
   if (reloadOnceForNewBuild()) event.preventDefault()
 })
+
+/* Before the router runs: it can rewrite the URL and drop utm_* / via tags. */
+captureTrafficSource()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -78,7 +78,7 @@ test('both ids are stored and returned; the in-flight window matches the expiry'
   assert.match(migration, /add column if not exists merchant_order_id text/)
   assert.match(migration, /create unique index if not exists payments_merchant_order_id_key/)
   assert.match(migration, /add column if not exists refund_due boolean not null default false/)
-  assert.match(routes, /insert into payments \(user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id\)/)
+  assert.match(routes, /insert into payments \(user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id,\s+traffic_source, traffic_campaign, traffic_referrer\)/)
   assert.match(routes, /orderId: payment\.merchant_order_id,/)
   assert.match(routes, /make_interval\(secs => \$3\)/)
   const shaped = publicPayment({ id: 'x', merchant_order_id: 'MTN2026102800000000', provider_ref: 'AP123', refund_due: true })
