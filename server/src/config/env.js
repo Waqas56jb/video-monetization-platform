@@ -112,11 +112,23 @@ export const env = {
     // Milestone 3 (AirPay) ignores this — real provider callbacks drive settlement.
     sandboxDelayMs: int(process.env.SANDBOX_CONFIRM_DELAY_MS, 3000),
     webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || '',
+    /* AirPay Tanzania (Milestone 3). Server-side only: none of these is ever
+       sent to a browser, logged or returned by the API. */
     airpay: {
-      baseUrl: process.env.AIRPAY_BASE_URL || '',
       merchantId: process.env.AIRPAY_MERCHANT_ID || '',
-      apiKey: process.env.AIRPAY_API_KEY || '',
-      apiSecret: process.env.AIRPAY_API_SECRET || '',
+      username: process.env.AIRPAY_USERNAME || '',
+      password: process.env.AIRPAY_PASSWORD || '',
+      // "Secret" / API key in AirPay's email (older name kept as a fallback).
+      secret: process.env.AIRPAY_SECRET || process.env.AIRPAY_API_KEY || '',
+      // OAuth2 pair for AirPay's v4 API; held for it, not used by the v3 flow.
+      clientId: process.env.AIRPAY_CLIENT_ID || '',
+      clientSecret: process.env.AIRPAY_CLIENT_SECRET || process.env.AIRPAY_API_SECRET || '',
+      payUrl: process.env.AIRPAY_PAY_URL || '',
+      verifyUrl: process.env.AIRPAY_VERIFY_URL || '',
+      currency: process.env.AIRPAY_CURRENCY || '834',
+      isoCurrency: process.env.AIRPAY_ISO_CURRENCY || 'TZS',
+      chmod: process.env.AIRPAY_CHMOD ?? '',
+      timeZone: process.env.AIRPAY_TIMEZONE || 'Africa/Dar_es_Salaam',
     },
   },
 

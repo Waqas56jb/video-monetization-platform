@@ -100,6 +100,7 @@ router.post(
         method,
         phone,
         simulate,
+        buyer: { id: req.user.id, email: req.user.email, fullName: req.user.full_name },
         // The sandbox's stand-in for a gateway callback: it only triggers a
         // verification, exactly like the real webhook below.
         onResolved: async () => reconcilePayment(await one('select * from payments where id = $1', [payment.id]), { via: 'sandbox-push' }),
@@ -145,6 +146,8 @@ router.post(
     res.status(201).json({
       payment: publicPayment(updated),
       instructions: result.instructions,
+      // A hosted checkout (AirPay): the browser posts these fields to `url`.
+      ...(result.redirect ? { redirect: result.redirect } : {}),
       ...(result.simulated ? { simulatedOutcome: result.simulated } : {}),
       pollUrl: `/api/payments/${updated.id}`,
     })
@@ -229,7 +232,9 @@ router.post(
     const provider = paymentProvider()
     if (req.params.provider !== provider.name) throw notFound('Unknown payment provider')
 
-    if (env.payments.webhookSecret) {
+    if (provider.authenticateCallback) {
+      if (!provider.authenticateCallback({ ...(req.query || {}), ...(req.body || {}) })) throw forbidden('Invalid callback')
+    } else if (env.payments.webhookSecret) {
       const signature = req.headers['x-signature'] || req.headers['x-mtonyo-signature']
       if (!verifyWebhook(signature, req.rawBody || JSON.stringify(req.body))) {
         log.warn('rejected payment webhook with a bad signature')
@@ -251,6 +256,41 @@ router.post(
     const result = await reconcilePayment(payment, { via: 'callback' })
     const fresh = await one('select status from payments where id = $1', [payment.id])
     res.json({ ok: true, status: fresh?.status || payment.status, unlocked: Boolean(result.unlocked) })
+  })
+)
+
+/* ---------------------------------------------------------- browser return */
+/**
+ * Where a hosted checkout sends the viewer back (AirPay "Return URL").
+ *
+ * Like the webhook, what the browser brings is not believed: it only names the
+ * order. We ask the gateway once, then send the viewer to the video with
+ * `?payment=<id>`, where the sheet reopens on that payment, keeps checking,
+ * and resumes playback from the preview stop as soon as it is verified.
+ * Always a redirect to OUR site — never to a URL taken from the request.
+ */
+router.all(
+  '/return/:provider',
+  asyncHandler(async (req, res) => {
+    const provider = paymentProvider()
+    const home = env.publicWebUrl.replace(/\/$/, '')
+    if (req.params.provider !== provider.name) return res.redirect(303, home)
+
+    const ref = provider.parseCallback({ ...(req.query || {}), ...(req.body || {}) })
+    const payment = ref.orderId
+      ? await one('select * from payments where merchant_order_id = $1', [ref.orderId])
+      : ref.providerRef
+        ? await one('select * from payments where provider_ref = $1', [ref.providerRef])
+        : null
+    if (!payment) {
+      log.warn(`payment return for an unknown order (${ref.orderId || ref.providerRef || 'none'})`)
+      return res.redirect(303, `${home}/library`)
+    }
+
+    await reconcilePayment(payment, { via: 'return' }).catch((err) => log.warn(`return reconcile: ${err.message}`))
+    const video = await one('select slug, id from videos where id = $1', [payment.video_id])
+    res.set('Cache-Control', 'no-store')
+    res.redirect(303, `${home}/watch/${encodeURIComponent(video?.slug || payment.video_id)}?payment=${payment.id}`)
   })
 )
 

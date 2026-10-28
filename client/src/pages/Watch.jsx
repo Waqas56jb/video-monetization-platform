@@ -71,6 +71,25 @@ export default function Watch() {
   const routePreview = location.state?.preview
 
   const [payOpen, setPayOpen] = useState(false)
+  /**
+   * Back from AirPay's hosted page: the API's return route sends the viewer to
+   * /watch/<slug>?payment=<id>. Reopen the sheet on that payment (it keeps
+   * verifying and resumes playback on success) and drop the parameter, so a
+   * reload or a shared copy of the address does not reopen it.
+   */
+  const [returnedPaymentId, setReturnedPaymentId] = useState(() => {
+    const id = new URLSearchParams(location.search).get('payment')
+    return /^[0-9a-f-]{36}$/i.test(id || '') ? id : null
+  })
+  useEffect(() => {
+    if (!returnedPaymentId) return
+    const params = new URLSearchParams(location.search)
+    params.delete('payment')
+    const qs = params.toString()
+    navigate({ pathname: location.pathname, search: qs ? `?${qs}` : '' }, { replace: true })
+    // Only on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [previewOver, setPreviewOver] = useState(false)
   /* The share sheet — what is going out, shown before it goes. */
   const [sharing, setSharing] = useState(false)
@@ -726,6 +745,20 @@ export default function Watch() {
     runBreak(adAt('pre_roll'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adBreaks.loading, ads.length, accessReady, p?.playback?.iframe, p?.access?.showsAds])
+
+  /* Open the returned payment once access is known (an earlier open would be
+     undone by the per-video reset). Already verified on the way back — the
+     return route asks the gateway first — means it is simply unlocked. */
+  useEffect(() => {
+    if (!returnedPaymentId || !accessReady) return
+    if (locked) {
+      setPayOpen(true)
+    } else {
+      setReturnedPaymentId(null)
+      showToast('Payment confirmed — enjoy the full video')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnedPaymentId, accessReady, locked])
 
   // Owned / free videos must never keep a leftover "preview over" lock state.
   useEffect(() => {
@@ -1524,8 +1557,10 @@ export default function Watch() {
       <PaymentModal
         open={payOpen}
         video={v}
-        onClose={() => setPayOpen(false)}
+        onClose={() => { setPayOpen(false); setReturnedPaymentId(null) }}
         onUnlocked={onUnlocked}
+        resumePaymentId={returnedPaymentId}
+        onBeforeLeave={capturePosition}
       />
     </Shell>
   )

@@ -34,12 +34,34 @@ const METHODS = [
   { value: 'airtel', label: 'Airtel Money', hint: 'Airtel' },
 ]
 
-export default function PaymentModal({ open, video, onClose, onUnlocked }) {
+/**
+ * Hand the browser to a hosted checkout (AirPay): post the signed fields as a
+ * real form, top-level, exactly as the gateway's own kits do.
+ */
+export function submitHostedCheckout(redirect, doc = document) {
+  const form = doc.createElement('form')
+  form.method = (redirect.method || 'POST').toUpperCase()
+  form.action = redirect.url
+  form.style.display = 'none'
+  for (const [name, value] of Object.entries(redirect.fields || {})) {
+    const input = doc.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value == null ? '' : String(value)
+    form.appendChild(input)
+  }
+  doc.body.appendChild(form)
+  form.submit()
+}
+
+export default function PaymentModal({ open, video, onClose, onUnlocked, resumePaymentId = null, onBeforeLeave }) {
   // Only ask while the dialog is open; there is no reason to poll otherwise.
   const { data: platform } = useApi(() => api.stats.platform(), [open], { skip: !open })
   const isSandbox = platform?.paymentProvider === 'sandbox'
 
-  const [step, setStep] = useState('form') // form | waiting | unconfirmed | failed
+  const [step, setStep] = useState('form') // form | redirecting | waiting | unconfirmed | failed
+  // Back from a hosted checkout: there is no phone prompt to describe.
+  const [hosted, setHosted] = useState(false)
   const [method, setMethod] = useState('mpesa')
   /**
    * In sandbox the number is not charged and no such subscriber exists — it
@@ -94,11 +116,22 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
     setError(null)
     setPayment(null)
     setSimulateAs('success')
+    setHosted(false)
     handedOff.current = false
     clearInterval(polling.current)
   }, [open])
 
   useEffect(() => () => clearInterval(polling.current), [])
+
+  /* Returning from AirPay's page with ?payment=<id>: pick that payment up and
+     keep checking it; it unlocks and resumes like any other confirmation. */
+  useEffect(() => {
+    if (!open || !resumePaymentId) return
+    setHosted(true)
+    setStep('waiting')
+    watch(resumePaymentId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, resumePaymentId])
 
   // Escape closes, like any well-behaved dialog — but not while the phone is
   // waiting on a prompt, where closing would look like the payment vanished.
@@ -194,6 +227,14 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
         source: currentTrafficSource(),
       })
       setPayment(res.payment)
+      if (res.redirect?.url) {
+        // Leave for the gateway's page; the watch page remembers where the
+        // preview stopped so the return resumes from there.
+        setStep('redirecting')
+        onBeforeLeave?.(res.payment)
+        submitHostedCheckout(res.redirect)
+        return
+      }
       watch(res.payment.id)
     } catch (err) {
       setError(err.message)
@@ -298,6 +339,25 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
           </form>
         )}
 
+        {/* ------------------------------------------------- redirecting */}
+        {step === 'redirecting' && (
+          <div className="pay-waiting">
+            <span className="pay-ic pulse">
+              <Smartphone />
+            </span>
+            <h3>Opening secure payment…</h3>
+            <p className="pay-sub">
+              You will choose {method === 'airtel' ? 'Airtel Money' : 'M-Pesa'} and approve{' '}
+              <b>{tzs(video.priceTzs)}</b> on AirPay&apos;s page, then come straight back here.
+            </p>
+            <div className="pay-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        )}
+
         {/* ---------------------------------------------------- waiting */}
         {step === 'waiting' && (
           <div className="pay-waiting">
@@ -311,7 +371,9 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
                   : simulateAs === 'failed'
                     ? 'Simulating a declined prompt…'
                     : 'Confirming test payment…'
-                : 'Check your phone'}
+                : hosted
+                  ? 'Confirming your payment…'
+                  : 'Check your phone'}
             </h3>
             <p className="pay-sub">
               {isSandbox ? (
@@ -326,6 +388,11 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
                     request for <b>{tzs(video.priceTzs)}</b>. Nothing will be charged.
                   </>
                 )
+              ) : hosted ? (
+                <>
+                  Checking with the mobile money provider that <b>{tzs(video.priceTzs)}</b> went
+                  through. Please don&apos;t pay again.
+                </>
               ) : (
                 <>
                   We sent a request for <b>{tzs(video.priceTzs)}</b> to <b>{phone}</b>. Enter your

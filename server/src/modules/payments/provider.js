@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { env } from '../../config/env.js'
 import { log } from '../../lib/logger.js'
 import { badRequest, serviceUnavailable } from '../../lib/errors.js'
+import { airpayConfig, missingAirpayConfig, checkoutForm, verifyOrder, orderFromCallback, secureHashMatches } from './airpay.js'
 
 /**
  * The payment provider contract.
@@ -125,24 +126,40 @@ const sandbox = {
 /* ------------------------------------------------------------------- airpay */
 
 /**
- * Milestone 3. Kept as an explicit stub so the shape of the integration is
- * already agreed and the switch is a config change, not a rewrite.
+ * AirPay Tanzania: hosted checkout, then server-side order verification.
+ * The formulas and field rules live in ./airpay.js.
  */
 const airpay = {
   name: 'airpay',
-  async initiate() {
-    throw serviceUnavailable(
-      'AirPay is not connected yet. Set PAYMENT_PROVIDER=sandbox for Milestone 2, ' +
-        'or provide AIRPAY_* credentials to enable it.'
-    )
+  async initiate({ orderId, amountTzs, method, phone, buyer }) {
+    const cfg = airpayConfig()
+    const missing = missingAirpayConfig(cfg)
+    if (missing.length) {
+      log.error(`AirPay is selected but not configured (missing ${missing.join(', ')})`)
+      throw serviceUnavailable('Mobile money payments are temporarily unavailable. Nothing was charged — please try again shortly.')
+    }
+    const fields = checkoutForm({ cfg, orderId, amountTzs, method, phone, userId: buyer?.id, email: buyer?.email, fullName: buyer?.fullName })
+    log.info(`airpay checkout ${orderId} (${method}, TZS ${amountTzs})`)
+    return {
+      providerRef: null, // AirPay's transaction id arrives with verification
+      status: 'pending',
+      redirect: { url: cfg.payUrl, method: 'POST', fields },
+      instructions: `Continue on AirPay's secure page to pay with ${method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}.`,
+    }
   },
-  async verify() {
-    throw serviceUnavailable('AirPay is not connected yet')
+  async verify(_ref, payment) {
+    return verifyOrder(payment)
   },
-  /* Field names are placeholders until the AirPay Collection API document
-     arrives; whatever they are, only the order id is taken from a callback. */
   parseCallback(body) {
-    return { orderId: body.orderid || body.order_id || body.orderId || null, providerRef: body.transaction_id || body.ap_transactionid || null }
+    return orderFromCallback(body)
+  },
+  /* AirPay does not sign with our webhook secret. A callback is only a
+     doorbell (the outcome comes from verify()), so it is accepted; whether its
+     AP_SECUREHASH matched is logged to confirm the formula in AirPay's sandbox. */
+  authenticateCallback(body) {
+    const ok = secureHashMatches(body)
+    if (ok === false) log.warn('airpay callback: AP_SECUREHASH did not match (outcome is verified independently)')
+    return true
   },
 }
 

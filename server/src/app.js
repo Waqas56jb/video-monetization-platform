@@ -7,6 +7,7 @@
  * listen() there is what makes a deployment appear to start and then answer
  * nothing.
  */
+import { missingAirpayConfig } from './modules/payments/airpay.js'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -244,6 +245,15 @@ app.get('/health', async (req, res) => {
       allowedOrigins: env.corsOrigins,
     },
 
+    /* Which payment provider is live and, for AirPay, which settings are still
+       MISSING — by name only. No value, hash or secret ever appears here. */
+    payments: {
+      provider: env.payments.provider,
+      ...(env.payments.provider === 'airpay'
+        ? { missing: missingAirpayConfig().map((k) => `AIRPAY_${k.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase()}`) }
+        : {}),
+    },
+
     /**
      * Enough to check the proxy setting without guessing.
      *
@@ -298,7 +308,7 @@ app.get('/api', (_req, res) => {
                'POST /api/videos/:id/view'],
       playback: ['GET /api/playback/:id/playback', 'POST /api/playback/webhooks/cloudflare'],
       payments: ['POST /api/payments/initiate', 'GET /api/payments/:id', 'GET /api/payments',
-                 'POST /api/payments/webhook/:provider', 'POST /api/payments/:id/simulate'],
+                 'POST /api/payments/webhook/:provider', 'GET|POST /api/payments/return/:provider', 'POST /api/payments/:id/simulate'],
       library: ['GET /api/library', 'GET /api/library/purchases', 'GET /api/library/entitlement/:videoId'],
       earnings: ['GET /api/earnings', 'GET /api/earnings/transactions', 'GET /api/earnings/withdrawals',
                  'POST /api/earnings/withdrawals', 'DELETE /api/earnings/withdrawals/:id'],
