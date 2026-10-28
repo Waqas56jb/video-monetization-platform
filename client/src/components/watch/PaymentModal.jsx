@@ -38,7 +38,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
   const { data: platform } = useApi(() => api.stats.platform(), [open], { skip: !open })
   const isSandbox = platform?.paymentProvider === 'sandbox'
 
-  const [step, setStep] = useState('form') // form | waiting | failed
+  const [step, setStep] = useState('form') // form | waiting | unconfirmed | failed
   const [method, setMethod] = useState('mpesa')
   /**
    * In sandbox the number is not charged and no such subscriber exists — it
@@ -137,7 +137,12 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
       }
 
       /**
-       * Mobile money prompts expire; after three minutes, stop pretending.
+       * Mobile money prompts expire; after three minutes, stop polling — but do
+       * NOT say the payment failed. It used to read "Nothing was charged", which
+       * real money makes untrue: a viewer can approve the prompt late, and the
+       * server keeps verifying (poll, callback, sweep) and unlocks the video
+       * when the gateway confirms it. So: say we are still waiting, and offer to
+       * check again rather than to pay again.
        *
        * Measured against the clock, not counted in ticks. It used to be
        * `elapsed > 180` incremented once per tick, which only meant three
@@ -146,8 +151,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
        */
       if (Date.now() - startedAt > 180_000) {
         clearInterval(polling.current)
-        setError('We did not hear back from your phone. Nothing was charged — try again.')
-        setStep('failed')
+        setStep('unconfirmed')
       }
     }
 
@@ -275,7 +279,7 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
                   <b>Test mode — no real money moves.</b>
                   <span>
                     Pay succeeds after about 3 seconds. To see the failure screen, use the
-                    buttons below — the real M-Pesa / Airtel gateway comes in Milestone 3.
+                    buttons below — the live M-Pesa / Airtel gateway replaces this before launch.
                   </span>
                   <div className="sandbox-outcomes">
                     <button type="button" onClick={(e) => pay(e, 'failed')}>
@@ -337,6 +341,27 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
           </div>
         )}
 
+        {/* ------------------------------------------------ unconfirmed */}
+        {step === 'unconfirmed' && (
+          <div className="pay-done">
+            <span className="pay-ic">
+              <Smartphone />
+            </span>
+            <h3>Still waiting for confirmation</h3>
+            <p className="pay-sub">
+              We have not heard back from {method === 'airtel' ? 'Airtel Money' : 'M-Pesa'} yet. If you
+              approved the payment on your phone, this video unlocks by itself as soon as it is
+              confirmed — please don&apos;t pay again.
+            </p>
+            <button className="btn btn-gold btn-block" onClick={() => { setStep('waiting'); watch(payment.id) }} disabled={!payment?.id}>
+              Check again
+            </button>
+            <button className="btn btn-ghost btn-block" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        )}
+
         {/* ----------------------------------------------------- failed */}
         {step === 'failed' && (
           <div className="pay-done pay-failed">
@@ -351,7 +376,11 @@ export default function PaymentModal({ open, video, onClose, onUnlocked }) {
                   : 'Payment not completed'}
             </h3>
             <p className="pay-sub">{error || 'Something went wrong.'}</p>
-            <p className="pay-sub">Nothing was charged. You can try again with the same number.</p>
+            <p className="pay-sub">
+              {payment?.status === 'expired'
+                ? 'If money did leave your account, the video unlocks by itself once the provider confirms it. Otherwise you can try again.'
+                : 'Nothing was charged. You can try again with the same number.'}
+            </p>
             <button className="btn btn-gold btn-block" onClick={() => setStep('form')}>
               Try again
             </button>
