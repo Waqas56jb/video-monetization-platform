@@ -64,6 +64,8 @@ test('the schedules match what Vercel Cron used to run', () => {
   const by = Object.fromEntries(JOBS.map((j) => [j.name, j.schedule]))
   assert.equal(by['premiere-expiry'], '0 2 * * *')
   assert.equal(by['share-cards-stale'], '15 3 * * *')
+  // Milestone 3: no payment is left pending (money in limbo) for more than a few minutes.
+  assert.equal(by['payments-sweep'], '*/5 * * * *')
 })
 
 test('the HTTP job endpoints survive, so an external scheduler stays possible', async () => {

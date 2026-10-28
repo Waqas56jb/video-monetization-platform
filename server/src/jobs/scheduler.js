@@ -8,6 +8,7 @@
  *
  *   0 2 * * *   premiere expiry
  *   15 3 * * *  share-card rebuild (stale only)
+ *   every 5 min payment sweep (Milestone 3: verify pending / recently expired payments)
  *
  * WHY IN-PROCESS RATHER THAN A RAILWAY CRON SERVICE
  *
@@ -80,6 +81,15 @@ export const JOBS = [
      * the end of the window the creator set.
      */
     run: () => runPremiereExpiry(),
+  },
+  {
+    name: 'payments-sweep',
+    schedule: '*/5 * * * *',
+    /** See jobs/payments.js. Lazy, like the share-card builder. */
+    run: async () => {
+      const { runPaymentSweep } = await import('./payments.js')
+      return runPaymentSweep()
+    },
   },
   {
     name: 'share-cards-stale',

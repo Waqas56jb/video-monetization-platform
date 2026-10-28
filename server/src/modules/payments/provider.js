@@ -11,9 +11,16 @@ import { badRequest, serviceUnavailable } from '../../lib/errors.js'
  * the revenue split — knows which provider is active, which is exactly the
  * "swap it in without rebuilding" the client asked for.
  *
- *   initiate({...})  -> { providerRef, status, instructions }
- *   verify(ref)      -> { status, failureReason? }
- *   parseCallback(b) -> { providerRef, status, failureReason?, raw }
+ *   initiate({ paymentId, orderId, amountTzs, method, phone, ... })
+ *                    -> { providerRef, status: 'pending', instructions }
+ *   verify(ref, payment)
+ *                    -> { status: 'success'|'failed'|'cancelled'|'expired'|'pending'|null,
+ *                         failureReason?, providerTxnId?, raw? }
+ *                       The gateway's OWN answer (order verification). The only
+ *                       thing that can unlock a video — see reconcilePayment.
+ *   parseCallback(b) -> { orderId?, providerRef? }
+ *                       Which payment a callback is about. Its status is never
+ *                       trusted: a callback only triggers verify().
  */
 
 /* ------------------------------------------------------------------ sandbox */
@@ -47,22 +54,18 @@ const REASONS = {
 const sandbox = {
   name: 'sandbox',
 
-  async initiate({ paymentId, amountTzs, method, phone, simulate, onResolved }) {
+  async initiate({ paymentId, orderId, amountTzs, method, phone, simulate, onResolved }) {
     const providerRef = `SBX-${crypto.randomBytes(5).toString('hex').toUpperCase()}`
     const outcome = decideOutcome({ simulate })
 
-    log.info(`sandbox payment ${providerRef} → ${outcome} (${method}, TZS ${amountTzs})`)
+    log.info(`sandbox payment ${orderId || paymentId} / ${providerRef} → ${outcome} (${method}, TZS ${amountTzs})`)
 
     if (outcome !== 'pending') {
-      // Mimic the customer entering their PIN a few seconds later.
+      // Mimic the gateway's callback a few seconds later. Like a real one, it
+      // carries no authority: the route answers it by calling verify().
       setTimeout(() => {
-        onResolved({
-          providerRef,
-          status: outcome === 'success' ? 'success' : outcome,
-          failureReason: REASONS[outcome] || null,
-          raw: { simulated: true, outcome, paymentId },
-        }).catch((err) => log.error('sandbox callback failed:', err.message))
-      }, env.payments.sandboxDelayMs).unref?.()
+        Promise.resolve(onResolved?.({ orderId, providerRef })).catch((err) => log.error('sandbox callback failed:', err.message))
+      }, env.payments.sandboxDelayMs + 50).unref?.()
     }
 
     return {
@@ -115,12 +118,7 @@ const sandbox = {
   },
 
   parseCallback(body) {
-    return {
-      providerRef: body.providerRef || body.reference,
-      status: body.status,
-      failureReason: body.failureReason || null,
-      raw: body,
-    }
+    return { orderId: body.orderId || null, providerRef: body.providerRef || body.reference || null }
   },
 }
 
@@ -141,15 +139,10 @@ const airpay = {
   async verify() {
     throw serviceUnavailable('AirPay is not connected yet')
   },
+  /* Field names are placeholders until the AirPay Collection API document
+     arrives; whatever they are, only the order id is taken from a callback. */
   parseCallback(body) {
-    return {
-      providerRef: body.transaction_id || body.reference,
-      status: { SUCCESS: 'success', FAILED: 'failed', CANCELLED: 'cancelled', EXPIRED: 'expired' }[
-        String(body.status || '').toUpperCase()
-      ],
-      failureReason: body.message || null,
-      raw: body,
-    }
+    return { orderId: body.orderid || body.order_id || body.orderId || null, providerRef: body.transaction_id || body.ap_transactionid || null }
   },
 }
 

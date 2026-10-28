@@ -5,7 +5,13 @@ import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../../l
 import { validate } from '../../middleware/validate.js'
 import { requireAuth } from '../../middleware/auth.js'
 import { paymentProvider, verifyWebhook, OUTCOMES } from './provider.js'
-import { settlePayment, publicPayment } from './payments.service.js'
+import {
+  settlePayment,
+  reconcilePayment,
+  publicPayment,
+  newMerchantOrderId,
+  PENDING_EXPIRES_MS,
+} from './payments.service.js'
 import { env } from '../../config/env.js'
 import { log } from '../../lib/logger.js'
 
@@ -47,13 +53,14 @@ router.post(
     )
     if (owned) throw conflict('You already own this video')
 
-    // Reuse an in-flight attempt rather than charging twice.
+    // Reuse an in-flight attempt rather than charging twice. Same window as
+    // the expiry, so there is never a second live prompt for one video.
     const inflight = await one(
       `select * from payments
         where user_id = $1 and video_id = $2 and status = 'pending'
-          and created_at > now() - interval '10 minutes'
+          and created_at > now() - make_interval(secs => $3)
         order by created_at desc limit 1`,
-      [req.user.id, videoId]
+      [req.user.id, videoId, PENDING_EXPIRES_MS / 1000]
     )
     if (inflight) {
       return res.status(200).json({
@@ -66,20 +73,35 @@ router.post(
     const provider = paymentProvider()
 
     const payment = await one(
-      `insert into payments (user_id, video_id, provider, amount_tzs, method, phone)
-       values ($1,$2,$3,$4,$5,$6) returning *`,
-      [req.user.id, videoId, provider.name, video.price_tzs, method, phone]
+      `insert into payments (user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id)
+       values ($1,$2,$3,$4,$5,$6,$7) returning *`,
+      [req.user.id, videoId, provider.name, video.price_tzs, method, phone, newMerchantOrderId()]
     )
 
-    const result = await provider.initiate({
-      paymentId: payment.id,
-      amountTzs: video.price_tzs,
-      method,
-      phone,
-      simulate,
-      // The provider calls this when the customer approves/declines.
-      onResolved: (payload) => settlePayment(payload),
-    })
+    let result
+    try {
+      result = await provider.initiate({
+        paymentId: payment.id,
+        orderId: payment.merchant_order_id,
+        amountTzs: video.price_tzs,
+        method,
+        phone,
+        simulate,
+        // The sandbox's stand-in for a gateway callback: it only triggers a
+        // verification, exactly like the real webhook below.
+        onResolved: async () => reconcilePayment(await one('select * from payments where id = $1', [payment.id]), { via: 'sandbox-push' }),
+      })
+    } catch (err) {
+      /* The gateway refused or was unreachable: no prompt reached the phone, so
+         nothing can be charged. Close the attempt so a retry starts clean
+         instead of being handed this dead one as "in flight". */
+      await one(
+        `update payments set status = 'failed', failure_reason = $2, updated_at = now()
+          where id = $1 and status = 'pending' returning id`,
+        [payment.id, 'The payment request could not be sent to the mobile money provider. Nothing was charged.']
+      )
+      throw err
+    }
 
     /**
      * Keep what the provider told us, not just the reference.
@@ -137,19 +159,9 @@ router.get(
      * So the poll the customer's browser is already making doubles as the
      * reconciliation: whatever the provider says now is what we record.
      */
-    if (payment.status === 'pending' && payment.provider_ref) {
-      const verdict = await paymentProvider()
-        .verify(payment.provider_ref, payment)
-        .catch(() => ({ status: null }))
-      if (verdict?.status && verdict.status !== 'pending') {
-        await settlePayment({
-          providerRef: payment.provider_ref,
-          status: verdict.status,
-          failureReason: verdict.failureReason || null,
-          raw: { reconciled: true, via: 'status-poll' },
-        }).catch(() => {})
-        payment = (await one('select * from payments where id = $1', [payment.id])) || payment
-      }
+    if (payment.status === 'pending') {
+      await reconcilePayment(payment, { via: 'status-poll' }).catch((err) => log.warn(`poll reconcile: ${err.message}`))
+      payment = (await one('select * from payments where id = $1', [payment.id])) || payment
     }
 
     const purchase =
@@ -191,24 +203,41 @@ router.get(
 
 /* --------------------------------------------------------------- webhook */
 /**
- * Providers call this to report the final outcome. Signature-checked, and
- * idempotent so retries are harmless.
+ * The gateway calls this when a payment changes. It is a doorbell, not a
+ * verdict: the body only says WHICH payment, and the outcome recorded is what
+ * the gateway answers when we ask it ourselves (reconcilePayment). A forged or
+ * replayed callback can therefore trigger a check, never an unlock.
+ *
+ * A signature is still enforced whenever a secret is configured.
  */
 router.post(
   '/webhook/:provider',
   asyncHandler(async (req, res) => {
-    const signature = req.headers['x-signature'] || req.headers['x-mtonyo-signature']
-    if (!verifyWebhook(signature, req.rawBody || JSON.stringify(req.body))) {
-      log.warn('rejected payment webhook with a bad signature')
-      throw forbidden('Invalid signature')
+    const provider = paymentProvider()
+    if (req.params.provider !== provider.name) throw notFound('Unknown payment provider')
+
+    if (env.payments.webhookSecret) {
+      const signature = req.headers['x-signature'] || req.headers['x-mtonyo-signature']
+      if (!verifyWebhook(signature, req.rawBody || JSON.stringify(req.body))) {
+        log.warn('rejected payment webhook with a bad signature')
+        throw forbidden('Invalid signature')
+      }
     }
 
-    const provider = paymentProvider()
-    const parsed = provider.parseCallback(req.body || {})
-    if (!parsed.providerRef || !parsed.status) throw badRequest('Callback is missing a reference or status')
+    const ref = provider.parseCallback({ ...(req.query || {}), ...(req.body || {}) })
+    if (!ref.orderId && !ref.providerRef) throw badRequest('Callback does not name a payment')
 
-    const result = await settlePayment(parsed)
-    res.json({ ok: true, handled: result.handled, unlocked: Boolean(result.unlocked) })
+    const payment = ref.orderId
+      ? await one('select * from payments where merchant_order_id = $1', [ref.orderId])
+      : await one('select * from payments where provider_ref = $1', [ref.providerRef])
+    if (!payment) {
+      log.warn(`payment callback for an unknown payment (${ref.orderId || ref.providerRef})`)
+      throw notFound('Unknown payment')
+    }
+
+    const result = await reconcilePayment(payment, { via: 'callback' })
+    const fresh = await one('select status from payments where id = $1', [payment.id])
+    res.json({ ok: true, status: fresh?.status || payment.status, unlocked: Boolean(result.unlocked) })
   })
 )
 
@@ -239,8 +268,18 @@ router.post(
       expired: 'The customer did not approve the request in time',
     }
 
+    /* The sandbox's "gateway" answers verify() from the outcome recorded at the
+       start; a forced outcome rewrites that answer, or a later poll would
+       verify the original one — e.g. turn a forced "failed" into a success. */
+    await one(
+      `update payments
+          set raw_callback = jsonb_set(coalesce(raw_callback, '{}'::jsonb), '{initiated,settlesAs}', to_jsonb($2::text), true)
+        where id = $1 returning id`,
+      [payment.id, req.body.outcome]
+    )
+
     const result = await settlePayment({
-      providerRef: payment.provider_ref,
+      paymentId: payment.id,
       status: req.body.outcome,
       failureReason: reasons[req.body.outcome] || null,
       raw: { forced: true, by: req.user.id },
