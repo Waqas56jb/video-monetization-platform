@@ -276,3 +276,26 @@ No player remounts were found (1 iframe load per player). The issue was not spec
 **Where the time to first frame goes** (network waterfall, Pixel 7, 15.3 s): our API 0.4–0.8 s; iframe requested 1.3 s; Cloudflare's 352 KB player script 2.0–4.5 s; its execution on the phone's CPU ~4.5–10.6 s; manifest 10.6 s; it then buffers 4 video + 4 audio segments (650 KB at 240p) before the first frame. Tried and not shipped: warming Cloudflare's player in a hidden iframe. A paired A/B gave 1–3 s, inconsistently, at ~400 KB of data per visitor. The large remaining lever is replacing the Cloudflare iframe with a native player (separate scope).
 
 Still needs the client's own device: iPhone Safari and WhatsApp's in-app browser (their own white before the first byte is outside any website's control).
+
+## Milestone 3 — payments: unlock only on a verified answer (2026-10-28)
+
+The client's rules: unlock only after the gateway verifies the payment, never on "pending" or "initiated"; store our order ID and the gateway's transaction ID; no duplicate payments; refunds traceable.
+
+| What was wrong or missing | Now | Commit |
+|---|---|---|
+| A callback body could settle a payment, with no signature check when no secret was set | A callback, the viewer's poll and a 5-minute sweep all ask the gateway (`verify()`) and record only its answer | `676285d` |
+| One ID per payment | Our order ID (`MTN` + date + 8 hex) and the gateway's transaction ID, both stored, shown and searchable in admin | `676285d`, `1f15389` |
+| A payment could stay "pending" for ever | It expires after 15 min; a later verified success still unlocks it (the money moved) | `676285d` |
+| Charged twice was silent | Flagged "refund due" in admin, no second creator earning; recording the refund clears it | `676285d`, `1f15389` |
+| The viewer could read "Nothing was charged" while a payment might still go through | After 3 min: "Still waiting for confirmation, please don't pay again", with Check again | `a3f67af` |
+
+Migration `044_payment_order_ids.sql` was applied to production before the push. Backfill: 56 of 56 payments have a unique order ID.
+
+**Live sandbox run on production (`a3f67af`), fresh viewer account:**
+- Success: initiate answers pending; then verified → unlocked, full playback (`kind: full`). Ledger TZS 5,000 = creator 3,000 + platform 2,000 (60%). Settled via the verification path; both IDs stored (`MTN202610285A49DBCD` / `SBX-5B02EACC87`).
+- A second tap while in flight reuses the same payment. Paying again for an owned video → 409.
+- Failed, cancelled, expired: each keeps its reason, 0 purchases, and the video stays on its 15 s preview with the paywall.
+- Forged "success" callback → 403 (bad signature); the payment stays pending. Callback for an inactive provider → 404. Payment status without login → 401.
+- No payment left pending.
+
+Still open: the AirPay provider itself (needs the client's AirPay Collection API document and the three secrets in Railway env vars), and refunding the probe's test payment in admin.
