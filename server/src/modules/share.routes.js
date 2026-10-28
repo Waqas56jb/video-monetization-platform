@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { one, many } from '../db/pool.js'
 import { asyncHandler, notFound } from '../lib/errors.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
-import { ensureClips } from './playback.routes.js'
+import { ensureClips, promoClipSeconds } from './playback.routes.js'
 import { thumbnailFor } from '../services/entitlement.js'
 import * as cf from '../lib/cloudflare.js'
 import { env, capabilities } from '../config/env.js'
@@ -16,6 +16,30 @@ import { recordCrawlerHit } from '../lib/crawlerLog.js'
 import { log } from '../lib/logger.js'
 
 const router = Router()
+
+/**
+ * The promo clip, only if it is within what this video may show for free.
+ *
+ * The clip is public. A paid video's clip may not run past its free preview
+ * (see promoClipSeconds); one that does — cut before the rule, or before the
+ * creator shortened the preview — is withheld and recut in the background.
+ */
+async function safePromoClipUid(video) {
+  if (!video?.social_clip_uid) return null
+  const limit = promoClipSeconds(video)
+  if (limit <= 0 && video.access_type !== 'free_with_ads') {
+    ensureClips(video.id).catch(() => {})
+    return null
+  }
+  if (video.access_type === 'free_with_ads') return video.social_clip_uid
+  const info = await cf.getVideo(video.social_clip_uid).catch(() => null)
+  const have = Number(info?.duration ?? 0)
+  if (!have || have > limit + 1.25) {
+    ensureClips(video.id).catch(() => {})
+    return null
+  }
+  return video.social_clip_uid
+}
 
 async function videoByKey(key) {
   return one(
@@ -71,11 +95,12 @@ router.get(
     // WhatsApp still gets the watch URL only — attaching this MP4 there
     // replaces the Open Graph card with a raw video.
     let clip = null
-    if (video.social_clip_uid && capabilities.cloudflareStream) {
-      const urls = cf.playbackUrls(video.social_clip_uid)
-      const mp4 = await cf.ensureMp4Download(video.social_clip_uid).catch(() => null)
+    const promoUid = capabilities.cloudflareStream ? await safePromoClipUid(video) : null
+    if (promoUid) {
+      const urls = cf.playbackUrls(promoUid)
+      const mp4 = await cf.ensureMp4Download(promoUid).catch(() => null)
       clip = {
-        uid: video.social_clip_uid,
+        uid: promoUid,
         /**
          * Served through this API rather than straight off Cloudflare.
          *
@@ -90,11 +115,11 @@ router.get(
          * read it.
          */
         downloadUrl: `/api/share/${encodeURIComponent(video.slug)}/clip.mp4`,
-        directDownloadUrl: mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`,
+        directDownloadUrl: mp4?.url || `https://videodelivery.net/${promoUid}/downloads/default.mp4`,
         downloadReady: mp4?.status === 'ready',
         hls: urls.hls,
         thumbnailUrl: urls.thumbnail,
-        durationSeconds: Math.min(60, video.duration_seconds || 60),
+        durationSeconds: promoClipSeconds(video) || Math.min(60, video.duration_seconds || 60),
       }
     }
 
@@ -280,7 +305,8 @@ router.get(
   '/:id/clip.mp4',
   asyncHandler(async (req, res) => {
     const video = await one(
-      `select v.slug, v.social_clip_uid, v.is_published, v.review_status
+      `select v.id, v.slug, v.social_clip_uid, v.is_published, v.review_status,
+              v.access_type, v.duration_seconds, v.free_preview_seconds
          from videos v
         where ${whereIdOrSlug('v')} and v.deleted_at is null`,
       videoKeyParams(req.params.id)
@@ -289,10 +315,12 @@ router.get(
     if (!(video.is_published && video.review_status === 'approved')) {
       throw notFound('No clip for this video')
     }
+    const promoUid = await safePromoClipUid(video)
+    if (!promoUid) throw notFound('The clip is being prepared')
 
-    const mp4 = await cf.ensureMp4Download(video.social_clip_uid).catch(() => null)
+    const mp4 = await cf.ensureMp4Download(promoUid).catch(() => null)
     const source =
-      mp4?.url || `https://videodelivery.net/${video.social_clip_uid}/downloads/default.mp4`
+      mp4?.url || `https://videodelivery.net/${promoUid}/downloads/default.mp4`
 
     const upstream = await fetch(source, { redirect: 'follow' })
     if (!upstream.ok || !upstream.body) throw notFound('The clip is still being prepared')

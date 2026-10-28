@@ -273,6 +273,16 @@ router.get(
       })
     }
 
+    /* No free preview (the creator chose 0 s): nothing is signed at all. The
+       page shows the poster with the paywall. Returning a clip here would hand
+       out whatever an old clip still holds — up to five minutes of a video
+       meant to show none. */
+    if (clampFreePreviewSeconds(video.free_preview_seconds, video.duration_seconds) <= 0 && video.duration_seconds > 0) {
+      trace.mark('no-preview')
+      trace.done()
+      return res.json({ ...payload, playback: null, noPreview: true })
+    }
+
     // Locked: only the preview clip is signed and returned. Never wait on
     // Cloudflare here — clip generation belongs at encode/approve time.
     const previewUid = video.preview_uid || null
@@ -547,6 +557,18 @@ router.post(
  * Cloudflare does the clipping, so there is no FFmpeg worker to run or scale —
  * the "automatic social preview generation" requirement with no extra server.
  */
+/**
+ * How long the public promo clip may be: up to 60 s, never the whole video,
+ * and for anything paid never past the free preview.
+ */
+export function promoClipSeconds(video) {
+  const duration = Math.floor(Number(video?.duration_seconds) || 0)
+  if (duration <= 0) return 0
+  const cap = Math.min(60, Math.max(1, duration - 1))
+  if (video.access_type === 'free_with_ads') return cap
+  return Math.min(cap, clampFreePreviewSeconds(video.free_preview_seconds ?? 0, duration))
+}
+
 function clipDurationSeconds(info) {
   const n = Number(info?.duration ?? info?.durationSeconds ?? 0)
   return Number.isFinite(n) && n > 0 ? n : 0
@@ -559,7 +581,17 @@ export async function ensureClips(videoId) {
 
   const duration = video.duration_seconds || 0
   const results = {}
-  const end = duration > 0 ? clampFreePreviewSeconds(video.free_preview_seconds || 300, duration) : 0
+  // 0 is a choice ("no free preview"), not a missing value: `|| 300` used to
+  // turn it into a five-minute clip.
+  const end = duration > 0 ? clampFreePreviewSeconds(video.free_preview_seconds ?? 0, duration) : 0
+
+  /* No preview wanted: an existing clip is only a leak waiting to be signed. */
+  if (end <= 0 && duration > 0 && video.preview_uid) {
+    const old = video.preview_uid
+    await query('update videos set preview_uid = null where id = $1 and preview_uid = $2', [video.id, old])
+    cf.deleteVideo(old).catch(() => {})
+    results.previewRemoved = old
+  }
 
   /**
    * The file itself must end where the label says.
@@ -591,8 +623,26 @@ export async function ensureClips(videoId) {
     }
   }
 
-  if (!video.social_clip_uid && duration > 0) {
-    const end = Math.min(60, Math.max(1, duration - 1))
+  /* The promo clip is PUBLIC (social platforms fetch it unsigned), so for a
+     paid video it may never show more than the free preview does. It used to
+     be "60 s or the whole video minus one second" — for a 57 s paid video
+     that was 56 s, given away. Too long → recut, and the old public copy is
+     deleted. No preview on a paid video → no promo clip at all. */
+  const socialEnd = promoClipSeconds(video)
+  if (video.social_clip_uid && duration > 0) {
+    const info = await cf.getVideo(video.social_clip_uid).catch(() => null)
+    const have = clipDurationSeconds(info)
+    if (have && (socialEnd <= 0 || have > socialEnd + 1.25)) {
+      const old = video.social_clip_uid
+      await query('update videos set social_clip_uid = null where id = $1 and social_clip_uid = $2', [video.id, old])
+      cf.deleteVideo(old).catch(() => {})
+      video.social_clip_uid = null
+      results.socialRemoved = old
+    }
+  }
+
+  if (!video.social_clip_uid && duration > 0 && socialEnd > 0) {
+    const end = socialEnd
     const clip = await cf.createClip({
       uid: video.cloudflare_uid,
       startSeconds: 0,
