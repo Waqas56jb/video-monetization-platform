@@ -65,7 +65,7 @@ export async function splitPercentFor(creatorId) {
       where ps.id = 1`,
     [creatorId]
   )
-  return row?.override ?? row?.dflt ?? 70
+  return row?.override ?? row?.dflt ?? 60
 }
 
 /** Split an amount into creator/platform parts, rounding in the creator's favour. */

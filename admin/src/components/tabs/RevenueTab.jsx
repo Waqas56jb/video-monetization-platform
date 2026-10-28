@@ -25,7 +25,9 @@ export default function RevenueTab() {
   // value when defaultSplitPercent itself actually changed (see below).
   const { data, loading, error, reload } = useApi(() => api.admin.revenue(), [], { refetchOnFocus: true })
 
-  const [share, setShare] = useState(70)
+  // Unknown until the saved split loads: a hard-coded starting value painted
+  // the old 70/30 for a moment and could be saved by a quick click.
+  const [share, setShare] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function RevenueTab() {
         >
           <div className="split-config">
             <div className="split-vis">
-              <span style={{ width: `${share}%` }} />
+              <span style={{ width: `${share ?? 0}%` }} />
               <span />
             </div>
 
@@ -101,12 +103,13 @@ export default function RevenueTab() {
                 type="range"
                 min="50"
                 max="90"
-                value={share}
+                value={share ?? 50}
+                disabled={share == null}
                 aria-label="Creator share percentage"
                 onChange={(e) => setShare(Number(e.target.value))}
               />
               <span className="range-val">
-                {share}% / {100 - share}%
+                {share == null ? '…' : `${share}% / ${100 - share}%`}
               </span>
             </div>
 
@@ -130,7 +133,7 @@ export default function RevenueTab() {
               className="btn btn-gold"
               style={{ width: 'fit-content' }}
               onClick={saveSplit}
-              disabled={saving || loading}
+              disabled={saving || loading || share == null}
             >
               <Save />
               {saving ? 'Saving…' : 'Save Global Split'}
