@@ -53,14 +53,14 @@
      is why shared links showed a card with no picture. /watch/:slug is served by
      api/watch.js, which replaces the title, description and image with the
      video's own; these are the platform-level fallbacks for every other page.
-     Change the host here when the site moves to its final domain. -->
+     The host comes from VITE_PUBLIC_WEB_URL at build time (vite.config.js). -->
 <meta property="og:site_name" content="MTONYO+">
 <meta property="og:type" content="website">
 <meta property="og:title" content="MTONYO+ — Tanzania's Premium Creator Video Platform">
 <meta property="og:description" content="Watch the free preview, pay to continue, keep it in your library.">
-<meta property="og:image" content="https://video-monetization-platform-chi.vercel.app/icons/icon-512.png">
+<meta property="og:image" content="%SITE_URL%/icons/icon-512.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://video-monetization-platform-chi.vercel.app/icons/icon-512.png">
+<meta name="twitter:image" content="%SITE_URL%/icons/icon-512.png">
 
 <!-- The API. Every screen's first request goes here, and it was the one host
      with no warm connection: DNS, TCP and TLS were all being paid after the
