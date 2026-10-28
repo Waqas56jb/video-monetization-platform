@@ -58,6 +58,11 @@ router.use(
   lazyRouter(() => import('../modules/share.routes.js'))
 )
 router.use('/ads', adsRoutes)
+// Homepage sponsor banners (public read + click counting; /manage for staff).
+router.use(
+  '/sponsors',
+  lazyRouter(() => import('../modules/sponsors.routes.js'))
+)
 // Staff work — notifications, announcements, the sub-admin team. Mounted
 // before /admin so the two never shadow each other.
 router.use(

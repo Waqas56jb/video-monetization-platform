@@ -157,16 +157,19 @@ async function refreshAccessToken() {
 async function request(path, { method = 'GET', body, auth = true, retry = true, signal } = {}) {
   const token = auth ? getAccessToken() : null
 
+  // A file upload goes as multipart; the browser sets its own boundary header.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+
   let res
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
       signal,
       headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch (err) {
     if (err.name === 'AbortError') throw err
@@ -346,6 +349,15 @@ export const api = {
 
     payments: (params) => get(`/api/admin/payments${qs(params)}`),
     paymentSources: (days = 30) => get(`/api/admin/payments/sources?days=${days}`),
+    sponsors: () => get('/api/sponsors/manage'),
+    createSponsor: (body) => post('/api/sponsors/manage', body),
+    updateSponsor: (id, body) => patch(`/api/sponsors/manage/${id}`, body),
+    deleteSponsor: (id) => del(`/api/sponsors/manage/${id}`),
+    sponsorImage: (id, file) => {
+      const form = new FormData()
+      form.append('image', file)
+      return post(`/api/sponsors/manage/${id}/image`, form)
+    },
     withdrawals: () => get('/api/admin/withdrawals'),
     decideWithdrawal: (id, body) => post(`/api/admin/withdrawals/${id}/decide`, body),
 

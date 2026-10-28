@@ -1479,3 +1479,33 @@
 @media (prefers-reduced-motion: reduce) {
   .mt-loader { animation-duration: 2.4s }
 }
+
+/* ------------------------------------------------ homepage sponsors (M3) */
+.sponsor-strip { padding: 18px 0 6px; }
+.sponsor-card {
+  position: relative; display: flex; align-items: center; gap: 16px;
+  min-height: 96px; padding: 18px 22px; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(135deg, var(--card2), var(--card));
+  border: 1px solid rgba(255, 255, 255, .08); color: var(--text); text-decoration: none;
+  transition: border-color .2s ease, transform .2s ease;
+}
+.sponsor-card:hover, .sponsor-card:focus-visible { border-color: rgba(255, 193, 0, .45); transform: translateY(-1px); }
+.sponsor-card.has-image { min-height: 150px; }
+.sponsor-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.sponsor-card.has-image::after {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(90deg, rgba(6, 6, 10, .88) 0%, rgba(6, 6, 10, .55) 55%, rgba(6, 6, 10, .15) 100%);
+}
+.sponsor-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.sponsor-copy strong { font-size: 1.15rem; line-height: 1.25; }
+.sponsor-label { color: var(--gold); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.sponsor-tagline { color: var(--muted); font-size: .92rem; }
+.sponsor-cta { position: relative; z-index: 1; flex-shrink: 0; pointer-events: none; }
+.sponsor-dots { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+.sponsor-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 99px; background: var(--muted2); cursor: pointer; }
+.sponsor-dots button[aria-selected="true"] { width: 22px; background: var(--gold); }
+@media (max-width: 560px) {
+  .sponsor-card { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .sponsor-cta { align-self: stretch; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) { .sponsor-card { transition: none; } }

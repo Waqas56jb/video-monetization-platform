@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Hero from '@/components/landing/Hero'
 import Marquee from '@/components/landing/Marquee'
+import SponsorStrip from '@/components/landing/SponsorStrip'
 import ContinueWatching from '@/components/landing/ContinueWatching'
 import Trending from '@/components/landing/Trending'
 import HowItWorks from '@/components/landing/HowItWorks'
@@ -59,6 +60,8 @@ export default function Landing() {
     <div className="page landing-page is-ready">
       <Header />
       <Hero />
+      {/* Homepage sponsors (admin-managed); renders nothing when there are none. */}
+      <SponsorStrip />
       <Marquee />
       {/* Above Trending, and only for a signed-in viewer with something to
           continue. It renders nothing otherwise, so the page is unchanged for

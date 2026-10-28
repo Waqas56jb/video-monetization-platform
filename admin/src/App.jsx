@@ -24,6 +24,7 @@ import PaymentsTab from '@/components/tabs/PaymentsTab'
 import WithdrawalsTab from '@/components/tabs/WithdrawalsTab'
 import RevenueTab from '@/components/tabs/RevenueTab'
 import AdsTab from '@/components/tabs/AdsTab'
+import SponsorsTab from '@/components/tabs/SponsorsTab'
 import AuditTab from '@/components/tabs/AuditTab'
 import CapitalTab from '@/components/tabs/CapitalTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
@@ -161,6 +162,7 @@ function Router() {
         <Route path="/payments" element={<Needs module="payments"><PaymentsTab /></Needs>} />
         <Route path="/withdrawals" element={<Needs module="withdrawals"><WithdrawalsTab /></Needs>} />
         <Route path="/ads" element={<Needs module="ads"><AdsTab /></Needs>} />
+        <Route path="/sponsors" element={<Needs module="ads"><SponsorsTab /></Needs>} />
         <Route path="/capital" element={<Needs module="capital"><CapitalTab /></Needs>} />
         <Route path="/audit" element={<Needs module="audit"><AuditTab /></Needs>} />
         <Route path="/settings" element={<Needs module="settings"><SettingsTab /></Needs>} />

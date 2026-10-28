@@ -447,3 +447,7 @@ textarea:focus { outline: none; border-color: rgba(233,185,73,.5); }
 @media (hover: none) {
   .rv-play { opacity: .92; transform: none; }
 }
+
+/* Homepage Sponsors form: two columns where there is room, one on a phone. */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 18px; align-items: end; }
+.form-grid > .form-error, .form-grid > .btn, .form-grid > .check-row { grid-column: 1 / -1; }

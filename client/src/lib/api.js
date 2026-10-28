@@ -468,6 +468,12 @@ export const api = {
   saveProgress: (videoId, seconds) =>
     put(`/api/playback/${videoId}/progress`, { seconds }, { auth: Boolean(getAccessToken()) }),
 
+  sponsors: {
+    live: () => get('/api/sponsors', { auth: false }),
+    impression: (id) => post(`/api/sponsors/${id}/impression`, {}, { auth: false }),
+    clickUrl: (s) => `${BASE}${s.clickPath}`,
+  },
+
   ads: {
     /**
      * Every ad break for this video in one call — pre-roll, mid-roll, post-roll.

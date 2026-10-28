@@ -25,6 +25,7 @@ const PAGE_META = {
   '/withdrawals': ['Withdrawals', 'Creator payout requests'],
   '/revenue': ['Revenue & Splits', 'What the platform keeps, and what creators earn'],
   '/ads': ['Ads Management', 'Campaigns on Free + Ads videos'],
+  '/sponsors': ['Homepage Sponsors', 'Banners at the top of the homepage'],
   '/audit': ['Audit Log', 'Every action, permanently recorded'],
   '/settings': ['Settings', 'Your account, the platform, and the team'],
 }
