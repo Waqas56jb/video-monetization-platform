@@ -1078,7 +1078,7 @@ router.post(
 
     const outcome = await transaction(async (client) => {
       await client.query(
-        `update payments set status = 'refunded', failure_reason = $2, updated_at = now()
+        `update payments set status = 'refunded', failure_reason = $2, refund_due = false, updated_at = now()
           where id = $1`,
         [payment.id, reason]
       )
@@ -1129,7 +1129,9 @@ router.post(
       userId: payment.user_id,
       kind: 'account',
       title: 'Your payment has been refunded',
-      body: `${reason} Access to that video has been removed.`,
+      /* A double payment is refunded without touching the purchase the
+         viewer still has — telling them access was removed would be false. */
+      body: outcome.reversed > 0 ? `${reason} Access to that video has been removed.` : `${reason} You keep access to the video.`,
       actor: req.user,
       action: 'refund',
       entityType: 'payment',

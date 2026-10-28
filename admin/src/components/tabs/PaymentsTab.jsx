@@ -35,7 +35,7 @@ export default function PaymentsTab() {
     const q = query.trim().toLowerCase()
     if (!q) return all
     return all.filter((p) =>
-      [p.id, p.user_name, p.video_title, p.method, p.provider_reference]
+      [p.id, p.merchant_order_id, p.provider_ref, p.user_name, p.user_email, p.video_title, p.method]
         .join(' ')
         .toLowerCase()
         .includes(q)
@@ -115,7 +115,7 @@ export default function PaymentsTab() {
           <TableWrap>
             <thead>
               <tr>
-                <th>Reference</th>
+                <th>Order / gateway ID</th>
                 <th>User</th>
                 <th>Video</th>
                 <th>Method</th>
@@ -132,7 +132,14 @@ export default function PaymentsTab() {
               )}
               {rows.map((p) => (
                 <tr key={p.id}>
-                  <td style={MONO}>{(p.provider_reference || p.id).slice(0, 14)}</td>
+                  {/* Ours, then the gateway's: the two ids a payment is traced by.
+                      (This used to read `provider_reference`, a column that does
+                      not exist, so it only ever showed our internal uuid.) */}
+                  <td style={MONO}>
+                    {p.merchant_order_id || p.id.slice(0, 14)}
+                    <br />
+                    <small style={{ opacity: 0.7 }}>{p.provider_ref || '—'}</small>
+                  </td>
                   <td>{p.user_name || '—'}</td>
                   <td>{p.video_title || '—'}</td>
                   <td>{METHOD[p.method] || p.method}</td>
@@ -145,6 +152,11 @@ export default function PaymentsTab() {
                   <td>{dateTime(p.created_at)}</td>
                   <td>
                     <span className={`pill ${PILL[p.status] ?? ''}`}>{p.status}</span>
+                    {p.refund_due && (
+                      <span className="pill bad" style={{ marginLeft: 6 }} title={p.failure_reason || 'Charged without new access — refund in the gateway portal, then record it here'}>
+                        refund due
+                      </span>
+                    )}
                   </td>
                   {/* Refunding is money leaving the platform, so it stays with
                       the administrator rather than the moderation team. */}
