@@ -329,3 +329,20 @@ Migrations 045, 046, 047 applied to production before the code went live.
 - The v4 token endpoint answers 403 "Access is denied. Invalid request" to every correctly built request (both body encodings, all key combinations).
 - Both are on AirPay's side: the merchant must be enabled for the hosted checkout / v4, and AirPay may restrict its API by server IP. `npm run airpay:check` reports exactly this and will turn green when AirPay enables it.
 - Found and fixed while doing this: AirPay answers 400 when it rejects *our* request, and 400 was read as "the viewer's payment failed". A failure must now name our order; so must a success.
+
+## Milestone 3 — Homepage Sponsors and handover cleanup, live (2026-10-30)
+
+Run on production as a temporary admin created with `npm run admin:create` (deleted at the end).
+
+**Homepage Sponsors — 100 checks, ALL PASS:**
+- Who: admin can manage; signed out or forged token → 401; a viewer → 403.
+- Refused, nothing created (22 cases): blank or over-long name / headline / line / button text; `javascript:`, `data:`, `ftp:` links, a non-address, a 501-character address; order −1, 1000, 1.5, "abc"; an end at or before the start; a non-date start; `active: "yes"`; an array body; broken JSON.
+- Accepted at the limits: 80 / 80 / 160 / 30 characters, order 0 and 999, a 500-character address, plain `http://`; names trimmed; blank optional fields stored empty, button defaults to "Learn more".
+- Image: PNG stored and public; replacing it deletes the old file from storage; text, SVG, empty, 5.5 MB → refused with a clear message; 7 MB → 413 (was 500 — fixed, `c66a12b`); no file, unknown or malformed id → 400 / 404.
+- Live rules: starts-tomorrow, already-ended and switched-off never show; ordered by "Order"; never more than 5; the public list hides the destination and the numbers.
+- Views and clicks counted only for live sponsors; the click forwards to the sponsor's own address; click rate shown; every change in the audit log.
+- Homepage on Pixel 7, desktop and iPhone 14: labelled "Sponsored", rotates, reports a view once on screen, fits the width with no sideways scroll, HTML typed into a sponsor shows as text and never runs, a tap opens the sponsor in a new tab and is counted.
+- Admin screen: sign-in, "Homepage Sponsors" in the sidebar, the list, add through the form with an image, a 6 MB image and a `javascript:` link refused in the form with the reason, switch off, remove after confirmation; Payments shows "Sales by traffic source" with WhatsApp; `?days=` 0 / −5 / abc / 100000 → 400.
+- Fixed from this run (`1c0a494`): an image refused after the sponsor was created left the form on "Add sponsor" — a second press made a duplicate. The image is now checked first, and a failed upload leaves the form editing the saved sponsor.
+
+**Test data removed** (`server/scripts/cleanup-e2e.mjs --exclude e2e+8238822854@mtonyo.test --apply`): 14 sandbox purchases refunded through the admin refund path (access removed, creator credit reversed) — including the probe `MTN202610285A49DBCD` — then 35 test accounts and the temporary admin deleted. Kept, as documented: the fixture `e2e+8238822854@mtonyo.test`. `money:reconcile` passes afterwards.
