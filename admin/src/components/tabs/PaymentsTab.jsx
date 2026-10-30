@@ -13,6 +13,14 @@ import { useAuth } from '@/context/AuthContext'
 const MONO = { fontFamily: 'monospace', color: 'var(--muted)' }
 const PILL = { success: 'ok', pending: 'pend', failed: 'bad', cancelled: '', expired: '', refunded: 'pend' }
 const METHOD = { mpesa: 'M-Pesa', airtel: 'Airtel Money', card: 'Card' }
+
+/* Which gateway settled it. "sandbox" is MTONYO+'s internal test gateway — no
+   money moved — and must never be mistaken for a real AirPay transaction. */
+const GATEWAY_FILTER = { AirPay: 'airpay', 'Test payments (no money)': 'sandbox' }
+function GatewayPill({ provider }) {
+  if (provider === 'airpay') return <span className="pill ok" title="Settled through AirPay">AirPay</span>
+  return <span className="pill" title="MTONYO+ internal test payment — no money moved">TEST</span>
+}
 const SOURCE = {
   whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', twitter: 'X / Twitter',
   youtube: 'YouTube', telegram: 'Telegram', search: 'Search', other: 'Other site', direct: 'Direct', unknown: 'Not recorded',
@@ -24,6 +32,7 @@ export default function PaymentsTab() {
   const { isAdmin } = useAuth()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
+  const [gateway, setGateway] = useState('')
   const [busyId, setBusyId] = useState(null)
 
   const { data, loading, error, reload } = useApi(
@@ -38,14 +47,17 @@ export default function PaymentsTab() {
   // already capped at 200 rows, and this keeps typing instant.
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return all
-    return all.filter((p) =>
-      [p.id, p.merchant_order_id, p.provider_ref, p.user_name, p.user_email, p.video_title, p.method]
-        .join(' ')
-        .toLowerCase()
-        .includes(q)
+    const want = GATEWAY_FILTER[gateway]
+    return all.filter(
+      (p) =>
+        (!want || p.provider === want) &&
+        (!q ||
+          [p.id, p.merchant_order_id, p.provider_ref, p.user_name, p.user_email, p.video_title, p.method]
+            .join(' ')
+            .toLowerCase()
+            .includes(q))
     )
-  }, [all, query])
+  }, [all, gateway, query])
 
   /**
    * Record a refund.
@@ -121,6 +133,7 @@ export default function PaymentsTab() {
               options={['Success', 'Pending', 'Failed', 'Cancelled', 'Expired', 'Refunded']}
               allLabel="All Status"
             />
+            <FilterSelect value={gateway} onChange={setGateway} options={Object.keys(GATEWAY_FILTER)} allLabel="All gateways" />
           </FilterRow>
         }
       >
@@ -132,9 +145,9 @@ export default function PaymentsTab() {
           rows={6}
           emptyProps={{
             icon: CreditCard,
-            title: query || status ? 'Nothing matches that' : 'No transactions yet',
+            title: query || status || gateway ? 'Nothing matches that' : 'No transactions yet',
             hint:
-              query || status
+              query || status || gateway
                 ? 'Try a different search or clear the filter.'
                 : 'Every purchase lands here the moment it is attempted, successful or not.',
           }}
@@ -163,7 +176,8 @@ export default function PaymentsTab() {
                       (This used to read `provider_reference`, a column that does
                       not exist, so it only ever showed our internal uuid.) */}
                   <td style={MONO}>
-                    {p.merchant_order_id || p.id.slice(0, 14)}
+                    {p.merchant_order_id || p.id.slice(0, 14)}{' '}
+                    <GatewayPill provider={p.provider} />
                     <br />
                     <small style={{ opacity: 0.7 }}>{p.provider_ref || '—'}</small>
                   </td>

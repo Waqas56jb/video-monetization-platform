@@ -34,3 +34,12 @@ test('if the image upload still fails, the form stays on the saved sponsor — n
   assert.match(onImageError, /return/)
   assert.match(onImageError, /Save changes/)
 })
+
+test('payments: every row names its gateway; internal test payments are labelled TEST and can be filtered out', () => {
+  const pay = readFileSync(join(dir, 'PaymentsTab.jsx'), 'utf8').replace(/\r\n/g, '\n')
+  assert.match(pay, /const GATEWAY_FILTER = \{ AirPay: 'airpay', 'Test payments \(no money\)': 'sandbox' \}/)
+  assert.match(pay, /if \(provider === 'airpay'\) return <span className="pill ok"/)
+  assert.match(pay, />TEST<\/span>/)
+  assert.match(pay, /<GatewayPill provider=\{p\.provider\} \/>/)
+  assert.match(pay, /\(!want \|\| p\.provider === want\)/)
+})
