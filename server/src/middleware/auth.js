@@ -122,18 +122,17 @@ export function requireAdmin() {
 }
 
 /**
- * Studio access: a creator, an administrator, a staff member who opened the
- * Create side on this email, or anyone who already has a creator profile.
+ * Studio access: an approved creator (role `creator`) or staff. The role alone.
  *
- * The public app lets one email use Watch and Create. The profile role stays
- * `admin` / `sub_admin` so staff access is not stripped — this check follows
- * the creator side, not only `profiles.role = creator`.
+ * This used to let in "anyone who already has a creator profile". But revoking
+ * a creator sets the role back to viewer and KEEPS the creator_profiles row (its
+ * earnings and payout history must survive), so the revoked account still
+ * passed — the admin "Revoke" did not actually close the studio. Approval sets
+ * the role; revoke clears it; nothing else grants it.
  */
 export async function hasCreatorAccess(user) {
   if (!user) return false
-  if (user.role === 'creator' || user.role === 'admin' || user.role === 'sub_admin') return true
-  const row = await one('select user_id from creator_profiles where user_id = $1', [user.id])
-  return Boolean(row)
+  return user.role === 'creator' || user.role === 'admin' || user.role === 'sub_admin'
 }
 
 export function requireCreator() {

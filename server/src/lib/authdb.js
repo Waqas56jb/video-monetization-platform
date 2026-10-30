@@ -271,19 +271,13 @@ export async function consumeResetToken(raw, newPassword) {
  * Watch  = profiles.viewer_enabled.
  */
 export async function getSides(userId) {
-  const row = await one(
-    `select p.role,
-            p.viewer_enabled,
-            (cp.user_id is not null) as has_creator
-       from profiles p
-       left join creator_profiles cp on cp.user_id = p.id
-      where p.id = $1`,
-    [userId]
-  )
+  // The role is the creator side. A creator's profile row outlives a revoke (it
+  // keeps the earnings history), so it must not count as access.
+  const row = await one(`select p.role, p.viewer_enabled from profiles p where p.id = $1`, [userId])
   if (!row) return { creator: false, viewer: false }
   const staff = row.role === 'admin' || row.role === 'sub_admin'
   return {
-    creator: Boolean(row.has_creator) || row.role === 'creator' || staff,
+    creator: row.role === 'creator' || staff,
     viewer: Boolean(row.viewer_enabled) || staff,
   }
 }
