@@ -8,35 +8,39 @@ import { CONTENT_TYPES } from '../lib/creatorApplication.js'
 const dir = dirname(fileURLToPath(import.meta.url))
 
 /**
- * THIS TEST USED TO ASSERT THE OPPOSITE, and the reversal was the client's call.
+ * The rule has moved twice, both times the client's call.
  *
- * It read: "register never mints a creator_profiles row (application is the only
- * door)". That was the rule until 2026-09-02, and its cost was the fault the
- * client reported — signing up on Create produced a Watch account they never
- * asked for, and then the Create login refused them. Asked directly, the client
- * chose: signing up on Create opens the studio straight away.
- *
- * The gate did not disappear, it moved. It now sits where the client's own
- * review queue already was: a video reaches viewers only when an administrator
- * approves it. That is asserted below, because it is the promise that now
- * carries the weight the signup gate used to.
+ * Until 2026-09-02: register never minted a creator; the application was the
+ * only door. 2026-09-02 → 2026-10-30: signing up on Create opened the studio on
+ * the spot. From 2026-10-30, back to the application, now final: "VIEWER →
+ * APPLY TO BECOME A CREATOR → APPLICATION FORM → SUPER ADMIN REVIEWS →
+ * APPROVE/REJECT → ONLY APPROVED CREATOR GETS STUDIO/CREATOR ACCESS."
  */
-test('signing up on Create makes a Create account, not a Watch one', () => {
+test('signup only ever makes a Watch account; asking for Create goes to the application', () => {
   const src = readFileSync(join(dir, 'auth.routes.js'), 'utf8')
   const registerBlock = src.slice(src.indexOf("'/register'"), src.indexOf("'/login'"))
 
-  // The side asked for is the side created, in both directions.
-  assert.match(registerBlock, /ensureCreatorSide/, 'a Create signup must open the Create side')
-  assert.match(registerBlock, /enableViewerSide/, 'a Watch signup must open the Watch side')
-  assert.match(registerBlock, /side: wanted/, 'the response must report the side actually created')
+  assert.doesNotMatch(registerBlock, /ensureCreatorSide/, 'signup must never open the Create side')
+  assert.doesNotMatch(registerBlock, /insert into creator_profiles/, 'signup must never mint a creator profile')
+  assert.doesNotMatch(registerBlock, /role, viewer_enabled\)\s*values \(\$1,\$2,\$3,\$4,\$5/, 'the role is not taken from the request')
+  assert.match(registerBlock, /values \(\$1,\$2,\$3,\$4,'viewer',true\)/g)
+  assert.match(registerBlock, /enableViewerSide/)
+  assert.match(registerBlock, /side: 'viewer'/)
+  assert.match(registerBlock, /needsCreatorApplication: appliedForCreator && !sides\.creator/)
 
-  /* A fresh Create signup inserts its creator_profiles row in the SAME
-     transaction as the profile: a profile without one is a login that passes the
-     Create door and finds no studio behind it. */
-  assert.match(registerBlock, /insert into creator_profiles/)
+  // The login no longer tells anyone to "sign up on Create".
+  const loginBlock = src.slice(src.indexOf("'/login'"), src.indexOf("'/refresh'"))
+  assert.doesNotMatch(loginBlock, /Sign up on Create/)
+  assert.match(loginBlock, /apply to become a creator/)
+})
 
-  // And it no longer diverts anyone to the application queue to get in.
-  assert.match(registerBlock, /needsCreatorApplication: false/)
+test('approving an application is the only place an account becomes a creator', () => {
+  const files = ['auth.routes.js', 'account.routes.js', 'admin.routes.js'].map((f) => [f, readFileSync(join(dir, f), 'utf8')])
+  const grants = files.flatMap(([f, s]) => [...s.matchAll(/set role = 'creator'|insert into creator_profiles/g)].map(() => f))
+  assert.deepEqual([...new Set(grants)], ['admin.routes.js'])
+  const admin = files.find(([f]) => f === 'admin.routes.js')[1]
+  const approve = admin.slice(admin.indexOf('Approval is the only place a viewer becomes a creator'))
+  assert.match(approve.slice(0, 4000), /set role = 'creator'/)
 })
 
 test('a Create account still cannot publish anything by itself', () => {

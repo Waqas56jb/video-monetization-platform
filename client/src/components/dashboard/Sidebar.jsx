@@ -4,6 +4,7 @@ import Logo from '@/components/ui/Logo'
 import Icon from '@/components/ui/Icon'
 import { useToast } from '@/context/ToastContext'
 import { useRole } from '@/context/AuthContext'
+import { dashboardPath } from '@/lib/accountSide'
 
 /**
  * Sidebar menu, filtered by the SIDES this account actually has.
@@ -178,10 +179,9 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
         {/**
           * The side this account does not have.
           *
-          * Watch and Create are separate accounts on one email, so an account
-          * with only one of them is normal — but it should be able to see that,
-          * and to add the other. Signing up on the missing side with the same
-          * email and password opens it.
+          * A viewer is offered the creator application (approved by the team —
+          * never a self-serve Create account); an approved creator without the
+          * Watch side can add it with the same email and password.
           */}
         {missingSide && (
           <Fragment>
@@ -191,11 +191,11 @@ export default function Sidebar({ open, activeTab, activeFilter = '', onTab, onC
               type="button"
               onClick={() => {
                 onClose()
-                navigate(`/signup?side=${missingSide}`)
+                navigate(missingSide === 'creator' ? dashboardPath('become') : '/signup?side=viewer')
               }}
             >
               <Icon name={missingSide === 'creator' ? 'rocket' : 'library'} />
-              {missingSide === 'creator' ? 'Add a Creator account' : 'Add a Watch account'}
+              {missingSide === 'creator' ? 'Apply to become a creator' : 'Add a Watch account'}
             </button>
           </Fragment>
         )}

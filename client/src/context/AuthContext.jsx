@@ -113,13 +113,13 @@ export function AuthProvider({ children }) {
   )
 
   const signIn = useCallback(async ({ email, password, side }) => {
-    const wanted = side === 'creator' ? 'creator' : 'viewer'
     setLoading(true)
     try {
+      // No side: the server signs in on the side the account has.
       const data = await api.auth.login({
         email: String(email || '').trim().toLowerCase(),
         password,
-        side: wanted,
+        ...(side === 'creator' || side === 'viewer' ? { side } : {}),
       })
       saveSession(data.session)
       const resolved = data.side === 'creator' ? 'creator' : 'viewer'

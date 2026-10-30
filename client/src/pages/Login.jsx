@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, Sparkles } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
-import RoleToggle from '@/components/auth/RoleToggle'
 import Field, { PasswordField } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
 import { useAuth } from '@/context/AuthContext'
-import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch, sideLabel } from '@/lib/accountSide'
+import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
 function loginErrorMessage(err) {
@@ -17,7 +16,7 @@ function loginErrorMessage(err) {
   if (/staff/i.test(raw)) {
     return 'These details do not match an account. Check your email and password.'
   }
-  if (/does not have a creator|creator account yet|no creator account|registered as a creator|create side|watch account|creator account/i.test(raw)) {
+  if (/approved creator|apply to become a creator/i.test(raw)) {
     return raw
   }
   if (/incorrect|invalid login|invalid credentials/i.test(raw)) {
@@ -32,25 +31,28 @@ function loginErrorMessage(err) {
   return raw || 'Unable to sign in. Please try again.'
 }
 
-const ROLES = [
-  { value: 'viewer', label: "I'm here to Watch", shortLabel: 'Watch', icon: 'user' },
-  { value: 'creator', label: 'I want to Create', shortLabel: 'Create', icon: 'video' },
-]
-
+/**
+ * One login for everyone.
+ *
+ * There used to be a Watch / Create toggle here, and a viewer who chose Create
+ * was offered to make a Create account on the spot. Creator access is
+ * granted only by approving an application (client, 2026-10-30), so the login
+ * does not ask which side: the server signs you in on the side your account has,
+ * and an approved creator who last used the studio goes back to it.
+ */
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const showToast = useToast()
   const { signIn, authed, loading: authLoading, setAccountSide, user, isCreator } = useAuth()
 
-  const [side, setSide] = useState(() => sideFromSearch(location.search) || getAccountSide())
+  // Only a preference: honoured when the account really has the creator side.
+  const [preferred] = useState(() => sideFromSearch(location.search) || getAccountSide())
   const [form, setForm] = useState(() => {
     const email = new URLSearchParams(location.search || '').get('email') || ''
     return { email, password: '' }
   })
   const [error, setError] = useState(null)
-  const [errorCode, setErrorCode] = useState(null)
-  const [wrongSide, setWrongSide] = useState(null)
   const [busy, setBusy] = useState(false)
 
   /**
@@ -68,17 +70,15 @@ export default function Login() {
   // ended up on the dashboard instead.
   useEffect(() => {
     if (!authLoading && authed) {
-      setAccountSide(side)
-      const panel = panelRoleFor(user?.role, side, isCreator)
+      const panel = panelRoleFor(user?.role, preferred, isCreator)
+      setAccountSide(panel)
       navigate(next || dashboardPath(panel === 'creator' ? 'creator' : 'viewer'), { replace: true })
     }
-  }, [authed, authLoading, isCreator, navigate, next, setAccountSide, side, user?.role])
+  }, [authed, authLoading, isCreator, navigate, next, preferred, setAccountSide, user?.role])
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setError(null)
-    setErrorCode(null)
-    setWrongSide(null)
   }
 
   const onSubmit = async (e) => {
@@ -104,20 +104,18 @@ export default function Login() {
 
     setBusy(true)
     setError(null)
-    setErrorCode(null)
-    setWrongSide(null)
     try {
-      const result = await signIn({ email, password, side })
-      const panel = panelRoleFor(result.user?.role, result.side, Boolean(result.creator))
-      showToast(panel === 'creator' ? 'Signed in to your creator account.' : 'Signed in to your viewer account.')
+      const result = await signIn({ email, password })
+      let panel = panelRoleFor(result.user?.role, result.side, Boolean(result.creator))
+      // An approved creator who works in the studio goes back to it.
+      if (panel !== 'creator' && preferred === 'creator' && result.sides?.creator) {
+        setAccountSide('creator')
+        panel = 'creator'
+      }
+      showToast(panel === 'creator' ? 'Signed in to your creator studio.' : 'Signed in.')
       navigate(next || dashboardPath(panel === 'creator' ? 'creator' : 'viewer'), { replace: true })
     } catch (err) {
       setError(loginErrorMessage(err))
-      setErrorCode(err?.code || null)
-      if (err?.code === 'WRONG_SIDE') {
-        const existing = err?.details?.existingSide
-        setWrongSide(existing === 'creator' ? 'creator' : existing === 'viewer' ? 'viewer' : side === 'creator' ? 'viewer' : 'creator')
-      }
       setBusy(false)
     }
   }
@@ -132,24 +130,13 @@ export default function Login() {
           </>
         ),
         heading: (
-          side === 'creator' ? (
-            <>
-              Your studio is
-              <br />
-              waiting for you.
-            </>
-          ) : (
-            <>
-              Your library is
-              <br />
-              waiting for you.
-            </>
-          )
+          <>
+            Your library is
+            <br />
+            waiting for you.
+          </>
         ),
-        text:
-          side === 'creator'
-            ? 'Log in on the Create side after we have approved your application. Until then, use Watch.'
-            : 'Every video you have purchased stays in your library. The same email can apply to publish later.',
+        text: 'Every video you have purchased stays in your library. Approved creators reach their studio from the same login.',
       }}
       back={{ to: '/', label: 'Back to home' }}
       title={
@@ -157,10 +144,8 @@ export default function Login() {
           Log in to <span className="brand-accent">MTONYO+</span>
         </>
       }
-      subtitle="Choose Watch or Create, then enter the same email and password."
+      subtitle="Enter your email and password."
     >
-      <RoleToggle options={ROLES} value={side} onChange={setSide} />
-
       <form onSubmit={onSubmit} noValidate>
         {expired && (
           <div className="form-error" role="status">
@@ -170,41 +155,6 @@ export default function Login() {
         {error && (
           <div className="form-error" role="alert">
             <span>{error}</span>
-            {/**
-              * Two ways out of a wrong-side login, and both are now real.
-              *
-              * The side you asked for does not exist on this email. Either you
-              * meant the other one — switch — or you want this one, in which
-              * case you sign up for it with the same email and password. The
-              * second link used to say "Apply to become a creator", which was
-              * the only route when an administrator had to grant the Create
-              * side. Signing up on Create makes the account now.
-              */}
-            {errorCode === 'WRONG_SIDE' && (
-              <>
-                {wrongSide && (
-                  <button
-                    type="button"
-                    className="link-btn"
-                    style={{ display: 'block', marginTop: 10, fontWeight: 700 }}
-                    onClick={() => {
-                      setSide(wrongSide)
-                      setError(null)
-                      setErrorCode(null)
-                      setWrongSide(null)
-                    }}
-                  >
-                    Switch to {sideLabel(wrongSide)} login
-                  </button>
-                )}
-                <Link
-                  to={authUrl('signup', next, { side, email: form.email })}
-                  style={{ display: 'block', marginTop: 8, fontWeight: 700 }}
-                >
-                  Create a {sideLabel(side)} account for this email
-                </Link>
-              </>
-            )}
           </div>
         )}
 
@@ -237,7 +187,7 @@ export default function Login() {
             Remember me
           </label>
           <Link
-            to={`/forgot-password?side=${side}${form.email ? `&email=${encodeURIComponent(form.email)}` : ''}`}
+            to={`/forgot-password${form.email ? `?email=${encodeURIComponent(form.email)}` : ''}`}
           >
             Forgot password?
           </Link>
@@ -245,16 +195,19 @@ export default function Login() {
 
         <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           <LogIn />
-          {busy ? 'Signing in…' : side === 'creator' ? 'Log in as Creator' : 'Log in as Viewer'}
+          {busy ? 'Signing in…' : 'Log in'}
         </button>
       </form>
 
       <div className="divider">NEW TO MTONYO+?</div>
 
-      <button className="btn btn-ghost btn-block" onClick={() => navigate(authUrl('signup', next, { side }))} disabled={busy}>
+      <button className="btn btn-ghost btn-block" onClick={() => navigate(authUrl('signup', next))} disabled={busy}>
         <Sparkles />
         Create Free Account
       </button>
+      <div className="auth-alt">
+        Want to publish on MTONYO+? <Link to="/signup?side=creator">Apply to become a creator</Link>
+      </div>
     </AuthLayout>
   )
 }
