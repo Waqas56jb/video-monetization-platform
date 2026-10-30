@@ -7,6 +7,7 @@ import { TableWrap } from '@/components/ui/Table'
 import { Async } from '@/components/ui/States'
 import useApi, { compact, dateTime } from '@/hooks/useApi'
 import api from '@/lib/api'
+import { sponsorImageProblem } from '@/lib/sponsorImage'
 import { useToast } from '@/context/ToastContext'
 import { useConfirm } from '@/context/ConfirmContext'
 
@@ -64,10 +65,25 @@ export default function SponsorsTab() {
     const body = { ...form, position: Number(form.position) || 0, startsAt: fromLocalInput(form.startsAt), endsAt: fromLocalInput(form.endsAt), tagline: form.tagline || null, cta: form.cta || null }
     if (body.startsAt && body.endsAt && new Date(body.endsAt) <= new Date(body.startsAt)) return setFormError('The end date must be after the start date.')
     if (!/^https?:\/\/[^\s/]+\.[^\s]+/.test(body.clickUrl)) return setFormError('Enter the full web address the banner opens, starting with https://')
+    const imageError = sponsorImageProblem(image)
+    if (imageError) return setFormError(imageError)
     setSaving(true)
     try {
       const res = editing ? await api.admin.updateSponsor(editing, body) : await api.admin.createSponsor(body)
-      if (image) await api.admin.sponsorImage(res.sponsor.id, image)
+      if (image) {
+        try {
+          await api.admin.sponsorImage(res.sponsor.id, image)
+        } catch (err) {
+          // The sponsor is saved. Stay on it, so trying again edits it
+          // rather than adding a second one.
+          setEditing(res.sponsor.id)
+          setImage(null)
+          if (fileRef.current) fileRef.current.value = ''
+          setFormError(`Saved, but the image did not upload (${err.message}). Choose the image again and press Save changes.`)
+          reload({ quiet: true })
+          return
+        }
+      }
       showToast(editing ? 'Sponsor updated' : 'Sponsor added to the homepage')
       reset()
       reload({ quiet: true })
