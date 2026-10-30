@@ -26,3 +26,10 @@ test('the account\'s sides follow the role too', () => {
   assert.doesNotMatch(fn, /creator_profiles|has_creator/)
   assert.match(fn, /creator: row\.role === 'creator' \|\| staff/)
 })
+
+test('/me sends the creator profile only to an account the role lets into the studio', () => {
+  const src = readFileSync(new URL('../modules/auth.routes.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
+  const me = src.slice(src.indexOf("'/me',"), src.indexOf('res.json({ ...shape(req.user, null)'))
+  assert.ok(me.indexOf('const sides = await getSides') < me.indexOf('from creator_profiles'), 'sides decided first')
+  assert.match(me, /const row = sides\.creator\s*\?/)
+})

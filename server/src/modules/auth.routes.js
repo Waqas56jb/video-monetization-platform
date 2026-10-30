@@ -313,12 +313,18 @@ router.get(
   '/me',
   requireAuth(),
   asyncHandler(async (req, res) => {
-    const row = await one(
-      `select display_name, bio, location, verified, revenue_split_percent,
-              followers, payout_phone, payout_method
-         from creator_profiles where user_id = $1`,
-      [req.user.id]
-    )
+    const sides = await getSides(req.user.id)
+    // Only an account the role lets into the studio gets its creator profile.
+    // A revoked creator keeps that row (earnings history); sending it made the
+    // app treat them as a creator and hide "Apply to become a creator".
+    const row = sides.creator
+      ? await one(
+          `select display_name, bio, location, verified, revenue_split_percent,
+                  followers, payout_phone, payout_method
+             from creator_profiles where user_id = $1`,
+          [req.user.id]
+        )
+      : null
     const creatorFull = row
       ? {
           displayName: row.display_name,
@@ -341,7 +347,6 @@ router.get(
      * server, and that check is what actually decides.
      */
     const permissions = await permissionsFor(req.user)
-    const sides = await getSides(req.user.id)
     // Called on every page load, both apps — reduced by default (this
     // account's Watch side, or the admin app, which never asks for `creator`
     // at all) so payout/split/category never leave the server unless the

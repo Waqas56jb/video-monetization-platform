@@ -200,8 +200,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const accountRole = user?.role || 'viewer'
-  const studioAccess = hasCreatorStudio(accountRole, creator) || Boolean(sides.creator)
-  const panelRole = panelRoleFor(accountRole, accountSide, Boolean(creator) || sides.creator)
+  const studioAccess = hasCreatorStudio(accountRole) || Boolean(sides.creator)
+  const panelRole = panelRoleFor(accountRole, accountSide, studioAccess)
 
   const value = useMemo(
     () => ({

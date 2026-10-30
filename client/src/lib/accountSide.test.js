@@ -10,9 +10,10 @@ test('creator account can open the viewer panel', () => {
   assert.equal(dashboardPath('creator'), '/dashboard?tab=overview')
 })
 
-test('creator profile unlocks the studio even when profile role is viewer', () => {
+test('studio access is the role — a revoked creator with a leftover profile is a viewer', () => {
   assert.equal(panelRoleFor('viewer', 'creator', true), 'creator')
-  assert.equal(hasCreatorStudio('viewer', { display_name: 'Test' }), true)
+  assert.equal(hasCreatorStudio('viewer', { display_name: 'Revoked' }), false, 'a leftover creator profile is not access')
+  assert.equal(hasCreatorStudio('creator'), true)
   assert.equal(hasCreatorStudio('viewer', null), false)
 })
 

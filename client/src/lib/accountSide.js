@@ -21,11 +21,11 @@ export function panelRoleFor(accountRole, side, hasCreatorProfile = false) {
   return 'viewer'
 }
 
-export function hasCreatorStudio(accountRole, creatorProfile) {
+// The role alone, as on the server. A creator profile survives a revoke, so
+// its presence says nothing about access.
+export function hasCreatorStudio(accountRole) {
   const real = accountRole || 'viewer'
-  return (
-    real === 'creator' || real === 'admin' || real === 'sub_admin' || Boolean(creatorProfile)
-  )
+  return real === 'creator' || real === 'admin' || real === 'sub_admin'
 }
 
 export function homeTabFor(panel) {
