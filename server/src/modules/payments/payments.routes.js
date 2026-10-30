@@ -253,7 +253,7 @@ router.post(
       throw notFound('Unknown payment')
     }
 
-    const result = await reconcilePayment(payment, { via: 'callback' })
+    const result = await reconcilePayment(payment, { via: 'callback', signed: ref.signed || null })
     const fresh = await one('select status from payments where id = $1', [payment.id])
     res.json({ ok: true, status: fresh?.status || payment.status, unlocked: Boolean(result.unlocked) })
   })
@@ -287,7 +287,7 @@ router.all(
       return res.redirect(303, `${home}/library`)
     }
 
-    await reconcilePayment(payment, { via: 'return' }).catch((err) => log.warn(`return reconcile: ${err.message}`))
+    await reconcilePayment(payment, { via: 'return', signed: ref.signed || null }).catch((err) => log.warn(`return reconcile: ${err.message}`))
     const video = await one('select slug, id from videos where id = $1', [payment.video_id])
     res.set('Cache-Control', 'no-store')
     res.redirect(303, `${home}/watch/${encodeURIComponent(video?.slug || payment.video_id)}?payment=${payment.id}`)

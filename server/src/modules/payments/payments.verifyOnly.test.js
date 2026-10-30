@@ -41,7 +41,9 @@ test('status moves: pending settles once; only a verified success re-opens a clo
 
 test('a callback is a doorbell: it names a payment and triggers verification, never settles from its body', () => {
   const hook = routes.slice(routes.indexOf("'/webhook/:provider'"), routes.indexOf('/* ------------------------------------------------------------ sandbox aid'))
-  assert.match(hook, /reconcilePayment\(payment, \{ via: 'callback' \}\)/)
+  // `signed` is the gateway's own decrypted reply; only the provider may weigh
+  // it, and AirPay's does so for a sandbox merchant alone (airpay.v4.test.js).
+  assert.match(hook, /reconcilePayment\(payment, \{ via: 'callback', signed: ref\.signed \|\| null \}\)/)
   assert.doesNotMatch(hook, /settlePayment\(/, 'the webhook must not record an outcome itself')
   assert.doesNotMatch(hook, /parsed\.status|ref\.status|body\.status/, 'a callback status is never read')
   // A provider's parseCallback returns only which payment — no status field.
@@ -55,7 +57,7 @@ test('the viewer\'s poll and the sweep reach an outcome only through the gateway
   assert.match(routes, /await reconcilePayment\(payment, \{ via: 'status-poll' \}\)/)
   assert.match(sweep, /reconcilePayment\(p, \{ via: 'sweep' \}\)/)
   const rec = service.slice(service.indexOf('export async function reconcilePayment'), service.indexOf('/** Shape a payment row'))
-  assert.match(rec, /await paymentProvider\(\)\.verify\(payment\.provider_ref, payment\)/)
+  assert.match(rec, /await paymentProvider\(\)\.verify\(payment\.provider_ref, payment, \{ signed \}\)/)
   // "pending" from the gateway is not an outcome.
   assert.match(rec, /if \(status && status !== 'pending'\)/)
   // Past the window with no verdict: expired, so nobody waits forever.

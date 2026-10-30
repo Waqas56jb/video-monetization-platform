@@ -159,14 +159,16 @@ export async function settlePayment({ paymentId, providerRef, orderId, status, f
  * A payment still pending past PENDING_EXPIRES_MS with no verdict is marked
  * expired, so nobody waits forever; a later verified success still settles it.
  */
-export async function reconcilePayment(payment, { via = 'unknown', now = Date.now() } = {}) {
+export async function reconcilePayment(payment, { via = 'unknown', now = Date.now(), signed = null } = {}) {
   if (!payment) return { handled: false }
   const reopenable = payment.status === 'pending' || canMove(payment.status, 'success')
   if (!reopenable) return { handled: true, idempotent: true, payment }
 
   let verdict = null
   try {
-    verdict = await paymentProvider().verify(payment.provider_ref, payment)
+    // `signed`: the gateway's own decrypted reply, which the provider may
+    // weigh only where its verification API does not exist (AirPay sandbox).
+    verdict = await paymentProvider().verify(payment.provider_ref, payment, { signed })
   } catch (err) {
     log.warn(`payment verify failed for ${payment.merchant_order_id || payment.id} (${via}): ${err.message}`)
   }

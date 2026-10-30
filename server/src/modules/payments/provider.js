@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { env } from '../../config/env.js'
 import { log } from '../../lib/logger.js'
 import { badRequest, serviceUnavailable } from '../../lib/errors.js'
-import { airpayConfig, missingAirpayConfig, checkoutForm, verifyOrder, orderFromCallback, secureHashMatches } from './airpay.js'
+import { airpayConfig, missingAirpayConfig, checkoutRequest, verifyAirpay, orderFromCallback, secureHashMatches } from './airpay.js'
 
 /**
  * The payment provider contract.
@@ -138,25 +138,34 @@ const airpay = {
       log.error(`AirPay is selected but not configured (missing ${missing.join(', ')})`)
       throw serviceUnavailable('Mobile money payments are temporarily unavailable. Nothing was charged — please try again shortly.')
     }
-    const fields = checkoutForm({ cfg, orderId, amountTzs, method, phone, userId: buyer?.id, email: buyer?.email, fullName: buyer?.fullName })
-    log.info(`airpay checkout ${orderId} (${method}, TZS ${amountTzs})`)
+    let redirect
+    try {
+      redirect = await checkoutRequest({ cfg, orderId, amountTzs, method, phone, userId: buyer?.id, email: buyer?.email, fullName: buyer?.fullName })
+    } catch (err) {
+      // v4 needs a token first; if AirPay refuses it, nobody has been charged.
+      log.error(`airpay checkout ${orderId}: ${err.message}`)
+      throw serviceUnavailable('Mobile money payments are temporarily unavailable. Nothing was charged — please try again shortly.')
+    }
+    log.info(`airpay ${cfg.version} checkout ${orderId} (${method}, TZS ${amountTzs})`)
     return {
       providerRef: null, // AirPay's transaction id arrives with verification
       status: 'pending',
-      redirect: { url: cfg.payUrl, method: 'POST', fields },
+      redirect,
       instructions: `Continue on AirPay's secure page to pay with ${method === 'airtel' ? 'Airtel Money' : 'M-Pesa'}.`,
     }
   },
-  async verify(_ref, payment) {
-    return verifyOrder(payment)
+  async verify(_ref, payment, { signed } = {}) {
+    return verifyAirpay(payment, { signed })
   },
   parseCallback(body) {
     return orderFromCallback(body)
   },
-  /* AirPay does not sign with our webhook secret. A callback is only a
-     doorbell (the outcome comes from verify()), so it is accepted; whether its
-     AP_SECUREHASH matched is logged to confirm the formula in AirPay's sandbox. */
+  /* AirPay does not sign with our webhook secret. A plain (v3) callback is
+     only a doorbell — the outcome comes from verify() — so it is accepted, and
+     whether its AP_SECUREHASH matched is logged. A v4 `response` that does not
+     decrypt with our key is not from AirPay and is refused. */
   authenticateCallback(body) {
+    if (body?.response || body?.RESPONSE) return !orderFromCallback(body).invalid
     const ok = secureHashMatches(body)
     if (ok === false) log.warn('airpay callback: AP_SECUREHASH did not match (outcome is verified independently)')
     return true

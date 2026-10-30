@@ -119,9 +119,10 @@ test('verifyOrder: gateway down, HTTP 500, or a hang is an error — never a ver
 })
 
 test('callbacks name an order only; AP_SECUREHASH is checked, not trusted', () => {
-  assert.deepEqual(orderFromCallback({ TRANSACTIONID: 'MTN1', APTRANSACTIONID: 77, TRANSACTIONSTATUS: 200 }), { orderId: 'MTN1', providerRef: '77' })
-  assert.deepEqual(orderFromCallback({ transactionid: 'MTN2' }), { orderId: 'MTN2', providerRef: null })
-  assert.deepEqual(orderFromCallback({}), { orderId: null, providerRef: null })
+  const plain = { signed: null, invalid: false }
+  assert.deepEqual(orderFromCallback({ TRANSACTIONID: 'MTN1', APTRANSACTIONID: 77, TRANSACTIONSTATUS: 200 }, CFG), { orderId: 'MTN1', providerRef: '77', ...plain })
+  assert.deepEqual(orderFromCallback({ transactionid: 'MTN2' }, CFG), { orderId: 'MTN2', providerRef: null, ...plain })
+  assert.deepEqual(orderFromCallback({}, CFG), { orderId: null, providerRef: null, ...plain })
   const body = { TRANSACTIONID: 'MTN1', APTRANSACTIONID: '77', AMOUNT: '5000.00', TRANSACTIONSTATUS: '200', MESSAGE: 'Success' }
   const good = String(crc32(`MTN1:77:5000.00:200:Success:247134:user-x`))
   assert.equal(secureHashMatches({ ...body, AP_SECUREHASH: good }, CFG), true)
@@ -132,7 +133,7 @@ test('callbacks name an order only; AP_SECUREHASH is checked, not trusted', () =
 test('routes: AirPay callbacks and returns only trigger verification; the return goes to our own site', () => {
   const routes = readFileSync(new URL('./payments.routes.js', import.meta.url), 'utf8')
   const ret = routes.slice(routes.indexOf("'/return/:provider'"), routes.indexOf('/* ------------------------------------------------------------ sandbox aid'))
-  assert.match(ret, /reconcilePayment\(payment, \{ via: 'return' \}\)/)
+  assert.match(ret, /reconcilePayment\(payment, \{ via: 'return', signed: ref\.signed \|\| null \}\)/)
   assert.doesNotMatch(ret, /settlePayment\(/)
   assert.match(ret, /const home = env\.publicWebUrl/)
   assert.doesNotMatch(ret, /redirect\(303, (req|ref)\./, 'never redirect to a URL from the request')

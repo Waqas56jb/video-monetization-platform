@@ -120,15 +120,20 @@ export const env = {
       password: process.env.AIRPAY_PASSWORD || '',
       // "Secret" / API key in AirPay's email (older name kept as a fallback).
       secret: process.env.AIRPAY_SECRET || process.env.AIRPAY_API_KEY || '',
-      // OAuth2 pair for AirPay's v4 API; held for it, not used by the v3 flow.
+      // OAuth2 pair for AirPay's v4 API. When both are set, v4 is used.
       clientId: process.env.AIRPAY_CLIENT_ID || '',
       clientSecret: process.env.AIRPAY_CLIENT_SECRET || process.env.AIRPAY_API_SECRET || '',
+      apiVersion: process.env.AIRPAY_API_VERSION || '',
+      // A sandbox merchant: AirPay's order-confirmation API does not answer for it.
+      sandbox: process.env.AIRPAY_SANDBOX === 'true',
       payUrl: process.env.AIRPAY_PAY_URL || '',
       verifyUrl: process.env.AIRPAY_VERIFY_URL || '',
+      tokenUrl: process.env.AIRPAY_TOKEN_URL || '',
+      verifyUrlV4: process.env.AIRPAY_VERIFY_URL_V4 || '',
       currency: process.env.AIRPAY_CURRENCY || '834',
       isoCurrency: process.env.AIRPAY_ISO_CURRENCY || 'TZS',
       chmod: process.env.AIRPAY_CHMOD ?? '',
-      timeZone: process.env.AIRPAY_TIMEZONE || 'Africa/Dar_es_Salaam',
+      timeZone: process.env.AIRPAY_TIMEZONE || 'Asia/Kolkata',
     },
   },
 
