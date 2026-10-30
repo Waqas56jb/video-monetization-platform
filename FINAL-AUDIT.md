@@ -298,4 +298,34 @@ Migration `044_payment_order_ids.sql` was applied to production before the push.
 - Forged "success" callback → 403 (bad signature); the payment stays pending. Callback for an inactive provider → 404. Payment status without login → 401.
 - No payment left pending.
 
-Still open: the AirPay provider itself (needs the client's AirPay Collection API document and the three secrets in Railway env vars), and refunding the probe's test payment in admin.
+Still open at the time: the AirPay provider itself, and refunding the probe's test payment in admin.
+
+## Milestone 3 — the rest of the scope, live (2026-10-28 → 2026-10-30)
+
+| Item | Now | Commit |
+|---|---|---|
+| 60/40 everywhere | Schema default, server fallback and admin slider were still 70; all 60. `npm run money:reconcile` proves every shilling, read-only. Historic 70/30 rows kept as recorded (client's decision, 2026-10-29) | `eae3536` |
+| Traffic source | Each payment stores the channel (WhatsApp, Facebook, Instagram, TikTok, campaign, direct); admin shows sales by source | `a69a71e` |
+| AirPay Tanzania | v3 hosted checkout + server-side verification (`34ea6b7`); v4 OAuth + encrypted payloads (`54bc5d3`) | `34ea6b7`, `54bc5d3` |
+| Auto-resume after paying | Back from the hosted page with `?payment=` → the sheet reopens, keeps checking, resumes at the preview stop | `34ea6b7` |
+| Homepage sponsors | Super Admin "Homepage Sponsors"; up to 5 rotate on the homepage, "Sponsored", views and clicks counted | `2a16897` |
+| Preview leak | A paid video's public promo clip was up to 60 s whatever its free preview (Lisu: 56 s of 57). Now never longer than the preview; `npm run previews:enforce` re-cut 8 clips on production | `5ab039e` |
+| Custom domain | Every address from configuration; `DOMAIN-MOVE.md` + `scripts/domain-check.mjs`. Waiting for the client's domain | `7ff18f4` |
+
+Migrations 045, 046, 047 applied to production before the code went live.
+
+**Live on production (`9285db5`, re-run on `54bc5d3`):**
+- API, 72 checks, ALL PASS: 16 malformed or hostile initiate requests (no sign-in, bad ids, free video, card method, letters/SQL in the phone, oversized source, broken JSON, junk token) all refused with no payment row; failed / cancelled / expired / pending never unlock; a second Pay while pending reuses the same payment; another viewer cannot read or force someone else's payment; unsigned callbacks refused; the return route always lands on our own site; a replayed callback creates no second purchase; staff-only endpoints refuse viewers.
+- Browser, 5 profiles (Chrome desktop, Pixel 7, Safari desktop, iPhone 14, 375×667): preview stops at 15 s → Pay → the film continues at 15.0 s; declined and cancelled explained; library, logout/login, second title locked; the sheet fits small phones with the keyboard up; no rate limiting.
+- WhatsApp link → pay → the payment is recorded `source=whatsapp` with the campaign (Pixel 7, desktop, iPhone 14); "Payment confirmed" on return; a junk `?payment=` is ignored.
+- Visitor source in a real browser: utm link, Facebook referrer, Instagram and TikTok in-app browsers, direct, junk utm → correct each time; a later direct visit keeps the original source.
+- All 12 paid promo clips checked on Cloudflare: none longer than its free preview.
+- `money:reconcile` passes after every run; new sales split 60/40 exactly.
+- Live JavaScript of the site and admin: no AirPay setting name, id or secret.
+
+**AirPay sandbox, real gateway, client's credentials (2026-10-30):**
+- The credentials are valid: AirPay's order check accepts our signed request with the "API Key" as the secret ("Transaction details not available" for an unknown order); the other key gives "Wrong checksum".
+- The hosted checkout answers "Invalid Merchant Id" — also for AirPay's own official kit form, unchanged, from any origin.
+- The v4 token endpoint answers 403 "Access is denied. Invalid request" to every correctly built request (both body encodings, all key combinations).
+- Both are on AirPay's side: the merchant must be enabled for the hosted checkout / v4, and AirPay may restrict its API by server IP. `npm run airpay:check` reports exactly this and will turn green when AirPay enables it.
+- Found and fixed while doing this: AirPay answers 400 when it rejects *our* request, and 400 was read as "the viewer's payment failed". A failure must now name our order; so must a success.
