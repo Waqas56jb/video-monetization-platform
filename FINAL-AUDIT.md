@@ -346,3 +346,15 @@ Run on production as a temporary admin created with `npm run admin:create` (dele
 - Fixed from this run (`1c0a494`): an image refused after the sponsor was created left the form on "Add sponsor" — a second press made a duplicate. The image is now checked first, and a failed upload leaves the form editing the saved sponsor.
 
 **Test data removed** (`server/scripts/cleanup-e2e.mjs --exclude e2e+8238822854@mtonyo.test --apply`): 14 sandbox purchases refunded through the admin refund path (access removed, creator credit reversed) — including the probe `MTN202610285A49DBCD` — then 35 test accounts and the temporary admin deleted. Kept, as documented: the fixture `e2e+8238822854@mtonyo.test`. `money:reconcile` passes afterwards.
+
+## Milestone 3 — creator access only through an approved application (2026-10-30)
+
+Client: "VIEWER → APPLY TO BECOME A CREATOR → APPLICATION FORM → SUPER ADMIN REVIEWS → APPROVE/REJECT → ONLY APPROVED CREATOR GETS STUDIO/CREATOR ACCESS." This reverses the self-serve Create signup of 2026-09-02 (`23934e8`).
+
+- Signup only ever makes a Watch account; "Start Creating" / `side=creator` leads to the application. Approving an application is the only code that grants creator access (pinned by a test).
+- Login and signup: one form, no Watch / Create toggle; an "Apply to become a creator" link. An approved creator returns to the studio.
+- Admin Payments: each transaction labelled **AirPay** or **TEST** (internal gateway, no money moved), with a gateway filter (`59eb2b5`).
+
+**Live on production — 40 checks, ALL PASS:** "I want to Create" signup → a viewer sent to the application, no creator profile in the database; old-style `role=creator` → viewer; asking again → signed in, still not a creator; wrong password → 401; `admin` / `sub_admin` as a role or side → 400; login needs no side; asking for Create without approval → 403 "not an approved creator … apply"; my videos, upload, earnings → 403 for an unapproved viewer; the old become-creator shortcut → refused; a submitted application still does not open the studio, and a second one is refused while pending. Browser (desktop, Pixel 7, iPhone 14): no Watch/Create choice at login; a new person wanting to publish signs up and lands on the application form; `?tab=upload|videos|earnings|analytics|creator|withdrawals` shows no studio; the sidebar offers "Apply to become a creator"; no page errors. Test accounts and the test application removed afterwards.
+
+**For the client to decide:** 22 accounts hold creator access from the self-serve period without an approved application — 18 automated "Smoke Creator" test accounts and 4 hand-made accounts (10 videos between them, none live). Left unchanged until the client decides.
