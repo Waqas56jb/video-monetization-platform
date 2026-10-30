@@ -17,6 +17,13 @@ export function errorHandler(err, req, res, _next) {
   else if (err.code === '23514') { status = 400; code = 'CHECK' }
   else if (err.code === '42501') { status = 403; code = 'DB_FORBIDDEN' }   // insufficient_privilege
   else if (err.code === '2BP01') { status = 409; code = 'DB_RESTRICT' }    // restrict_violation
+  // An upload multer refused before the route ran (over its size cap, too many
+  // files): the uploader's mistake, not ours — it was a 500.
+  else if (err.name === 'MulterError') {
+    status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400
+    message = err.code === 'LIMIT_FILE_SIZE' ? 'That file is too large. Images can be up to 5 MB.' : 'That upload could not be read. Choose one image and try again.'
+    code = 'UPLOAD_REJECTED'
+  }
 
   /**
    * A 500 has to be diagnosable from outside.
