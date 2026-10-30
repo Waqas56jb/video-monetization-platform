@@ -35,7 +35,8 @@ test('signup only ever makes a Watch account; asking for Create goes to the appl
 })
 
 test('approving an application is the only place an account becomes a creator', () => {
-  const files = ['auth.routes.js', 'account.routes.js', 'admin.routes.js'].map((f) => [f, readFileSync(join(dir, f), 'utf8')])
+  // authdb.js held the old self-service grant (ensureCreatorSide); it must stay gone.
+  const files = ['auth.routes.js', 'account.routes.js', 'admin.routes.js', '../lib/authdb.js'].map((f) => [f, readFileSync(join(dir, f), 'utf8')])
   const grants = files.flatMap(([f, s]) => [...s.matchAll(/set role = 'creator'|insert into creator_profiles/g)].map(() => f))
   assert.deepEqual([...new Set(grants)], ['admin.routes.js'])
   const admin = files.find(([f]) => f === 'admin.routes.js')[1]

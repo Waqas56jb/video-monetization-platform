@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 import { query, one, transaction } from '../db/pool.js'
 import { conflict, badRequest, notFound } from './errors.js'
-import { invalidateProfileCache } from './profileCache.js'
 
 /**
  * Account records, written straight into the auth schema.
@@ -267,7 +266,7 @@ export async function consumeResetToken(raw, newPassword) {
 /**
  * Which doors this login may open.
  *
- * Create = a creator_profiles row (or a staff role that always has studio access).
+ * Create = profiles.role creator (granted only by an admin approving an application), or staff.
  * Watch  = profiles.viewer_enabled.
  */
 export async function getSides(userId) {
@@ -286,50 +285,4 @@ export async function getSides(userId) {
 export async function enableViewerSide(userId) {
   await query(`update profiles set viewer_enabled = true, updated_at = now() where id = $1`, [userId])
   return getSides(userId)
-}
-
-/**
- * Open the Create side on an existing login.
- *
- * Register calls this now. It used not to: the Create side could only be granted
- * by an administrator approving an application, which meant somebody who signed
- * up asking for a Create account was given a Watch account instead and then
- * refused at the Create login. Signing up on Create makes a Create account.
- *
- * What that grants is the studio — upload, edit, submit for review. It does not
- * publish anything: a video reaches viewers only when an administrator approves
- * it, which is unchanged and is checked on every public listing and on the watch
- * path. The admin approval route still calls the same shape of insert, so there
- * is one kind of creator in the database rather than two.
- *
- * Returns { profile, created } so callers can tell attach from no-op.
- */
-export async function ensureCreatorSide(profile, { fullName, phone } = {}) {
-  const display = fullName || profile.full_name || profile.email || 'Creator'
-  const payout = phone || profile.phone || null
-  const keepRole = profile.role === 'admin' || profile.role === 'sub_admin'
-
-  const existing = await one('select user_id from creator_profiles where user_id = $1', [profile.id])
-  if (existing) {
-    const fresh = await one('select * from profiles where id = $1', [profile.id])
-    return { profile: fresh, created: false }
-  }
-
-  await transaction(
-    async (client) => {
-      if (!keepRole && profile.role !== 'creator') {
-        await client.query(`update profiles set role = 'creator' where id = $1`, [profile.id])
-      }
-      await client.query(
-        `insert into creator_profiles (user_id, display_name, payout_phone)
-         values ($1,$2,$3)
-         on conflict (user_id) do nothing`,
-        [profile.id, display, payout]
-      )
-    },
-    { actorRole: 'admin' }
-  )
-  const fresh = await one('select * from profiles where id = $1', [profile.id])
-  invalidateProfileCache(profile.id)
-  return { profile: fresh, created: true }
 }
