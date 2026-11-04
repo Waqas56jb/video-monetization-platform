@@ -21,6 +21,14 @@ export const DEPLOY_URLS = {
   adminApp: 'https://video-monetization-platform-admin.vercel.app',
 }
 
+/**
+ * The production domain (moved 2026-11-04). Always allowed, like the Vercel
+ * addresses: the site went live on it while the API still listed only Vercel,
+ * and every browser request from mtonyoplus.com was refused with a 403 — the
+ * site rendered, but Trending, Explore and the revenue split all failed.
+ */
+export const PRODUCTION_ORIGINS = ['https://mtonyoplus.com', 'https://www.mtonyoplus.com']
+
 const isLocalHost = (url = '') => /localhost|127\.0\.0\.1|\[::1\]/i.test(String(url))
 
 function webUrl(envKey, fallback) {
@@ -52,7 +60,9 @@ function webUrl(envKey, fallback) {
  */
 function corsOrigins() {
   const configured = list(process.env.CORS_ORIGINS)
-  const live = [DEPLOY_URLS.publicApp, DEPLOY_URLS.adminApp]
+  // The site the API says it serves must be allowed to call it, too.
+  const own = ['PUBLIC_WEB_URL', 'ADMIN_WEB_URL'].map((k) => webUrl(k, '')).filter(Boolean)
+  const live = [...PRODUCTION_ORIGINS, DEPLOY_URLS.publicApp, DEPLOY_URLS.adminApp, ...own]
   return [...new Set([...configured, ...live])]
 }
 

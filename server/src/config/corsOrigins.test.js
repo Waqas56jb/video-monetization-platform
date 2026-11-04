@@ -29,6 +29,7 @@ allowed.n = 0
 
 const PUBLIC_APP = 'https://video-monetization-platform-chi.vercel.app'
 const ADMIN_APP = 'https://video-monetization-platform-admin.vercel.app'
+const DOMAIN = ['https://mtonyoplus.com', 'https://www.mtonyoplus.com']
 
 test('the two live apps are always allowed, whatever is configured', async () => {
   // The guarantee that matters most: a mistake in this variable can never lock
@@ -57,10 +58,28 @@ test('every configured origin survives, including several at once', async () => 
 test('nothing is allowed by default that was not allowed before', async () => {
   // Opting in is the operator's decision; the default must not widen.
   const list = await allowed(undefined)
-  assert.deepEqual(list, [PUBLIC_APP, ADMIN_APP])
+  assert.deepEqual(list, [...DOMAIN, PUBLIC_APP, ADMIN_APP])
 })
 
 test('the list does not repeat an origin that is also a live app', async () => {
   const list = await allowed(PUBLIC_APP)
   assert.equal(list.filter((o) => o === PUBLIC_APP).length, 1)
+})
+
+test('the production domain is always allowed — it was refused with a 403 when it went live', async () => {
+  for (const value of [undefined, '', 'https://example.com']) {
+    const list = await allowed(value)
+    for (const d of DOMAIN) assert.ok(list.includes(d), `${d} missing for ${JSON.stringify(value)}`)
+  }
+})
+
+test('the site PUBLIC_WEB_URL names is allowed without repeating it in CORS_ORIGINS', async () => {
+  const saved = process.env.PUBLIC_WEB_URL
+  process.env.PUBLIC_WEB_URL = 'https://next.example.com/'
+  try {
+    assert.ok((await allowed(undefined)).includes('https://next.example.com'))
+  } finally {
+    if (saved === undefined) delete process.env.PUBLIC_WEB_URL
+    else process.env.PUBLIC_WEB_URL = saved
+  }
 })
