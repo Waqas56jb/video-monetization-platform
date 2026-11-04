@@ -91,6 +91,23 @@ export function missingAirpayConfig(cfg = airpayConfig()) {
   return need.filter((k) => !cfg[k])
 }
 
+/**
+ * The addresses AirPay configures for the merchant on its side (they are not
+ * sent per order). Built from PUBLIC_WEB_URL and SERVER_PUBLIC_URL, so moving to
+ * the client's domain is a settings change — print them with `npm run airpay:urls`.
+ * Success and failure are separate because AirPay asks for both; neither decides
+ * anything — the order is verified with AirPay before any unlock.
+ */
+export function airpayUrls({ publicWebUrl = env.publicWebUrl, serverPublicUrl = env.serverPublicUrl } = {}) {
+  const api = `${String(serverPublicUrl).replace(/\/$/, '')}/api/payments`
+  return {
+    website: String(publicWebUrl).replace(/\/$/, ''),
+    success: `${api}/return/airpay/success`,
+    failure: `${api}/return/airpay/failure`,
+    webhook: `${api}/webhook/airpay`,
+  }
+}
+
 /* -------------------------------------------------------------------- v4 */
 /*
  * AirPay Tanzania v4, as its official kits (ma.airpay.tz/kits/tz/v4) do it:

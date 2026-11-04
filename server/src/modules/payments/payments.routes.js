@@ -270,11 +270,14 @@ router.post(
  * Always a redirect to OUR site — never to a URL taken from the request.
  */
 router.all(
-  '/return/:provider',
+  // AirPay asks for a success and a failure URL; both land here. Which one the
+  // viewer came back on is only logged — verification decides the outcome.
+  '/return/:provider/:outcome(success|failure)?',
   asyncHandler(async (req, res) => {
     const provider = paymentProvider()
     const home = env.publicWebUrl.replace(/\/$/, '')
     if (req.params.provider !== provider.name) return res.redirect(303, home)
+    if (req.params.outcome) log.info(`payment return via the ${req.params.outcome} URL`)
 
     const ref = provider.parseCallback({ ...(req.query || {}), ...(req.body || {}) })
     const payment = ref.orderId

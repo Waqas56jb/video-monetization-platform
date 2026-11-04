@@ -132,7 +132,7 @@ test('callbacks name an order only; AP_SECUREHASH is checked, not trusted', () =
 
 test('routes: AirPay callbacks and returns only trigger verification; the return goes to our own site', () => {
   const routes = readFileSync(new URL('./payments.routes.js', import.meta.url), 'utf8')
-  const ret = routes.slice(routes.indexOf("'/return/:provider'"), routes.indexOf('/* ------------------------------------------------------------ sandbox aid'))
+  const ret = routes.slice(routes.indexOf("'/return/:provider/:outcome(success|failure)?'"), routes.indexOf('/* ------------------------------------------------------------ sandbox aid'))
   assert.match(ret, /reconcilePayment\(payment, \{ via: 'return', signed: ref\.signed \|\| null \}\)/)
   assert.doesNotMatch(ret, /settlePayment\(/)
   assert.match(ret, /const home = env\.publicWebUrl/)
