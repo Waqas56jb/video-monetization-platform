@@ -51,7 +51,8 @@ test('production origin does not stay on localhost', () => {
   try {
     assert.equal(
       publicWebOrigin('http://localhost:5173'),
-      'https://video-monetization-platform-chi.vercel.app'
+      'https://mtonyoplus.com',
+      'falls back to the production domain, not the old Vercel address'
     )
     assert.equal(
       publicWebOrigin('https://video-monetization-platform-chi.vercel.app'),

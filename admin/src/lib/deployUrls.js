@@ -15,7 +15,7 @@
 export const DEPLOY = {
   api: 'https://video-monetization-platform-production.up.railway.app',
   // The public site; VITE_PUBLIC_WEB_URL once it has its own domain.
-  publicApp: (import.meta.env?.VITE_PUBLIC_WEB_URL || 'https://video-monetization-platform-chi.vercel.app').replace(/\/$/, ''),
+  publicApp: (import.meta.env?.VITE_PUBLIC_WEB_URL || 'https://mtonyoplus.com').replace(/\/$/, ''),
   adminApp: 'https://video-monetization-platform-admin.vercel.app',
   /** Hosts that used to serve the API. Order does not matter; all map to `api`. */
   legacyApis: [

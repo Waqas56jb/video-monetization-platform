@@ -71,7 +71,7 @@ export const env = {
   isProd: process.env.NODE_ENV !== 'development' || Boolean(process.env.VERCEL),
   port: int(process.env.PORT, 4000),
   corsOrigins: corsOrigins(),
-  publicWebUrl: webUrl('PUBLIC_WEB_URL', DEPLOY_URLS.publicApp),
+  publicWebUrl: webUrl('PUBLIC_WEB_URL', PRODUCTION_ORIGINS[0]),
   serverPublicUrl: webUrl('SERVER_PUBLIC_URL', DEPLOY_URLS.api),
   // The admin app lives on its own origin; staff invitations must point there,
   // not at the public site, or the link lands somewhere with no admin login.

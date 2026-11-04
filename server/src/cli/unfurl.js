@@ -30,7 +30,7 @@
 
 import { query } from '../db/pool.js'
 
-const SITE = process.env.PUBLIC_SITE_URL || 'https://video-monetization-platform-chi.vercel.app'
+const SITE = process.env.PUBLIC_SITE_URL || 'https://mtonyoplus.com'
 const SLUG = process.env.UNFURL_SLUG || 'live-at-arusha-full-set'
 
 /**

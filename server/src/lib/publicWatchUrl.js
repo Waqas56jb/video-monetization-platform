@@ -2,7 +2,8 @@
  * Public share URLs. Every API that emits a watch or OG-card address uses this
  * so WhatsApp / Facebook never see a UUID, /s/, localhost, or the API host.
  */
-const PROD_WEB = 'https://video-monetization-platform-chi.vercel.app'
+// The production domain since 2026-11-04 (was the Vercel address).
+const PROD_WEB = 'https://mtonyoplus.com'
 
 function cleanOrigin(origin) {
   return String(origin || '').trim().replace(/\/$/, '')

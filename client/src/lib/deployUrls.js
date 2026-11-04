@@ -14,7 +14,8 @@
  */
 export const DEPLOY = {
   api: 'https://video-monetization-platform-production.up.railway.app',
-  publicApp: 'https://video-monetization-platform-chi.vercel.app',
+  // The production domain since 2026-11-04; the Vercel address still serves.
+  publicApp: 'https://mtonyoplus.com',
   adminApp: 'https://video-monetization-platform-admin.vercel.app',
   /** Hosts that used to serve the API. Order does not matter; all map to `api`. */
   legacyApis: [

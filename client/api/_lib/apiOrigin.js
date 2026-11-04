@@ -30,6 +30,7 @@ export function apiOrigin() {
 
 export function publicWebOrigin() {
   const raw =
-    process.env.PUBLIC_WEB_URL || 'https://video-monetization-platform-chi.vercel.app'
+    // The production domain since 2026-11-04 (was the Vercel address).
+    process.env.PUBLIC_WEB_URL || 'https://mtonyoplus.com'
   return String(raw).replace(/\/$/, '')
 }
