@@ -901,16 +901,24 @@ router.get(
   })
 )
 
+/** Change an account's status as this admin — the only way the database allows it. */
+async function setStatusAsAdmin(req, id, status) {
+  return transaction(
+    async (c) => (await c.query('update profiles set status = $2, updated_at = now() where id = $1 returning *', [id, status])).rows[0],
+    { actorRole: 'admin', actorId: req.user.id }
+  )
+}
+
 router.post(
   '/users/:id/status',
   requireAdmin(),
   validate(z.object({ status: z.enum(['active', 'blocked', 'suspended']), reason: z.string().max(500).optional() })),
   asyncHandler(async (req, res) => {
     if (req.params.id === req.user.id) throw badRequest('You cannot change your own status')
-    const updated = await one(`update profiles set status = $2 where id = $1 returning *`, [
-      req.params.id,
-      req.body.status,
-    ])
+    // As an admin action: the database's account guard refuses a status change
+    // from an unnamed actor, so a bare query here failed every block and restore
+    // with "Only an admin can change an account status (actor: unknown)".
+    const updated = await setStatusAsAdmin(req, req.params.id, req.body.status)
     if (!updated) throw notFound('User not found')
     invalidateProfileCache(updated.id)
 
@@ -2100,9 +2108,7 @@ router.post(
     if (target.role !== 'creator') throw conflict('That account is not a creator')
     if (target.status === 'blocked') throw conflict('That account is blocked — restore it from Users')
 
-    const updated = await one(`update profiles set status = 'suspended' where id = $1 returning *`, [
-      target.id,
-    ])
+    const updated = await setStatusAsAdmin(req, target.id, 'suspended')
     invalidateProfileCache(target.id)
 
     await recordAudit({
@@ -2138,9 +2144,7 @@ router.post(
     if (!target) throw notFound('Account not found')
     if (target.role !== 'creator') throw conflict('That account is not a creator')
 
-    const updated = await one(`update profiles set status = 'active' where id = $1 returning *`, [
-      target.id,
-    ])
+    const updated = await setStatusAsAdmin(req, target.id, 'active')
     invalidateProfileCache(target.id)
 
     await recordAudit({
