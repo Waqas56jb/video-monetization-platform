@@ -26,6 +26,7 @@ const PAGE_META = {
   '/revenue': ['Revenue & Splits', 'What the platform keeps, and what creators earn'],
   '/ads': ['Ads Management', 'Campaigns on Free + Ads videos'],
   '/sponsors': ['Homepage Sponsors', 'Banners at the top of the homepage'],
+  '/capital': ['Creator Capital', 'AirPay Microfinance requests from creators'],
   '/audit': ['Audit Log', 'Every action, permanently recorded'],
   '/settings': ['Settings', 'Your account, the platform, and the team'],
 }

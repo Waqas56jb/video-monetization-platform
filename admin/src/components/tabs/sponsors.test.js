@@ -43,3 +43,11 @@ test('payments: every row names its gateway; internal test payments are labelled
   assert.match(pay, /<GatewayPill provider=\{p\.provider\} \/>/)
   assert.match(pay, /\(!want \|\| p\.provider === want\)/)
 })
+
+test('every sidebar page has its own title — Creator Capital used to read "Dashboard"', () => {
+  const shell = readFileSync(join(dir, '../../pages/AdminShell.jsx'), 'utf8')
+  const sidebar = readFileSync(join(dir, '../layout/Sidebar.jsx'), 'utf8')
+  for (const [, path] of sidebar.matchAll(/path: '(\/[a-z-]+)'/g)) {
+    assert.ok(shell.includes(`'${path}': [`), `${path} has no PAGE_META title`)
+  }
+})
