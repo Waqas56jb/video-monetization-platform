@@ -29,6 +29,9 @@ export default function Testimonials() {
   })
 
   const creators = top.data?.creators || []
+  // The admin's demo-content switch is on: these may be test figures, so they
+  // are presented as an example, never as real people's real earnings.
+  const illustrative = Boolean(top.data?.illustrative)
   const split = stats.data?.creatorSplitPercent ?? null
 
   const PROMISES = [
@@ -55,7 +58,7 @@ export default function Testimonials() {
         <div className="section-head">
           <span className="badge">
             <BadgeCheck style={{ width: 14, height: 14 }} />
-            {creators.length ? 'CREATORS EARNING NOW' : 'WHAT YOU GET'}
+            {creators.length ? (illustrative ? 'EXAMPLE' : 'CREATORS EARNING NOW') : 'WHAT YOU GET'}
           </span>
           <h2>
             {creators.length ? (
@@ -70,8 +73,10 @@ export default function Testimonials() {
           </h2>
           <p>
             {creators.length
-              ? 'Real Tanzanian creators, real mobile money in their pockets.'
-              : 'No fine print and no waiting to find out how it works. This is the deal.'}
+              ? illustrative
+                ? 'Illustrative figures from testing — not real earnings. Real creators appear here once they are paid.'
+                : 'Real Tanzanian creators, real mobile money in their pockets.'
+              :'No fine print and no waiting to find out how it works. This is the deal.'}
           </p>
         </div>
 
@@ -98,7 +103,7 @@ export default function Testimonials() {
                       )}
                     </div>
                     <div className="spot-body">
-                      <span className="spot-kicker">Earning on MTONYO+</span>
+                      <span className="spot-kicker">{illustrative ? 'Example' : 'Earning on MTONYO+'}</span>
                       <h3>
                         {lead.name}
                         {lead.verified && <BadgeCheck className="verified-tick" />}

@@ -17,6 +17,28 @@ import { env } from '../config/env.js'
  */
 const router = Router()
 
+/**
+ * An earning that stands for real money (client, 2026-11-15: "If those earnings
+ * are demo/test data, they MUST NOT appear publicly as 'Real Tanzanian
+ * creators, real mobile money in their pockets'").
+ *
+ *   - a sale counts only when a real gateway took the payment — never a
+ *     sandbox TEST payment, never an unlock with no payment behind it;
+ *   - advertising counts unless it came from the seeded demo campaign
+ *     (cli/demo.js writes exactly this note on it).
+ *
+ * Expects `earnings e` in scope. Applied wherever the public site shows money
+ * or who earned it, unless the admin's demo-content switch is on.
+ */
+export const REAL_EARNING_SQL = `(
+  (e.source = 'sale' and exists (
+     select 1 from purchases pu join payments pay on pay.id = pu.payment_id
+      where pu.id = e.purchase_id and pay.provider <> 'sandbox'))
+  or (e.source <> 'sale' and not exists (
+     select 1 from ad_campaigns ac
+      where ac.id = e.campaign_id and ac.notes like 'Demo campaign.%'))
+)`
+
 router.get(
   '/',
   asyncHandler(async (_req, res) => {
@@ -43,7 +65,7 @@ router.get(
         `select coalesce(sum(e.creator_tzs),0)::int as to_creators,
                 coalesce(sum(e.gross_tzs),0)::int   as gross
            from earnings e join profiles p on p.id = e.creator_id
-          where ($1::boolean or not p.is_demo)`,
+          where ($1::boolean or (not p.is_demo and ${REAL_EARNING_SQL}))`,
         [Boolean(settings.show_demo_content_in_stats)]
       ),
       /**
@@ -56,8 +78,8 @@ router.get(
       one(
         `select count(distinct e.creator_id)::int as n
            from earnings e join profiles p on p.id = e.creator_id
-          where e.creator_tzs > 0 and p.status = 'active'
-            and ($1::boolean or not p.is_demo)`,
+          where e.creator_tzs > 0 and p.status = 'active' and p.role = 'creator'
+            and ($1::boolean or (not p.is_demo and ${REAL_EARNING_SQL}))`,
         [Boolean(settings.show_demo_content_in_stats)]
       ),
     ])
@@ -111,7 +133,8 @@ router.get(
          from profiles p
          join creator_profiles cp on cp.user_id = p.id
          left join earnings e on e.creator_id = p.id
-        where p.status = 'active'
+               and ($1::boolean or ${REAL_EARNING_SQL})
+        where p.status = 'active' and p.role = 'creator'
           and ($1::boolean or not p.is_demo)
         group by p.id, cp.display_name, p.full_name, p.avatar_url, cp.verified, cp.location
        having coalesce(sum(e.creator_tzs), 0) > 0
@@ -121,6 +144,9 @@ router.get(
     )
 
     res.json({
+      // With the admin's demo-content switch on, these may be test figures;
+      // the homepage then labels them as examples, not as real earnings.
+      illustrative: Boolean(settings.show_demo_content_in_stats),
       creators: rows.map((r) => ({
         id: r.id,
         name: r.name,
