@@ -41,6 +41,7 @@ import { watchLockState } from '@/lib/watchLock'
 import { useProgress } from '@/context/ProgressContext'
 import WatchSkeleton from '@/components/watch/WatchSkeleton'
 import PlayerLoading from '@/components/watch/PlayerLoading'
+import { loadHls, pickEngine } from '@/lib/hlsEngine'
 
 /**
  * Watching a video.
@@ -81,6 +82,10 @@ export default function Watch() {
     const id = new URLSearchParams(location.search).get('payment')
     return /^[0-9a-f-]{36}$/i.test(id || '') ? id : null
   })
+  /* Fetch the player library alongside the playback request, not after it. */
+  useEffect(() => {
+    if (pickEngine() === 'hls') loadHls().catch(() => {})
+  }, [])
   useEffect(() => {
     if (!returnedPaymentId) return
     const params = new URLSearchParams(location.search)
@@ -1148,6 +1153,7 @@ export default function Watch() {
               <StreamPlayer
                 key={`${v.id}-${p.playback.kind}`}
                 src={p.playback.iframe}
+                hlsSrc={p.playback.hls || null}
                 title={v.title}
                 /* Keeps the poster on screen through the hand-off from the
                    boot block above — without it, the moment this component

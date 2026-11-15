@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, RefreshCw, Volume2 } from 'lucide-react'
 import { AD_AIRTIME_FLOOR } from '@/lib/adSkip'
 import { ensureStreamSdk } from '@/lib/prefetchWatch'
+import { attachHls, pickEngine } from '@/lib/hlsEngine'
 import { markPerf, measurePerf } from '@/lib/perfLog'
 
 /**
@@ -43,6 +44,13 @@ function buildSrc(src, startAt, controls) {
 
 export default function StreamPlayer({
   src,
+  /**
+   * The film's HLS address. When given, the film plays in our own <video> with
+   * hls.js (or Apple's player on iPhone/iPad) — see lib/hlsEngine.js for why —
+   * and Cloudflare's embedded player (`src`) is only the fallback. Adverts do
+   * not pass it.
+   */
+  hlsSrc = null,
   autoplay = false,
   onEnded,
   onTimeUpdate,
@@ -227,6 +235,9 @@ export default function StreamPlayer({
    * message, and no wait for playback: only the white is skipped.
    */
   const [painted, setPainted] = useState(false)
+  /** 'hls' | 'native' | 'iframe' — chosen once; drops to 'iframe' if the video engine fails. */
+  const [engine, setEngine] = useState(() => (hlsSrc ? pickEngine() : 'iframe'))
+  const useVideo = Boolean(hlsSrc) && engine !== 'iframe'
   const requireAirtimeRef = useRef(requireAirtime)
   requireAirtimeRef.current = requireAirtime
   const playOnReadyRef = useRef(playOnReady)
@@ -261,6 +272,15 @@ export default function StreamPlayer({
     pin.current = { src, startAt: Math.max(0, Number(startAt) || 0) }
   }
   const resumeAt = pin.current.startAt
+  /**
+   * Hand the film to Cloudflare's player at the second it had reached — never
+   * back to the start — if our own engine cannot go on.
+   */
+  const fallBack = () => {
+    const at = Number(frame.current?.currentTime) || 0
+    if (at > 1) pin.current = { ...pin.current, startAt: at }
+    setEngine('iframe')
+  }
   const iframeSrc = useMemo(
     () => (src ? buildSrc(src, resumeAt, controls) : null),
     [src, resumeAt, controls]
@@ -372,9 +392,35 @@ export default function StreamPlayer({
     let kickTimer = null
     let watchdog = null
     let stopPoll = null
+    let detach = null
 
-    ensureStreamSdk().then((Stream) => {
+    /* The film's own <video> when there is one; otherwise Cloudflare's SDK. Both
+       give the same media interface, so everything below is shared. */
+    const ready = useVideo
+      ? attachHls(frame.current, hlsSrc, {
+          startAt: resumeAt,
+          engine,
+          onFatal: () => {
+            if (alive) fallBack()
+          },
+        })
+          .then((handle) => {
+            if (!alive) {
+              handle.destroy()
+              return null
+            }
+            detach = handle
+            return 'video'
+          })
+          .catch(() => {
+            if (alive) fallBack()
+            return null
+          })
+      : ensureStreamSdk()
+
+    ready.then((Stream) => {
       if (!alive || !frame.current) return
+      if (!Stream && useVideo) return
       /**
        * No SDK — but the iframe is playing anyway.
        *
@@ -393,7 +439,7 @@ export default function StreamPlayer({
         return
       }
       try {
-        player = Stream(frame.current)
+        player = useVideo ? frame.current : Stream(frame.current)
         playerRef.current = player
         /**
          * Hold the film for as long as `paused` says so, not just once.
@@ -561,7 +607,11 @@ export default function StreamPlayer({
         player.addEventListener('canplay', announceReady)
         /* The one thing still worth saying on screen. */
         player.addEventListener('error', () => {
-          if (alive) setFailed(true)
+          if (!alive) return
+          /* Our own engine failing is not the viewer's problem: Cloudflare's
+             player takes over at the same second. */
+          if (useVideo) fallBack()
+          else setFailed(true)
         })
         player.addEventListener('playing', () => noteIfAiring())
         player.addEventListener('timeupdate', () => noteIfAiring())
@@ -697,9 +747,10 @@ export default function StreamPlayer({
       if (kickTimer) clearTimeout(kickTimer)
       if (watchdog) clearInterval(watchdog)
       if (stopPoll) clearInterval(stopPoll)
+      detach?.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [iframeSrc, boot])
+  }, [iframeSrc, boot, useVideo, engine, hlsSrc])
 
   /**
    * Holding the film under an advert, and starting it again afterwards.
@@ -800,6 +851,23 @@ export default function StreamPlayer({
           draggable={false}
         />
       )}
+      {useVideo ? (
+        <video
+          key={`video-${boot}`}
+          ref={frame}
+          className={`stream-frame stream-video ${painted ? 'is-painted' : ''}`.trim()}
+          title={title}
+          /* Shows the thumbnail until the first frame is genuinely decoded —
+             the browser's own hand-off, no timer of ours. */
+          poster={poster || undefined}
+          controls={controls}
+          playsInline
+          autoPlay
+          muted
+          preload="auto"
+          onLoadedData={() => setPainted(true)}
+        />
+      ) : (
       <iframe
         key={boot}
         ref={frame}
@@ -823,6 +891,7 @@ export default function StreamPlayer({
           }
         }}
       />
+      )}
 
       {silent && (
         <button
