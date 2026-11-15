@@ -555,15 +555,19 @@ input,select,textarea{font-family:inherit}
 .testi-user .amt small{font-size:10.5px}
 
 /* ---------- CTA ---------- */
-.cta-wrap{border-radius:30px;position:relative;overflow:hidden;padding:90px 40px;text-align:center;border:1px solid var(--border)}
+/* 90px top and bottom made the closing box mostly empty on a wide screen
+   (client, 2026-11-15); this still leaves it room to breathe. */
+.cta-wrap{border-radius:30px;position:relative;overflow:hidden;padding:clamp(56px,5vw,72px) 40px;text-align:center;border:1px solid var(--border)}
 .cta-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% -20%,rgba(124,58,237,.45),transparent 60%),linear-gradient(160deg,#151522,#0d0d16);z-index:-1}
 .cta-wrap h2{font-size:clamp(30px,4.6vw,52px);font-weight:800;line-height:1.12;margin-bottom:20px}
 .cta-wrap p{color:var(--muted);font-size:17px;max-width:560px;margin:0 auto 40px;line-height:1.75}
 .cta-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 
 /* ---------- FOOTER ---------- */
-footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 34px}
-.foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:50px;margin-bottom:60px}
+/* 80px above the footer's first line, on top of the last section's own
+   padding, read as a dead band before it (client, 2026-11-15). */
+footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 32px}
+.foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:50px;margin-bottom:44px}
 .foot-brand p{color:var(--muted);font-size:14px;line-height:1.8;margin:20px 0 26px;max-width:300px}
 .socials{display:flex;gap:12px}
 .socials a{width:42px;height:42px;border-radius:12px;border:1px solid var(--border2);display:grid;place-items:center;color:var(--muted);transition:.35s}
@@ -2378,7 +2382,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
    Long-form reading, so the measure is capped: a 1800px container would give
    180-character lines nobody can follow back to the left margin.
    ========================================================================= */
-.legal{padding:132px 0 90px}
+.legal{padding:132px 0 64px}
 .legal-back{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;font-weight:600;margin-bottom:26px;background:none;border:0;cursor:pointer}
 .legal-back:hover{color:#fff}
 .legal-back svg{width:16px;height:16px}
@@ -2798,6 +2802,34 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   .cc-journey-item{flex:1 1 100%}
 }
 
+/* Final spacing pass (client, 2026-11-15: "sections should fit their content
+   — no giant dead black areas"). On the info page the intro now shares its
+   row with "Who decides", and the example offer shares its row with the
+   explanation and the next step, so neither leaves half the screen empty.
+   Side by side from tablet width up; one column on a phone. */
+/* The header is fixed, so the page clears it the way the legal pages do —
+   without this the "Back to home" link sat hidden underneath it and the badge
+   touched the menu. */
+.cc-page{padding:124px 0 64px}
+.cc-page .cc-block:last-child{margin-bottom:0}
+@media (max-width:640px){.cc-page{padding:100px 0 48px}}
+.cc-who h3{font-size:clamp(16px,1.5vw,19px);margin:0 0 12px}
+.cc-who .notice{margin:0}
+.cc-approved-row .cc-status-card{min-height:0}
+.cc-approved-copy{display:grid;gap:26px;min-width:0}
+.cc-approved-copy .cc-actions{flex-direction:column;align-items:flex-start;gap:22px}
+.cc-approved-copy .cc-trust-row{flex-direction:column;gap:14px}
+@media (min-width:761px){
+  .cc-info-top{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;margin-bottom:44px}
+  .cc-approved-row{grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:clamp(24px,3.4vw,48px);align-items:center}
+}
+@media (max-width:760px){
+  .cc-info-top{grid-template-columns:1fr;gap:24px;margin-bottom:36px}
+  .cc-approved-row{grid-template-columns:1fr}
+  .cc-approved-copy .cc-actions{align-items:stretch}
+  .cc-approved-copy .cc-cta-row .btn{width:100%}
+}
+
 /* Reserves roughly the real section's own rendered height while its chunk
    loads, so swapping the fallback for the real thing is not itself a
    layout shift (report2.txt SEP12 §B/C). Approximate on purpose — matching
@@ -2883,6 +2915,22 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:80px 0 
   grid-template-columns:minmax(0,1fr) minmax(240px,380px);
   align-items:center;gap:clamp(18px,2.4vw,28px);
   padding:clamp(18px,2.2vw,26px);margin-bottom:22px;
+}
+/* Wide screens: the share sheet and what the recipient sees side by side,
+   not stacked. Stacked, the visual stood ~600px tall beside four short lines
+   of copy, which floated in a column of empty card (client, 2026-11-15). */
+@media(min-width:1100px){
+  .power.is-lead{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+  .pw-viz-discover{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:14px;align-items:start;
+    grid-template-areas:"head head" "sheet arrow" "sheet og" "foot foot";
+    grid-template-rows:auto auto 1fr auto;
+  }
+  .pw-viz-discover>.pw-share-head{grid-area:head}
+  .pw-viz-discover>.pw-sheet{grid-area:sheet}
+  .pw-viz-discover>.pw-sheet-arrow{grid-area:arrow;margin:0}
+  .pw-viz-discover>.pw-og-stage{grid-area:og}
+  .pw-viz-discover>small{grid-area:foot}
 }
 .power-pair{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .power-pair .power{align-content:start}
@@ -3123,6 +3171,22 @@ a.pw-og:hover{border-color:rgba(245,197,24,.45)}
   .jstep-num{font-size:32px;margin-bottom:-2px}
   .jstep-body p{font-size:15px}
   .jstep:last-child{padding-bottom:0}
+}
+
+/* Wide screens: the same spine, laid across the page. Down the middle of a
+   1440px screen, an 840px zig-zag left two wide black margins either side of
+   it and stood ~900px tall for four short steps (client, 2026-11-15). Across,
+   it is one row the width of the sections around it — same dots, numbers,
+   words and line. Tablet and phone keep the vertical spine above. */
+@media(min-width:1100px){
+  .journey{max-width:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .jstep,.jstep:nth-child(even){grid-template-columns:1fr;grid-template-rows:auto 1fr;min-height:0;align-items:start}
+  .jstep .jstep-body,.jstep:nth-child(even) .jstep-body{grid-column:1;grid-row:2;text-align:center;padding:16px 20px 0}
+  .jstep-rail{grid-column:1;grid-row:1;align-self:auto}
+  .jstep-rail::before,.jstep-rail::after{top:50%;bottom:auto;width:auto;height:2px;transform:translateY(-50%);background:var(--border)}
+  .jstep-rail::before{left:0;right:50%}
+  .jstep-rail::after{left:50%;right:0}
+  .jstep-body p,.jstep:nth-child(odd) .jstep-body p{margin-inline:auto;max-width:30ch}
 }
 
 /* =========================================================================

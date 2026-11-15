@@ -109,23 +109,42 @@ export default function CreatorCapitalInfo() {
     <div className="page">
       <Header />
 
-      <section className="section cc-section">
+      <section className="section cc-section cc-page">
         <div className="container">
           <Link className="legal-back" to="/">
             <ArrowLeft />
             Back to home
           </Link>
 
-          <div className="cc-intro" style={{ maxWidth: 680, marginBottom: 44 }}>
-            <span className="badge">
-              <Landmark style={{ width: 14, height: 14 }} />
-              CREATOR CAPITAL™
-            </span>
-            <h2>Create. Earn. Build Your Record. Unlock Capital.</h2>
-            <p className="cc-sub">
-              Build {months} months of verified MTONYO+ transaction history and become eligible
-              for Creator Capital review in partnership with AirPay.
-            </p>
+          {/* The promise, and beside it who decides. Alone, the intro left the
+              right half of a desktop screen empty (client, 2026-11-15: "no
+              giant dead black areas"); the "Who decides" answer belongs at the
+              top anyway — it is the first thing a creator asks. */}
+          <div className="cc-top cc-info-top">
+            <div className="cc-intro">
+              <span className="badge">
+                <Landmark style={{ width: 14, height: 14 }} />
+                CREATOR CAPITAL™
+              </span>
+              <h2>Create. Earn. Build Your Record. Unlock Capital.</h2>
+              <p className="cc-sub">
+                Build {months} months of verified MTONYO+ transaction history and become eligible
+                for Creator Capital review in partnership with AirPay.
+              </p>
+            </div>
+            <aside className="cc-who" aria-labelledby="cc-who-title">
+              <h3 id="cc-who-title">Who decides</h3>
+              <div className="notice notice-review">
+                <Landmark />
+                <span>
+                  <b>MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval
+                  and financing terms.</b>{' '}
+                  MTONYO+ verifies your earnings history and puts your request in front of AirPay;
+                  AirPay makes the credit decision, sets the amount and the terms, and is who you
+                  repay.
+                </span>
+              </div>
+            </aside>
           </div>
 
           <div className="cc-block">
@@ -161,22 +180,6 @@ export default function CreatorCapitalInfo() {
                   <p>{use.text}</p>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="cc-block">
-            <div className="cc-block-head">
-              <h3>Who decides</h3>
-            </div>
-            <div className="notice notice-review">
-              <Landmark />
-              <span>
-                <b>MTONYO+ is not the lender — AirPay Microfinance decides eligibility, approval
-                and financing terms.</b>{' '}
-                MTONYO+ verifies your earnings history and puts your request in front of AirPay;
-                AirPay makes the credit decision, sets the amount and the terms, and is who you
-                repay.
-              </span>
             </div>
           </div>
 
@@ -234,35 +237,40 @@ export default function CreatorCapitalInfo() {
                   </span>
                 </div>
               </aside>
-              <p className="cc-sub">
-                You will see the offer — the amount, its purpose, and the repayment terms — in
-                your Creator Capital tab, with <Lock size={13} style={{ verticalAlign: -2 }} />{' '}
-                nothing to accept until you choose to. Your repayment balance is tracked there
-                for as long as it is open.
-              </p>
-            </div>
-          </div>
+              {/* The explanation, the two promises and the next step sit beside
+                  the example offer: on their own row below it they left a
+                  column of empty space next to the card. */}
+              <div className="cc-approved-copy">
+                <p className="cc-sub">
+                  You will see the offer — the amount, its purpose, and the repayment terms — in
+                  your Creator Capital tab, with <Lock size={13} style={{ verticalAlign: -2 }} />{' '}
+                  nothing to accept until you choose to. Your repayment balance is tracked there
+                  for as long as it is open.
+                </p>
 
-          <div className="cc-actions">
-            <div className="cc-cta-row">
-              <button className="btn btn-gold" type="button" onClick={buildEligibility}>
-                <ArrowRight size={16} />
-                Build Eligibility
-              </button>
-            </div>
-            <div className="cc-trust-row">
-              <div className="cc-trust-item">
-                <CheckCircle2 size={16} />
-                <div>
-                  <b>Nothing to accept</b>
-                  <small>until you choose to</small>
-                </div>
-              </div>
-              <div className="cc-trust-item">
-                <Sparkles size={16} />
-                <div>
-                  <b>MTONYO+ is not the lender —</b>
-                  <small>AirPay Microfinance decides eligibility, approval and financing terms.</small>
+                <div className="cc-actions">
+                  <div className="cc-cta-row">
+                    <button className="btn btn-gold" type="button" onClick={buildEligibility}>
+                      <ArrowRight size={16} />
+                      Build Eligibility
+                    </button>
+                  </div>
+                  <div className="cc-trust-row">
+                    <div className="cc-trust-item">
+                      <CheckCircle2 size={16} />
+                      <div>
+                        <b>Nothing to accept</b>
+                        <small>until you choose to</small>
+                      </div>
+                    </div>
+                    <div className="cc-trust-item">
+                      <Sparkles size={16} />
+                      <div>
+                        <b>MTONYO+ is not the lender —</b>
+                        <small>AirPay Microfinance decides eligibility, approval and financing terms.</small>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

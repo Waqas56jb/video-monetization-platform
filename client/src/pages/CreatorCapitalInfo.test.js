@@ -23,7 +23,7 @@ const src = readFileSync(
 test('the plain legal-document shell is gone — this is the same cc- visual language the homepage section uses', () => {
   assert.doesNotMatch(src, /className="legal"/)
   assert.doesNotMatch(src, /className="legal-body"/)
-  assert.match(src, /className="section cc-section"/)
+  assert.match(src, /className="section cc-section cc-page"/)
   assert.match(src, /className="cc-steps"/)
   assert.match(src, /className="cc-block"/)
 })
