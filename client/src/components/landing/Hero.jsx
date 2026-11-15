@@ -105,7 +105,12 @@ export default function Hero() {
    */
   const heroStats = s?.hasActivity
     ? [
-        { icon: 'wallet', count: s.paidToCreatorsTzs, prefix: 'TZS ', suffix: '', label: 'Earned by creators' },
+        /* Counted from real payments only (test payments never count), so
+           before the first real sale it is 0 — and "TZS 0" says nothing
+           anybody wants to read. The split is true from day one. */
+        s.paidToCreatorsTzs > 0
+          ? { icon: 'wallet', count: s.paidToCreatorsTzs, prefix: 'TZS ', suffix: '', label: 'Earned by creators' }
+          : { icon: 'wallet', count: s.creatorSplitPercent ?? null, prefix: '', suffix: '%', label: 'Of every sale is yours' },
         /* "Creators earning" over the count of creators who EXIST said 31 when
            most of them had earned TZS 0 (client's Sep 17 review). Counted
            properly now — creators with settled earnings — and when that is
