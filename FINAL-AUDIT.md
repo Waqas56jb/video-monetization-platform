@@ -358,3 +358,69 @@ Client: "VIEWER → APPLY TO BECOME A CREATOR → APPLICATION FORM → SUPER ADM
 **Live on production — 40 checks, ALL PASS:** "I want to Create" signup → a viewer sent to the application, no creator profile in the database; old-style `role=creator` → viewer; asking again → signed in, still not a creator; wrong password → 401; `admin` / `sub_admin` as a role or side → 400; login needs no side; asking for Create without approval → 403 "not an approved creator … apply"; my videos, upload, earnings → 403 for an unapproved viewer; the old become-creator shortcut → refused; a submitted application still does not open the studio, and a second one is refused while pending. Browser (desktop, Pixel 7, iPhone 14): no Watch/Create choice at login; a new person wanting to publish signs up and lands on the application form; `?tab=upload|videos|earnings|analytics|creator|withdrawals` shows no studio; the sidebar offers "Apply to become a creator"; no page errors. Test accounts and the test application removed afterwards.
 
 **For the client to decide:** 22 accounts hold creator access from the self-serve period without an approved application — 18 automated "Smoke Creator" test accounts and 4 hand-made accounts (10 videos between them, none live). Left unchanged until the client decides.
+
+## Playback on weak networks (2026-11-15)
+
+Client ask: "quality can drop temporarily, playback should keep moving", with Tanzanian mobile data in mind.
+
+**What changed.** The film now plays in our own `<video>` element:
+- **Chrome, Android, desktop Safari and Firefox:** hls.js 1.5.17 (`client/src/lib/hlsEngine.js`), wired in through `StreamPlayer`'s `hlsSrc`.
+- **iPhone and iPad:** Apple's own HLS player.
+
+It plays the same signed Cloudflare Stream HLS, served from Cloudflare's edge (`videodelivery.net` / `customer-*.cloudflarestream.com`). No video passes through Railway.
+
+Cloudflare's embedded player is kept for adverts. It is also the automatic fallback, taking over at the current second, if the hls.js file or the playlist fails. Both cases were tested by blocking them in the browser, and the film kept playing.
+
+**Why.** Cloudflare's embedded player is adaptive, but it has no settings. It starts every film at the first rendition in Cloudflare's playlist, which is the top one, because it doesn't yet know the viewer's bandwidth. On 3G that meant 12.9 s before the first frame.
+
+**Settings** (`HLS_CONFIG`):
+
+| Setting | Effect |
+|---|---|
+| Start low (`startLevelFor`) | Starts at the best quality that fits half of `navigator.connection.downlink`, or at the lowest when the device doesn't report a speed |
+| `capLevelToPlayerSize` | Never fetches more pixels than the screen shows |
+| `abrBandWidthFactor` 0.8 / `abrBandWidthUpFactor` 0.7 | Keeps headroom below the measured bandwidth; climbs only when the next level clearly fits |
+| `abrEwmaFastVoD` 2 / `abrEwmaSlowVoD` 6 | Reacts to drops faster than the hls.js defaults (3 / 9) |
+| `maxStarvationDelay` / `maxLoadingDelay` 2 s | Switches down instead of waiting on a late fragment |
+| Buffer 30–60 s ahead, 30 s behind | Rides out short dips in a mobile connection |
+| Fragment retries 6× with backoff | A dropped fragment is retried, not fatal |
+
+**Measured.**
+- Source: 3-minute 1080p clip (Big Buck Bunny, CC-BY), uploaded as a QA-only asset and deleted afterwards.
+- Ladder: 1080 / 720 / 480 / 360 / 240.
+- Setup: Chromium with network throttling, 1920×1080 window.
+- Startup is measured from navigation to the first frame.
+- A stall is time when the film should be moving and isn't.
+
+| Network | Startup before → after | Stalls before → after | Quality (after) |
+|---|---|---|---|
+| Wi-Fi | 5.5 s → 2.1 s | 0 → 0 | 1080p |
+| 4G 9 Mbps / 60 ms | 4.6 s → 2.1 s | 0 → 0 | 1080p |
+| Slow 4G 1.6 Mbps / 150 ms | 7.5 s → 2.9 s | 0 → 0 | 360p → 480p |
+| 3G 750 kbps / 300 ms | 12.9 s → 4.5 s | 0 → 0 | 240p → 360p |
+| 9 Mbps → 600 kbps (30–75 s) → 9 Mbps | 4.6 s → 2.5 s | 0 → 0 | 1080p, rides the buffer, then 240p |
+| 9 Mbps → 300 kbps (30–75 s) → 9 Mbps | 4.7 s → 2.1 s | 0 → 0 | 1080p → 240 → 360 → 480 |
+
+During the 300 kbps crash, hls.js switched its downloads to 240p and played on from a buffer of about 60 s. Within 7 s of the connection returning it was downloading 720p again. What's on screen follows later, because the buffer plays out in order.
+
+**Real Watch page.** Before and after served identically, so only the player differs. Film: "Live at Arusha" (240p source). First frame:
+
+| Network | Before → after |
+|---|---|
+| Wi-Fi | 4.65 → 2.83 s |
+| Slow 4G | 9.29 → 4.22 s |
+| 3G | 14.76 → 7.10 s |
+| Changing network | 5.27 → 3.17 s |
+
+No stalls in either version.
+
+**Functional checks on the new engine.** All pass:
+- the preview halts at exactly 15.00 s, and the paywall shows
+- a Free + Ads film plays after its advert
+- an owned film plays in full; after a seek to 5:00 and a reload, it resumes at 5:05
+- preview → Unlock → TEST payment → the full film starts at the second the preview stopped. The TEST payment was refunded through the admin API.
+
+**Limits.**
+- Most current catalogue sources are 240p or 360p, so those films can't go higher than that. Quality is capped by what creators upload.
+- iPhone and iPad use Apple's own adaptive logic, which can't be tuned. This is the standard player on those devices.
+- Playwright's WebKit build on Windows can't play HLS, so iOS was not measured here. Check it on a real device.
