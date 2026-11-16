@@ -88,6 +88,9 @@ export default function Signup() {
       setError('Enter your name, email and password')
       return
     }
+    // Autofill may have filled boxes without onChange; the screens after this
+    // one (confirmation sent, sign-in link) read the email from state.
+    setForm({ fullName, phone, email, password: '' })
     setBusy(true)
     setError(null)
     setErrorCode(null)
@@ -274,7 +277,7 @@ export default function Signup() {
             placeholder="Juma Hassan"
             autoComplete="name"
             name="fullName"
-            value={form.fullName}
+            defaultValue={form.fullName}
             onChange={set('fullName')}
             required
           />
@@ -286,7 +289,7 @@ export default function Signup() {
             placeholder="0712 000 000"
             autoComplete="tel"
             name="phone"
-            value={form.phone}
+            defaultValue={form.phone}
             onChange={set('phone')}
           />
         </div>
@@ -299,7 +302,7 @@ export default function Signup() {
           placeholder="you@email.com"
           autoComplete="email"
           name="email"
-          value={form.email}
+          defaultValue={form.email}
           onChange={set('email')}
           required
         />
@@ -311,7 +314,7 @@ export default function Signup() {
           autoComplete="new-password"
           name="password"
           minLength={8}
-          value={form.password}
+          defaultValue=""
           onChange={set('password')}
           required
         />

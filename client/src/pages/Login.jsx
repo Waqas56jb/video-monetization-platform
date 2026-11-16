@@ -85,12 +85,15 @@ export default function Login() {
     e.preventDefault()
     if (busy) return
     /**
-     * Read the fields from the form, not only React state.
+     * Read the fields from the form, never from React state.
      *
-     * Safari and Chrome autofill often paint the email and password without
-     * firing onChange, so the first tap submitted empty credentials, failed,
-     * and the second tap — after state had caught up — worked. That is the
-     * "login never works first time" report.
+     * Safari Keychain, Chrome autofill and password managers often fill a box
+     * without firing onChange. The boxes are uncontrolled (`defaultValue`) for
+     * the same reason: while they were controlled (`value={form.x}`), the next
+     * re-render — typing in the other box, tapping the eye — wrote React's
+     * empty copy back over the filled box, the form posted nothing, and the
+     * person saw "Enter your email and password" with both boxes visibly
+     * filled a moment earlier (client, 2026-11-16). See authFields.test.js.
      */
     const posted = new FormData(e.currentTarget)
     const emailEl = e.currentTarget.querySelector('[name="email"], #login-id')
@@ -101,6 +104,7 @@ export default function Login() {
       setError('Enter your email and password')
       return
     }
+    setForm({ email, password: '' })
 
     setBusy(true)
     setError(null)
@@ -166,7 +170,7 @@ export default function Login() {
           name="email"
           placeholder="you@email.com"
           autoComplete="username"
-          value={form.email}
+          defaultValue={form.email}
           onChange={set('email')}
           required
         />
@@ -176,7 +180,7 @@ export default function Login() {
           name="password"
           placeholder="••••••••"
           autoComplete="current-password"
-          value={form.password}
+          defaultValue=""
           onChange={set('password')}
           required
         />

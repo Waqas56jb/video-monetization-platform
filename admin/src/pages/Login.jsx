@@ -80,7 +80,7 @@ export default function Login({ onLogin }) {
               name="email"
               placeholder="admin@mtonyo.tz"
               autoComplete="username"
-              value={form.email}
+              defaultValue=""
               onChange={set('email')}
               required
             />
@@ -92,7 +92,7 @@ export default function Login({ onLogin }) {
               name="password"
               placeholder="••••••••••"
               autoComplete="current-password"
-              value={form.password}
+              defaultValue=""
               onChange={set('password')}
               required
             />

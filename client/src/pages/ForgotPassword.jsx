@@ -29,7 +29,14 @@ export default function ForgotPassword() {
     setBusy(true)
     setError(null)
     try {
-      await api.auth.forgotPassword({ email: email.trim().toLowerCase(), side })
+      // From the box itself: autofill can fill it without onChange.
+      const typed = String(new FormData(e.currentTarget).get('email') || email).trim().toLowerCase()
+      if (!typed) {
+        setError('Enter your email address')
+        return
+      }
+      setEmail(typed)
+      await api.auth.forgotPassword({ email: typed, side })
       setSent(true)
     } catch (err) {
       setError(err.message)
@@ -98,7 +105,8 @@ export default function ForgotPassword() {
             type="email"
             placeholder="you@email.com"
             autoComplete="username"
-            value={email}
+            name="email"
+            defaultValue={email}
             onChange={(e) => {
               setEmail(e.target.value)
               setError(null)

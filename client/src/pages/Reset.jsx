@@ -41,8 +41,8 @@ export default function Reset() {
   })
 
   const [state, setState] = useState({ status: 'checking' })
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [typedPassword, setPassword] = useState('')
+  const [typedConfirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
@@ -93,6 +93,12 @@ export default function Reset() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+    // From the boxes themselves: Safari's "Strong Password" and password
+    // managers fill both without onChange, and the boxes are uncontrolled so a
+    // re-render cannot wipe what they filled (see Login.jsx).
+    const posted = new FormData(e.currentTarget)
+    const password = String(posted.get('password') || typedPassword)
+    const confirm = String(posted.get('confirm') || typedConfirm)
     if (password !== confirm) return setError('The two passwords do not match')
     if (password.length < 8) return setError('Password must be at least 8 characters')
 
@@ -247,7 +253,8 @@ export default function Reset() {
           placeholder="Minimum 8 characters"
           autoComplete="new-password"
           minLength={8}
-          value={password}
+          name="password"
+          defaultValue=""
           onChange={(e) => {
             setPassword(e.target.value)
             setError(null)
@@ -259,7 +266,8 @@ export default function Reset() {
           label="Confirm Password"
           placeholder="Type it again"
           autoComplete="new-password"
-          value={confirm}
+          name="confirm"
+          defaultValue=""
           onChange={(e) => {
             setConfirm(e.target.value)
             setError(null)
