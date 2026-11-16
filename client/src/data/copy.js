@@ -122,6 +122,13 @@ export const ACCESS_OPTIONS = [
     viewerTag: 'Pay Once',
     text:
       'Get paid directly by your viewers. They watch a free preview, then pay once to continue watching.',
+    promise: 'Free preview first. One payment to watch the rest.',
+    timeline: [
+      { label: 'Free preview', tone: 'is-free', grow: 1 },
+      { label: 'Pay once', tone: 'is-paid', grow: 2.4 },
+    ],
+    points: ['You set the price and the free preview', 'Viewers pay once with M-Pesa or Airtel Money', 'The video stays in their library'],
+    bestFor: 'Films, courses and exclusives',
   },
   {
     key: 'paid_premiere',
@@ -131,6 +138,13 @@ export const ACCESS_OPTIONS = [
     viewerTag: 'Paid Premiere',
     text:
       'Earn from sales first, then advertising. Choose 30, 60 or 90 days. Viewers pay during that period. Afterward, the video automatically becomes Free + Ads.',
+    promise: 'Paid for the period you choose. Then free with ads, automatically.',
+    timeline: [
+      { label: 'Paid period', tone: 'is-paid', grow: 1.4 },
+      { label: 'Free + Ads', tone: 'is-ads', grow: 2 },
+    ],
+    points: ['Choose 30, 60 or 90 days', 'Becomes Free + Ads on its own', 'Everyone who paid keeps it ad-free'],
+    bestFor: 'New releases and premieres',
   },
   {
     key: 'free_with_ads',
@@ -139,6 +153,13 @@ export const ACCESS_OPTIONS = [
     label: 'Free + Ads',
     viewerTag: 'Free + Ads',
     text: 'Let everyone watch for free. Your video is free from day one and you earn from advertising.',
+    promise: 'Free for everyone from day one. You earn from advertising.',
+    timeline: [
+      { label: 'Ad', tone: 'is-ads', grow: 0.7 },
+      { label: 'Free to watch', tone: 'is-free', grow: 2.7 },
+    ],
+    points: ['No paywall for viewers', 'Short, skippable adverts', 'You earn a share of every advert shown'],
+    bestFor: 'Growing your audience',
   },
 ]
 
