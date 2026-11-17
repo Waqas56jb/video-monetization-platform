@@ -138,12 +138,12 @@ export const ACCESS_OPTIONS = [
     viewerTag: 'Paid Premiere',
     text:
       'Earn from sales first, then advertising. Choose 30, 60 or 90 days. Viewers pay during that period. Afterward, the video automatically becomes Free + Ads.',
-    promise: 'Paid for the period you choose. Then free with ads, automatically.',
+    promise: 'Paid for the period you choose, then automatically Free + Ads.',
     timeline: [
       { label: 'Paid period', tone: 'is-paid', grow: 1.4 },
       { label: 'Free + Ads', tone: 'is-ads', grow: 2 },
     ],
-    points: ['Choose 30, 60 or 90 days', 'Becomes Free + Ads on its own', 'Everyone who paid keeps it ad-free'],
+    points: ['You choose the paid period: 30, 60 or 90 days', 'After that it turns Free + Ads automatically', 'Viewers who paid keep watching ad-free'],
     bestFor: 'New releases and premieres',
   },
   {

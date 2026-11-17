@@ -3039,7 +3039,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 
 /* Tablet: still three across, a size smaller. */
 @media(max-width:900px){
   .sj-row{gap:6px}
-  .sj-phone{height:440px;max-width:228px;padding:8px;border-radius:34px}
+  .sj-phone{height:418px;max-width:228px;padding:8px;border-radius:34px}
   .sj-screen{border-radius:27px;gap:8px}
   .sj-arrow{width:28px;height:28px;margin-top:30px}
   .sj-arrow svg{width:14px;height:14px}
@@ -3049,6 +3049,11 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 
   .sj-paid small{display:none}
   .sj-wa .share-wa-copy small{display:none}
   .sj-price{font-size:17px}
+  /* Tablet: three rows of two, same size as the labels above the phones. */
+  .sj-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:720px}
+  .sj-steps li{font-size:13px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border2)}
+  .sj-steps li:not(:last-child)::after{content:none}
+  .sj-steps li:last-child{border-color:rgba(255,193,0,.35);background:rgba(255,193,0,.06)}
 }
 /* Phone: one under another, the arrows turned to point down. */
 @media(max-width:700px){
@@ -3062,8 +3067,13 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 
   .sj-wa .share-wa-copy small{display:block}
   .sj-paid small{display:block}
   .sj-targets .share-target b{font-size:11px}
-  .sj-steps{margin-top:20px}
-  .sj-steps li{font-size:11.5px}
+  /* Phone: a tidy 2-column grid of numbered steps instead of a wrapping
+     line of tiny text with orphaned arrows (client, 2026-11-17). */
+  .sj-steps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px;max-width:420px}
+  .sj-steps li{font-size:12.5px;letter-spacing:.02em;padding:10px 11px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--border2);line-height:1.25}
+  .sj-steps li:not(:last-child)::after{content:none}
+  .sj-steps li::before{flex-shrink:0;width:22px;height:22px;font-size:11px}
+  .sj-steps li:last-child{border-color:rgba(255,193,0,.35);background:rgba(255,193,0,.06)}
 }
 
 .pw-viz-discover .share-og-stats{right:8px;bottom:10px}
