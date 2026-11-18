@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
     [navigate, showToast]
   )
 
-  const signIn = useCallback(async ({ email, password, side }) => {
+  const signIn = useCallback(async ({ email, password, side, remember = true }) => {
     setLoading(true)
     try {
       // No side: the server signs in on the side the account has.
@@ -121,7 +121,7 @@ export function AuthProvider({ children }) {
         password,
         ...(side === 'creator' || side === 'viewer' ? { side } : {}),
       })
-      saveSession(data.session)
+      saveSession(data.session, { remember: remember !== false })
       const resolved = data.side === 'creator' ? 'creator' : 'viewer'
       // Persist before React state so the dashboard never opens on the wrong side.
       persistAccountSide(resolved)
@@ -161,7 +161,7 @@ export function AuthProvider({ children }) {
      */
     const resolved = data.side === 'creator' ? 'creator' : data.side === 'viewer' ? 'viewer' : wanted
     if (data.session) {
-      saveSession(data.session)
+      saveSession(data.session, { remember: true })
       persistAccountSide(resolved)
       setSideState(resolved)
       setSides(parseSides(data.sides))

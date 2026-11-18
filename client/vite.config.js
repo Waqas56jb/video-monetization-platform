@@ -8,14 +8,25 @@ import { fileURLToPath, URL } from 'node:url'
 const SITE_FALLBACK = 'https://video-monetization-platform-chi.vercel.app'
 const siteUrl = (mode) => (loadEnv(mode, process.cwd(), 'VITE_').VITE_PUBLIC_WEB_URL || process.env.VITE_PUBLIC_WEB_URL || SITE_FALLBACK).replace(/\/$/, '')
 
+/* One id per build: stamped into the bundle (__BUILD_ID__) and published as
+   /build.json, so a tab left open across a deploy can tell it is out of date
+   (see src/lib/staleBuild.js). */
+const BUILD_ID = Date.now().toString(36)
+
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     { name: 'mtonyo-site-url', transformIndexHtml: (html) => html.replaceAll('%SITE_URL%', siteUrl(mode)) },
+    {
+      name: 'mtonyo-build-id',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'build.json', source: JSON.stringify({ id: BUILD_ID }) })
+      },
+    },
   ],
   // Changes on every build, so each deploy registers a distinct service worker
   // and the previous build's caches are cleared instead of living forever.
-  define: { __BUILD_ID__: JSON.stringify(Date.now().toString(36)) },
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

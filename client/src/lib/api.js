@@ -48,18 +48,60 @@ export class ApiError extends Error {
  * worked, `/me` then runs with no token, a 401 lands, and the second attempt
  * "mysteriously" succeeds. Memory lasts for this tab even when storage cannot.
  */
-let accessMem = getItem(ACCESS_KEY)
-let refreshMem = getItem(REFRESH_KEY)
+/* "Remember me" off keeps the session for this browser session only:
+   sessionStorage, which the browser clears when it closes. On (the default)
+   keeps it in localStorage as before. Either way memory is the source of truth
+   for this tab. Guarded: Safari can throw on merely touching sessionStorage. */
+const tabStore = {
+  get(key) {
+    try {
+      return window.sessionStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  set(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value)
+    } catch {
+      /* storage refused — memory still holds it for this tab */
+    }
+  },
+  remove(key) {
+    try {
+      window.sessionStorage.removeItem(key)
+    } catch {
+      /* ignore */
+    }
+  },
+}
 
-export const getAccessToken = () => accessMem || getItem(ACCESS_KEY)
-export const getRefreshToken = () => refreshMem || getItem(REFRESH_KEY)
+const stored = (key) => getItem(key) || tabStore.get(key)
+let accessMem = stored(ACCESS_KEY)
+let refreshMem = stored(REFRESH_KEY)
+/** Where the current session lives; a refreshed token goes back to the same place. */
+let remembered = !(tabStore.get(ACCESS_KEY) && !getItem(ACCESS_KEY))
 
-export function saveSession(session) {
+export const getAccessToken = () => accessMem || stored(ACCESS_KEY)
+export const getRefreshToken = () => refreshMem || stored(REFRESH_KEY)
+
+/**
+ * @param session  { accessToken, refreshToken }
+ * @param opts.remember  false = forget when the browser closes. Omitted (a
+ *   token refresh) keeps whatever the person chose at sign-in.
+ */
+export function saveSession(session, { remember } = {}) {
   if (!session?.accessToken) return
+  if (typeof remember === 'boolean') remembered = remember
   accessMem = session.accessToken
   if (session.refreshToken) refreshMem = session.refreshToken
-  setItem(ACCESS_KEY, session.accessToken)
-  if (session.refreshToken) setItem(REFRESH_KEY, session.refreshToken)
+  const [keep, drop] = remembered
+    ? [{ set: setItem }, { remove: tabStore.remove }]
+    : [{ set: tabStore.set }, { remove: removeItem }]
+  keep.set(ACCESS_KEY, session.accessToken)
+  if (session.refreshToken) keep.set(REFRESH_KEY, session.refreshToken)
+  drop.remove(ACCESS_KEY)
+  drop.remove(REFRESH_KEY)
 }
 
 export function clearSession() {
@@ -67,6 +109,8 @@ export function clearSession() {
   refreshMem = null
   removeItem(ACCESS_KEY)
   removeItem(REFRESH_KEY)
+  tabStore.remove(ACCESS_KEY)
+  tabStore.remove(REFRESH_KEY)
 }
 
 /** Anything that wants to know the session died (e.g. to bounce to /login). */

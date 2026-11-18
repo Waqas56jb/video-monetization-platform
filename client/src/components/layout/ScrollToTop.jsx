@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { scrollWhenReady } from '@/hooks/useSectionLink'
+import { staleBuildWatch } from '@/lib/staleBuild'
 
 /**
  * Jump to the top on route changes. Hash links (#trending) wait for that
@@ -12,6 +13,18 @@ import { scrollWhenReady } from '@/hooks/useSectionLink'
  */
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation()
+
+  /* Moving to another page is the moment an out-of-date tab can load the new
+     build without interrupting anything (staleBuild.js). Not on first render:
+     that page was just loaded. */
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    staleBuildWatch()?.onNavigate()
+  }, [pathname])
 
   useEffect(() => {
     if (hash) {

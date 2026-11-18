@@ -52,6 +52,6 @@ test('a login sends no side unless one is asked for; the studio is reached only 
   const ctx = read('context/AuthContext.jsx')
   assert.match(ctx, /\.\.\.\(side === 'creator' \|\| side === 'viewer' \? \{ side \} : \{\}\)/)
   const login = read('pages/Login.jsx')
-  assert.match(login, /signIn\(\{ email, password \}\)/)
+  assert.match(login, /signIn\(\{ email, password(, remember)? \}\)/) // still no `side`
   assert.match(login, /preferred === 'creator' && result\.sides\?\.creator/)
 })

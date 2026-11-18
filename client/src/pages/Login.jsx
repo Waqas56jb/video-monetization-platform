@@ -84,6 +84,7 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault()
     if (busy) return
+    setBusy(true) // also covers the one-frame wait below against a double tap
     /**
      * Read the fields from the form, never from React state.
      *
@@ -95,13 +96,31 @@ export default function Login() {
      * person saw "Enter your email and password" with both boxes visibly
      * filled a moment earlier (client, 2026-11-16). See authFields.test.js.
      */
-    const posted = new FormData(e.currentTarget)
-    const emailEl = e.currentTarget.querySelector('[name="email"], #login-id')
-    const passEl = e.currentTarget.querySelector('[name="password"], #login-pass')
-    const email = String(posted.get('email') || emailEl?.value || form.email || '').trim().toLowerCase()
-    const password = String(posted.get('password') || passEl?.value || form.password || '')
+    const formEl = e.currentTarget
+    const readForm = () => {
+      const posted = new FormData(formEl)
+      const emailEl = formEl.querySelector('[name="email"], #login-id')
+      const passEl = formEl.querySelector('[name="password"], #login-pass')
+      return {
+        email: String(posted.get('email') || emailEl?.value || form.email || '').trim().toLowerCase(),
+        password: String(posted.get('password') || passEl?.value || form.password || ''),
+        remember: Boolean(formEl.querySelector('[name="remember"]')?.checked ?? true),
+      }
+    }
+    let { email, password, remember } = readForm()
+    /**
+     * Chrome withholds an autofilled password from the page until the first
+     * user gesture, and releases it during that gesture — which can be this
+     * very tap on "Log in". If the boxes read empty, give the browser one
+     * frame to hand the values over and read again before saying anything.
+     */
     if (!email || !password) {
-      setError('Enter your email and password')
+      await new Promise((r) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => setTimeout(r, 30)) : setTimeout(r, 50)))
+      ;({ email, password, remember } = readForm())
+    }
+    if (!email || !password) {
+      setError(!email && !password ? 'Enter your email and password' : !email ? 'Enter your email address' : 'Enter your password')
+      setBusy(false)
       return
     }
     setForm({ email, password: '' })
@@ -109,7 +128,7 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      const result = await signIn({ email, password })
+      const result = await signIn({ email, password, remember })
       let panel = panelRoleFor(result.user?.role, result.side, Boolean(result.creator))
       // An approved creator who works in the studio goes back to it.
       if (panel !== 'creator' && preferred === 'creator' && result.sides?.creator) {
@@ -187,7 +206,8 @@ export default function Login() {
 
         <div className="form-row">
           <label>
-            <input type="checkbox" defaultChecked />
+            {/* Off: signed out when the browser closes (sessionStorage). */}
+            <input type="checkbox" name="remember" defaultChecked />
             Remember me
           </label>
           <Link

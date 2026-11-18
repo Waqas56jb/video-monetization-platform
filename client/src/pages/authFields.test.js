@@ -27,6 +27,26 @@ const FILES = {
 for (const [name, src] of Object.entries(FILES)) {
   test(`${name}: no controlled auth boxes, values read from the form`, () => {
     assert.doesNotMatch(src, /\svalue=\{/, 'a controlled box comes back — autofill gets wiped on re-render')
-    assert.match(src, /new FormData\(e\.currentTarget\)/)
+    assert.match(src, /new FormData\((e\.currentTarget|formEl)\)/)
   })
 }
+
+test('Login: one more read after a frame before any "Enter your…" error (Chrome releases autofill on the tap)', () => {
+  const src = FILES['client Login']
+  const wait = src.indexOf('requestAnimationFrame')
+  const err = src.indexOf("'Enter your email and password'")
+  assert.ok(wait > 0 && err > wait, 'the re-read happens before the error')
+  assert.match(src, /setBusy\(true\) \/\/ also covers the one-frame wait/)
+  assert.match(FILES.Signup, /requestAnimationFrame/)
+})
+
+test('Remember me is wired: unchecked keeps the session for this browser session only', () => {
+  const login = FILES['client Login']
+  assert.match(login, /name="remember" defaultChecked/)
+  assert.match(login, /signIn\(\{ email, password, remember \}\)/)
+  const api = readFileSync(fileURLToPath(new URL('../lib/api.js', import.meta.url)), 'utf8')
+  assert.match(api, /export function saveSession\(session, \{ remember \} = \{\}\)/)
+  assert.match(api, /window\.sessionStorage\.setItem/)
+  const auth = readFileSync(fileURLToPath(new URL('../context/AuthContext.jsx', import.meta.url)), 'utf8')
+  assert.match(auth, /saveSession\(data\.session, \{ remember: remember !== false \}\)/)
+})

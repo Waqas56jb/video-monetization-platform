@@ -79,13 +79,28 @@ export default function Signup() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    const posted = new FormData(e.currentTarget)
-    const fullName = String(posted.get('fullName') || e.currentTarget.querySelector('[name="fullName"]')?.value || form.fullName || '').trim()
-    const phone = String(posted.get('phone') || e.currentTarget.querySelector('[name="phone"]')?.value || form.phone || '').trim()
-    const email = String(posted.get('email') || e.currentTarget.querySelector('[name="email"]')?.value || form.email || '').trim().toLowerCase()
-    const password = String(posted.get('password') || e.currentTarget.querySelector('[name="password"]')?.value || form.password || '')
+    if (busy) return
+    const formEl = e.currentTarget
+    const readForm = () => {
+      const posted = new FormData(formEl)
+      const val = (n) => String(posted.get(n) || formEl.querySelector(`[name="${n}"]`)?.value || form[n] || '')
+      return {
+        fullName: val('fullName').trim(),
+        phone: val('phone').trim(),
+        email: val('email').trim().toLowerCase(),
+        password: val('password'),
+      }
+    }
+    let { fullName, phone, email, password } = readForm()
+    // Autofill may hand its values over only during this tap (see Login.jsx).
     if (!fullName || !email || !password) {
-      setError('Enter your name, email and password')
+      await new Promise((r) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => setTimeout(r, 30)) : setTimeout(r, 50)))
+      ;({ fullName, phone, email, password } = readForm())
+    }
+    if (!fullName || !email || !password) {
+      // Say which box is empty, not a blanket line that reads as "the form is broken".
+      const missing = [!fullName && 'your full name', !email && 'your email', !password && 'a password'].filter(Boolean)
+      setError(`Enter ${missing.join(missing.length > 2 ? ', ' : ' and ').replace(/, (?=[^,]*$)/, ' and ')}`)
       return
     }
     // Autofill may have filled boxes without onChange; the screens after this
