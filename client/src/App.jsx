@@ -92,6 +92,8 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset" element={<Reset />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        {/* "/library" is what people (and older links) type; the library is a dashboard tab. */}
+        <Route path="/library" element={<Navigate to="/dashboard?tab=library" replace />} />
         {/* deep link: a shared URL opens that exact video's watch & buy page */}
         <Route path="/watch" element={<WatchRoute />} />
         <Route path="/watch/:videoId" element={<WatchRoute />} />

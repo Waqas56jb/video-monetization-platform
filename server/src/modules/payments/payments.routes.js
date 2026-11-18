@@ -287,7 +287,9 @@ router.all(
         : null
     if (!payment) {
       log.warn(`payment return for an unknown order (${ref.orderId || ref.providerRef || 'none'})`)
-      return res.redirect(303, `${home}/library`)
+      // The library lives in the dashboard; '/library' was never a page and
+      // fell through to the homepage (found in the 2026-11-18 regression).
+      return res.redirect(303, `${home}/dashboard?tab=library`)
     }
 
     await reconcilePayment(payment, { via: 'return', signed: ref.signed || null }).catch((err) => log.warn(`return reconcile: ${err.message}`))
