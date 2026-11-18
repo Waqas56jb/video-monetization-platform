@@ -16,7 +16,7 @@
  */
 import { reloadOnceForNewBuild } from './chunkReload.js'
 
-const CHECK_EVERY_MS = 60_000
+const CHECK_EVERY_MS = 15_000
 
 /** Pages where an immediate reload cannot lose anything the person typed or watched. */
 export const SAFE_TO_RELOAD = /^\/(login|signup|forgot-password|reset(-password)?)?\/?$/

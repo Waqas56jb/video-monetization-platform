@@ -54,7 +54,7 @@ test('checks are throttled, and the reload goes through the once-per-30s guard',
   await w.check()
   await w.check()
   assert.equal(calls, 1)
-  t += 61_000
+  t += 16_000
   await w.check()
   assert.equal(calls, 2)
 
