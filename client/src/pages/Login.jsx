@@ -129,7 +129,12 @@ export default function Login() {
      */
     /* Keep reading for up to ~1s: some browsers release a saved password
        later than the first frame after the tap. Most attempts never wait. */
-    for (let i = 0; i < 12 && (!email || !password); i++) {
+    const browserHolds = () =>
+      [formEl.querySelector('[name="email"], #login-id'), formEl.querySelector('[name="password"], #login-pass')].some(isBrowserFilled)
+    // Only wait when something is on its way: one box filled, or the browser
+    // has painted one. A genuinely empty form answers at once.
+    const worthWaiting = Boolean(email || password) || browserHolds()
+    for (let i = 0; worthWaiting && i < 12 && (!email || !password); i++) {
       await new Promise((r) => setTimeout(r, i === 0 ? 30 : 80))
       ;({ email, password, remember } = readForm())
     }
