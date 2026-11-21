@@ -8,7 +8,7 @@ import {
 import Reveal from '@/components/ui/Reveal'
 import useApi, { duration } from '@/hooks/useApi'
 import api, { mediaUrl } from '@/lib/api'
-import { CONTENT_KINDS, PLATFORM_POWERS } from '@/data/copy'
+import { CONTENT_KINDS, IMG, PLATFORM_POWERS } from '@/data/copy'
 import { landingFetcher, LANDING_KEYS, readLanding } from '@/lib/landingCache'
 
 /** Used only until the API answers, so the block is never empty on first paint. */
@@ -68,12 +68,20 @@ function ShareJourney() {
     { initialData: readLanding(LANDING_KEYS.trending8) }
   )
   const v = trending.data?.videos?.[0] || SHARE_DEMO
-  const poster = mediaUrl(v.thumbnailUrl)
+  /* Never an empty frame: while the list is loading, if the API cannot be
+     reached, or if the video has no thumbnail, the phones show a bundled
+     poster instead of a blank box (client, 2026-11-20). */
+  const poster = mediaUrl(v.thumbnailUrl) || IMG.konser
   const creator = v.creator?.name || v.creatorName
   const price = Number(v.priceTzs || 0)
 
   return (
     <div className="sj">
+      {/* Illustrative screens of a real feature — said so, plainly. */}
+      <p className="sj-note">
+        <span>Example</span>
+        How sharing works on MTONYO+ — these screens are an illustration; your own video appears in its place.
+      </p>
       <div className="sj-row">
         <Phone step="1" label="Share your video">
           <div className="sj-video">

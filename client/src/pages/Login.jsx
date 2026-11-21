@@ -8,6 +8,19 @@ import { useAuth } from '@/context/AuthContext'
 import { dashboardPath, getAccountSide, panelRoleFor, sideFromSearch } from '@/lib/accountSide'
 import { authUrl, nextFrom } from '@/lib/nextPath'
 
+/** True when the browser's autofill has painted this box (Chrome/Safari/Firefox). */
+function isBrowserFilled(el) {
+  if (!el) return false
+  for (const sel of [':autofill', ':-webkit-autofill']) {
+    try {
+      if (el.matches(sel)) return true
+    } catch {
+      /* selector unsupported in this browser */
+    }
+  }
+  return false
+}
+
 function loginErrorMessage(err) {
   if (err?.code === 'WRONG_SIDE') {
     return err.message
@@ -114,12 +127,25 @@ export default function Login() {
      * very tap on "Log in". If the boxes read empty, give the browser one
      * frame to hand the values over and read again before saying anything.
      */
-    if (!email || !password) {
-      await new Promise((r) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => setTimeout(r, 30)) : setTimeout(r, 50)))
+    /* Keep reading for up to ~1s: some browsers release a saved password
+       later than the first frame after the tap. Most attempts never wait. */
+    for (let i = 0; i < 12 && (!email || !password); i++) {
+      await new Promise((r) => setTimeout(r, i === 0 ? 30 : 80))
       ;({ email, password, remember } = readForm())
     }
     if (!email || !password) {
-      setError(!email && !password ? 'Enter your email and password' : !email ? 'Enter your email address' : 'Enter your password')
+      const passEl = formEl.querySelector('[name="password"], #login-pass')
+      // Filled by the browser (dots showing) but never handed to the page.
+      const heldByBrowser = !password && isBrowserFilled(passEl)
+      setError(
+        heldByBrowser
+          ? 'Your browser filled in your password but has not released it yet. Tap the password box once, then tap Log in.'
+          : !email && !password
+            ? 'Enter your email and password'
+            : !email
+              ? 'Enter your email address'
+              : 'Enter your password'
+      )
       setBusy(false)
       return
     }

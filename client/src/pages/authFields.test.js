@@ -33,9 +33,11 @@ for (const [name, src] of Object.entries(FILES)) {
 
 test('Login: one more read after a frame before any "Enter your…" error (Chrome releases autofill on the tap)', () => {
   const src = FILES['client Login']
-  const wait = src.indexOf('requestAnimationFrame')
+  const wait = src.indexOf('setTimeout(r, i === 0 ? 30 : 80)')
   const err = src.indexOf("'Enter your email and password'")
   assert.ok(wait > 0 && err > wait, 'the re-read happens before the error')
+  assert.match(src, /for \(let i = 0; i < 12 && \(!email \|\| !password\); i\+\+\)/, 'keeps reading for ~1s, not one frame')
+  assert.match(src, /:-webkit-autofill/, 'a browser-held password gets an honest message, not "Enter your password"')
   assert.match(src, /setBusy\(true\) \/\/ also covers the one-frame wait/)
   assert.match(FILES.Signup, /requestAnimationFrame/)
 })

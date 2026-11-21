@@ -2943,6 +2943,8 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 
    reuse the real .share-wa / .share-target rules; only the frame is here.
    ========================================================================= */
 .sj{margin:0 0 26px}
+.sj-note{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 10px;margin:0 auto 22px;max-width:720px;text-align:center;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.sj-note span{flex-shrink:0;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);background:rgba(255,193,0,.1);border:1px solid rgba(255,193,0,.3)}
 .sj-row{
   display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);
   align-items:start;gap:clamp(8px,1.6vw,22px);max-width:1080px;margin:0 auto;
@@ -3551,18 +3553,19 @@ html.is-touch .btn:active{transform:scale(.97)}
    measured 39 px desktop, 37 px tablet, 31 px mobile, which is the section's
    own top padding. A negative scroll margin lets that padding tuck under the
    header only when the section is scrolled to, leaving the same ~16 px of air
-   everywhere; the page itself keeps its spacing. It works WITH the single
+   everywhere; the page itself keeps its spacing. Raised to ~28 px on
+   2026-11-21 (client: the sharing heading looked tucked under the header). It works WITH the single
    scroll-padding-top above (useSectionLink's resting check reads both). */
 #trending, #how, #features, #creators, #stories {
-  scroll-margin-top: calc(16px - clamp(30px, 2.8vw, 46px));
+  scroll-margin-top: calc(28px - clamp(30px, 2.8vw, 46px));
 }
 /* The header renders 80 px from 601–900 px wide but the scroll offset assumes
    --header-h (76) + 12 = 88, and on phones 70 + 12 = 82 against 80 — measured
    on production. Taking the difference off here gives the same ~16 px of air
    on tablets and phones as on desktop. */
 @media (min-width: 601px) and (max-width: 900px) {
-  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(8px - clamp(30px, 2.8vw, 46px)); }
+  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(20px - clamp(30px, 2.8vw, 46px)); }
 }
 @media (max-width: 600px) {
-  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(14px - clamp(30px, 2.8vw, 46px)); }
+  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(26px - clamp(30px, 2.8vw, 46px)); }
 }

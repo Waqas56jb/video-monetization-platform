@@ -160,12 +160,12 @@ test('nothing decorative over the poster can take a tap', () => {
 
 test('nav-linked homepage sections land flush under the header, the same on every width', () => {
   const css = readFileSync(new URL('./global.css', import.meta.url), 'utf8')
-  // The gap was the section's own top padding (clamp(30px, 2.8vw, 46px)); the margin cancels it bar 16px.
+  // The gap was the section's own top padding (clamp(30px, 2.8vw, 46px)); the margin cancels it bar 28px (raised from 16px, 2026-11-21).
   assert.match(css, /\.section\{padding:clamp\(30px,2\.8vw,46px\) 0;/)
-  assert.match(css, /#trending, #how, #features, #creators, #stories \{\s*scroll-margin-top: calc\(16px - clamp\(30px, 2\.8vw, 46px\)\);/)
+  assert.match(css, /#trending, #how, #features, #creators, #stories \{\s*scroll-margin-top: calc\(28px - clamp\(30px, 2\.8vw, 46px\)\);/)
   // Same air on every width: tablets and phones correct for their shorter header.
-  assert.ok(css.includes('@media (min-width: 601px) and (max-width: 900px) {\n  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(8px - clamp(30px, 2.8vw, 46px)); }') || css.includes('@media (min-width: 601px) and (max-width: 900px) {\r\n  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(8px - clamp(30px, 2.8vw, 46px)); }'), 'tablet correction')
-  assert.ok(/@media \(max-width: 600px\) \{\s*#trending, #how, #features, #creators, #stories \{ scroll-margin-top: calc\(14px - /.test(css), 'phone correction')
+  assert.ok(css.includes('@media (min-width: 601px) and (max-width: 900px) {\n  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(20px - clamp(30px, 2.8vw, 46px)); }') || css.includes('@media (min-width: 601px) and (max-width: 900px) {\r\n  #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(20px - clamp(30px, 2.8vw, 46px)); }'), 'tablet correction')
+  assert.ok(/@media \(max-width: 600px\) \{\s*#trending, #how, #features, #creators, #stories \{ scroll-margin-top: calc\(26px - /.test(css), 'phone correction')
   const hook = readFileSync(new URL('../hooks/useSectionLink.js', import.meta.url), 'utf8')
   assert.match(hook, /getComputedStyle\(el\)\.scrollMarginTop/, 'the landing check must count the margin, or it re-scrolls forever')
   assert.match(hook, /el\.getBoundingClientRect\(\)\.top - restingTop\(el\)/)
