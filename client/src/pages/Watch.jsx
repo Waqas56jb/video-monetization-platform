@@ -20,7 +20,7 @@ import LockGate from '@/components/watch/LockGate'
 import PaymentModal from '@/components/watch/PaymentModal'
 import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
-import MoreLikeThis from '@/components/watch/MoreLikeThis'
+import WatchDiscover from '@/components/watch/WatchDiscover'
 import BusyButton from '@/components/ui/BusyButton'
 import FollowButton from '@/components/ui/FollowButton'
 import SaveButton from '@/components/ui/SaveButton'
@@ -1547,7 +1547,7 @@ export default function Watch() {
                   : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
           </div>
 
-          <MoreLikeThis videoId={v.slug || v.id} />
+          <WatchDiscover video={v} />
         </div>
       </div>
 

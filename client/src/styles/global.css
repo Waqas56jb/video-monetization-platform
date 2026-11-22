@@ -3570,3 +3570,63 @@ html.is-touch .btn:active{transform:scale(.97)}
 @media (max-width: 600px) {
   #trending, #how, #features, #creators, #stories { scroll-margin-top: calc(26px - clamp(30px, 2.8vw, 46px)); }
 }
+
+/* ---------- short grids end in an explore tile, never in black space ----------
+   Client, 2026-11-22: one to four videos sat on the left of a four-column grid
+   with the rest of the row empty. The tile spans exactly the columns the cards
+   left empty at each width: 4 columns > 1280px, 3 up to 1280px, 2 up to 1080px,
+   1 on phones (where it becomes a short banner under the cards). */
+.explore-tile{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;
+  min-height:220px;padding:28px 30px;border-radius:20px;text-decoration:none;color:#fff;
+  border:1.5px dashed rgba(124,58,237,.5);
+  background:radial-gradient(120% 140% at 0% 0%,rgba(124,58,237,.22),transparent 60%),radial-gradient(90% 120% at 100% 100%,rgba(245,197,24,.10),transparent 60%),var(--card);
+  transition:border-color .25s,transform .25s;
+}
+.explore-tile:hover{border-color:var(--gold);transform:translateY(-2px)}
+.explore-tile svg{width:30px;height:30px;color:var(--gold)}
+.explore-tile b{font-family:'Sora';font-size:clamp(17px,1.6vw,21px);line-height:1.3}
+.explore-tile span{color:var(--muted);font-size:14px;line-height:1.6;max-width:420px}
+.explore-tile .explore-tile-cta{color:var(--gold);font-weight:700;margin-top:4px}
+.explore-tile{display:none}
+/* Desktop: 4 columns (vid-grid) / 3 columns (discover-grid). */
+.vid-grid[data-r4="1"] .explore-tile{display:flex;grid-column:span 3}
+.vid-grid[data-r4="2"] .explore-tile{display:flex;grid-column:span 2}
+.vid-grid[data-r4="3"] .explore-tile{display:flex;grid-column:span 1}
+.discover-grid[data-r3="1"] .explore-tile{display:flex;grid-column:span 2}
+.discover-grid[data-r3="2"] .explore-tile{display:flex;grid-column:span 1}
+@media(max-width:1280px){
+  .vid-grid .explore-tile{display:none}
+  .vid-grid[data-r3="1"] .explore-tile{display:flex;grid-column:span 2}
+  .vid-grid[data-r3="2"] .explore-tile{display:flex;grid-column:span 1}
+}
+@media(max-width:1080px){
+  .vid-grid .explore-tile,.discover-grid .explore-tile{display:none}
+  .vid-grid[data-r2="1"] .explore-tile,.discover-grid[data-r2="1"] .explore-tile{display:flex;grid-column:span 1}
+}
+/* Phones: one column, so there is never a gap to fill. */
+@media(max-width:600px){
+  .vid-grid .explore-tile,.vid-grid[data-r2] .explore-tile{display:none}
+}
+@media(max-width:520px){
+  .discover-grid .explore-tile,.discover-grid[data-r2] .explore-tile{display:none}
+}
+
+/* ---------- watch page: discovery below the video ---------- */
+.discover{margin-top:40px;display:flex;flex-direction:column;gap:38px}
+.discover-sec h2{font-family:'Sora';font-size:clamp(17px,2.2vw,21px);font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin:0 0 4px}
+.discover-sec .discover-sub{margin:0 0 16px;font-size:13px;color:var(--muted)}
+.discover-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.discover-grid .vid-thumb{height:auto;aspect-ratio:16/9}
+@media(max-width:1080px){.discover-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.discover-grid{grid-template-columns:1fr}}
+.discover-creators{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.discover-creator{position:relative;display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;background:var(--card);border:1px solid var(--border2);transition:border-color .25s}
+.discover-creator:hover{border-color:var(--purple)}
+.discover-creator img,.discover-creator .creator-initials{width:52px;height:52px;flex:0 0 52px;border-radius:16px;object-fit:cover;border:2px solid var(--purple)}
+.discover-creator .creator-initials{display:grid;place-items:center;background:linear-gradient(135deg,#3b1d7a,#1b1033);font-family:'Sora';font-weight:800;color:#fff}
+.discover-creator b{display:block;font-family:'Sora';font-size:15px;color:#fff}
+.discover-creator small{display:block;color:var(--muted2);font-size:12.5px;margin-top:3px}
+.discover-creator a{color:inherit;text-decoration:none}
+.discover-creator a::after{content:'';position:absolute;inset:0}
+.discover-end{display:flex;justify-content:center}

@@ -3,6 +3,7 @@ import { ArrowLeft, BadgeCheck, Eye, MapPin, Play, Share2 } from 'lucide-react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
+import VideoGrid from '@/components/ui/VideoGrid'
 import FollowButton from '@/components/ui/FollowButton'
 import ShareSheet from '@/components/watch/ShareSheet'
 import Icon from '@/components/ui/Icon'
@@ -50,11 +51,12 @@ function ReleaseActions({ video, onShare, sharing }) {
   )
 }
 
-function Grid({ videos, onShare, sharingId }) {
-  if (!videos?.length) return null
+function Grid({ videos, onShare, sharingId, fill = true }) {
   return (
-    <div className="vid-grid">
-      {videos.map((v) => {
+    <VideoGrid
+      videos={videos}
+      fill={fill}
+      renderItem={(v) => {
         const card = toCard(v)
         return (
           <div className="release" key={v.id}>
@@ -62,8 +64,8 @@ function Grid({ videos, onShare, sharingId }) {
             <ReleaseActions video={v} onShare={onShare} sharing={sharingId === v.id} />
           </div>
         )
-      })}
-    </div>
+      }}
+    />
   )
 }
 
@@ -82,6 +84,19 @@ export default function CreatorProfile() {
   const notify = useNotify()
   const c = profile.data
   const videos = c?.videos || []
+
+  /**
+   * A small catalogue gets one section, not four copies of itself.
+   *
+   * Client, 2026-11-22: with one to four videos the page showed the same cards
+   * under Featured, Latest, Most watched and Full catalogue, each row mostly
+   * black. Up to four videos: the featured one, then the rest once. Below
+   * that, other creators' videos so the page never ends in empty space.
+   */
+  const small = videos.length <= 4
+  const rest = videos.filter((v) => v.id !== c?.featured?.id)
+  const discover = useApi(() => api.videos.list({ sort: 'trending', limit: 16 }), [creatorId])
+  const others = (discover.data?.videos || []).filter((v) => v.creator?.id && v.creator.id !== c?.id).slice(0, 8)
 
   /* One sheet for the whole page. `sharingId` is only so the pressed button can
      say "Opening…" while its payload is on the way. */
@@ -216,28 +231,44 @@ export default function CreatorProfile() {
                 </section>
               )}
 
-              {c.latest?.length > 0 && (
+              {small && rest.length > 0 && (
+                <section className="creator-section">
+                  <h2>{c.featured ? `More from ${c.name}` : 'Videos'}</h2>
+                  <Grid videos={rest} onShare={openShare} sharingId={sharingId} />
+                </section>
+              )}
+
+              {!small && c.latest?.length > 0 && (
                 <section className="creator-section">
                   <h2>Latest releases</h2>
                   <Grid videos={c.latest} onShare={openShare} sharingId={sharingId} />
                 </section>
               )}
 
-              {c.mostWatched?.length > 0 && videos.length > 1 && (
+              {!small && c.mostWatched?.length > 0 && (
                 <section className="creator-section">
                   <h2>Most watched</h2>
                   <Grid videos={c.mostWatched} onShare={openShare} sharingId={sharingId} />
                 </section>
               )}
 
-              <section className="creator-section">
-                <h2>Full catalogue</h2>
-                {!videos.length ? (
-                  <p className="creator-empty">No published videos yet.</p>
-                ) : (
-                  <Grid videos={videos} onShare={openShare} sharingId={sharingId} />
-                )}
-              </section>
+              {(!small || !videos.length) && (
+                <section className="creator-section">
+                  <h2>Full catalogue</h2>
+                  {!videos.length ? (
+                    <p className="creator-empty">No published videos yet.</p>
+                  ) : (
+                    <Grid videos={videos} onShare={openShare} sharingId={sharingId} />
+                  )}
+                </section>
+              )}
+
+              {others.length > 0 && (
+                <section className="creator-section">
+                  <h2>Discover more on MTONYO+</h2>
+                  <VideoGrid videos={others} />
+                </section>
+              )}
             </>
           )}
 
