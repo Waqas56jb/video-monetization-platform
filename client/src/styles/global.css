@@ -645,6 +645,7 @@ footer{border-top:1px solid var(--border2);background:var(--bg2);padding:60px 0 
 .input-wrap input,.input-wrap select{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:14px;padding:15px 16px 15px 48px;color:#fff;font-size:14.5px;transition:.3s;outline:none}
 .input-wrap:not(:has(>svg)) input,.input-wrap:not(:has(>svg)) select{padding-left:16px}
 .input-wrap input:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}
+.input-wrap input[aria-invalid="true"]{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.16)}
 .input-wrap .eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted2)}
 .input-wrap .eye svg{width:18px;height:18px}
 .input-wrap select:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(124,58,237,.15);background:var(--card2)}

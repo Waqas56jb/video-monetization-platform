@@ -457,7 +457,7 @@ function PayoutForm({ creator, onSaved }) {
           <PasswordField
             id="pf-payout-pass"
             label="Confirm your password"
-            placeholder="••••••••"
+            placeholder="Your current password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => {

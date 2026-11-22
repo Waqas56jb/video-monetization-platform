@@ -169,7 +169,7 @@ function AccountPanel() {
           icon="lock"
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••••"
+          placeholder="Your current password"
           value={emailPassword}
           onChange={(e) => {
             setEmailPassword(e.target.value)
@@ -205,7 +205,7 @@ function AccountPanel() {
           icon="lock"
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••••"
+          placeholder="Your current password"
           value={current}
           onChange={(e) => {
             setCurrent(e.target.value)

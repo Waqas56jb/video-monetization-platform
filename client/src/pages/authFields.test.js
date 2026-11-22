@@ -53,3 +53,33 @@ test('Remember me is wired: unchecked keeps the session for this browser session
   const auth = readFileSync(fileURLToPath(new URL('../context/AuthContext.jsx', import.meta.url)), 'utf8')
   assert.match(auth, /saveSession\(data\.session, \{ remember: remember !== false \}\)/)
 })
+
+/**
+ * An EMPTY password box must not look filled.
+ *
+ * The client's iPad (2026-11-22): Safari filled the email from the contact
+ * card, the password box stayed empty and showed the placeholder "••••••••" —
+ * eight grey dots, indistinguishable at a glance from a saved password. Every
+ * "Enter your password" after that read as the login being broken.
+ */
+test('no password box uses dots as its placeholder, anywhere', () => {
+  const files = [
+    'pages/Login.jsx', 'pages/Signup.jsx',
+    'components/dashboard/tabs/ProfileTab.jsx', 'components/dashboard/tabs/SettingsTab.jsx',
+    '../../admin/src/pages/Login.jsx', '../../admin/src/components/tabs/SettingsTab.jsx',
+  ]
+  for (const f of files) {
+    const src = readFileSync(fileURLToPath(new URL(`../${f}`, import.meta.url)), 'utf8')
+    assert.doesNotMatch(src, /placeholder="[•·*]+"/, `${f}: a dotted placeholder looks like a filled password`)
+  }
+})
+
+test('the box a failed attempt found empty is marked and focused (login + signup)', () => {
+  for (const f of ['Login.jsx', 'Signup.jsx']) {
+    const src = readFileSync(fileURLToPath(new URL(`./${f}`, import.meta.url)), 'utf8')
+    assert.match(src, /aria-invalid=\{empty\.password \|\| undefined\}/, `${f}: password box not marked`)
+    assert.match(src, /\?\.focus\(\)/, `${f}: empty box not focused`)
+  }
+  const css = readFileSync(fileURLToPath(new URL('../styles/global.css', import.meta.url)), 'utf8')
+  assert.match(css, /\.input-wrap input\[aria-invalid="true"\]\{border-color:/)
+})

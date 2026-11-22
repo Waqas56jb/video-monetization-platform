@@ -93,7 +93,7 @@ function PasswordPanel() {
           icon="lock"
           type="password"
           autoComplete="current-password"
-          placeholder="••••••••••"
+          placeholder="Your current password"
           value={current}
           onChange={(e) => {
             setCurrent(e.target.value)

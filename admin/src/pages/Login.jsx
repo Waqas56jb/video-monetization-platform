@@ -90,7 +90,7 @@ export default function Login({ onLogin }) {
               icon="lock"
               type="password"
               name="password"
-              placeholder="••••••••••"
+              placeholder="Enter your password"
               autoComplete="current-password"
               defaultValue=""
               onChange={set('password')}

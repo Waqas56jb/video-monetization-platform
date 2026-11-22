@@ -66,6 +66,8 @@ export default function Login() {
     return { email, password: '' }
   })
   const [error, setError] = useState(null)
+  // Which boxes the last attempt found empty: outlined red until edited.
+  const [empty, setEmpty] = useState({})
   const [busy, setBusy] = useState(false)
 
   /**
@@ -92,6 +94,7 @@ export default function Login() {
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setError(null)
+    setEmpty((m) => (m[key] ? { ...m, [key]: false } : m))
   }
 
   const onSubmit = async (e) => {
@@ -142,6 +145,14 @@ export default function Login() {
       const passEl = formEl.querySelector('[name="password"], #login-pass')
       // Filled by the browser (dots showing) but never handed to the page.
       const heldByBrowser = !password && isBrowserFilled(passEl)
+      /*
+       * Say plainly WHICH box is empty, outline it, and put the cursor in it.
+       *
+       * The client's iPad (2026-11-22) filled the email from the contact card
+       * and left the password box empty; the box showed our old placeholder,
+       * eight grey dots, so it looked filled and "Enter your password" read as
+       * a bug. The placeholder is words now, and the empty box is marked.
+       */
       setError(
         heldByBrowser
           ? 'Your browser filled in your password but has not released it yet. Tap the password box once, then tap Log in.'
@@ -149,11 +160,14 @@ export default function Login() {
             ? 'Enter your email and password'
             : !email
               ? 'Enter your email address'
-              : 'Enter your password'
+              : 'The password box is empty. Type your password, or tap the box and choose a saved password.'
       )
+      setEmpty({ email: !email, password: !password && !heldByBrowser })
+      ;(!email ? formEl.querySelector('#login-id') : passEl)?.focus()
       setBusy(false)
       return
     }
+    setEmpty({})
     setForm({ email, password: '' })
 
     setBusy(true)
@@ -222,16 +236,18 @@ export default function Login() {
           autoComplete="username"
           defaultValue={form.email}
           onChange={set('email')}
+          aria-invalid={empty.email || undefined}
           required
         />
         <PasswordField
           id="login-pass"
           label="Password"
           name="password"
-          placeholder="••••••••"
+          placeholder="Enter your password"
           autoComplete="current-password"
           defaultValue=""
           onChange={set('password')}
+          aria-invalid={empty.password || undefined}
           required
         />
 

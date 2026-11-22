@@ -46,6 +46,8 @@ export default function Signup() {
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState(null)
   const [errorCode, setErrorCode] = useState(null)
+  // Boxes the last attempt found empty: outlined red until edited.
+  const [empty, setEmpty] = useState({})
   const [busy, setBusy] = useState(false)
   const [confirmSent, setConfirmSent] = useState(false)
   const [attachedOk, setAttachedOk] = useState(null)
@@ -75,6 +77,7 @@ export default function Signup() {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     setError(null)
     setErrorCode(null)
+    setEmpty((m) => (m[key] ? { ...m, [key]: false } : m))
   }
 
   const onSubmit = async (e) => {
@@ -100,9 +103,18 @@ export default function Signup() {
     if (!fullName || !email || !password) {
       // Say which box is empty, not a blanket line that reads as "the form is broken".
       const missing = [!fullName && 'your full name', !email && 'your email', !password && 'a password'].filter(Boolean)
-      setError(`Enter ${missing.join(missing.length > 2 ? ', ' : ' and ').replace(/, (?=[^,]*$)/, ' and ')}`)
+      setError(
+        fullName && email
+          ? 'The password box is empty. Create a password of at least 8 characters.'
+          : `Enter ${missing.join(missing.length > 2 ? ', ' : ' and ').replace(/, (?=[^,]*$)/, ' and ')}`
+      )
+      // Browser autofill fills name, phone and email from the contact card but
+      // never a new password: mark the box that is still empty and go to it.
+      setEmpty({ fullName: !fullName, email: !email, password: !password })
+      formEl.querySelector(`[name="${!fullName ? 'fullName' : !email ? 'email' : 'password'}"]`)?.focus()
       return
     }
+    setEmpty({})
     // Autofill may have filled boxes without onChange; the screens after this
     // one (confirmation sent, sign-in link) read the email from state.
     setForm({ fullName, phone, email, password: '' })
@@ -294,6 +306,7 @@ export default function Signup() {
             name="fullName"
             defaultValue={form.fullName}
             onChange={set('fullName')}
+            aria-invalid={empty.fullName || undefined}
             required
           />
           <Field
@@ -319,18 +332,20 @@ export default function Signup() {
           name="email"
           defaultValue={form.email}
           onChange={set('email')}
+          aria-invalid={empty.email || undefined}
           required
         />
 
         <PasswordField
           id="signup-pass"
           label="Password"
-          placeholder="Minimum 8 characters"
+          placeholder="Create a password (8+ characters)"
           autoComplete="new-password"
           name="password"
           minLength={8}
           defaultValue=""
           onChange={set('password')}
+          aria-invalid={empty.password || undefined}
           required
         />
 
