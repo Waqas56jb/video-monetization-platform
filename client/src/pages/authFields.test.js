@@ -83,3 +83,25 @@ test('the box a failed attempt found empty is marked and focused (login + signup
   const css = readFileSync(fileURLToPath(new URL('../styles/global.css', import.meta.url)), 'utf8')
   assert.match(css, /\.input-wrap input\[aria-invalid="true"\]\{border-color:/)
 })
+
+/**
+ * Client, 2026-11-22 (iPad, after long browsing): "We could not reach the
+ * server" on Log in, twice. None of those attempts reached the API (Railway
+ * logs: every login that arrived succeeded) — Safari had re-used a dead pooled
+ * connection. Reads and the login are retried once on a fresh connection.
+ */
+test('a dropped connection is retried once before the person is told', () => {
+  const api = readFileSync(fileURLToPath(new URL('../lib/api.js', import.meta.url)), 'utf8')
+  assert.match(api, /networkRetry = method === 'GET'/)
+  assert.match(api, /login: \(body\) => post\('\/api\/auth\/login', body, \{ auth: false, networkRetry: true \}\)/)
+  assert.match(api, /err\?\.name === 'AbortError'/, 'a cancelled request must not be retried')
+  const login = readFileSync(fileURLToPath(new URL('./Login.jsx', import.meta.url)), 'utf8')
+  assert.match(login, /err\?\.code === 'NETWORK'/)
+})
+
+test('the old vercel.app address sends visitors to www.mtonyoplus.com', () => {
+  const cfg = JSON.parse(readFileSync(fileURLToPath(new URL('../../vercel.json', import.meta.url)), 'utf8'))
+  const r = cfg.redirects.find((x) => x.has?.[0]?.value === 'video-monetization-platform-chi.vercel.app')
+  assert.ok(r, 'redirect missing')
+  assert.equal(r.destination, 'https://www.mtonyoplus.com/:path*')
+})

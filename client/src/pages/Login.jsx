@@ -38,6 +38,9 @@ function loginErrorMessage(err) {
   if (/blocked/i.test(raw)) {
     return 'This account has been blocked. Contact support if you need help.'
   }
+  if (err?.code === 'NETWORK') {
+    return 'The connection dropped for a moment. Your details are still here — tap Log in again.'
+  }
   if (/too many|rate limit/i.test(raw)) {
     return 'Too many sign-in attempts. Please wait a moment and try again.'
   }

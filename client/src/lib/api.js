@@ -226,12 +226,24 @@ function retryAfterMs(res) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function request(path, { method = 'GET', body, auth = true, retry = true, signal, rateLimited = false } = {}) {
+/**
+ * How long to wait before the one quiet retry after a dropped connection.
+ *
+ * Client, 2026-11-22 (iPad, after a long spell of playing and switching
+ * videos): "We could not reach the server just now" on Log in, twice, then
+ * fine. The server logs show none of those attempts arrived — every login
+ * that reached the API succeeded. That is Safari re-using a pooled connection
+ * the network had already closed ("Load failed"); the very next request opens
+ * a fresh one and works. So a request that fails before any response is tried
+ * once more on a new connection before the person is told anything.
+ */
+export const NETWORK_RETRY_DELAY_MS = 700
+
+async function request(path, { method = 'GET', body, auth = true, retry = true, signal, rateLimited = false, networkRetry = method === 'GET' } = {}) {
   const token = auth ? getAccessToken() : null
 
-  let res
-  try {
-    res = await fetch(`${BASE}${path}`, {
+  const send = () =>
+    fetch(`${BASE}${path}`, {
       method,
       signal,
       headers: {
@@ -240,8 +252,19 @@ async function request(path, { method = 'GET', body, auth = true, retry = true, 
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
+
+  let res
+  try {
+    res = await send()
   } catch (err) {
-    throw unreachable(err)
+    // Reads, and writes that are safe to repeat (login), get one retry.
+    if (!networkRetry || err?.name === 'AbortError' || signal?.aborted) throw unreachable(err)
+    await sleep(NETWORK_RETRY_DELAY_MS)
+    try {
+      res = await send()
+    } catch (again) {
+      throw unreachable(again)
+    }
   }
 
   /**
@@ -407,7 +430,7 @@ export const api = {
 
   auth: {
     register: (body) => post('/api/auth/register', body, { auth: false }),
-    login: (body) => post('/api/auth/login', body, { auth: false }),
+    login: (body) => post('/api/auth/login', body, { auth: false, networkRetry: true }),
     me: (side) => get(`/api/auth/me${side ? `?side=${side}` : ''}`),
     updateProfile: (body) => patch('/api/auth/me', body),
     becomeCreator: () => post('/api/auth/become-creator'),

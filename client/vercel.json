@@ -13,6 +13,14 @@
       "maxDuration": 10
     }
   },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "video-monetization-platform-chi.vercel.app" }],
+      "destination": "https://www.mtonyoplus.com/:path*",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/watch/:slug",
