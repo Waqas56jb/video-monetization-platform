@@ -127,12 +127,18 @@ test('checkout: token in the URL, order encrypted, no credential in anything the
     const r = await checkoutRequest({ cfg, now, orderId: 'MTN20261030AAAA0001', amountTzs: 5000, email: 'v@example.com', fullName: 'Asha Juma', phone: '0712 345 678', method: 'airtel' })
     assert.equal(r.url, 'https://payments.airpay.tz/pay/v1/index.php?token=tok-abc')
     assert.equal(r.method, 'POST')
-    assert.deepEqual(Object.keys(r.fields).sort(), ['checksum', 'chmod', 'encdata', 'merchant_id', 'privatekey'])
+    assert.deepEqual(Object.keys(r.fields).sort(), ['checksum', 'encdata', 'merchant_id', 'privatekey'])
     const data = JSON.parse(phpDecrypt(r.fields.encdata, KEY))
     assert.deepEqual(
       [data.orderid, data.amount, data.buyer_phone, data.buyer_firstname, data.buyer_lastname, data.iso_currency, data.currency_code, data.merchant_id],
       ['MTN20261030AAAA0001', '5000.00', '0712345678', 'Asha', 'Juma', 'TZS', '834', '247134'])
     assert.equal(r.fields.checksum, checksumV4(data, now))
+    // AirPay's outline: the domain on file, base64 (www gets "Invalid Domain"),
+    // country TZ, and no field the outline does not list
+    assert.equal(Buffer.from(data.mer_dom, 'base64').toString(), 'https://mtonyoplus.com')
+    assert.equal(data.buyer_country, 'TZ')
+    assert.equal(data.customvar, 'method=airtel')
+    assert.deepEqual(Object.keys(data).sort(), ['amount', 'buyer_address', 'buyer_city', 'buyer_country', 'buyer_email', 'buyer_firstname', 'buyer_lastname', 'buyer_phone', 'buyer_pincode', 'buyer_state', 'currency_code', 'customvar', 'iso_currency', 'mer_dom', 'merchant_id', 'orderid'])
     assert.equal(r.fields.privatekey, sha('secret-z@user-x:|:pass-y'))
     const sent = JSON.stringify(r)
     for (const s of ['user-x', 'pass-y', 'secret-z', 'csecret-2', KEY]) assert.ok(!sent.includes(s), `the browser never sees ${s}`)

@@ -144,6 +144,9 @@ export const env = {
       isoCurrency: process.env.AIRPAY_ISO_CURRENCY || 'TZS',
       chmod: process.env.AIRPAY_CHMOD ?? '',
       timeZone: process.env.AIRPAY_TIMEZONE || 'Asia/Kolkata',
+      // The website AirPay has on file for the merchant (mer_dom). Must match it
+      // exactly: AirPay answers "Invalid Domain" for www.mtonyoplus.com.
+      merchantDomain: process.env.AIRPAY_MERCHANT_DOMAIN || 'https://mtonyoplus.com',
     },
   },
 

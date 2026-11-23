@@ -81,6 +81,7 @@ export function airpayConfig(a = env.payments.airpay) {
     isoCurrency: a.isoCurrency || 'TZS',
     chmod: a.chmod ?? '',
     timeZone: a.timeZone || 'Asia/Kolkata',
+    merchantDomain: a.merchantDomain || 'https://mtonyoplus.com',
     timeoutMs: Number(a.timeoutMs || 15000),
   }
 }
@@ -245,23 +246,29 @@ export function checkoutForm({ cfg = airpayConfig(), orderId, amountTzs, userId,
 export async function checkoutRequest({ cfg = airpayConfig(), fetchImpl = fetch, now = new Date(), ...order }) {
   if (cfg.version !== 'v4') return { url: cfg.payUrl, method: 'POST', fields: checkoutForm({ cfg, now, ...order }) }
   const b = buyerFrom({ email: order.email, fullName: order.fullName, phone: order.phone, orderId: order.orderId })
+  // Exactly the fields of AirPay's Collection API outline (Hosted Checkout).
+  // mer_dom is what makes the page open: without it AirPay falls back to the
+  // browser's Referer, and www.mtonyoplus.com is not the domain on file, so
+  // every viewer got "Payment Error {}" (2026-11-23, MID 247092).
   const data = {
-    buyer_email: b.buyerEmail, buyer_phone: b.buyerPhone, buyer_firstname: b.buyerFirstName, buyer_lastname: b.buyerLastName,
-    buyer_address: '', buyer_city: '', buyer_state: '', buyer_pincode: '', buyer_country: '',
+    buyer_email: b.buyerEmail, buyer_firstname: b.buyerFirstName, buyer_lastname: b.buyerLastName,
+    buyer_address: '', buyer_city: '', buyer_state: '', buyer_country: 'TZ',
     amount: Number(order.amountTzs).toFixed(2), orderid: order.orderId,
-    currency: String(cfg.currency), currency_code: String(cfg.currency), iso_currency: cfg.isoCurrency,
+    buyer_phone: b.buyerPhone, buyer_pincode: '',
+    iso_currency: cfg.isoCurrency, currency_code: String(cfg.currency),
     merchant_id: String(cfg.merchantId),
+    customvar: order.method ? `method=${order.method}` : '',
+    mer_dom: Buffer.from(String(cfg.merchantDomain || 'https://mtonyoplus.com').replace(/\/+$/, '')).toString('base64'),
   }
   const token = await accessToken({ cfg, fetchImpl, now })
   return {
     url: `${cfg.payUrl}?token=${encodeURIComponent(token)}`,
     method: 'POST',
     fields: {
-      privatekey: privateKeyFor(cfg),
       merchant_id: String(cfg.merchantId),
-      checksum: checksumV4(data, now, cfg.timeZone),
+      privatekey: privateKeyFor(cfg),
       encdata: encryptV4(JSON.stringify(data), v4Key(cfg)),
-      chmod: cfg.chmod,
+      checksum: checksumV4(data, now, cfg.timeZone),
     },
   }
 }
