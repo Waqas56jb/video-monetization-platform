@@ -1,27 +1,12 @@
-import { Link } from 'react-router-dom'
-import { Compass } from 'lucide-react'
+import { DiscoverTile } from './Brand'
 import VideoCard from './VideoCard'
 import { toCard, videoLink } from '@/lib/videoView'
 
-/**
- * The tile that takes the empty columns of a short grid.
- *
- * Client, 2026-11-22: a creator with one to four videos showed the cards on the
- * left and a wall of black to their right, which "gives the impression that the
- * website is broken". A grid with fewer cards than columns now ends in this
- * tile, which spans exactly the columns the cards left empty at each width
- * (see `.explore-tile` in global.css), so the row is always full.
- */
-export function ExploreTile({ title = 'Discover more on MTONYO+', text = 'Music, films, cooking and more from Tanzanian creators.' }) {
-  return (
-    <Link className="explore-tile" to="/explore">
-      <Compass aria-hidden="true" />
-      <b>{title}</b>
-      <span>{text}</span>
-      <span className="explore-tile-cta">Browse all videos →</span>
-    </Link>
-  )
-}
+/* The tile that takes the empty columns of a short grid is the client's
+   "Discover More on MTONYO+" artwork (2026-11-23); see Brand.jsx. Client,
+   2026-11-22: one to four videos on the left and a wall of black to their
+   right "gives the impression that the website is broken". */
+export { DiscoverTile as ExploreTile } from './Brand'
 
 const defaultItem = (v) => {
   const card = toCard(v)
@@ -47,7 +32,7 @@ export default function VideoGrid({ videos, renderItem = defaultItem, fill = tru
   return (
     <div className={className} data-count={videos.length} {...rowRemainders(videos.length)}>
       {videos.map(renderItem)}
-      {fill && <ExploreTile />}
+      {fill && <DiscoverTile />}
     </div>
   )
 }

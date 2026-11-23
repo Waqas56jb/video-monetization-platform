@@ -170,3 +170,10 @@ test('nav-linked homepage sections land flush under the header, the same on ever
   assert.match(hook, /getComputedStyle\(el\)\.scrollMarginTop/, 'the landing check must count the margin, or it re-scrolls forever')
   assert.match(hook, /el\.getBoundingClientRect\(\)\.top - restingTop\(el\)/)
 })
+
+/* Client, 2026-11-23: the page could be dragged sideways on iPad. */
+test('the page cannot pan sideways on touch screens', () => {
+  assert.match(css, /html\{overflow-x:hidden\}\s*@supports \(overflow:clip\)\{html,body\{overflow-x:clip\}\}/)
+  assert.match(css, /@media \(hover:hover\) and \(pointer:fine\)\{\s*::-webkit-scrollbar\{width:10px\}/, 'a 10px classic scrollbar must not reach touch screens')
+  assert.match(css, /\.hero-bg\{position:absolute;inset:0;z-index:-1;overflow:hidden\}/)
+})

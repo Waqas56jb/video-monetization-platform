@@ -29,6 +29,13 @@
    feel stuttery (especially iOS/Android). Anchor jumps still scroll smoothly
    via ScrollToTop / explicit scrollIntoView where needed. */
 html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--header-h) + 12px)}
+/* No sideways panning (client, 2026-11-23: on iPad the whole page could be
+   dragged left/right, exposing blank gaps). iOS Safari ignores
+   overflow-x:hidden on <body> alone for touch panning; the root has to clip
+   too. `clip`, where supported, does it without making either element a
+   scroll container (which would break position:sticky). */
+html{overflow-x:hidden}
+@supports (overflow:clip){html,body{overflow-x:clip}}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
 h1,h2,h3,h4,.font-display{font-family:'Sora',sans-serif}
 img{display:block;max-width:100%}
@@ -43,9 +50,14 @@ a:active,button:active,.btn:active,.vid-card:active,.share-wa:active,.share-targ
 }
 input,select,textarea{font-family:inherit}
 ::selection{background:rgba(124,58,237,.5)}
-::-webkit-scrollbar{width:10px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:linear-gradient(var(--purple),#4c1d95);border-radius:99px}
+/* The branded scrollbar is for mouse and trackpad only. A 10px classic
+   scrollbar takes layout width in WebKit, and on a touch screen that is 10px
+   the page can be dragged sideways into. */
+@media (hover:hover) and (pointer:fine){
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--purple),#4c1d95);border-radius:99px}
+}
 
 /* ---------- UTILITIES ---------- */
 .container{width:min(1800px,94%);margin-inline:auto}
@@ -207,7 +219,7 @@ input,select,textarea{font-family:inherit}
   display:flex;align-items:center;position:relative;overflow:hidden;
   padding:150px 0 80px;
 }
-.hero-bg{position:absolute;inset:0;z-index:-1}
+.hero-bg{position:absolute;inset:0;z-index:-1;overflow:hidden}
 .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.22;transform:scale(1.08);animation:heroZoom 22s ease-in-out infinite alternate;aspect-ratio:960/640}
 @keyframes heroZoom{to{transform:scale(1.16)}}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,18,.4),rgba(10,10,18,.75) 55%,var(--bg) 96%),radial-gradient(ellipse at 25% 40%,rgba(124,58,237,.32),transparent 55%)}
@@ -3576,18 +3588,26 @@ html.is-touch .btn:active{transform:scale(.97)}
    with the rest of the row empty. The tile spans exactly the columns the cards
    left empty at each width: 4 columns > 1280px, 3 up to 1280px, 2 up to 1080px,
    1 on phones (where it becomes a short banner under the cards). */
+/* The tile is the client's "Discover More on MTONYO+" artwork (2026-11-23).
+   The whole picture is always visible: object-fit:contain over a blurred copy
+   of itself. A size container lets the tile choose the crop that fits the
+   gap it was given — the wide banner for a wide gap, the narrow crop (logo,
+   Kilimanjaro and the button) for a one-column one. */
 .explore-tile{
-  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;
-  min-height:220px;padding:28px 30px;border-radius:20px;text-decoration:none;color:#fff;
-  border:1.5px dashed rgba(124,58,237,.5);
-  background:radial-gradient(120% 140% at 0% 0%,rgba(124,58,237,.22),transparent 60%),radial-gradient(90% 120% at 100% 100%,rgba(245,197,24,.10),transparent 60%),var(--card);
-  transition:border-color .25s,transform .25s;
+  position:relative;overflow:hidden;min-height:220px;border-radius:20px;
+  background:#0d0718;border:1px solid rgba(124,58,237,.45);
+  box-shadow:0 18px 44px -26px rgba(124,58,237,.7);
+  container-type:size;transition:border-color .25s,transform .25s,box-shadow .25s;
 }
-.explore-tile:hover{border-color:var(--gold);transform:translateY(-2px)}
-.explore-tile svg{width:30px;height:30px;color:var(--gold)}
-.explore-tile b{font-family:'Sora';font-size:clamp(17px,1.6vw,21px);line-height:1.3}
-.explore-tile span{color:var(--muted);font-size:14px;line-height:1.6;max-width:420px}
-.explore-tile .explore-tile-cta{color:var(--gold);font-weight:700;margin-top:4px}
+.explore-tile:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 22px 50px -24px rgba(245,197,24,.45)}
+.explore-tile img{display:block;max-width:none}
+.explore-tile .et-blur{position:absolute;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);object-fit:cover;filter:blur(26px) brightness(.45) saturate(1.25)}
+.explore-tile .et-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.explore-tile .et-narrow{display:none}
+@container (aspect-ratio < 2.1){
+  .explore-tile .et-wide{display:none}
+  .explore-tile .et-narrow{display:block}
+}
 .explore-tile{display:none}
 /* Desktop: 4 columns (vid-grid) / 3 columns (discover-grid). */
 .vid-grid[data-r4="1"] .explore-tile{display:flex;grid-column:span 3}
@@ -3607,6 +3627,11 @@ html.is-touch .btn:active{transform:scale(.97)}
 /* Phones: one column, so there is never a gap to fill. */
 @media(max-width:600px){
   .vid-grid .explore-tile,.vid-grid[data-r2] .explore-tile{display:none}
+  /* One column: no gap to fill, but a short grid still ends in the banner. */
+  .vid-grid[data-count="1"] .explore-tile,.vid-grid[data-count="2"] .explore-tile,
+  .vid-grid[data-count="3"] .explore-tile,.vid-grid[data-count="4"] .explore-tile{
+    display:block;grid-column:1 / -1;min-height:0;aspect-ratio:1080 / 724;
+  }
 }
 @media(max-width:520px){
   .discover-grid .explore-tile,.discover-grid[data-r2] .explore-tile{display:none}
@@ -3630,3 +3655,108 @@ html.is-touch .btn:active{transform:scale(.97)}
 .discover-creator a{color:inherit;text-decoration:none}
 .discover-creator a::after{content:'';position:absolute;inset:0}
 .discover-end{display:flex;justify-content:center}
+
+/* ---------- watch page: player + "Up next" rail (client, 2026-11-23) ---------- */
+.page:has(.watch-backdrop){position:relative}
+.watch-backdrop{position:absolute;inset:0 0 auto 0;height:min(820px,95vh);z-index:0;pointer-events:none;overflow:hidden}
+.watch-backdrop::before{content:'';position:absolute;inset:-80px;background:var(--watch-bg) center/cover no-repeat;filter:blur(70px) saturate(1.15);opacity:.2;transform:scale(1.1)}
+.watch-backdrop::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(8,8,14,.35),var(--bg,#08080e) 92%)}
+.watch-wrap.has-rail{position:relative;z-index:1;width:min(1440px,100%);max-width:1440px;padding-inline:clamp(14px,2.4vw,32px)}
+.watch-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:26px}
+.watch-main{min-width:0}
+@media(min-width:1000px){
+  .watch-layout{grid-template-columns:minmax(0,72fr) minmax(270px,28fr);align-items:start}
+  .watch-rail{position:sticky;top:calc(var(--header-h) + 16px)}
+}
+.watch-rail{display:flex;flex-direction:column;gap:10px;min-width:0}
+.watch-rail h2{font-family:'Sora';font-size:14px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin:0 0 2px;color:#fff}
+.rail-item{display:grid;grid-template-columns:148px minmax(0,1fr);gap:12px;align-items:start;padding:8px;border-radius:14px;text-decoration:none;color:inherit;background:rgba(255,255,255,.02);border:1px solid var(--border2);transition:border-color .2s,background .2s}
+.rail-item:hover{border-color:var(--purple);background:rgba(124,58,237,.08)}
+.rail-item.is-skeleton{height:98px;background:linear-gradient(90deg,rgba(255,255,255,.03),rgba(255,255,255,.06),rgba(255,255,255,.03))}
+.rail-thumb{position:relative;display:block;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#140c26}
+.rail-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.rail-time{position:absolute;right:6px;bottom:6px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,.78);color:#fff;font-size:11px;font-weight:700}
+.rail-copy{display:flex;flex-direction:column;gap:3px;min-width:0;padding-top:2px}
+.rail-copy b{font-size:13.5px;line-height:1.35;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rail-copy small{font-size:12px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rail-price{font-size:12px;font-weight:800;color:var(--gold)}
+.rail-price.is-free{color:#22c55e}
+.rail-more{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;border-radius:12px;border:1px solid var(--border2);color:#fff;font-weight:700;font-size:13.5px;text-decoration:none}
+.rail-more:hover{border-color:var(--gold);color:var(--gold)}
+@media(min-width:1000px) and (max-width:1199px){.rail-item{grid-template-columns:118px minmax(0,1fr)}}
+/* Under the video (phones, iPad portrait): two columns where there is room. */
+@media(min-width:601px) and (max-width:999px){
+  .watch-rail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .watch-rail h2,.rail-more{grid-column:1 / -1}
+}
+
+/* ---------- compact "Discover More on MTONYO+" card ---------- */
+.discover-card{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:20px;
+  padding:16px 16px 16px 26px;border-radius:20px;text-decoration:none;color:#fff;overflow:hidden;
+  border:1px solid rgba(124,58,237,.45);
+  background:radial-gradient(120% 160% at 0% 0%,rgba(124,58,237,.3),transparent 60%),radial-gradient(80% 120% at 100% 100%,rgba(245,197,24,.1),transparent 60%),linear-gradient(135deg,#150b28,#0b0716);
+  box-shadow:0 18px 40px -26px rgba(124,58,237,.7);transition:border-color .25s,transform .25s;
+}
+.discover-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.dc-copy{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dc-copy b{font-family:'Sora';font-size:clamp(17px,2vw,22px);line-height:1.25}
+.dc-cats{font-size:13px;color:var(--muted);line-height:1.5}
+.dc-cta{display:inline-flex;align-items:center;gap:6px;margin-top:4px;color:var(--gold);font-weight:700;font-size:14px}
+.dc-art{display:block;width:min(280px,34vw);aspect-ratio:800 / 494;object-fit:cover;border-radius:14px}
+@media(max-width:560px){
+  .discover-card{grid-template-columns:1fr;padding:14px}
+  .dc-art{width:100%;order:-1}
+}
+
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- branded banners (client artwork, 2026-11-23) ---------- */
+.brand-banner{display:block;width:100%;padding:0;border:1px solid rgba(124,58,237,.4);border-radius:22px;overflow:hidden;background:#0d0718;cursor:pointer;
+  box-shadow:0 24px 60px -30px rgba(124,58,237,.75);transition:border-color .25s,transform .25s}
+.brand-banner:hover{border-color:var(--gold);transform:translateY(-2px)}
+.brand-banner img{display:block;width:100%;height:auto;aspect-ratio:2172 / 724}
+.explore-banner{margin:6px 0 14px}
+@media(max-width:700px){
+  .brand-banner{border-radius:16px}
+  .brand-banner img{aspect-ratio:1270 / 724}
+}
+
+/* ---------- creator profile header: the client's background artwork (2026-11-23) ----------
+   Taller, with the artwork (Kilimanjaro, filmstrip, the MTONYO+ phone) on the
+   right and a dark fade that keeps the left side clear for the name, place,
+   bio and stats. Follow moves under the stats so nothing sits on the phone.
+   Phones get the artwork as a band across the top, the profile below it. */
+.creator-hero{
+  display:grid;grid-template-columns:auto minmax(0,600px);
+  grid-template-areas:"avatar copy" "avatar actions";
+  column-gap:28px;row-gap:16px;align-content:center;align-items:start;justify-content:start;
+  min-height:clamp(260px,24vw,330px);padding:38px 36px;
+  background-color:#120826;
+  background-image:
+    linear-gradient(90deg,#120826 0%,rgba(18,8,38,.97) 30%,rgba(18,8,38,.72) 48%,rgba(18,8,38,.12) 66%,rgba(18,8,38,0) 74%),
+    url(/brand/profile-bg-2172.webp);
+  background-size:auto,auto 100%;
+  background-position:0 0,right center;
+  background-repeat:no-repeat;
+}
+.creator-hero>.creator-hero-avatar{grid-area:avatar}
+.creator-hero>.creator-hero-copy{grid-area:copy}
+.creator-hero>.creator-hero-actions{grid-area:actions;justify-content:flex-start}
+.creator-hero-copy h1,.creator-hero-bio{text-shadow:0 2px 14px rgba(0,0,0,.55)}
+@media(max-width:900px){
+  .creator-hero{background-image:
+    linear-gradient(90deg,#120826 0%,rgba(18,8,38,.96) 40%,rgba(18,8,38,.6) 62%,rgba(18,8,38,.15) 82%),
+    url(/brand/profile-bg-1086.webp)}
+}
+@media(max-width:700px){
+  .creator-hero{
+    display:flex;flex-direction:column;align-items:flex-start;min-height:0;
+    padding:150px 18px 20px;gap:16px;
+    background-image:
+      linear-gradient(to bottom,rgba(18,8,38,0) 0,rgba(18,8,38,.35) 92px,#120826 178px),
+      url(/brand/profile-bg-1086.webp);
+    background-size:auto,auto 196px;
+    background-position:0 0,right top;
+  }
+}

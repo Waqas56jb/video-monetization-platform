@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Rocket, Search, SlidersHorizontal, X } from 'lucide
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import VideoCard from '@/components/ui/VideoCard'
+import { ExploreBanner } from '@/components/ui/Brand'
 import BusyButton from '@/components/ui/BusyButton'
 import { ErrorState, SkeletonCards } from '@/components/ui/States'
 import { useDebounced, withTimeout } from '@/hooks/useApi'
@@ -146,8 +147,13 @@ export default function Explore() {
               </span>
             </button>
 
+            {/* The client's "Explore MTONYO+" artwork is the page heading now
+                (2026-11-23); its Browse All Videos button scrolls to the results. */}
+            <ExploreBanner
+              onActivate={() => document.querySelector('.explore-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
             <div className="explore-head">
-              <h1>
+              <h1 className="sr-only">
                 Explore <span className="brand-accent">MTONYO+</span>
               </h1>
               <p>

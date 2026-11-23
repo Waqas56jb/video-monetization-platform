@@ -20,7 +20,7 @@ import LockGate from '@/components/watch/LockGate'
 import PaymentModal from '@/components/watch/PaymentModal'
 import ShareSheet from '@/components/watch/ShareSheet'
 import ReportDialog from '@/components/watch/ReportDialog'
-import WatchDiscover from '@/components/watch/WatchDiscover'
+import WatchDiscover, { WatchRail } from '@/components/watch/WatchDiscover'
 import BusyButton from '@/components/ui/BusyButton'
 import FollowButton from '@/components/ui/FollowButton'
 import SaveButton from '@/components/ui/SaveButton'
@@ -1031,7 +1031,15 @@ export default function Watch() {
 
   return (
     <Shell>
-      <div className="watch-wrap">
+      {/* Atmosphere only: the film's own poster, heavily blurred and dark. */}
+      {v.thumbnailUrl && (
+        <div className="watch-backdrop" aria-hidden="true" style={{ '--watch-bg': `url("${mediaUrl(v.thumbnailUrl)}")` }} />
+      )}
+      <div className="watch-wrap has-rail">
+        {/* Player and details take ~72% on desktop/tablet; "Up next" takes the
+            rest. On a phone the rail drops under the video (client, 2026-11-23). */}
+        <div className="watch-layout">
+        <div className="watch-main">
         <div
           className={`player ${showLockGate ? 'is-gated' : ''} is-${shape.orientation}`.trim()}
           style={{
@@ -1547,8 +1555,11 @@ export default function Watch() {
                   : `— pay ${tzs(v.priceTzs)} once and it stays in your library, on any device you log into.`}
           </div>
 
-          <WatchDiscover video={v} />
         </div>
+        </div>
+        <WatchRail video={v} />
+        </div>
+        <WatchDiscover video={v} />
       </div>
 
       <ShareSheet open={sharing} video={v} share={share} onClose={() => setSharing(false)} />
