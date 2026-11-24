@@ -174,10 +174,47 @@ const airpay = {
 
 const PROVIDERS = { sandbox, airpay }
 
-export function paymentProvider() {
+/** Is AirPay fully configured on this server? */
+export const airpayReady = () => missingAirpayConfig(airpayConfig()).length === 0
+
+/**
+ * An account on AIRPAY_LIVE_TEST_EMAILS pays through live AirPay even while the
+ * site as a whole is still on the sandbox: the client's first real-money test,
+ * with every other viewer untouched.
+ */
+export function isAirpayLiveTester(user, a = env.payments.airpay) {
+  const email = String(user?.email || '').trim().toLowerCase()
+  return Boolean(email) && (a.liveTestEmails || []).includes(email) && airpayReady()
+}
+
+/**
+ * The provider for a new payment. With `user`, a live tester gets AirPay;
+ * without, it is the site's provider (PAYMENT_PROVIDER).
+ */
+export function paymentProvider(user = null) {
+  if (user && env.payments.provider === 'sandbox' && isAirpayLiveTester(user)) return airpay
   const p = PROVIDERS[env.payments.provider]
   if (!p) throw serviceUnavailable(`Unknown PAYMENT_PROVIDER "${env.payments.provider}"`)
   return p
+}
+
+/**
+ * The provider a payment was MADE with, which is the only one that can verify
+ * it: an AirPay payment stays an AirPay payment if PAYMENT_PROVIDER changes
+ * while it is pending, and a sandbox payment is never sent to AirPay.
+ */
+export function providerOf(payment) {
+  return PROVIDERS[payment?.provider] || paymentProvider()
+}
+
+/**
+ * A provider that may call us back (webhook / return URL): the site's own, or
+ * AirPay whenever it is configured (live tests run beside the sandbox).
+ */
+export function callbackProvider(name) {
+  if (name === env.payments.provider) return PROVIDERS[name] || null
+  if (name === 'airpay' && airpayReady()) return airpay
+  return null
 }
 
 /** Sign a webhook body so callbacks can be trusted. */

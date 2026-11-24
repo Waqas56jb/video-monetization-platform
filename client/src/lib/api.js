@@ -483,6 +483,8 @@ export const api = {
     one: (id) => get(`/api/payments/${id}`),
     mine: () => get('/api/payments'),
     simulate: (id, outcome) => post(`/api/payments/${id}/simulate`, { outcome }),
+    /** Which provider THIS account pays with (a live tester gets AirPay). */
+    provider: () => get('/api/payments/provider'),
   },
 
   library: {

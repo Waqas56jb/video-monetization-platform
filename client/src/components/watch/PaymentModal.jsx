@@ -56,8 +56,10 @@ export function submitHostedCheckout(redirect, doc = document) {
 
 export default function PaymentModal({ open, video, onClose, onUnlocked, resumePaymentId = null, onBeforeLeave }) {
   // Only ask while the dialog is open; there is no reason to poll otherwise.
-  const { data: platform } = useApi(() => api.stats.platform(), [open], { skip: !open })
-  const isSandbox = platform?.paymentProvider === 'sandbox'
+  // Per account: an AIRPAY_LIVE_TEST_EMAILS tester pays through live AirPay
+  // while everyone else is still on the sandbox, and must not see test outcomes.
+  const { data: payWith } = useApi(() => api.payments.provider(), [open], { skip: !open })
+  const isSandbox = payWith?.provider === 'sandbox'
 
   const [step, setStep] = useState('form') // form | redirecting | waiting | unconfirmed | failed
   // Back from a hosted checkout: there is no phone prompt to describe.

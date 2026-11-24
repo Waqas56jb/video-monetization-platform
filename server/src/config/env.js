@@ -147,6 +147,13 @@ export const env = {
       // The website AirPay has on file for the merchant (mer_dom). Must match it
       // exactly: AirPay answers "Invalid Domain" for www.mtonyoplus.com.
       merchantDomain: process.env.AIRPAY_MERCHANT_DOMAIN || 'https://mtonyoplus.com',
+      // Accounts that pay through live AirPay while PAYMENT_PROVIDER is still
+      // the sandbox: the first real-money test, with every other viewer
+      // untouched. Comma-separated emails.
+      liveTestEmails: (process.env.AIRPAY_LIVE_TEST_EMAILS || '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
     },
   },
 

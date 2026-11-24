@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { one, transaction } from '../../db/pool.js'
 import { splitPercentFor, applySplit } from '../../services/settings.js'
 import { log } from '../../lib/logger.js'
-import { paymentProvider } from './provider.js'
+import { providerOf } from './provider.js'
 
 /**
  * How long a payment may stay pending before we stop waiting for it.
@@ -168,7 +168,7 @@ export async function reconcilePayment(payment, { via = 'unknown', now = Date.no
   try {
     // `signed`: the gateway's own decrypted reply, which the provider may
     // weigh only where its verification API does not exist (AirPay sandbox).
-    verdict = await paymentProvider().verify(payment.provider_ref, payment, { signed })
+    verdict = await providerOf(payment).verify(payment.provider_ref, payment, { signed })
   } catch (err) {
     log.warn(`payment verify failed for ${payment.merchant_order_id || payment.id} (${via}): ${err.message}`)
   }

@@ -50,14 +50,16 @@ test('a callback is a doorbell: it names a payment and triggers verification, ne
   for (const block of provider.split('parseCallback(body) {').slice(1)) {
     assert.doesNotMatch(block.slice(0, block.indexOf('},')), /status/)
   }
-  assert.match(hook, /if \(req\.params\.provider !== provider\.name\) throw notFound/)
+  // Only the site's provider, or AirPay while a live test runs beside the sandbox.
+  assert.match(hook, /const provider = callbackProvider\(req\.params\.provider\)\n    if \(!provider\) throw notFound/)
 })
 
 test('the viewer\'s poll and the sweep reach an outcome only through the gateway\'s verify()', () => {
   assert.match(routes, /await reconcilePayment\(payment, \{ via: 'status-poll' \}\)/)
   assert.match(sweep, /reconcilePayment\(p, \{ via: 'sweep' \}\)/)
   const rec = service.slice(service.indexOf('export async function reconcilePayment'), service.indexOf('/** Shape a payment row'))
-  assert.match(rec, /await paymentProvider\(\)\.verify\(payment\.provider_ref, payment, \{ signed \}\)/)
+  // Verified by the provider the payment was made with (payments.liveTest.test.js).
+  assert.match(rec, /await providerOf\(payment\)\.verify\(payment\.provider_ref, payment, \{ signed \}\)/)
   // "pending" from the gateway is not an outcome.
   assert.match(rec, /if \(status && status !== 'pending'\)/)
   // Past the window with no verdict: expired, so nobody waits forever.

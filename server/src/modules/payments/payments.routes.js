@@ -4,7 +4,7 @@ import { one, many, query } from '../../db/pool.js'
 import { asyncHandler, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js'
 import { validate } from '../../middleware/validate.js'
 import { requireAuth } from '../../middleware/auth.js'
-import { paymentProvider, verifyWebhook, OUTCOMES } from './provider.js'
+import { paymentProvider, callbackProvider, isAirpayLiveTester, verifyWebhook, OUTCOMES } from './provider.js'
 import {
   settlePayment,
   reconcilePayment,
@@ -81,7 +81,7 @@ router.post(
       })
     }
 
-    const provider = paymentProvider()
+    const provider = paymentProvider(req.user)
 
     const payment = await one(
       `insert into payments (user_id, video_id, provider, amount_tzs, method, phone, merchant_order_id,
@@ -151,6 +151,22 @@ router.post(
       ...(result.simulated ? { simulatedOutcome: result.simulated } : {}),
       pollUrl: `/api/payments/${updated.id}`,
     })
+  })
+)
+
+/* ------------------------------------------ which provider will this viewer pay with */
+/**
+ * The payment sheet asks before it opens: the sandbox explains its test
+ * outcomes, live AirPay must not. Per account, because a live tester pays
+ * through AirPay while everyone else is still on the sandbox.
+ */
+router.get(
+  '/provider',
+  requireAuth(),
+  asyncHandler(async (req, res) => {
+    const provider = paymentProvider(req.user)
+    res.set('Cache-Control', 'no-store')
+    res.json({ provider: provider.name, liveTest: provider.name === 'airpay' && env.payments.provider === 'sandbox' && isAirpayLiveTester(req.user) })
   })
 )
 
@@ -229,8 +245,8 @@ router.get(
 router.post(
   '/webhook/:provider',
   asyncHandler(async (req, res) => {
-    const provider = paymentProvider()
-    if (req.params.provider !== provider.name) throw notFound('Unknown payment provider')
+    const provider = callbackProvider(req.params.provider)
+    if (!provider) throw notFound('Unknown payment provider')
 
     if (provider.authenticateCallback) {
       if (!provider.authenticateCallback({ ...(req.query || {}), ...(req.body || {}) })) throw forbidden('Invalid callback')
@@ -274,9 +290,9 @@ router.all(
   // viewer came back on is only logged — verification decides the outcome.
   '/return/:provider/:outcome(success|failure)?',
   asyncHandler(async (req, res) => {
-    const provider = paymentProvider()
+    const provider = callbackProvider(req.params.provider)
     const home = env.publicWebUrl.replace(/\/$/, '')
-    if (req.params.provider !== provider.name) return res.redirect(303, home)
+    if (!provider) return res.redirect(303, home)
     if (req.params.outcome) log.info(`payment return via the ${req.params.outcome} URL`)
 
     const ref = provider.parseCallback({ ...(req.query || {}), ...(req.body || {}) })
@@ -319,6 +335,8 @@ router.post(
       throw forbidden('This is not your payment')
     }
     if (payment.status !== 'pending') throw conflict(`This payment is already ${payment.status}`)
+    // A live tester's AirPay payment is real money: never forced to an outcome.
+    if (payment.provider !== 'sandbox') throw forbidden('Simulation is only available for test payments')
 
     const reasons = {
       failed: 'Insufficient balance in the mobile money account',
