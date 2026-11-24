@@ -32,8 +32,9 @@ export function campaignActions(c) {
   const out = []
   if (c.state === 'draft') out.push(['publish', 'send', c.startsAt && new Date(c.startsAt) > new Date() ? 'Schedule' : 'Publish'])
   if (c.state === 'active' && c.status !== 'ended') out.push(['pause', 'pause', 'Pause'])
-  if (c.state === 'paused') out.push(['resume', 'play', 'Resume'])
-  if (c.state !== 'ended') out.push(['end', 'square', 'End'])
+  if (c.state === 'paused' && c.status !== 'ended') out.push(['resume', 'play', 'Resume'])
+  // An already-ended campaign (by date or cap) has nothing left to end.
+  if (c.state !== 'ended' && c.status !== 'ended') out.push(['end', 'square', 'End'])
   return out
 }
 
@@ -64,7 +65,6 @@ export default function AdsTab() {
   const shown = filter === 'all' ? campaigns : campaigns.filter((c) => c.status === filter)
 
   const stats = [
-    { icon: 'megaphone', label: 'Live campaigns', value: compact(counts.live || 0) },
     { icon: 'eye', label: 'Impressions (30d)', value: compact(s?.impressions) },
     { icon: 'coins', tone: 'gold', label: 'Ad Revenue (30d)', value: tzs(s?.revenueTzs) },
     /* Accrued ad-revenue share, not a completed payout. */

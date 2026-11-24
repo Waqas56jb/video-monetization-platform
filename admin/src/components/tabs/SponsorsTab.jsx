@@ -41,8 +41,8 @@ export function sponsorActions(s) {
   const out = []
   if (s.state === 'draft') out.push(['publish', s.startsAt && new Date(s.startsAt) > new Date() ? 'Schedule' : 'Publish'])
   if (s.state === 'published' && s.status !== 'ended') out.push(['pause', 'Pause'])
-  if (s.state === 'paused') out.push(['resume', 'Resume'])
-  if (s.state !== 'ended') out.push(['end', 'End'])
+  if (s.state === 'paused' && s.status !== 'ended') out.push(['resume', 'Resume'])
+  if (s.state !== 'ended' && s.status !== 'ended') out.push(['end', 'End'])
   return out
 }
 
@@ -210,7 +210,7 @@ export default function SponsorsTab() {
         </ol>
         <div className="sp-editor">
           <form className="form-grid" onSubmit={save(editing ? 'save' : 'publish')} noValidate>
-            <div className="field">
+            <div className="field sp-file">
               <label htmlFor="sp-image">1 · Banner image (JPEG, PNG or WebP, up to 5 MB, wide — about 1200 × 400)</label>
               <input id="sp-image" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setImage(e.target.files?.[0] || null)} />
               <small className="field-hint">Optional: without an image the banner shows as a text card.</small>

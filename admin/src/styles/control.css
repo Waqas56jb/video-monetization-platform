@@ -108,3 +108,13 @@
 .spst-axis { display: flex; justify-content: space-between; margin-top: 5px; color: var(--muted2); font-size: 11px; }
 .spst-table { margin: 4px 0 10px; }
 .spst-table summary { cursor: pointer; color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+
+/* Fields with no leading icon (the campaign form) start at the edge. */
+.camp-form .input-wrap input { padding-left: 15px; }
+.camp-form .input-wrap.camp-skip-secs { display: flex; align-items: center; gap: 8px; }
+.camp-form .input-wrap.camp-skip-secs input { width: 90px; }
+.camp-filters .rv-preset { flex: 0 0 auto; }
+/* The sponsor form: file picker, buttons and note across the whole width. */
+.sp-editor .form-grid > .sp-file,
+.sp-editor .form-grid > .camp-actions,
+.sp-editor .form-grid > .field-note { grid-column: 1 / -1; }
