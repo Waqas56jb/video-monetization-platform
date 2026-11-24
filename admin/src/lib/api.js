@@ -353,6 +353,10 @@ export const api = {
     createSponsor: (body) => post('/api/sponsors/manage', body),
     updateSponsor: (id, body) => patch(`/api/sponsors/manage/${id}`, body),
     deleteSponsor: (id) => del(`/api/sponsors/manage/${id}`),
+    /** publish | pause | resume | end */
+    sponsorState: (id, action) => post(`/api/sponsors/manage/${id}/state`, { action }),
+    /** Totals and views / clicks per day for the last 30 days. */
+    sponsorStats: (id) => get(`/api/sponsors/manage/${id}/stats`),
     sponsorImage: (id, file) => {
       const form = new FormData()
       form.append('image', file)
@@ -382,6 +386,10 @@ export const api = {
     adUploadTicket: (id) => post(`/api/admin/ads/${id}/upload`, {}),
     adMedia: (id) => get(`/api/admin/ads/${id}/media`),
     adVideoReport: (id) => get(`/api/admin/ads/${id}/videos`),
+    /** The advert as the player gets it, for the desktop / mobile preview. Counts nothing. */
+    adPreview: (id) => get(`/api/admin/ads/${id}/preview`),
+    /** publish | pause | resume | end */
+    campaignState: (id, action) => post(`/api/admin/ads/${id}/state`, { action }),
 
     runPremiereExpiry: () => post('/api/admin/jobs/premiere-expiry'),
   },

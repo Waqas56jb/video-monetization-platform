@@ -23,16 +23,16 @@ test('an image the server would refuse is refused before anything is saved', () 
   assert.equal(sponsorImageProblem(file('image/png', SPONSOR_IMAGE_MAX_BYTES)), null, 'exactly 5 MB is allowed')
   assert.match(sponsorImageProblem(file('image/png', SPONSOR_IMAGE_MAX_BYTES + 1)), /limit is 5 MB/)
   assert.match(sponsorImageProblem(file('image/png', 10)), /empty/)
-  const save = src.slice(src.indexOf('const save = async'), src.indexOf('const toggle = async'))
+  const save = src.slice(src.indexOf('const save = (mode) => async'), src.indexOf('const changeState = '))
   assert.ok(save.indexOf('sponsorImageProblem(image)') < save.indexOf('createSponsor'), 'checked before the sponsor is created')
 })
 
 test('if the image upload still fails, the form stays on the saved sponsor — no duplicate on retry', () => {
-  const save = src.slice(src.indexOf('const save = async'), src.indexOf('const toggle = async'))
-  const onImageError = save.slice(save.indexOf('await api.admin.sponsorImage'), save.indexOf("showToast(editing ? 'Sponsor updated'"))
-  assert.match(onImageError, /setEditing\(res\.sponsor\.id\)/)
+  const save = src.slice(src.indexOf('const save = (mode) => async'), src.indexOf('const changeState = '))
+  const onImageError = save.slice(save.indexOf('await api.admin.sponsorImage'), save.indexOf('const st = res.sponsor.status'))
+  assert.match(onImageError, /setEditing\(res\.sponsor\)/)
   assert.match(onImageError, /return/)
-  assert.match(onImageError, /Save changes/)
+  assert.match(onImageError, /Choose the image again and save/)
 })
 
 test('payments: every row names its gateway; internal test payments are labelled TEST and can be filtered out', () => {

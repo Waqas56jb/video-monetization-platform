@@ -11,7 +11,7 @@ import { notify, notifyMany } from '../services/notify.js'
 import { studioVideo, thumbnailFor } from '../services/entitlement.js'
 import { runPremiereExpiry } from '../jobs/premiere.js'
 import { ensureClips } from './playback.routes.js'
-import { campaignPerformance, campaignPerformanceByVideo, microToTzs } from '../services/ads.js'
+import { campaignPerformance, campaignPerformanceByVideo, microToTzs, adPayload } from '../services/ads.js'
 import { createDirectUpload as cfCreateDirectUpload, getVideo as cfVideoDetails } from '../lib/cloudflare.js'
 import { verifyMail, sendMail, passwordChangedEmail } from '../lib/mailer.js'
 import { capabilities, env } from '../config/env.js'
@@ -1575,7 +1575,31 @@ const CAMPAIGN_COLS = `
   duration_seconds, thumbnail_url, starts_at, ends_at,
   placements::text[] as placements,
   target_video_ids, target_categories, target_creator_ids,
-  skip_after_seconds, click_url, notes, created_by, updated_at`
+  skip_after_seconds, click_url, notes, created_by, updated_at,
+  state, impression_cap, ended_at`
+
+/**
+ * Draft / Scheduled / Live / Paused / Ended (client, 2026-11-17), plus the one
+ * state that needs the admin's hand before it can run: "no video".
+ * `state` is what the admin chose; the rest follows from the dates and the cap.
+ */
+export function campaignStatus(c, perf, now = new Date()) {
+  if (c.state === 'draft') return 'draft'
+  if (c.state === 'ended') return 'ended'
+  if (c.ends_at && new Date(c.ends_at) < now) return 'ended'
+  if (c.impression_cap && (perf?.impressions || 0) >= c.impression_cap) return 'ended'
+  if (c.state === 'paused' || !c.active) return 'paused'
+  if (!c.cloudflare_uid) return 'no video'
+  if (c.starts_at && new Date(c.starts_at) > now) return 'scheduled'
+  return 'live'
+}
+
+/** Why a campaign ended, for the line under its status. */
+export const endedBecause = (c, perf, now = new Date()) =>
+  c.state === 'ended' ? 'ended by an admin'
+    : c.ends_at && new Date(c.ends_at) < now ? 'end date passed'
+      : c.impression_cap && (perf?.impressions || 0) >= c.impression_cap ? 'impression cap reached'
+        : null
 
 /** Shape a campaign row plus its measured performance for the admin UI. */
 const campaignOut = (c, perf) => ({
@@ -1598,16 +1622,12 @@ const campaignOut = (c, perf) => ({
   notes: c.notes,
   createdAt: c.created_at,
   updatedAt: c.updated_at,
+  state: c.state,
+  impressionCap: c.impression_cap,
+  endedAt: c.ended_at,
   /** Live now, or why not — the question every campaign list is really asked. */
-  status: !c.active
-    ? 'paused'
-    : !c.cloudflare_uid
-      ? 'no video'
-      : c.starts_at && new Date(c.starts_at) > new Date()
-        ? 'scheduled'
-        : c.ends_at && new Date(c.ends_at) < new Date()
-          ? 'ended'
-          : 'live',
+  status: campaignStatus(c, perf),
+  endedBecause: endedBecause(c, perf),
   performance: perf || {
     impressions: 0, completed: 0, videos: 0,
     revenueTzs: 0, creatorTzs: 0, platformTzs: 0, lastServedAt: null,
@@ -1677,6 +1697,10 @@ const campaignSchema = z.object({
    */
   clickUrl: z.union([z.literal(''), z.string().trim().url('Enter a full web address, starting with https://')]).optional(),
   notes: z.string().trim().max(1000).optional(),
+  /** Stop after this many impressions; null or 0 = no cap. */
+  impressionCap: z.coerce.number().int().min(0).max(1_000_000_000).nullish(),
+  /** Save without serving it, to preview first. */
+  draft: z.boolean().optional(),
 })
 
 /** A window that ends before it starts would simply never run. */
@@ -1697,20 +1721,21 @@ router.post(
       `insert into ad_campaigns
          (name, advertiser, cpm_tzs, active, starts_at, ends_at, placements,
           target_video_ids, target_categories, target_creator_ids,
-          skip_after_seconds, click_url, notes, created_by)
-       values ($1,$2,$3,$4,$5,$6,$7::ad_placement[],$8::uuid[],$9::text[],$10::uuid[],$11,$12,$13,$14)
+          skip_after_seconds, click_url, notes, created_by, state, impression_cap)
+       values ($1,$2,$3,$4,$5,$6,$7::ad_placement[],$8::uuid[],$9::text[],$10::uuid[],$11,$12,$13,$14,$15,$16)
        returning ${CAMPAIGN_COLS}`,
       [
-        b.name, b.advertiser || null, b.cpmTzs, b.active,
+        b.name, b.advertiser || null, b.cpmTzs, b.draft ? false : b.active,
         b.startsAt || null, b.endsAt || null, b.placements,
         b.targetVideoIds, b.targetCategories, b.targetCreatorIds,
         b.skipAfterSeconds, b.clickUrl || null, b.notes || null, req.user.id,
+        b.draft ? 'draft' : b.active === false ? 'paused' : 'active', b.impressionCap || null,
       ]
     )
 
     await recordStaffAction(req, {
       action: 'CREATED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
-      summary: `${who(req)} created the ad campaign "${c.name}"`,
+      summary: `${who(req)} ${b.draft ? 'saved a draft of' : 'created'} the ad campaign "${c.name}"`,
       detail: { name: c.name, advertiser: c.advertiser, cpmTzs: c.cpm_tzs, placements: c.placements },
     })
     res.status(201).json({ campaign: campaignOut(c) })
@@ -1735,9 +1760,11 @@ router.patch(
          name               = coalesce($2, name),
          advertiser         = coalesce($3, advertiser),
          cpm_tzs            = coalesce($4, cpm_tzs),
-         active             = coalesce($5, active),
-         starts_at          = coalesce($6, starts_at),
-         ends_at            = coalesce($7, ends_at),
+         state              = case when $5::boolean is null or state in ('draft','ended') then state
+                                   when $5 then 'active' else 'paused' end,
+         active             = case when state in ('draft','ended') then false else coalesce($5, active) end,
+         starts_at          = case when $16::boolean then $6::timestamptz else starts_at end,
+         ends_at            = case when $17::boolean then $7::timestamptz else ends_at end,
          placements         = coalesce($8::ad_placement[], placements),
          target_video_ids   = coalesce($9::uuid[], target_video_ids),
          target_categories  = coalesce($10::text[], target_categories),
@@ -1745,6 +1772,7 @@ router.patch(
          skip_after_seconds = coalesce($12, skip_after_seconds),
          click_url          = case when $13::text is null then click_url when $13 = '' then null else $13 end,
          notes              = coalesce($14, notes),
+         impression_cap     = case when $15::int is null then impression_cap when $15 = 0 then null else $15 end,
          updated_at         = now()
        where id = $1 returning ${CAMPAIGN_COLS}`,
       [
@@ -1754,6 +1782,9 @@ router.patch(
         b.targetVideoIds ?? null, b.targetCategories ?? null, b.targetCreatorIds ?? null,
         b.skipAfterSeconds ?? null, b.clickUrl === undefined ? null : b.clickUrl,
         b.notes ?? null,
+        b.impressionCap === undefined ? null : b.impressionCap === null ? 0 : b.impressionCap,
+        // A date sent as null clears it; a date left out stays as it is.
+        b.startsAt !== undefined, b.endsAt !== undefined,
       ]
     )
 
@@ -1769,6 +1800,75 @@ router.patch(
       detail: { changed: Object.keys(b) },
     })
     res.json({ campaign: campaignOut(c, perf.get(c.id)) })
+  })
+)
+
+/**
+ * Publish a draft, pause, resume or end a campaign.
+ *
+ * publish / resume need the advert uploaded: a campaign that cannot serve is
+ * not "live", and saying so is the very thing the control center is for.
+ * End is for good (the record and its numbers stay); a new run is a new campaign.
+ */
+export const STATE_ACTIONS = {
+  publish: { from: ['draft'], to: 'active', verb: 'published' },
+  pause: { from: ['active'], to: 'paused', verb: 'paused' },
+  resume: { from: ['paused'], to: 'active', verb: 'resumed' },
+  end: { from: ['draft', 'active', 'paused'], to: 'ended', verb: 'ended' },
+}
+
+router.post(
+  '/ads/:id/state',
+  validate(z.object({ action: z.enum(['publish', 'pause', 'resume', 'end']) })),
+  asyncHandler(async (req, res) => {
+    const existing = await one('select * from ad_campaigns where id = $1', [req.params.id])
+    if (!existing) throw notFound('Campaign not found')
+    const step = STATE_ACTIONS[req.body.action]
+    if (!step.from.includes(existing.state)) {
+      throw conflict(`This campaign is ${existing.state === 'active' ? 'running' : existing.state} — it cannot be ${step.verb}`)
+    }
+    if (step.to === 'active' && !existing.cloudflare_uid) {
+      throw badRequest('Upload the advert first — a campaign without one cannot run')
+    }
+    const c = await one(
+      `update ad_campaigns
+          set state = $2, active = ($2 = 'active'),
+              ended_at = case when $2 = 'ended' then now() else ended_at end,
+              updated_at = now()
+        where id = $1 returning ${CAMPAIGN_COLS}`,
+      [existing.id, step.to]
+    )
+    const perf = await campaignPerformance(c.id)
+    await recordStaffAction(req, {
+      action: 'UPDATED_CAMPAIGN', entityType: 'ad_campaign', entityId: c.id,
+      summary: `${who(req)} ${step.verb} the ad campaign "${c.name}"`,
+      detail: { from: existing.state, to: step.to },
+    })
+    res.json({ campaign: campaignOut(c, perf.get(c.id)) })
+  })
+)
+
+/**
+ * The advert exactly as the player gets it, for the preview in the admin
+ * before (or after) it goes live. Plays the uploaded creative; counts nothing.
+ */
+router.get(
+  '/ads/:id/preview',
+  asyncHandler(async (req, res) => {
+    const c = await one(`select ${CAMPAIGN_COLS} from ad_campaigns where id = $1`, [req.params.id])
+    if (!c) throw notFound('Campaign not found')
+    if (!c.cloudflare_uid) return res.json({ ad: null, note: 'Upload the advert to preview it.' })
+    const s = await getSettings()
+    const placements = c.placements || []
+    const placement = placements.includes('pre_roll') ? 'pre_roll' : placements[0] || 'pre_roll'
+    res.set('Cache-Control', 'no-store')
+    res.json({
+      ad: adPayload(c, {
+        placement,
+        skipAfterSeconds: s.preroll_skip_after_secs,
+        prerollTargetSeconds: s.preroll_target_seconds,
+      }),
+    })
   })
 )
 

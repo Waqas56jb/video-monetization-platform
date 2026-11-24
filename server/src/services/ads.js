@@ -59,6 +59,17 @@ export async function adEligibility({ video, userId, userRole = null }) {
 }
 
 /**
+ * Serving now, as far as the campaign itself goes (targeting is added by the
+ * caller): running (not a draft, paused or ended), its advert uploaded, and
+ * under its impression cap. Ads Management control center, 2026-11-17.
+ */
+export const SERVING = `state = 'active'
+        and active = true
+        and cloudflare_uid is not null
+        and (impression_cap is null
+             or (select count(*) from ad_impressions ci where ci.campaign_id = ad_campaigns.id) < impression_cap)`
+
+/**
  * Pick a campaign for one placement.
  *
  * Targeting is deliberately permissive: an empty target list means "anywhere",
@@ -69,8 +80,7 @@ export async function adEligibility({ video, userId, userRole = null }) {
 export async function pickCampaign({ video, placement }) {
   const rows = await many(
     `select * from ad_campaigns
-      where active = true
-        and cloudflare_uid is not null
+      where ${SERVING}
         and $2 = any(placements)
         and (starts_at is null or starts_at <= now())
         and (ends_at   is null or ends_at   >= now())
@@ -103,8 +113,7 @@ export async function campaignServable({ video, campaignId, placement }) {
   const rows = await many(
     `select * from ad_campaigns
       where id = $5
-        and active = true
-        and cloudflare_uid is not null
+        and ${SERVING}
         and $2 = any(placements)
         and (starts_at is null or starts_at <= now())
         and (ends_at   is null or ends_at   >= now())

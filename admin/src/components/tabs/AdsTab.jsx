@@ -2,8 +2,10 @@ import { Fragment, useState } from 'react'
 import { Megaphone, Plus, Upload } from 'lucide-react'
 import Panel from '@/components/ui/Panel'
 import { StatGrid } from '@/components/ui/StatCard'
-import { TableWrap, EmptyRow, IconButton } from '@/components/ui/Table'
+import { TableWrap, IconButton } from '@/components/ui/Table'
 import { Async } from '@/components/ui/States'
+import CampaignForm, { formFromCampaign } from '@/components/ads/CampaignForm'
+import AdPreview from '@/components/ads/AdPreview'
 import useApi, { tzs, compact, shortDate, timeAgo } from '@/hooks/useApi'
 import api from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
@@ -11,38 +13,29 @@ import { useConfirm } from '@/context/ConfirmContext'
 import { useToast } from '@/context/ToastContext'
 
 /**
- * Advertising on Free + Ads videos.
+ * Ads Management: the control center for adverts on Free + Ads videos
+ * (client, 2026-11-17, point 5).
  *
- * A campaign is only real once it can be served, so everything the selection
- * logic reads is editable here: the advert itself, the window it runs in, the
- * placements it may take, and who it may run against. The figures are counted
- * from impressions actually delivered — a campaign with no impressions shows
- * zero, which is the useful thing to know about it.
+ * Every campaign shows its creative and a desktop / mobile preview, the
+ * advertiser, name, destination, dates, status (Draft / Scheduled / Live /
+ * Paused / Ended), placement, skip time, CPM, impression cap, and what it has
+ * delivered: impressions, completed views, clicks / CTR, revenue and the
+ * creators' share. Edit, pause, resume, end and delete are one click each.
+ * The figures are counted from impressions actually delivered.
  */
 
-const PLACEMENTS = [
-  ['pre_roll', 'Pre-roll', 'Before the video starts'],
-  ['mid_roll', 'Mid-roll', 'Part way through longer videos'],
-  ['post_roll', 'Post-roll', 'After the video ends'],
-]
+export const STATUS_PILL = { live: 'ok', scheduled: 'info', draft: 'free', paused: 'pend', ended: '', 'no video': 'bad' }
+export const STATUS_LABEL = { live: 'Live', scheduled: 'Scheduled', draft: 'Draft', paused: 'Paused', ended: 'Ended', 'no video': 'Needs advert' }
 
-const BLANK = {
-  name: '',
-  advertiser: '',
-  cpmTzs: 25000,
-  startsAt: '',
-  endsAt: '',
-  placements: ['pre_roll'],
-  targetCategories: [],
-  skipAfterSeconds: 5,
-  skippable: true,
-  notes: '',
+/** The state buttons a campaign offers, from the state the admin chose. */
+export function campaignActions(c) {
+  const out = []
+  if (c.state === 'draft') out.push(['publish', 'send', c.startsAt && new Date(c.startsAt) > new Date() ? 'Schedule' : 'Publish'])
+  if (c.state === 'active' && c.status !== 'ended') out.push(['pause', 'pause', 'Pause'])
+  if (c.state === 'paused') out.push(['resume', 'play', 'Resume'])
+  if (c.state !== 'ended') out.push(['end', 'square', 'End'])
+  return out
 }
-
-/** `datetime-local` gives no timezone; the API wants a real instant. */
-const toInstant = (local) => (local ? new Date(local).toISOString() : null)
-/** The reverse, for pre-filling an edit form from what the server sent back. */
-const toLocalInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 16) : '')
 
 export default function AdsTab() {
   const showToast = useToast()
@@ -53,20 +46,13 @@ export default function AdsTab() {
   const settings = useApi(() => api.admin.settings(), [])
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState(BLANK)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(null)
-
-  // The inline "skip / window / click-through" editor — one campaign at a
-  // time, a proper datetime-local input rather than a window.prompt() for
-  // dates, which is what CPM already gets away with only because a number
-  // has no format ambiguity.
   const [editingId, setEditingId] = useState(null)
-  const [editForm, setEditForm] = useState(null)
-  const [savingEdit, setSavingEdit] = useState(false)
+  const [previewing, setPreviewing] = useState(null)
+  const [filter, setFilter] = useState('all')
 
-  // Per-campaign "view by video" — fetched on demand, not with the rest of
-  // the table, since most campaigns are never expanded.
+  // Per-campaign "view by video": fetched on demand.
   const [videoReportId, setVideoReportId] = useState(null)
   const [videoReport, setVideoReport] = useState(null)
   const [videoReportLoading, setVideoReportLoading] = useState(false)
@@ -74,53 +60,23 @@ export default function AdsTab() {
   const campaigns = data?.campaigns || []
   const categories = data?.options?.categories || []
   const s = data?.stats
+  const counts = campaigns.reduce((m, c) => ({ ...m, [c.status]: (m[c.status] || 0) + 1 }), {})
+  const shown = filter === 'all' ? campaigns : campaigns.filter((c) => c.status === filter)
 
   const stats = [
+    { icon: 'megaphone', label: 'Live campaigns', value: compact(counts.live || 0) },
     { icon: 'eye', label: 'Impressions (30d)', value: compact(s?.impressions) },
     { icon: 'coins', tone: 'gold', label: 'Ad Revenue (30d)', value: tzs(s?.revenueTzs) },
-    /* Accrued ad-revenue share, not a completed payout -- same correction as
-       CreatorsTab.jsx / RevenueTab.jsx (report2.txt SEP14). */
+    /* Accrued ad-revenue share, not a completed payout. */
     { icon: 'users', label: 'Earned by Creators (30d)', value: tzs(s?.creatorTzs) },
     { icon: 'clapperboard', label: 'Videos Showing Ads', value: compact(s?.videosWithAds) },
   ]
 
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }))
-
-  const togglePlacement = (key) =>
-    setForm((f) => ({
-      ...f,
-      placements: f.placements.includes(key)
-        ? f.placements.filter((p) => p !== key)
-        : [...f.placements, key],
-    }))
-
-  const toggleCategory = (cat) =>
-    setForm((f) => ({
-      ...f,
-      targetCategories: f.targetCategories.includes(cat)
-        ? f.targetCategories.filter((c) => c !== cat)
-        : [...f.targetCategories, cat],
-    }))
-
-  const create = async (e) => {
-    e.preventDefault()
-    if (!form.placements.length) return showToast('Choose at least one placement')
-
+  const create = async (body, mode) => {
     setBusy(true)
     try {
-      const { campaign } = await api.admin.createCampaign({
-        name: form.name.trim(),
-        advertiser: form.advertiser.trim() || undefined,
-        cpmTzs: Number(form.cpmTzs) || 0,
-        startsAt: toInstant(form.startsAt),
-        endsAt: toInstant(form.endsAt),
-        placements: form.placements,
-        targetCategories: form.targetCategories,
-        skipAfterSeconds: form.skippable ? Math.max(1, Number(form.skipAfterSeconds) || 5) : 0,
-        notes: form.notes.trim() || undefined,
-      })
-      showToast(`"${campaign.name}" created — now upload its advert`)
-      setForm(BLANK)
+      const { campaign } = await api.admin.createCampaign({ ...body, draft: mode === 'draft' })
+      showToast(mode === 'draft' ? `"${campaign.name}" saved as a draft — upload its advert, then preview it` : `"${campaign.name}" created — upload its advert and it starts serving`)
       setCreating(false)
       reload({ quiet: true })
     } catch (err) {
@@ -130,36 +86,41 @@ export default function AdsTab() {
     }
   }
 
-  /**
-   * Send the advert to Cloudflare, not through this server.
-   *
-   * The same route a creator's upload takes: the API hands back a one-time
-   * destination and the browser puts the file there directly.
-   */
+  const saveEdit = async (c, body) => {
+    setBusy(true)
+    try {
+      await api.admin.updateCampaign(c.id, body)
+      showToast(`"${body.name}" updated`)
+      setEditingId(null)
+      reload({ quiet: true })
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** The advert goes straight to Cloudflare, not through this server. */
   const uploadAdvert = async (campaign, file) => {
     if (!file) return
     setUploading(campaign.id)
     try {
       const { uploadUrl } = await api.admin.adUploadTicket(campaign.id)
-
       const body = new FormData()
       body.append('file', file)
       const res = await fetch(uploadUrl, { method: 'POST', body })
       if (!res.ok) throw new Error('Cloudflare rejected the upload')
-
       showToast('Advert uploaded — it takes a moment to encode')
-
-      // Duration only exists once encoding finishes, and the skip timing needs it.
       let attempts = 0
       const poll = async () => {
         attempts += 1
         const media = await api.admin.adMedia(campaign.id).catch(() => null)
         if (media?.state === 'ready') {
-          showToast(`"${campaign.name}" is ready to serve`)
+          showToast(`"${campaign.name}" is ready — press Preview to watch it`)
           reload({ quiet: true })
           return
         }
-        if (attempts < 20) setTimeout(poll, 4000)
+        if (attempts < 30) setTimeout(poll, 4000)
         else reload({ quiet: true })
       }
       setTimeout(poll, 4000)
@@ -171,80 +132,23 @@ export default function AdsTab() {
     }
   }
 
-  const toggle = async (c) => {
-    try {
-      await api.admin.updateCampaign(c.id, { active: !c.active })
-      showToast(c.active ? `"${c.name}" paused` : `"${c.name}" is running`)
-      reload({ quiet: true })
-    } catch (err) {
-      showToast(err.message)
-    }
-  }
-
-  const editCpm = (c) => {
-    const answer = window.prompt(
-      `What does ${c.advertiser || c.name} pay per thousand impressions, in TZS?`,
-      String(c.cpmTzs)
-    )
-    if (answer === null) return
-    const value = Number(answer.replace(/[^\d]/g, ''))
-    if (!Number.isFinite(value) || value < 0) return showToast('Enter a number')
-    api.admin
-      .updateCampaign(c.id, { cpmTzs: value })
-      .then(() => {
-        showToast(`CPM set to ${tzs(value)}`)
+  const changeState = (c, action) => {
+    const run = async () => {
+      try {
+        await api.admin.campaignState(c.id, action)
+        const done = { publish: 'is published', pause: 'is paused', resume: 'is running again', end: 'has ended' }[action]
+        showToast(`"${c.name}" ${done}`)
         reload({ quiet: true })
-      })
-      .catch((err) => showToast(err.message))
-  }
-
-  /**
-   * Skip delay, the run window, and the click-through link — all three
-   * existed on creation already; the PATCH route already accepted every one
-   * of them (report2.txt §5's "editing gap" was UI-only). An empty
-   * click-through field clears it; an empty date field leaves the existing
-   * one untouched, matching what the PATCH route actually does with a
-   * missing value (see admin.routes.js's own click_url case/coalesce).
-   */
-  const openEdit = (c) => {
-    setEditingId(c.id)
-    setEditForm({
-      skipAfterSeconds: c.skipAfterSeconds ?? 5,
-      startsAt: toLocalInput(c.startsAt),
-      endsAt: toLocalInput(c.endsAt),
-      clickUrl: c.clickUrl || '',
-    })
-  }
-  const closeEdit = () => {
-    setEditingId(null)
-    setEditForm(null)
-  }
-  const saveEdit = async (c, e) => {
-    e.preventDefault()
-    setSavingEdit(true)
-    try {
-      const patch = {
-        skipAfterSeconds: Math.max(0, Math.min(120, Number(editForm.skipAfterSeconds) || 0)),
-        clickUrl: editForm.clickUrl.trim(),
+      } catch (err) {
+        showToast(err.message)
       }
-      // Only send a date if this field actually changed from what the
-      // campaign already has — sending the same instant back is harmless,
-      // but sending nothing at all when the admin never touched the field
-      // is what lets the "leave dates alone" case stay exactly that.
-      const startsAtLocal = toLocalInput(c.startsAt)
-      const endsAtLocal = toLocalInput(c.endsAt)
-      if (editForm.startsAt !== startsAtLocal) patch.startsAt = toInstant(editForm.startsAt)
-      if (editForm.endsAt !== endsAtLocal) patch.endsAt = toInstant(editForm.endsAt)
-
-      await api.admin.updateCampaign(c.id, patch)
-      showToast(`"${c.name}" updated`)
-      closeEdit()
-      reload({ quiet: true })
-    } catch (err) {
-      showToast(err.message)
-    } finally {
-      setSavingEdit(false)
     }
+    if (action !== 'end') return run()
+    return confirm({
+      title: `End "${c.name}"?`,
+      text: 'It stops serving for good. Its numbers stay in the report. To run it again later, create a new campaign.',
+      onConfirm: run,
+    })
   }
 
   const toggleVideoReport = async (c) => {
@@ -257,8 +161,8 @@ export default function AdsTab() {
     setVideoReport(null)
     setVideoReportLoading(true)
     try {
-      const data = await api.admin.adVideoReport(c.id)
-      setVideoReport(data.videos || [])
+      const res = await api.admin.adVideoReport(c.id)
+      setVideoReport(res.videos || [])
     } catch (err) {
       showToast(err.message)
       setVideoReportId(null)
@@ -294,14 +198,7 @@ export default function AdsTab() {
     }
   }
 
-  /**
-   * Save a number-in-minutes field on blur.
-   *
-   * Uncontrolled (`defaultValue`, not `value`) on purpose: these only need to
-   * hold whatever the admin is typing until they leave the field, and an
-   * uncontrolled input needs no local state to stay in sync with the
-   * settings this component already re-fetches after every save.
-   */
+  /** Save a number-in-minutes field on blur (uncontrolled on purpose). */
   const saveMinutes = (key, min, max) => (e) => {
     const minutes = Number(e.target.value)
     if (!Number.isFinite(minutes)) return
@@ -324,7 +221,7 @@ export default function AdsTab() {
     ['share_ad_revenue', 'Share ad revenue with creators', 'Uses the same split as sales'],
   ]
 
-  const STATUS_PILL = { live: 'ok', paused: '', scheduled: 'info', ended: '', 'no video': 'pend' }
+  const FILTERS = ['all', 'live', 'scheduled', 'draft', 'paused', 'ended', 'no video'].filter((f) => f === 'all' || counts[f])
 
   return (
     <div className="tab">
@@ -500,168 +397,16 @@ export default function AdsTab() {
           </button>
         }
       >
-        {creating && (
-          <form onSubmit={create} className="camp-form">
-            <div className="invite-grid">
-              <div className="field">
-                <label htmlFor="camp-name">Campaign name</label>
-                <div className="input-wrap">
-                  <input
-                    id="camp-name"
-                    value={form.name}
-                    onChange={(e) => set({ name: e.target.value })}
-                    placeholder="Vodacom Tanzania — June"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="camp-adv">Advertiser</label>
-                <div className="input-wrap">
-                  <input
-                    id="camp-adv"
-                    value={form.advertiser}
-                    onChange={(e) => set({ advertiser: e.target.value })}
-                    placeholder="Vodacom Tanzania"
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="camp-cpm">CPM (TZS)</label>
-                <div className="input-wrap">
-                  <input
-                    id="camp-cpm"
-                    type="number"
-                    min={0}
-                    value={form.cpmTzs}
-                    onChange={(e) => set({ cpmTzs: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
+        {creating && <CampaignForm categories={categories} busy={busy} onSubmit={create} onCancel={() => setCreating(false)} />}
 
-            <div className="invite-grid">
-              <div className="field">
-                <label htmlFor="camp-from">Runs from</label>
-                <div className="input-wrap">
-                  <input
-                    id="camp-from"
-                    type="datetime-local"
-                    value={form.startsAt}
-                    onChange={(e) => set({ startsAt: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="camp-to">Runs until</label>
-                <div className="input-wrap">
-                  <input
-                    id="camp-to"
-                    type="datetime-local"
-                    value={form.endsAt}
-                    onChange={(e) => set({ endsAt: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label className="check-row" htmlFor="camp-skippable" style={{ marginBottom: 10 }}>
-                  <input
-                    id="camp-skippable"
-                    type="checkbox"
-                    checked={form.skippable}
-                    onChange={(e) =>
-                      set({
-                        skippable: e.target.checked,
-                        skipAfterSeconds: e.target.checked ? form.skipAfterSeconds || 5 : 0,
-                      })
-                    }
-                  />
-                  <span>
-                    Skippable
-                    <small>Off = the viewer must watch the whole advert</small>
-                  </span>
-                </label>
-                {form.skippable && (
-                  <>
-                    <label htmlFor="camp-skip">Seconds before Skip appears</label>
-                    <div className="input-wrap">
-                      <input
-                        id="camp-skip"
-                        type="number"
-                        min={1}
-                        max={120}
-                        value={form.skipAfterSeconds}
-                        onChange={(e) => set({ skipAfterSeconds: e.target.value })}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="camp-block">
-              <b>Placement</b>
-              <div className="rv-presets">
-                {PLACEMENTS.map(([key, label, note]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    title={note}
-                    className={`rv-preset ${form.placements.includes(key) ? 'on' : ''}`.trim()}
-                    onClick={() => togglePlacement(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="camp-block">
-              <b>Show it on</b>
-              <div className="rv-presets">
-                {categories.length === 0 && (
-                  <span className="field-note" style={{ margin: 0 }}>
-                    No categories on the platform yet — this campaign will run on every eligible
-                    video.
-                  </span>
-                )}
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`rv-preset ${form.targetCategories.includes(cat) ? 'on' : ''}`.trim()}
-                    onClick={() => toggleCategory(cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-              <p className="field-note">
-                Pick nothing and it runs on every Free + Ads video. Picking categories narrows it
-                to those.
-              </p>
-            </div>
-
-            <div className="field">
-              <label htmlFor="camp-notes">Notes</label>
-              <div className="input-wrap">
-                <input
-                  id="camp-notes"
-                  value={form.notes}
-                  onChange={(e) => set({ notes: e.target.value })}
-                  placeholder="Anything the next person needs to know"
-                />
-              </div>
-            </div>
-
-            <button className="btn btn-gold" type="submit" disabled={busy}>
-              {busy ? 'Creating…' : 'Create campaign'}
-            </button>
-            <p className="field-note">
-              CPM is what the advertiser pays per thousand impressions served. Once created, upload
-              the advert against the campaign — it cannot serve without one.
-            </p>
-          </form>
+        {campaigns.length > 0 && (
+          <div className="rv-presets camp-filters" role="tablist" aria-label="Filter campaigns by status">
+            {FILTERS.map((f) => (
+              <button key={f} type="button" role="tab" aria-selected={filter === f} className={`rv-preset ${filter === f ? 'on' : ''}`.trim()} onClick={() => setFilter(f)}>
+                {f === 'all' ? `All (${campaigns.length})` : `${STATUS_LABEL[f]} (${counts[f]})`}
+              </button>
+            ))}
+          </div>
         )}
 
         <Async
@@ -673,248 +418,165 @@ export default function AdsTab() {
           emptyProps={{
             icon: Megaphone,
             title: 'No campaigns yet',
-            hint: 'Create one above, upload its advert, and it starts serving on Free + Ads videos.',
+            hint: 'Press New Campaign, save it as a draft, upload its advert, preview it, then publish.',
           }}
         >
           <TableWrap>
             <thead>
               <tr>
                 <th>Campaign</th>
-                <th>Advert</th>
-                <th>Placement</th>
-                <th>Window</th>
-                <th>CPM</th>
-                <th>Impressions</th>
-                <th>Clicks / CTR</th>
+                <th>Creative</th>
+                <th>Placement · skip</th>
+                <th>Dates</th>
+                <th>CPM · cap</th>
+                <th>Delivered</th>
+                <th>Clicks · CTR</th>
                 <th>Revenue</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {campaigns.length === 0 && <EmptyRow colSpan={10}>No campaigns yet.</EmptyRow>}
-              {campaigns.map((c) => {
+              {shown.map((c) => {
                 const perf = c.performance || {}
+                const capPct = c.impressionCap ? Math.min(100, Math.round(((perf.impressions || 0) / c.impressionCap) * 100)) : null
                 return (
                   <Fragment key={c.id}>
-                  <tr>
-                    <td>
-                      <b>{c.name}</b>
-                      {c.advertiser && <div className="cell-sub">{c.advertiser}</div>}
-                      {c.targetCategories?.length > 0 && (
-                        <div className="cell-sub">→ {c.targetCategories.join(', ')}</div>
-                      )}
-                    </td>
-                    <td>
-                      {c.hasVideo ? (
-                        <span className="pill ok">
-                          {c.durationSeconds ? `${c.durationSeconds}s` : 'uploaded'}
-                        </span>
-                      ) : (
-                        <label className="ad-upload">
-                          <input
-                            type="file"
-                            accept="video/*"
-                            onChange={(e) => uploadAdvert(c, e.target.files?.[0])}
-                          />
-                          <Upload size={13} />
-                          {uploading === c.id ? 'Uploading…' : 'Upload'}
-                        </label>
-                      )}
-                    </td>
-                    <td>
-                      {(c.placements || []).map((p) => (
-                        <span className="pill info" key={p} style={{ marginRight: 4 }}>
-                          {p.replace('_roll', '')}
-                        </span>
-                      ))}
-                    </td>
-                    <td style={{ fontSize: 12 }}>
-                      {c.startsAt || c.endsAt ? (
-                        <>
-                          {c.startsAt ? shortDate(c.startsAt) : 'now'}
-                          {' → '}
-                          {c.endsAt ? shortDate(c.endsAt) : 'open'}
-                        </>
-                      ) : (
-                        <span style={{ color: 'var(--muted)' }}>always</span>
-                      )}
-                      {/* Computed server-side all along (services/ads.js
-                          campaignPerformance) but never rendered until now. */}
-                      {perf.lastServedAt && (
-                        <div className="cell-sub">last served {timeAgo(perf.lastServedAt)}</div>
-                      )}
-                    </td>
-                    <td>{tzs(c.cpmTzs)}</td>
-                    <td>
-                      {compact(perf.impressions)}
-                      {perf.completed != null && perf.impressions > 0 && (
-                        <div className="cell-sub">{compact(perf.completed)} completed</div>
-                      )}
-                    </td>
-                    <td>
-                      {c.clickUrl ? (
-                        <>
-                          {compact(perf.clicks)}
-                          <div className="cell-sub">
-                            {perf.ctrPercent != null ? `${perf.ctrPercent}% CTR` : 'no impressions yet'}
-                          </div>
-                        </>
-                      ) : (
-                        <span style={{ color: 'var(--muted)' }}>watch-only</span>
-                      )}
-                    </td>
-                    <td className="money">
-                      {tzs(perf.revenueTzs)}
-                      {perf.creatorTzs > 0 && (
-                        <div className="cell-sub">{tzs(perf.creatorTzs)} to creators</div>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className={`pill ${STATUS_PILL[c.status] ?? ''}`}
-                        style={{ cursor: 'pointer', border: 0 }}
-                        onClick={() => toggle(c)}
-                        title={c.active ? 'Pause this campaign' : 'Start this campaign'}
-                      >
-                        {c.status}
-                      </button>
-                    </td>
-                    <td>
-                      <div className="actions">
-                        <IconButton icon="percent" title="Change CPM" onClick={() => editCpm(c)} />
-                        <IconButton
-                          icon="pencil"
-                          title="Edit skip delay, window, click-through link"
-                          onClick={() => (editingId === c.id ? closeEdit() : openEdit(c))}
-                        />
-                        <IconButton
-                          icon={videoReportId === c.id ? 'eye-off' : 'eye'}
-                          title="View performance by video"
-                          onClick={() => toggleVideoReport(c)}
-                        />
-                        {isAdmin && (
-                          <IconButton
-                            icon="trash-2"
-                            tone="danger"
-                            title={`Delete ${c.name}`}
-                            onClick={() => remove(c)}
-                          />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-
-                  {editingId === c.id && editForm && (
                     <tr>
-                      <td colSpan={10}>
-                        <form onSubmit={(e) => saveEdit(c, e)} className="camp-form" style={{ margin: '4px 0' }}>
-                          <div className="invite-grid">
-                            <div className="field">
-                              <label htmlFor={`edit-skip-${c.id}`}>Seconds before Skip appears</label>
-                              <div className="input-wrap">
-                                <input
-                                  id={`edit-skip-${c.id}`}
-                                  type="number"
-                                  min={0}
-                                  max={120}
-                                  value={editForm.skipAfterSeconds}
-                                  onChange={(e) => setEditForm((f) => ({ ...f, skipAfterSeconds: e.target.value }))}
-                                />
-                              </div>
-                              <p className="field-note" style={{ margin: '4px 0 0' }}>0 = not skippable</p>
-                            </div>
-                            <div className="field">
-                              <label htmlFor={`edit-from-${c.id}`}>Runs from</label>
-                              <div className="input-wrap">
-                                <input
-                                  id={`edit-from-${c.id}`}
-                                  type="datetime-local"
-                                  value={editForm.startsAt}
-                                  onChange={(e) => setEditForm((f) => ({ ...f, startsAt: e.target.value }))}
-                                />
-                              </div>
-                            </div>
-                            <div className="field">
-                              <label htmlFor={`edit-to-${c.id}`}>Runs until</label>
-                              <div className="input-wrap">
-                                <input
-                                  id={`edit-to-${c.id}`}
-                                  type="datetime-local"
-                                  value={editForm.endsAt}
-                                  onChange={(e) => setEditForm((f) => ({ ...f, endsAt: e.target.value }))}
-                                />
-                              </div>
-                            </div>
+                      <td>
+                        <b>{c.name}</b>
+                        {c.advertiser && <div className="cell-sub">{c.advertiser}</div>}
+                        {c.clickUrl && (
+                          <div className="cell-sub camp-url" title={c.clickUrl}>
+                            → {c.clickUrl.replace(/^https?:\/\//, '')}
                           </div>
-                          <div className="field">
-                            <label htmlFor={`edit-click-${c.id}`}>Click-through link</label>
-                            <div className="input-wrap">
-                              <input
-                                id={`edit-click-${c.id}`}
-                                type="url"
-                                placeholder="https://advertiser.example.com — blank clears it"
-                                value={editForm.clickUrl}
-                                onChange={(e) => setEditForm((f) => ({ ...f, clickUrl: e.target.value }))}
-                              />
-                            </div>
-                            <p className="field-note" style={{ margin: '4px 0 0' }}>
-                              Leaving this blank removes the "Learn more" button from the ad — it goes
-                              back to watch-only. Never shown until the ad has genuine airtime.
-                            </p>
-                          </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-gold btn-sm" type="submit" disabled={savingEdit}>
-                              {savingEdit ? 'Saving…' : 'Save'}
+                        )}
+                        {c.targetCategories?.length > 0 && <div className="cell-sub">on {c.targetCategories.join(', ')}</div>}
+                      </td>
+                      <td>
+                        {c.hasVideo ? (
+                          <div className="camp-creative">
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPreviewing(c)}>
+                              <Megaphone size={13} /> Preview
                             </button>
-                            <button className="btn btn-ghost btn-sm" type="button" onClick={closeEdit}>
-                              Cancel
-                            </button>
+                            <small>{c.durationSeconds ? `${c.durationSeconds}s video` : 'encoding…'}</small>
+                            <label className="ad-upload camp-replace">
+                              <input type="file" accept="video/*" onChange={(e) => uploadAdvert(c, e.target.files?.[0])} />
+                              {uploading === c.id ? 'Uploading…' : 'Replace'}
+                            </label>
                           </div>
-                        </form>
+                        ) : (
+                          <label className="ad-upload">
+                            <input type="file" accept="video/*" onChange={(e) => uploadAdvert(c, e.target.files?.[0])} />
+                            <Upload size={13} />
+                            {uploading === c.id ? 'Uploading…' : 'Upload advert'}
+                          </label>
+                        )}
+                      </td>
+                      <td>
+                        {(c.placements || []).map((p) => (
+                          <span className="pill info" key={p} style={{ marginRight: 4 }}>
+                            {p.replace('_roll', '-roll')}
+                          </span>
+                        ))}
+                        <div className="cell-sub">{Number(c.skipAfterSeconds) > 0 ? `skip after ${c.skipAfterSeconds}s` : 'not skippable'}</div>
+                      </td>
+                      <td style={{ fontSize: 12 }}>
+                        {c.startsAt ? shortDate(c.startsAt) : 'on publish'} → {c.endsAt ? shortDate(c.endsAt) : 'no end'}
+                        {perf.lastServedAt && <div className="cell-sub">last served {timeAgo(perf.lastServedAt)}</div>}
+                      </td>
+                      <td>
+                        {tzs(c.cpmTzs)}
+                        <div className="cell-sub">{c.impressionCap ? `cap ${compact(c.impressionCap)}` : 'no cap'}</div>
+                      </td>
+                      <td>
+                        {compact(perf.impressions)} impressions
+                        <div className="cell-sub">{compact(perf.completed)} completed views</div>
+                        {capPct != null && (
+                          <div className="camp-cap" title={`${capPct}% of the cap`}>
+                            <span style={{ width: `${capPct}%` }} />
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        {c.clickUrl ? (
+                          <>
+                            {compact(perf.clicks)}
+                            <div className="cell-sub">{perf.ctrPercent != null ? `${perf.ctrPercent}% CTR` : 'no impressions yet'}</div>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--muted)' }}>watch-only</span>
+                        )}
+                      </td>
+                      <td className="money">
+                        {tzs(perf.revenueTzs)}
+                        <div className="cell-sub">creators {tzs(perf.creatorTzs)}</div>
+                        <div className="cell-sub">MTONYO+ {tzs(perf.platformTzs)}</div>
+                      </td>
+                      <td>
+                        <span className={`pill ${STATUS_PILL[c.status] ?? ''}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                        {c.endedBecause && <div className="cell-sub">{c.endedBecause}</div>}
+                        {c.status === 'no video' && <div className="cell-sub">upload the advert to run</div>}
+                      </td>
+                      <td>
+                        <div className="actions camp-row-actions">
+                          {campaignActions(c).map(([action, icon, label]) => (
+                            <button key={action} type="button" className={`btn btn-sm ${action === 'publish' || action === 'resume' ? 'btn-gold' : 'btn-ghost'}`} onClick={() => changeState(c, action)}>
+                              {label}
+                            </button>
+                          ))}
+                          <IconButton icon="pencil" title="Edit campaign" onClick={() => setEditingId(editingId === c.id ? null : c.id)} />
+                          <IconButton icon={videoReportId === c.id ? 'eye-off' : 'bar-chart-3'} title="Performance by video" onClick={() => toggleVideoReport(c)} />
+                          {isAdmin && <IconButton icon="trash-2" tone="danger" title={`Delete ${c.name}`} onClick={() => remove(c)} />}
+                        </div>
                       </td>
                     </tr>
-                  )}
 
-                  {videoReportId === c.id && (
-                    <tr>
-                      <td colSpan={10}>
-                        {videoReportLoading && <p className="field-note">Loading…</p>}
-                        {!videoReportLoading && videoReport && videoReport.length === 0 && (
-                          <p className="field-note">No impressions recorded for this campaign yet.</p>
-                        )}
-                        {!videoReportLoading && videoReport && videoReport.length > 0 && (
-                          <TableWrap>
-                            <thead>
-                              <tr>
-                                <th>Video</th>
-                                <th>Impressions</th>
-                                <th>Completed</th>
-                                <th>Clicks / CTR</th>
-                                <th>Revenue</th>
-                                <th>Last served</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {videoReport.map((v) => (
-                                <tr key={v.videoId}>
-                                  <td>{v.title}</td>
-                                  <td>{compact(v.impressions)}</td>
-                                  <td>{compact(v.completed)}</td>
-                                  <td>
-                                    {compact(v.clicks)}
-                                    {v.ctrPercent != null && <div className="cell-sub">{v.ctrPercent}% CTR</div>}
-                                  </td>
-                                  <td className="money">{tzs(v.revenueTzs)}</td>
-                                  <td style={{ fontSize: 12 }}>{v.lastServedAt ? timeAgo(v.lastServedAt) : '—'}</td>
+                    {editingId === c.id && (
+                      <tr className="camp-edit-row">
+                        <td colSpan={10}>
+                          <CampaignForm editing initial={formFromCampaign(c)} categories={categories} busy={busy} onSubmit={(body) => saveEdit(c, body)} onCancel={() => setEditingId(null)} />
+                        </td>
+                      </tr>
+                    )}
+
+                    {videoReportId === c.id && (
+                      <tr>
+                        <td colSpan={10}>
+                          {videoReportLoading && <p className="field-note">Loading…</p>}
+                          {!videoReportLoading && videoReport && videoReport.length === 0 && <p className="field-note">No impressions recorded for this campaign yet.</p>}
+                          {!videoReportLoading && videoReport && videoReport.length > 0 && (
+                            <TableWrap>
+                              <thead>
+                                <tr>
+                                  <th>Video</th>
+                                  <th>Impressions</th>
+                                  <th>Completed</th>
+                                  <th>Clicks / CTR</th>
+                                  <th>Revenue</th>
+                                  <th>Last served</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </TableWrap>
-                        )}
-                      </td>
-                    </tr>
-                  )}
+                              </thead>
+                              <tbody>
+                                {videoReport.map((v) => (
+                                  <tr key={v.videoId}>
+                                    <td>{v.title}</td>
+                                    <td>{compact(v.impressions)}</td>
+                                    <td>{compact(v.completed)}</td>
+                                    <td>
+                                      {compact(v.clicks)}
+                                      {v.ctrPercent != null && <div className="cell-sub">{v.ctrPercent}% CTR</div>}
+                                    </td>
+                                    <td className="money">{tzs(v.revenueTzs)}</td>
+                                    <td style={{ fontSize: 12 }}>{v.lastServedAt ? timeAgo(v.lastServedAt) : '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </TableWrap>
+                          )}
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 )
               })}
@@ -922,6 +584,9 @@ export default function AdsTab() {
           </TableWrap>
         </Async>
       </Panel>
+
+      <AdPreview campaign={previewing} open={Boolean(previewing)} onClose={() => setPreviewing(null)} />
     </div>
   )
 }
+
