@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { AlertTriangle, Inbox, RefreshCw } from 'lucide-react'
+import { autoRecover } from '@/lib/autoRecover'
 
 /** Skeleton blocks, so a slow connection shows shape rather than a blank page. */
 export function Skeleton({ rows = 3, className = '' }) {
@@ -66,6 +68,12 @@ export function ErrorState({ error, message, onRetry, title = 'Could not load th
     (typeof error === 'string' ? error : error?.message) ||
       (typeof message === 'string' ? message : message?.message)
   )
+  // Retries by itself when the connection comes back (lib/autoRecover.js);
+  // the button stays for anyone who does not want to wait.
+  const retryRef = useRef(onRetry)
+  retryRef.current = onRetry
+  const canRetry = Boolean(onRetry)
+  useEffect(() => (canRetry ? autoRecover(() => retryRef.current?.()) : undefined), [canRetry])
   return (
     <div className="state-block state-error">
       <AlertTriangle />
