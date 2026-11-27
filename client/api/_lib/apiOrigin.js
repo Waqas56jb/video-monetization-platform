@@ -28,9 +28,16 @@ export function apiOrigin() {
   return (raw || RAILWAY).replace(/\/$/, '')
 }
 
+/**
+ * The host the site is actually served from. The bare domain answers with a
+ * 308 to www, and every address inside a share preview (og:url, canonical,
+ * og:image) must be the final one: WhatsApp does not follow a redirect for the
+ * card image, so it drops the whole preview and sends a plain link, and
+ * Facebook re-scrapes og:url and lands on the redirect.
+ */
+const SERVED_WEB = 'https://www.mtonyoplus.com'
+
 export function publicWebOrigin() {
-  const raw =
-    // The production domain since 2026-11-04 (was the Vercel address).
-    process.env.PUBLIC_WEB_URL || 'https://mtonyoplus.com'
-  return String(raw).replace(/\/$/, '')
+  const raw = String(process.env.PUBLIC_WEB_URL || SERVED_WEB).replace(/\/$/, '')
+  return /^https?:\/\/mtonyoplus\.com$/i.test(raw) ? SERVED_WEB : raw
 }
