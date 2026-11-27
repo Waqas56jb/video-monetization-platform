@@ -152,7 +152,7 @@ test('the WhatsApp control navigates by href, not by window.open', () => {
      reach a sibling file is more machinery than the read is worth. */
   const src = readFileSync(new URL('../components/watch/ShareSheet.jsx', import.meta.url), 'utf8')
   const block = src.slice(src.indexOf('className="share-wa"'), src.indexOf('share-targets'))
-  assert.match(block, /href=\{whatsappHref\(shareUrl\)\}/, 'the href is computed at render')
+  assert.match(block, /href=\{whatsappHref\(waUrl\)\}/, 'the href is computed at render')
   assert.match(block, /target=\{whatsappTarget\(\)\}/)
   assert.doesNotMatch(block, /window\.open/, 'nothing here may open a window')
   assert.doesNotMatch(block, /<button[^>]*className="share-wa"/, 'it is an anchor')
@@ -186,7 +186,7 @@ test('Facebook and the Instagram/TikTok share targets are anchors too, not windo
 
   assert.match(targets, /href=\{socialHref\('instagram'\)\}/)
   assert.match(targets, /href=\{socialHref\('tiktok'\)\}/)
-  assert.match(targets, /href=\{facebookHref\(shareUrl\)\}/, 'Facebook must use its own app-attempt href, not a hard-coded web sharer')
+  assert.match(targets, /href=\{facebookHref\(fbUrl\)\}/, 'Facebook must use its own app-attempt href, not a hard-coded web sharer')
   assert.match(targets, /target=\{facebookTarget\(\)\}/)
   assert.doesNotMatch(targets, /window\.open/)
   assert.doesNotMatch(targets, /<button[^>]*className="share-target is-(ig|tt|fb)"/, 'all three are anchors')

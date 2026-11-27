@@ -55,6 +55,7 @@ import {
 } from '@/lib/whatsappShare'
 import { warmShare, healShareCard } from '@/lib/warmShare'
 import { urlsFromShare } from '@/lib/shareUrls'
+import { viaUrl } from '@/lib/shareVia'
 import { nativeShareData } from '@/lib/watchUrl'
 import { idle, cancelIdle } from '@/lib/mobileUx'
 
@@ -124,6 +125,10 @@ export default function ShareSheet({ open, video, share, onClose }) {
   useLockBodyScroll(open, { delay: true })
 
   const { shareUrl, cleanUrl, cardUrl } = urlsFromShare(video, share)
+  // Each button's link says where it went, so a sale is credited to it.
+  const waUrl = viaUrl(shareUrl, 'wa')
+  const fbUrl = viaUrl(shareUrl, 'fb')
+  const socialUrl = (where) => viaUrl(shareUrl, where === 'instagram' ? 'ig' : 'tt')
   const slug = video?.slug || share?.slug || ''
   const still = mediaUrl(video?.thumbnailUrl)
   /** Server JPEG already has title, play, badge — no CSS overlays on top. */
@@ -137,6 +142,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
   const warm = () => {
     if (shareUrl) warmShare({ shareUrl, cleanUrl, cardUrl })
+    if (waUrl) warmShare({ shareUrl: waUrl })
   }
 
   useEffect(() => {
@@ -225,7 +231,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
     /* A phone is sent on to WhatsApp Web by itself, as before. */
     if (whatsappIsPhone()) {
       setWaFallback(false)
-      whatsappFallback(shareUrl)()
+      whatsappFallback(waUrl)()
       return
     }
     if (!whatsappNeedsVisibleFallback()) {
@@ -306,7 +312,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
   const socialFallbackUrl = (where) =>
     where === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/'
   const onSocialClick = (where) => () => {
-    copyWatchUrl(shareUrl)
+    copyWatchUrl(socialUrl(where))
     if (!saving) void saveClip(where)
     if (isTouchMobile()) appFallback(socialFallbackUrl(where))()
     warm()
@@ -343,7 +349,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl).catch(() => {})
+      await navigator.clipboard.writeText(socialUrl(where)).catch(() => {})
 
       let fileUrl = clip?.downloadUrl ? mediaUrl(clip.downloadUrl) : null
 
@@ -556,7 +562,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
 
         <a
           className="share-wa"
-          href={whatsappHref(shareUrl)}
+          href={whatsappHref(waUrl)}
           target={whatsappTarget()}
           rel="noopener noreferrer"
           onClick={onWhatsApp}
@@ -577,7 +583,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
         {waFallback && (
           <a
             className="share-wa-web"
-            href={whatsappWebHref(shareUrl)}
+            href={whatsappWebHref(waUrl)}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -610,7 +616,7 @@ export default function ShareSheet({ open, video, share, onClose }) {
           </a>
           <a
             className="share-target is-fb"
-            href={facebookHref(shareUrl)}
+            href={facebookHref(fbUrl)}
             target={facebookTarget()}
             rel="noopener noreferrer"
             onClick={onFacebookClick}
